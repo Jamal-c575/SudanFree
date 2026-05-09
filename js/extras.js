@@ -1,7 +1,16 @@
 // ═══ Posts, Requests, Ads Module ═══
+const PLACEMENT_NAMES = {
+  homeBanner: '🏠 بانر الرئيسية',
+  communityFeed: '👥 تغذية المجتمع',
+  featuredService: '💼 خدمة مميزة',
+  featuredShop: '🏪 متجر مميز',
+  strip: '📢 شريط إعلاني',
+};
+
 const AdminExtras = {
   allPosts: [],
   allRequests: [],
+  allAds: [],
 
   // ── Posts ──
   async loadPosts() {
@@ -103,60 +112,105 @@ const AdminExtras = {
     this.loadRequests();
   },
 
-  // ── Ads ──
+  // ── Ads (Enhanced with placement types + stats) ──
   async loadAds() {
-    const snap = await db.collection('ads').orderBy('expiryDate','desc').get();
+    const snap = await db.collection('ads').orderBy('createdAt','desc').get();
+    this.allAds = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    this.renderAds(this.allAds);
+  },
+
+  renderAds(ads) {
     const el = document.getElementById('ads-list');
-    if (snap.empty) { el.innerHTML = '<p class="empty-state">لا توجد إعلانات</p>'; return; }
-    el.innerHTML = snap.docs.map(d => {
-      const a = d.data();
+    if (!ads.length) { el.innerHTML = '<p class="empty-state">لا توجد إعلانات</p>'; return; }
+    el.innerHTML = ads.map(a => {
       const expired = a.expiryDate && a.expiryDate.toDate() < new Date();
+      const placementLabel = PLACEMENT_NAMES[a.placement] || '🏠 بانر الرئيسية';
+      const imgUrl = a.mediaUrl || a.imageUrl || '';
+      const impressions = a.impressions || 0;
+      const clicks = a.clicks || 0;
+      const ctr = impressions > 0 ? ((clicks / impressions) * 100).toFixed(1) : '0.0';
       return `<div class="ad-item">
-        ${a.imageUrl?`<img src="${a.imageUrl}" onclick="AdminApp.previewImage('${a.imageUrl}')">`:'<div style="width:80px;height:60px;background:var(--bg);border-radius:8px;display:flex;align-items:center;justify-content:center"><span class="material-icons-outlined" style="color:var(--text-muted)">image</span></div>'}
+        ${imgUrl?`<img src="${imgUrl}" onclick="AdminApp.previewImage('${imgUrl}')" style="width:90px;height:65px;border-radius:10px;object-fit:cover;cursor:pointer;">`:'<div style="width:90px;height:65px;background:var(--bg);border-radius:10px;display:flex;align-items:center;justify-content:center"><span class="material-icons-outlined" style="color:var(--text-muted);font-size:28px">image</span></div>'}
         <div class="ad-info">
           <h4>${a.title||'إعلان'} ${expired?'<span style="color:var(--danger);font-size:11px">(منتهي)</span>':''}</h4>
           <p>${a.description||''}</p>
           <div class="ad-meta">
             <span>${a.isActive?'✅ نشط':'⏸ معطل'}</span>
+            <span>${placementLabel}</span>
             <span>📍 ${a.targetRegion||'الكل'}</span>
             <span>👥 ${ROLE_NAMES[a.targetProfession]||'الكل'}</span>
             <span>⭐ أولوية ${a.priority||0}</span>
+            ${a.advertiserName ? `<span>🏢 ${a.advertiserName}</span>` : ''}
+          </div>
+          <div class="ad-stats" style="display:flex;gap:12px;margin-top:6px;font-size:12px;color:var(--text-muted);">
+            <span title="مشاهدات">👁 ${impressions.toLocaleString()}</span>
+            <span title="نقرات">🖱 ${clicks.toLocaleString()}</span>
+            <span title="معدل النقر" style="color:${parseFloat(ctr) > 2 ? 'var(--success)' : 'var(--text-muted)'}">📊 CTR: ${ctr}%</span>
           </div>
         </div>
         <div style="display:flex;flex-direction:column;gap:6px">
-          <button class="btn btn-sm ${a.isActive?'btn-warning':'btn-success'}" onclick="AdminExtras.toggleAd('${d.id}',${!a.isActive})">${a.isActive?'تعطيل':'تفعيل'}</button>
-          <button class="btn btn-sm btn-danger" onclick="AdminExtras.deleteAd('${d.id}')">حذف</button>
+          <button class="btn btn-sm ${a.isActive?'btn-warning':'btn-success'}" onclick="AdminExtras.toggleAd('${a.id}',${!a.isActive})">${a.isActive?'تعطيل':'تفعيل'}</button>
+          <button class="btn btn-sm btn-danger" onclick="AdminExtras.deleteAd('${a.id}')">حذف</button>
         </div>
       </div>`;
     }).join('');
   },
+
+  filterAds() {
+    const placement = document.getElementById('ads-placement-filter').value;
+    let list = this.allAds;
+    if (placement) {
+      list = list.filter(a => (a.placement || 'homeBanner') === placement);
+    }
+    this.renderAds(list);
+  },
+
   async createAd() {
     const title = document.getElementById('ad-title').value.trim();
     const desc = document.getElementById('ad-description').value.trim();
+    const advertiser = document.getElementById('ad-advertiser').value.trim();
     const img = document.getElementById('ad-image').value.trim();
     const link = document.getElementById('ad-link').value.trim();
+    const placement = document.getElementById('ad-placement').value;
+    const mediaType = document.getElementById('ad-media-type').value;
     const region = document.getElementById('ad-region').value;
     const prof = document.getElementById('ad-profession').value;
     const priority = parseInt(document.getElementById('ad-priority').value) || 5;
     const expiry = document.getElementById('ad-expiry').value;
+
     if (!title) { showToast('أدخل عنوان الإعلان','error'); return; }
     if (!expiry) { showToast('حدد تاريخ الانتهاء','error'); return; }
+
     await db.collection('ads').add({
-      title, description: desc, imageUrl: img, actionUrl: link,
-      targetRegion: region, targetProfession: prof, priority,
+      title,
+      description: desc,
+      mediaUrl: img,
+      imageUrl: img, // backward compat
+      mediaType: mediaType,
+      actionUrl: link,
+      placement: placement,
+      advertiserName: advertiser || null,
+      targetRegion: region,
+      targetProfession: prof,
+      priority,
       isActive: true,
+      impressions: 0,
+      clicks: 0,
       expiryDate: firebase.firestore.Timestamp.fromDate(new Date(expiry)),
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
+
     showToast('تم إنشاء الإعلان بنجاح');
-    ['ad-title','ad-description','ad-image','ad-link','ad-expiry'].forEach(id => document.getElementById(id).value = '');
+    ['ad-title','ad-description','ad-advertiser','ad-image','ad-link','ad-expiry'].forEach(id => document.getElementById(id).value = '');
     this.loadAds();
   },
+
   async toggleAd(id, active) {
     await db.collection('ads').doc(id).update({ isActive: active });
     showToast(active ? 'تم تفعيل الإعلان' : 'تم تعطيل الإعلان');
     this.loadAds();
   },
+
   async deleteAd(id) {
     if (!confirm('حذف هذا الإعلان نهائياً؟')) return;
     await db.collection('ads').doc(id).delete();
