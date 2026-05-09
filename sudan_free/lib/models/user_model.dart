@@ -1,0 +1,613 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+enum UserRole { freelancer, techService, privateService, client, shop, admin }
+
+enum ShopCategory {
+  electronics,      // إلكترونيات
+  clothing,         // ملابس
+  furniture,        // أثاث
+  food,             // مواد غذائية
+  restaurant,       // مطعم
+  supermarket,      // سوبرماركت
+  pharmacy,         // صيدلية
+  beauty,           // تجميل ومستحضرات
+  automotive,       // قطع غيار سيارات
+  building,         // مواد بناء
+  jewelry,          // مجوهرات
+  mobile,           // جوالات وإكسسوارات
+  bookstore,        // مكتبة
+  sports,           // رياضة
+  toys,             // ألعاب أطفال
+  home,             // أدوات منزلية
+  other,            // أخرى
+}
+
+enum VerificationStatus { none, pending, verified, rejected }
+
+class UserModel {
+  final String id;
+  final String email;
+  final String? username;  // @username للإشارات (اختياري)
+  final String? phoneNumber;
+  final bool isVerified;
+  final VerificationStatus verificationStatus;
+  final String? idCardUrl;
+  final String? verificationSelfieUrl;
+  final int profileViews;
+  final String name;
+  final UserRole role;
+  final String? bio;
+  final String? jobTitle;  // نوع العمل المخصص
+  final String? profileImageUrl;
+  final String? coverImageUrl;
+  final List<String> skills;
+  final List<String> portfolioImages;
+  final List<String> portfolioVideos;  // معرض الفيديوهات
+  final double? hourlyRate;
+  // Location fields
+  final String? state;      // الولاية
+  final String? locality;   // المحلية
+  // Shop fields (for role == shop)
+  final ShopCategory? shopCategory;  // تصنيف المتجر
+  final List<String> shopImages;      // صور المنتجات
+  final String? openingHours;         // أوقات الفتح
+  final String? closingHours;         // أوقات الإغلاق
+  final String? whatsappNumber;       // رقم الواتساب للتواصل
+  // Rating fields
+  final double rating;
+  final int reviewsCount;
+  final Map<String, int> ratingCounts; // Key: '1', '2', '3', '4', '5'
+  final int negativeReports; // Reports for fraud/scam
+  final int totalJobs;
+  final int completedJobs;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final String? fcmToken;
+  final String preferredLanguage;
+  final bool isAvailable;
+  final double walletBalance;
+  final List<String> partnerIds; // Accepted colleagues
+  final List<String> pendingPartnerIds; // Pending colleague requests
+  final List<String> followers; // Users who follow this shop/user
+  final List<String> following; // Users/shops this user follows
+  final DateTime? lastActive; // For online status tracking
+  final Map<String, bool> notificationSettings; // Notification preferences
+  final List<String> searchKeywords; // Auto-generated keywords for search
+  // Client Interests
+  final List<String> shopInterests;    // أنواع المتاجر التي يهتم بها العميل
+  final List<String> serviceInterests; // أنواع الخدمات التي يحتاجها العميل
+
+  UserModel({
+    required this.id,
+    required this.email,
+    this.username,
+    this.phoneNumber,
+    this.profileViews = 0,
+    required this.name,
+    required this.role,
+    this.bio,
+    this.jobTitle,
+    this.profileImageUrl,
+    this.coverImageUrl,
+    this.skills = const [],
+    this.portfolioImages = const [],
+    this.portfolioVideos = const [],
+    this.hourlyRate,
+    this.state,
+    this.locality,
+    this.shopCategory,
+    this.shopImages = const [],
+    this.openingHours,
+    this.closingHours,
+    this.whatsappNumber,
+    this.rating = 0.0,
+    this.reviewsCount = 0,
+    this.ratingCounts = const {},
+    this.negativeReports = 0,
+    this.totalJobs = 0,
+    this.completedJobs = 0,
+    required this.createdAt,
+    required this.updatedAt,
+    this.fcmToken,
+    this.preferredLanguage = 'ar',
+    this.isAvailable = true,
+    this.walletBalance = 0.0,
+    this.partnerIds = const [],
+    this.pendingPartnerIds = const [],
+    this.followers = const [],
+    this.following = const [],
+    this.lastActive,
+    this.isVerified = false,
+    this.verificationStatus = VerificationStatus.none,
+    this.idCardUrl,
+    this.verificationSelfieUrl,
+    this.notificationSettings = const {
+      'chat': true,
+      'mentions': true,
+      'milestones': true,
+      'marketing': false,
+    },
+    this.searchKeywords = const [],
+    this.shopInterests = const [],
+    this.serviceInterests = const [],
+  });
+
+  factory UserModel.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    data['id'] = doc.id; // Ensure ID is in data map
+    return UserModel.fromMap(data);
+  }
+
+  factory UserModel.fromMap(Map<String, dynamic> data) {
+    return UserModel(
+      id: data['id'] ?? '',
+      email: data['email'] ?? '',
+      username: data['username'],
+      phoneNumber: data['phoneNumber'],
+      profileViews: data['profileViews'] ?? 0,
+      name: data['name'] ?? '',
+      role: UserRole.values.firstWhere(
+        (e) => e.name.toLowerCase() == (data['role']?.toString().toLowerCase() ?? ''),
+        orElse: () => UserRole.client,
+      ),
+      bio: data['bio'],
+      jobTitle: data['jobTitle'],
+      profileImageUrl: data['profileImageUrl'],
+      coverImageUrl: data['coverImageUrl'],
+      skills: List<String>.from(data['skills'] ?? []),
+      portfolioImages: List<String>.from(data['portfolioImages'] ?? []),
+      portfolioVideos: List<String>.from(data['portfolioVideos'] ?? []),
+      hourlyRate: (data['hourlyRate'] as num?)?.toDouble(),
+      state: data['state'],
+      locality: data['locality'],
+      shopCategory: data['shopCategory'] != null
+          ? ShopCategory.values.firstWhere(
+              (e) => e.name == data['shopCategory'],
+              orElse: () => ShopCategory.other,
+            )
+          : null,
+      shopImages: List<String>.from(data['shopImages'] ?? []),
+      openingHours: data['openingHours'],
+      closingHours: data['closingHours'],
+      whatsappNumber: data['whatsappNumber'],
+      rating: (data['rating'] as num?)?.toDouble() ?? 0.0,
+      reviewsCount: data['reviewsCount'] ?? 0,
+      ratingCounts: Map<String, int>.from(data['ratingCounts'] ?? {}),
+      negativeReports: data['negativeReports'] ?? 0,
+      totalJobs: data['totalJobs'] ?? 0,
+      completedJobs: data['completedJobs'] ?? 0,
+      // Handle both Timestamp (Firestore) and String/int (JSON Cache)
+      createdAt: data['createdAt'] is Timestamp 
+          ? (data['createdAt'] as Timestamp).toDate()
+          : data['createdAt'] is String 
+              ? DateTime.parse(data['createdAt'])
+              : DateTime.now(), // Fallback
+      updatedAt: data['updatedAt'] is Timestamp 
+          ? (data['updatedAt'] as Timestamp).toDate()
+          : data['updatedAt'] is String 
+              ? DateTime.parse(data['updatedAt'])
+              : DateTime.now(),
+      fcmToken: data['fcmToken'],
+      preferredLanguage: data['preferredLanguage'] ?? 'ar',
+      isAvailable: data['isAvailable'] ?? true,
+      walletBalance: (data['walletBalance'] as num?)?.toDouble() ?? 0.0,
+      partnerIds: List<String>.from(data['partnerIds'] ?? []),
+      pendingPartnerIds: List<String>.from(data['pendingPartnerIds'] ?? []),
+      followers: List<String>.from(data['followers'] ?? []),
+      following: List<String>.from(data['following'] ?? []),
+      lastActive: data['lastActive'] is Timestamp
+          ? (data['lastActive'] as Timestamp).toDate()
+          : null,
+      isVerified: data['isVerified'] ?? false,
+      verificationStatus: VerificationStatus.values.firstWhere(
+        (e) => e.name == (data['verificationStatus'] ?? 'none'),
+        orElse: () => VerificationStatus.none,
+      ),
+      idCardUrl: data['idCardUrl'],
+      verificationSelfieUrl: data['verificationSelfieUrl'],
+      notificationSettings: Map<String, bool>.from(data['notificationSettings'] ?? {
+        'chat': true,
+        'mentions': true,
+        'milestones': true,
+        'marketing': false,
+      }),
+      searchKeywords: List<String>.from(data['searchKeywords'] ?? []),
+      shopInterests: List<String>.from(data['shopInterests'] ?? []),
+      serviceInterests: List<String>.from(data['serviceInterests'] ?? []),
+    );
+  }
+
+  Map<String, dynamic> toFirestore() {
+    return {
+      'email': email,
+      'username': username,
+      'phoneNumber': phoneNumber,
+      'profileViews': profileViews,
+      'name': name,
+      'role': role.name,
+      'bio': bio,
+      'jobTitle': jobTitle,
+      'profileImageUrl': profileImageUrl,
+      'coverImageUrl': coverImageUrl,
+      'skills': skills,
+      'portfolioImages': portfolioImages,
+      'portfolioVideos': portfolioVideos,
+      'hourlyRate': hourlyRate,
+      'state': state,
+      'locality': locality,
+      'shopCategory': shopCategory?.name,
+      'shopImages': shopImages,
+      'openingHours': openingHours,
+      'closingHours': closingHours,
+      'whatsappNumber': whatsappNumber,
+      'rating': rating,
+      'reviewsCount': reviewsCount,
+      'ratingCounts': ratingCounts,
+      'totalJobs': totalJobs,
+      'completedJobs': completedJobs,
+      'createdAt': Timestamp.fromDate(createdAt),
+      'updatedAt': Timestamp.fromDate(updatedAt),
+      'fcmToken': fcmToken,
+      'preferredLanguage': preferredLanguage,
+      'isAvailable': isAvailable,
+      'walletBalance': walletBalance,
+      'negativeReports': negativeReports,
+      'partnerIds': partnerIds,
+      'pendingPartnerIds': pendingPartnerIds,
+      'followers': followers,
+      'following': following,
+      'lastActive': lastActive != null ? Timestamp.fromDate(lastActive!) : null,
+      'isVerified': isVerified,
+      'verificationStatus': verificationStatus.name,
+      'idCardUrl': idCardUrl,
+      if (verificationSelfieUrl != null) 'verificationSelfieUrl': verificationSelfieUrl,
+      'notificationSettings': notificationSettings,
+      'shopInterests': shopInterests,
+      'serviceInterests': serviceInterests,
+      'searchKeywords': generateSearchKeywords(
+        name: name,
+        jobTitle: jobTitle,
+        skills: skills,
+        bio: bio,
+        state: state,
+        locality: locality,
+        shopCategory: shopCategory,
+        role: role,
+      ),
+    };
+  }
+
+  // JSON Map for Hive Cache (Strings instead of Timestamps)
+  Map<String, dynamic> toJsonMap() {
+    final map = toFirestore();
+    map['id'] = id;
+    map['createdAt'] = createdAt.toIso8601String();
+    map['updatedAt'] = updatedAt.toIso8601String();
+    return map;
+  }
+
+  // Calculated getter for total stars (Ranking Score)
+  double get totalStars => rating * reviewsCount;
+
+  UserModel copyWith({
+    String? id,
+    String? email,
+    String? username,
+    String? phoneNumber,
+    int? profileViews,
+    String? name,
+    UserRole? role,
+    String? bio,
+    String? jobTitle,
+    String? profileImageUrl,
+    String? coverImageUrl,
+    List<String>? skills,
+    List<String>? portfolioImages,
+    List<String>? portfolioVideos,
+    double? hourlyRate,
+    String? state,
+    String? locality,
+    ShopCategory? shopCategory,
+    List<String>? shopImages,
+    String? openingHours,
+    String? closingHours,
+    String? whatsappNumber,
+    double? rating,
+    int? reviewsCount,
+    Map<String, int>? ratingCounts,
+    int? negativeReports,
+    int? totalJobs,
+    int? completedJobs,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    String? fcmToken,
+    String? preferredLanguage,
+    bool? isAvailable,
+    double? walletBalance,
+    List<String>? partnerIds,
+    List<String>? pendingPartnerIds,
+    DateTime? lastActive,
+    bool? isVerified,
+    VerificationStatus? verificationStatus,
+    String? idCardUrl,
+    String? verificationSelfieUrl,
+    Map<String, bool>? notificationSettings,
+    List<String>? shopInterests,
+    List<String>? serviceInterests,
+  }) {
+    return UserModel(
+      id: id ?? this.id,
+      email: email ?? this.email,
+      username: username ?? this.username,
+      phoneNumber: phoneNumber ?? this.phoneNumber,
+      profileViews: profileViews ?? this.profileViews,
+      name: name ?? this.name,
+      role: role ?? this.role,
+      bio: bio ?? this.bio,
+      jobTitle: jobTitle ?? this.jobTitle,
+      profileImageUrl: profileImageUrl ?? this.profileImageUrl,
+      coverImageUrl: coverImageUrl ?? this.coverImageUrl,
+      skills: skills ?? this.skills,
+      portfolioImages: portfolioImages ?? this.portfolioImages,
+      portfolioVideos: portfolioVideos ?? this.portfolioVideos,
+      hourlyRate: hourlyRate ?? this.hourlyRate,
+      state: state ?? this.state,
+      locality: locality ?? this.locality,
+      shopCategory: shopCategory ?? this.shopCategory,
+      shopImages: shopImages ?? this.shopImages,
+      openingHours: openingHours ?? this.openingHours,
+      closingHours: closingHours ?? this.closingHours,
+      whatsappNumber: whatsappNumber ?? this.whatsappNumber,
+      rating: rating ?? this.rating,
+      reviewsCount: reviewsCount ?? this.reviewsCount,
+      negativeReports: negativeReports ?? this.negativeReports,
+      totalJobs: totalJobs ?? this.totalJobs,
+      completedJobs: completedJobs ?? this.completedJobs,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      fcmToken: fcmToken ?? this.fcmToken,
+      preferredLanguage: preferredLanguage ?? this.preferredLanguage,
+      isAvailable: isAvailable ?? this.isAvailable,
+      walletBalance: walletBalance ?? this.walletBalance,
+      partnerIds: partnerIds ?? this.partnerIds,
+      pendingPartnerIds: pendingPartnerIds ?? this.pendingPartnerIds,
+      lastActive: lastActive ?? this.lastActive,
+      isVerified: isVerified ?? this.isVerified,
+      verificationStatus: verificationStatus ?? this.verificationStatus,
+      idCardUrl: idCardUrl ?? this.idCardUrl,
+      verificationSelfieUrl: verificationSelfieUrl ?? this.verificationSelfieUrl,
+      notificationSettings: notificationSettings ?? this.notificationSettings,
+      searchKeywords: this.searchKeywords,
+      shopInterests: shopInterests ?? this.shopInterests,
+      serviceInterests: serviceInterests ?? this.serviceInterests,
+    );
+  }
+
+  bool get isFreelancer => role == UserRole.freelancer;
+  bool get isTechService => role == UserRole.techService;
+  bool get isPrivateService => role == UserRole.privateService;
+  bool get isClient => role == UserRole.client;
+  bool get isShop => role == UserRole.shop;
+  bool get isAdmin => role == UserRole.admin;
+
+  /// Admins/moderators are automatically verified without the verification process
+  bool get effectivelyVerified => isVerified || isAdmin;
+
+  /// Dynamically checks if shop is currently open based on openingHours/closingHours.
+  /// Falls back to isAvailable if hours are not set.
+  bool get isShopCurrentlyOpen {
+    if (openingHours == null || closingHours == null ||
+        openingHours!.isEmpty || closingHours!.isEmpty) {
+      return isAvailable; // Fallback to static field
+    }
+
+    try {
+      final now = DateTime.now();
+      final currentMinutes = now.hour * 60 + now.minute;
+
+      final openParts = openingHours!.split(':');
+      final closeParts = closingHours!.split(':');
+
+      final openMinutes = int.parse(openParts[0]) * 60 + int.parse(openParts[1]);
+      final closeMinutes = int.parse(closeParts[0]) * 60 + int.parse(closeParts[1]);
+
+      // Handle overnight hours (e.g., 22:00 - 06:00)
+      if (closeMinutes <= openMinutes) {
+        return currentMinutes >= openMinutes || currentMinutes < closeMinutes;
+      }
+
+      return currentMinutes >= openMinutes && currentMinutes < closeMinutes;
+    } catch (_) {
+      return isAvailable; // Fallback on parse error
+    }
+  }
+  
+  String get locationDisplay {
+    if (state == null) return '';
+    if (locality != null) return '$locality، $state';
+    return state!;
+  }
+  
+  String get ratingDisplay => rating.toStringAsFixed(1);
+
+  /// True if user was active within the last 5 minutes
+  bool get isOnline {
+    if (lastActive == null) return false;
+    return DateTime.now().difference(lastActive!).inMinutes < 5;
+  }
+  
+  // Helper to get shop category display name
+  String getShopCategoryName(String locale) {
+    if (shopCategory == null) return '';
+    
+    final names = {
+      'ar': {
+        ShopCategory.electronics: 'إلكترونيات',
+        ShopCategory.clothing: 'ملابس',
+        ShopCategory.furniture: 'أثاث',
+        ShopCategory.food: 'مواد غذائية',
+        ShopCategory.restaurant: 'مطعم',
+        ShopCategory.supermarket: 'سوبرماركت',
+        ShopCategory.pharmacy: 'صيدلية',
+        ShopCategory.beauty: 'تجميل ومستحضرات',
+        ShopCategory.automotive: 'قطع غيار سيارات',
+        ShopCategory.building: 'مواد بناء',
+        ShopCategory.jewelry: 'مجوهرات',
+        ShopCategory.mobile: 'جوالات وإكسسوارات',
+        ShopCategory.bookstore: 'مكتبة',
+        ShopCategory.sports: 'رياضة',
+        ShopCategory.toys: 'ألعاب أطفال',
+        ShopCategory.home: 'أدوات منزلية',
+        ShopCategory.other: 'أخرى',
+      },
+      'en': {
+        ShopCategory.electronics: 'Electronics',
+        ShopCategory.clothing: 'Clothing',
+        ShopCategory.furniture: 'Furniture',
+        ShopCategory.food: 'Food',
+        ShopCategory.restaurant: 'Restaurant',
+        ShopCategory.supermarket: 'Supermarket',
+        ShopCategory.pharmacy: 'Pharmacy',
+        ShopCategory.beauty: 'Beauty',
+        ShopCategory.automotive: 'Automotive',
+        ShopCategory.building: 'Building Materials',
+        ShopCategory.jewelry: 'Jewelry',
+        ShopCategory.mobile: 'Mobile',
+        ShopCategory.bookstore: 'Bookstore',
+        ShopCategory.sports: 'Sports',
+        ShopCategory.toys: 'Toys',
+        ShopCategory.home: 'Home Appliances',
+        ShopCategory.other: 'Other',
+      }
+    };
+    return names[locale]?[shopCategory] ?? (locale == 'ar' ? 'أخرى' : 'Other');
+  }
+
+  String getRoleDisplayName(String locale) {
+    if (locale == 'ar') {
+      switch (role) {
+        case UserRole.freelancer: return 'مقدم خدمات فنية';
+        case UserRole.techService: return 'مقدم خدمات تقنية';
+        case UserRole.privateService: return 'مقدم خدمات خاصة';
+        case UserRole.shop: return 'معرض / متجر';
+        case UserRole.client: return 'عميل';
+        case UserRole.admin: return 'مدير';
+      }
+    } else {
+      switch (role) {
+        case UserRole.freelancer: return 'Craft Service';
+        case UserRole.techService: return 'Tech Service';
+        case UserRole.privateService: return 'Private Service';
+        case UserRole.shop: return 'Shop / Gallery';
+        case UserRole.client: return 'Client';
+        case UserRole.admin: return 'Admin';
+      }
+    }
+  }
+
+  /// Generates normalized search keywords from user profile fields.
+  /// These are stored in Firestore for efficient array-contains search.
+  static List<String> generateSearchKeywords({
+    required String name,
+    String? jobTitle,
+    List<String> skills = const [],
+    String? bio,
+    String? state,
+    String? locality,
+    ShopCategory? shopCategory,
+    UserRole? role,
+  }) {
+    final keywords = <String>{};
+
+    // Helper to add normalized words
+    void addWords(String? text) {
+      if (text == null || text.isEmpty) return;
+      final normalized = _normalize(text);
+      // Add whole phrase
+      if (normalized.length >= 2) keywords.add(normalized);
+      // Add individual words
+      for (final word in normalized.split(RegExp(r'\s+'))) {
+        if (word.length >= 2) keywords.add(word);
+      }
+    }
+
+    // Name (full + parts)
+    addWords(name);
+    
+    // Job Title
+    addWords(jobTitle);
+    
+    // Skills
+    for (final skill in skills) {
+      addWords(skill);
+    }
+    
+    // Bio (extract meaningful words, skip very short ones)
+    if (bio != null && bio.isNotEmpty) {
+      final normalized = _normalize(bio);
+      for (final word in normalized.split(RegExp(r'\s+'))) {
+        if (word.length >= 3) keywords.add(word);
+      }
+    }
+    
+    // Location
+    addWords(state);
+    addWords(locality);
+    
+    // Shop Category (Arabic names)
+    if (shopCategory != null) {
+      const categoryKeywords = {
+        ShopCategory.electronics: ['الكترونيات', 'electronics'],
+        ShopCategory.clothing: ['ملابس', 'clothing'],
+        ShopCategory.furniture: ['اثاث', 'furniture'],
+        ShopCategory.food: ['مواد غذائيه', 'food'],
+        ShopCategory.restaurant: ['مطعم', 'restaurant'],
+        ShopCategory.supermarket: ['سوبرماركت', 'supermarket'],
+        ShopCategory.pharmacy: ['صيدليه', 'pharmacy'],
+        ShopCategory.beauty: ['تجميل', 'beauty'],
+        ShopCategory.automotive: ['سيارات', 'automotive'],
+        ShopCategory.building: ['مواد بناء', 'building'],
+        ShopCategory.jewelry: ['مجوهرات', 'jewelry'],
+        ShopCategory.mobile: ['جوالات', 'mobile'],
+        ShopCategory.bookstore: ['مكتبه', 'bookstore'],
+        ShopCategory.sports: ['رياضه', 'sports'],
+        ShopCategory.toys: ['العاب اطفال', 'toys'],
+        ShopCategory.home: ['ادوات منزليه', 'home'],
+        ShopCategory.other: ['اخري', 'other'],
+      };
+      for (final kw in categoryKeywords[shopCategory] ?? []) {
+        addWords(kw);
+      }
+    }
+
+    // Role keywords
+    if (role != null) {
+      const roleKeywords = {
+        UserRole.freelancer: ['حرفي', 'فني', 'مقدم خدمات'],
+        UserRole.techService: ['تقني', 'تكنولوجيا', 'فني'],
+        UserRole.privateService: ['خدمات خاصه', 'خاص'],
+        UserRole.shop: ['متجر', 'معرض', 'محل'],
+        UserRole.client: ['عميل'],
+        UserRole.admin: ['مدير'],
+      };
+      for (final kw in roleKeywords[role] ?? []) {
+        addWords(kw);
+      }
+    }
+    
+    return keywords.toList();
+  }
+
+  /// Normalize Arabic text for keyword generation (matches SmartSearchService normalization)
+  static String _normalize(String text) {
+    return text
+        .toLowerCase()
+        .replaceAll('أ', 'ا')
+        .replaceAll('إ', 'ا')
+        .replaceAll('آ', 'ا')
+        .replaceAll('ة', 'ه')
+        .replaceAll('ى', 'ي')
+        .replaceAll(RegExp(r'[\u064B-\u065F]'), '') // Remove tashkeel
+        .trim();
+  }
+}

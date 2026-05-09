@@ -1,0 +1,708 @@
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:provider/provider.dart';
+import '../models/user_model.dart';
+import '../models/notification_model.dart';
+import '../services/auth_service.dart';
+import '../services/firestore_service.dart';
+import '../services/device_service.dart';
+import 'package:onesignal_flutter/onesignal_flutter.dart';
+import '../services/cache_service.dart';
+import 'user_provider.dart';
+import 'posts_provider.dart';
+import '../services/notification_service.dart';
+
+enum AuthStatus { initial, loading, authenticated, unauthenticated, error }
+
+class AuthProvider extends ChangeNotifier {
+  final AuthService _authService = AuthService();
+  final CacheService _cacheService = CacheService();
+  final FirestoreService _firestoreService = FirestoreService();
+  final DeviceService _deviceService = DeviceService();
+
+  AuthStatus _status = AuthStatus.initial;
+  UserModel? _user;
+  String? _errorMessage;
+  String? _verificationId;
+  bool _isNewUser = false;
+  bool _isLoadingProfile = false;
+  bool _isManualSignIn = false;
+  StreamSubscription? _authSubscription; // Fix: track auth stream to cancel on dispose
+
+  // Partners
+  List<UserModel> _partners = [];
+
+
+  AuthStatus get status => _status;
+  UserModel? get user => _user;
+  String? get errorMessage => _errorMessage;
+  bool get isAuthenticated => _status == AuthStatus.authenticated;
+  bool get isNewUser => _isNewUser;
+  String? get userId => _authService.currentUserId;
+  List<UserModel> get partners => _partners; // Added getter
+  bool get isManualSignIn => _isManualSignIn; // Added for smooth UI transitions
+
+  // Toggle Partner (Add/Remove Colleague)
+  Future<void> sendPartnerRequest(String targetId) async {
+    if (_user == null) return;
+    
+    // Prevent if already partner or already pending
+    if (_user!.partnerIds.contains(targetId) || _user!.pendingPartnerIds.contains(targetId)) return;
+    
+    try {
+      await _firestoreService.sendPartnerRequest(_user!.id, _user!.name, targetId);
+      // Wait for stream update instead of optimistic
+    } catch (e) {
+      debugPrint('Error sending partner request: $e');
+    }
+  }
+
+  // Handle Partner Request (Accept/Decline)
+  Future<void> handlePartnerRequest(String requesterId, bool accept) async {
+     if (_user == null) return;
+     try {
+       await _firestoreService.handlePartnerRequest(_user!.id, _user!.name, requesterId, accept);
+       
+       if (accept) {
+         // Optionally fetch new partner to add to list
+         final newPartners = await _firestoreService.getUsersByIds([requesterId]);
+         if (newPartners.isNotEmpty) {
+           _partners.add(newPartners.first);
+           notifyListeners();
+         }
+       }
+     } catch (e) {
+       debugPrint('Error handling partner request: $e');
+     }
+  }
+
+  // Fetch My Partners & Followed Shops
+  Future<void> fetchPartners() async {
+    if (_user == null) {
+      _partners = [];
+      notifyListeners();
+      return;
+    }
+    
+    // Merge partners and followed shops
+    final Set<String> combinedIds = {..._user!.partnerIds, ..._user!.following};
+    
+    if (combinedIds.isEmpty) {
+      _partners = [];
+      notifyListeners();
+      return;
+    }
+    
+    try {
+      _partners = await _firestoreService.getUsersByIds(combinedIds.toList());
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error fetching partners/following: $e');
+    }
+  }
+
+  // Initialize auth state
+  Future<void> initialize() async {
+    _status = AuthStatus.loading;
+    notifyListeners();
+
+    try {
+      await _cacheService.initialize();
+
+      _authSubscription = _authService.authStateChanges.listen((User? user) {
+        _handleAuthStateChange(user);
+      });
+    } catch (e) {
+      debugPrint('Auth provider initialization error: $e');
+      _status = AuthStatus.unauthenticated;
+      _errorMessage = e.toString();
+      notifyListeners();
+    }
+  }
+
+  Future<void> _handleAuthStateChange(User? firebaseUser) async {
+    if (firebaseUser == null) {
+      _status = AuthStatus.unauthenticated;
+      _user = null;
+      _isNewUser = false;
+      _isLoadingProfile = false;
+      notifyListeners();
+      return;
+    }
+
+    // Skip if a manual sign-in method (Google/Email) is already handling state
+    if (_isManualSignIn) return;
+
+    // prevent redundant loading if already authenticated with same user
+    if (_status == AuthStatus.authenticated && (_user?.id == firebaseUser.uid || _isNewUser)) {
+      return;
+    }
+    
+    // prevent multiple concurrent loads
+    if (_isLoadingProfile) return;
+    _isLoadingProfile = true;
+
+    _status = AuthStatus.loading;
+    notifyListeners();
+    await _loadUserData(firebaseUser.uid);
+    _isLoadingProfile = false;
+    
+    // Sync FCM Token
+    _syncFCMToken(firebaseUser.uid);
+  }
+
+  Future<void> _syncFCMToken(String uid) async {
+    try {
+      // Only sync if a profile exists in Firestore
+      // (new users don't have a doc yet — createUserProfile hasn't run)
+      final profileExists = await _authService.userProfileExists(uid);
+      if (!profileExists) return;
+
+      final token = await NotificationService().getToken();
+      if (token != null) {
+        await _authService.updateFCMToken(uid, token);
+      }
+    } catch (e) {
+      debugPrint('AuthProvider: FCM token sync failed (non-fatal): $e');
+    }
+  }
+
+  Future<void> _loadUserData(String uid) async {
+    try {
+      final profile = await _authService.getUserProfile(uid);
+      if (profile != null) {
+        _user = profile;
+        _isNewUser = false;
+        
+        // OneSignal User Tagging
+        OneSignal.login(uid);
+        OneSignal.User.addTags({
+          "state": profile.state,
+          "role": profile.role.name,
+        });
+      } else {
+        _isNewUser = true;
+      }
+      _status = AuthStatus.authenticated;
+      notifyListeners();
+    } catch (e) {
+      _errorMessage = e.toString();
+      debugPrint('Error loading user data: $e');
+      _status = AuthStatus.error; 
+      notifyListeners();
+    }
+  }
+
+  // Sign up with email
+  Future<bool> signUpWithEmail({
+    required String email,
+    required String password,
+  }) async {
+    _status = AuthStatus.loading;
+    _errorMessage = null;
+    _isManualSignIn = true; // منع _handleAuthStateChange من التدخل
+    notifyListeners();
+
+    try {
+      await _authService.signUpWithEmail(
+        email: email,
+        password: password,
+      );
+      _isNewUser = true;
+      _isManualSignIn = false;
+      _status = AuthStatus.authenticated;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _isManualSignIn = false;
+      _status = AuthStatus.error;
+      _errorMessage = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // Sign in with Google
+  Future<bool> signInWithGoogle() async {
+    _status = AuthStatus.loading;
+    _errorMessage = null;
+    _isManualSignIn = true;
+    notifyListeners();
+
+    try {
+      final credential = await _authService.signInWithGoogle();
+      if (credential == null) {
+        // User cancelled
+        _status = AuthStatus.unauthenticated;
+        _isManualSignIn = false;
+        notifyListeners();
+        return false;
+      }
+      
+      // Load user data directly to ensure immediate state update
+      if (credential.user != null) {
+        // Check device ban
+        final banReason = await _deviceService.checkDeviceBan();
+        if (banReason != null) {
+          await _authService.signOut();
+          _status = AuthStatus.error;
+          _errorMessage = 'DEVICE_BANNED:$banReason';
+          _isManualSignIn = false;
+          notifyListeners();
+          return false;
+        }
+        await _loadUserData(credential.user!.uid);
+        _syncFCMToken(credential.user!.uid);
+      }
+      _isManualSignIn = false;
+      return true;
+    } catch (e) {
+      _status = AuthStatus.error;
+      _errorMessage = e.toString();
+      _isManualSignIn = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // Sign in with email
+  Future<bool> signInWithEmail({
+    required String email,
+    required String password,
+  }) async {
+    _status = AuthStatus.loading;
+    _errorMessage = null;
+    _isManualSignIn = true;
+    notifyListeners();
+
+    try {
+      final credential = await _authService.signInWithEmail(
+        email: email,
+        password: password,
+      );
+      
+      // Load user data directly instead of relying on _handleAuthStateChange
+      if (credential.user != null) {
+        // Check device ban
+        final banReason = await _deviceService.checkDeviceBan();
+        if (banReason != null) {
+          await _authService.signOut();
+          _status = AuthStatus.error;
+          _errorMessage = 'DEVICE_BANNED:$banReason';
+          _isManualSignIn = false;
+          notifyListeners();
+          return false;
+        }
+        await _loadUserData(credential.user!.uid);
+        _syncFCMToken(credential.user!.uid);
+      }
+      _isManualSignIn = false;
+      return true;
+    } catch (e) {
+      _status = AuthStatus.error;
+      _errorMessage = e.toString();
+      _isManualSignIn = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // Send phone verification
+  Future<bool> sendPhoneVerification(String phoneNumber) async {
+    _status = AuthStatus.loading;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _authService.verifyPhoneNumber(
+        phoneNumber: phoneNumber,
+        onVerificationCompleted: (credential) async {
+          // Auto sign-in
+          await _handlePhoneSignIn(credential);
+        },
+        onVerificationFailed: (e) {
+          _status = AuthStatus.error;
+          _errorMessage = e.message;
+          notifyListeners();
+        },
+        onCodeSent: (verificationId, resendToken) {
+          _verificationId = verificationId;
+          _status = AuthStatus.unauthenticated;
+          notifyListeners();
+        },
+        onCodeAutoRetrievalTimeout: (verificationId) {
+          _verificationId = verificationId;
+        },
+      );
+      return true;
+    } catch (e) {
+      _status = AuthStatus.error;
+      _errorMessage = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // Verify OTP
+  Future<bool> verifyOTP(String smsCode) async {
+    if (_verificationId == null) {
+      _errorMessage = 'رمز التحقق غير موجود';
+      notifyListeners();
+      return false;
+    }
+
+    _status = AuthStatus.loading;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _authService.verifyOTPAndSignIn(
+        verificationId: _verificationId!,
+        smsCode: smsCode,
+      );
+      
+      await _handlePhoneSignIn(PhoneAuthProvider.credential(
+        verificationId: _verificationId!,
+        smsCode: smsCode,
+      ));
+      
+      return true;
+    } catch (e) {
+      _status = AuthStatus.error;
+      _errorMessage = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // Verify OTP and Link (For existing users verifying identity)
+  Future<bool> verifyOTPAndLink(String smsCode) async {
+    if (_verificationId == null) {
+      _errorMessage = 'رمز التحقق غير موجود';
+      notifyListeners();
+      return false;
+    }
+
+    _status = AuthStatus.loading;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _authService.linkPhoneCredential(
+        verificationId: _verificationId!,
+        smsCode: smsCode,
+      );
+      
+      // Verification successful, status will be updated in Firestore by the caller
+      _status = AuthStatus.authenticated;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _status = AuthStatus.error;
+      _errorMessage = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<void> _handlePhoneSignIn(PhoneAuthCredential credential) async {
+    final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+    final profile = await _authService.getUserProfile(userCredential.user!.uid);
+    
+    if (profile != null) {
+      _user = profile;
+      _isNewUser = false;
+    } else {
+      _isNewUser = true;
+    }
+    
+    _status = AuthStatus.authenticated;
+    notifyListeners();
+  }
+
+  // Create user profile
+  Future<bool> createUserProfile({
+    required String name,
+    required UserRole role,
+    String? bio,
+    String? phoneNumber,
+    String? state,
+    String? locality,
+    List<String>? skills,
+    double? hourlyRate,
+    ShopCategory? shopCategory,
+    String? openingHours,
+    String? closingHours,
+  }) async {
+    // Don't set status=loading here — it triggers app.dart to rebuild
+    // and show SplashScreen, which unmounts ProfileSetupScreen mid-operation.
+    _errorMessage = null;
+
+    try {
+      final currentUser = _authService.currentUser;
+      if (currentUser == null) {
+        throw Exception('لم يتم تسجيل الدخول');
+      }
+
+      final now = DateTime.now();
+      final user = UserModel(
+        id: currentUser.uid,
+        email: currentUser.email ?? '',
+        phoneNumber: phoneNumber ?? currentUser.phoneNumber,
+        name: name,
+        role: role,
+        bio: bio,
+        skills: skills ?? [],
+        hourlyRate: hourlyRate,
+        state: state,
+        locality: locality,
+        shopCategory: shopCategory,
+        openingHours: openingHours,
+        closingHours: closingHours,
+        whatsappNumber: phoneNumber ?? currentUser.phoneNumber,
+        createdAt: now,
+        updatedAt: now,
+      );
+
+      await _authService.createUserProfile(user);
+      await _deviceService.saveDeviceIdToUser(user.id);
+      
+      // ✅ Ensure FCM Token is saved BEFORE sending the welcome notification
+      await _syncFCMToken(user.id);
+      
+      // ✅ Send Welcome Notification
+      try {
+        String welcomeTitle = 'مرحباً بك في سودان فري! 🎉';
+        String welcomeMessage = 'شكراً لانضمامك إلينا.';
+        
+        switch (role) {
+          case UserRole.client:
+            welcomeMessage = 'يمكنك الآن الوصول إلى أمهر مقدمي الخدمات وتصفح أفضل المعارض والمحلات في السودان.';
+            break;
+          case UserRole.freelancer:
+          case UserRole.techService:
+          case UserRole.privateService:
+            welcomeTitle = 'مرحباً بك كمقدم خدمة! 🛠️';
+            welcomeMessage = 'الآن يمكن للعملاء الوصول إليك وطلب خدماتك بسهولة وزيادة دخلك.';
+            break;
+          case UserRole.shop:
+            welcomeTitle = 'مرحباً بك صاحب معرض! 🏪';
+            welcomeMessage = 'يمكنك الآن البدء بعرض منتجاتك وجذب العملاء لمعرضك ومحلك التجاري.';
+            break;
+          case UserRole.admin:
+            welcomeTitle = 'مرحباً بك كمسؤول! 🛡️';
+            welcomeMessage = 'تم تسجيل دخولك كمدير للنظام.';
+            break;
+        }
+
+        final notification = NotificationModel(
+          id: '',
+          userId: user.id,
+          type: NotificationType.system,
+          title: welcomeTitle,
+          message: welcomeMessage,
+          createdAt: Timestamp.now(),
+        );
+        
+        await _firestoreService.sendNotification(notification);
+      } catch (notifErr) {
+        debugPrint('AuthProvider: Welcome notification failed (non-fatal): $notifErr');
+      }
+
+      _user = user;
+      _isNewUser = false;
+      _status = AuthStatus.authenticated;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      // Don't set status=error — that causes app.dart to show LoginScreen.
+      // Keep authenticated status so user stays on ProfileSetupScreen.
+      _errorMessage = e.toString();
+      debugPrint('AuthProvider: createUserProfile failed: $e');
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // Update user profile
+  Future<bool> updateUserProfile(Map<String, dynamic> data) async {
+    if (_user == null || userId == null) return false;
+
+    try {
+      await _authService.updateUserProfile(userId!, data);
+      
+      // Refresh user profile
+      final updatedProfile = await _authService.getUserProfile(userId!);
+      if (updatedProfile != null) {
+        _user = updatedProfile;
+        notifyListeners();
+      }
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // Toggle User Role (Client <-> Freelancer)
+  Future<bool> toggleUserRole() async {
+    if (_user == null) return false;
+    
+    final newRole = _user!.role == UserRole.client 
+        ? UserRole.freelancer 
+        : UserRole.client;
+        
+    return await updateUserProfile({'role': newRole.name});
+  }
+
+  // Toggle Availability Status (For Freelancers)
+  Future<bool> toggleAvailability() async {
+    if (_user == null) return false;
+    
+    final newStatus = !_user!.isAvailable;
+    return await updateUserProfile({'isAvailable': newStatus});
+  }
+
+  // Toggle Push Notifications
+  Future<bool> togglePushNotifications(bool enabled) async {
+    if (_user == null) return false;
+    
+    try {
+      final updatedSettings = Map<String, bool>.from(_user!.notificationSettings);
+      updatedSettings['pushEnabled'] = enabled;
+      
+      await updateUserProfile({'notificationSettings': updatedSettings});
+      
+      if (enabled) {
+        OneSignal.User.pushSubscription.optIn();
+      } else {
+        OneSignal.User.pushSubscription.optOut();
+      }
+      return true;
+    } catch (e) {
+      debugPrint('Error toggling push notifications: $e');
+      return false;
+    }
+  }
+
+  // Request Account Deletion
+  Future<bool> requestAccountDeletion(String reason) async {
+    _errorMessage = null;
+
+    try {
+      await FirebaseFirestore.instance.collection('deletion_requests').add({
+        'userId': _user!.id,
+        'name': _user!.name,
+        'email': _user!.email,
+        'reason': reason,
+        'status': 'pending',
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // Refresh user profile
+  Future<void> refreshUserProfile() async {
+    if (userId == null) return;
+
+    try {
+      final profile = await _authService.getUserProfile(userId!);
+      if (profile != null) {
+        _user = profile;
+        notifyListeners();
+      }
+    } catch (e) {
+      _errorMessage = e.toString();
+    }
+  }
+
+  // Reset password
+  Future<bool> resetPassword(String email) async {
+    _status = AuthStatus.loading;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _authService.resetPassword(email);
+      _status = AuthStatus.unauthenticated;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _status = AuthStatus.error;
+      _errorMessage = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // Sign out
+  Future<void> signOut(BuildContext context) async {
+    // Clear only registered providers (JobProvider & ChatProvider are frozen)
+    try {
+      context.read<UserProvider>().clear();
+      context.read<PostsProvider>().clear();
+    } catch (e) {
+      debugPrint('AuthProvider: Error clearing providers: $e');
+    }
+
+    await _authService.signOut();
+    OneSignal.logout();
+    await _cacheService.clearAllData();
+    _user = null;
+    _isNewUser = false;
+    _partners = [];
+    _status = AuthStatus.unauthenticated;
+    notifyListeners();
+  }
+
+  // Delete Account
+  Future<bool> deleteAccount() async {
+    _status = AuthStatus.loading;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _authService.deleteUser();
+      await _cacheService.clearUserCache();
+      _user = null;
+      _isNewUser = false;
+      _status = AuthStatus.unauthenticated;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _status = AuthStatus.error;
+      _errorMessage = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // Clear error
+  void clearError() {
+    _errorMessage = null;
+    if (_status == AuthStatus.error) {
+      _status = AuthStatus.unauthenticated;
+    }
+    notifyListeners();
+  }
+
+  // Set error message
+  void setErrorMessage(String message) {
+    _errorMessage = message;
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _authSubscription?.cancel();
+    super.dispose();
+  }
+}

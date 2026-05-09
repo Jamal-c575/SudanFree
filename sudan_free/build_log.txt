@@ -1,0 +1,29 @@
+Running Gradle task 'assembleRelease'...                        
+lib/providers/auth_provider.dart:155:24: Error: The method 'addTag' isn't defined for the type 'OneSignalUser'.
+ - 'OneSignalUser' is from 'package:onesignal_flutter/src/user.dart' ('../../../.pub-cache/hosted/pub.dev/onesignal_flutter-5.4.1/lib/src/user.dart').
+Try correcting the name to the name of an existing method, or defining a method named 'addTag'.
+        OneSignal.User.addTag("state", profile.state);
+                       ^^^^^^
+lib/providers/auth_provider.dart:156:24: Error: The method 'addTag' isn't defined for the type 'OneSignalUser'.
+ - 'OneSignalUser' is from 'package:onesignal_flutter/src/user.dart' ('../../../.pub-cache/hosted/pub.dev/onesignal_flutter-5.4.1/lib/src/user.dart').
+Try correcting the name to the name of an existing method, or defining a method named 'addTag'.
+        OneSignal.User.addTag("role", profile.role.name);
+                       ^^^^^^
+Target kernel_snapshot_program failed: Exception
+
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileFlutterBuildRelease'.
+> Process 'command '/home/jamal/flutter/bin/flutter'' finished with non-zero exit value 1
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 23s
+Running Gradle task 'assembleRelease'...                           23.4s
+Gradle task assembleRelease failed with exit code 1

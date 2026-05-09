@@ -1,0 +1,382 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../core/constants/app_colors.dart';
+import '../../core/constants/sudan_locations.dart';
+import '../../models/user_model.dart';
+import '../../models/job_model.dart';
+import '../../providers/user_provider.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/locale_provider.dart';
+import '../../widgets/cards/freelancer_card.dart';
+import '../../widgets/common/shimmer_placeholders.dart';
+import '../profile/profile_screen.dart';
+import '../../widgets/common/staggered_animated_widget.dart';
+import '../../widgets/common/empty_state_widget.dart';
+import '../../services/smart_search_service.dart';
+import '../../widgets/inputs/smart_search_field.dart';
+
+
+class BrowseFreelancersScreen extends StatefulWidget {
+  const BrowseFreelancersScreen({super.key});
+
+  @override
+  State<BrowseFreelancersScreen> createState() => _BrowseFreelancersScreenState();
+}
+
+class _BrowseFreelancersScreenState extends State<BrowseFreelancersScreen> 
+    with AutomaticKeepAliveClientMixin {
+  String? _selectedState;
+  JobCategory? _selectedCategory;
+  bool _showFilters = false;
+  final ScrollController _scrollController = ScrollController();
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  bool get wantKeepAlive => true; // الحفاظ على الحالة عند التنقل
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<UserProvider>().fetchFreelancers();
+    });
+    
+    _scrollController.addListener(() {
+      if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+        context.read<UserProvider>().fetchMoreFreelancers();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  List<UserModel> _filterFreelancers(List<UserModel> freelancers) {
+    final filtered = freelancers.where((f) {
+      // Hide scammers
+      if (f.rating < 2.0 && f.reviewsCount >= 3) return false;
+      // Search query filter
+      if (_searchQuery.isNotEmpty) {
+        final matches = SmartSearchService.matchesSmartSearch(
+          _searchQuery,
+          name: f.name,
+          skills: f.skills,
+          jobTitle: f.jobTitle,
+          bio: f.bio,
+          state: f.state,
+          locality: f.locality,
+        );
+        if (!matches) return false;
+      }
+      // Location filter
+      if (_selectedState != null && f.state != _selectedState) return false;
+      // Category filter
+      if (_selectedCategory != null && !f.skills.contains(_selectedCategory!.name)) return false;
+      return true;
+    }).toList();
+
+    // Sort by client interest match (matching interests appear first)
+    final currentUser = context.read<AuthProvider>().user;
+    if (currentUser != null && currentUser.serviceInterests.isNotEmpty && _searchQuery.isEmpty && _selectedCategory == null) {
+      filtered.sort((a, b) {
+        final aMatch = a.skills.any((s) => currentUser.serviceInterests.contains(s));
+        final bMatch = b.skills.any((s) => currentUser.serviceInterests.contains(s));
+        if (aMatch && !bMatch) return -1;
+        if (!aMatch && bMatch) return 1;
+        return 0;
+      });
+    }
+    return filtered;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context); // مطلوب لـ AutomaticKeepAliveClientMixin
+    final locale = context.watch<LocaleProvider>().locale.languageCode;
+    final userProvider = context.watch<UserProvider>();
+    final freelancers = _filterFreelancers(userProvider.freelancers);
+    // عرض البيانات فوراً إذا كانت موجودة
+    final hasData = userProvider.hasFreelancers;
+
+    return Scaffold(
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            // Smart Search Bar with autocomplete
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: SmartSearchField(
+                      controller: _searchController,
+                      hintText: locale == 'ar' ? 'ابحث عن فني، كهربائي، مدرس...' : 'Search freelancer...',
+                      searchContext: SearchContext.freelancers,
+                      accentColor: AppColors.primary,
+                      onSearch: (val) => setState(() => _searchQuery = val),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  GestureDetector(
+                    onTap: () => setState(() => _showFilters = !_showFilters),
+                    child: Icon(
+                      Icons.tune,
+                      size: 24,
+                      color: (_selectedState != null || _selectedCategory != null)
+                          ? AppColors.primary
+                          : AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            // Expandable Filters
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              height: _showFilters ? 160 : 0,
+              child: SingleChildScrollView(
+                physics: const NeverScrollableScrollPhysics(),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Location Dropdown
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).cardColor,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.border.withValues(alpha: 0.3)),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: _selectedState,
+                            isExpanded: true,
+                            hint: Row(
+                              children: [
+                                const Icon(Icons.location_on_outlined, size: 18, color: AppColors.textSecondary),
+                                const SizedBox(width: 8),
+                                Text(locale == 'ar' ? 'اختر الولاية' : 'Select Location'),
+                              ],
+                            ),
+                            items: [
+                              DropdownMenuItem<String>(
+                                value: null,
+                                child: Text(locale == 'ar' ? 'كل الولايات' : 'All States'),
+                              ),
+                              ...SudanLocations.states.map((s) => 
+                                DropdownMenuItem(value: s, child: Text(SudanLocations.getStateName(s, locale)))
+                              ),
+                            ],
+                            onChanged: (v) => setState(() => _selectedState = v),
+                          ),
+                        ),
+                      ),
+                      
+                      const SizedBox(height: 12),
+                      
+                      // Category Chips
+                      SizedBox(
+                        height: 40,
+                        child: ListView(
+                          scrollDirection: Axis.horizontal,
+                          children: [
+                            _FilterChip(
+                              label: locale == 'ar' ? 'الكل' : 'All',
+                              isSelected: _selectedCategory == null,
+                              onTap: () => setState(() => _selectedCategory = null),
+                            ),
+                            ...JobCategory.values.map((cat) => _FilterChip(
+                              label: _getCategoryName(cat, locale),
+                              isSelected: _selectedCategory == cat,
+                              onTap: () => setState(() => _selectedCategory = cat),
+                            )),
+                          ],
+                        ),
+                      ),
+                      
+                      const SizedBox(height: 8),
+                      
+                      // Clear filters
+                      if (_selectedState != null || _selectedCategory != null)
+                        TextButton.icon(
+                          onPressed: () => setState(() {
+                            _selectedState = null;
+                            _selectedCategory = null;
+                          }),
+                          icon: const Icon(Icons.clear, size: 16),
+                          label: Text(locale == 'ar' ? 'مسح الفلاتر' : 'Clear'),
+                          style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            
+            // Results
+            Expanded(
+              child: userProvider.freelancerError != null
+                  ? _buildErrorState(context, locale, userProvider.freelancerError!)
+                  : (!hasData && userProvider.isLoading)
+                      ? ListView.builder(
+                          itemCount: 6,
+                          padding: const EdgeInsets.all(16),
+                          itemBuilder: (_, __) => const FreelancerCardShimmer(),
+                        )
+                      : freelancers.isEmpty && !userProvider.isLoading
+                          ? _buildEmptyState(context, locale)
+                          : RefreshIndicator(
+                              onRefresh: () async => userProvider.fetchFreelancers(forceRefresh: true),
+                              child: ListView.builder(
+                                controller: _scrollController,
+                                padding: const EdgeInsets.only(bottom: 96),
+                                itemCount: freelancers.length + (userProvider.isLoadingMoreFreelancers ? 1 : 0),
+                                itemBuilder: (context, index) {
+                                  if (index == freelancers.length) {
+                                    return const Padding(
+                                      padding: EdgeInsets.symmetric(vertical: 20),
+                                      child: Center(child: CircularProgressIndicator()),
+                                    );
+                                  }
+                                  final freelancer = freelancers[index];
+                                  final currentUser = context.read<AuthProvider>().user;
+                                  return StaggeredAnimatedWidget(
+                                    index: index,
+                                    listId: 'freelancers_list',
+                                    child: FreelancerCard(
+                                      freelancer: freelancer,
+                                      locale: locale,
+                                      currentUserId: currentUser?.id,
+                                      currentUserName: currentUser?.name,
+                                      onTap: () => Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => ProfileScreen(userId: freelancer.id),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(BuildContext context, String locale) {
+    return EmptyStateWidget(
+      icon: Icons.person_search_rounded,
+      title: locale == 'ar' ? 'لا يوجد حرفيين' : 'No workers found',
+      subtitle: locale == 'ar' 
+          ? 'لم نتمكن من العثور على أي حرفي يطابق معايير البحث. جرب تغيير الفلاتر أو ابحث بكلمات مختلفة.'
+          : 'We couldn\'t find any workers matching your criteria. Try changing filters or search terms.',
+      actionLabel: locale == 'ar' ? 'مسح الفلاتر' : 'Clear Filters',
+      onAction: () {
+        setState(() {
+          _selectedState = null;
+          _selectedCategory = null;
+        });
+      },
+    );
+  }
+
+  Widget _buildErrorState(BuildContext context, String locale, String error) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, size: 80, color: AppColors.error),
+            const SizedBox(height: 16),
+            Text(
+              locale == 'ar' ? 'حدث خطأ في جلب البيانات' : 'Error fetching data',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              error,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: () => context.read<UserProvider>().fetchFreelancers(forceRefresh: true),
+              child: Text(locale == 'ar' ? 'إعادة المحاولة' : 'Retry'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _getCategoryName(JobCategory category, String locale) {
+    // Create a dummy job model to access the helper method
+    final job = JobModel(
+      id: '', 
+      clientId: '', 
+      clientName: '', 
+      title: '', 
+      description: '',
+      category: category, 
+      budgetMin: 0, 
+      budgetMax: 0, 
+      deadline: DateTime.now(),
+      createdAt: DateTime.now(), 
+      updatedAt: DateTime.now(),
+    );
+    return job.getCategoryDisplayName(locale);
+  }
+}
+
+class _FilterChip extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _FilterChip({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected ? AppColors.primary : Colors.transparent,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isSelected ? AppColors.primary : AppColors.border,
+            ),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: isSelected ? Colors.white : AppColors.textSecondary,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              fontSize: 13,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

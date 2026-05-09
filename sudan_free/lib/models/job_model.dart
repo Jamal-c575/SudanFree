@@ -1,0 +1,373 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+enum JobStatus { open, inProgress, completed, cancelled }
+
+enum JobCategory {
+  // Tech & Digital
+  webDevelopment,
+  mobileDevelopment,
+  design,
+  writing,
+  translation,
+  marketing,
+  dataEntry,
+  videoEditing,
+  photography,
+  // Education
+  tutoring,
+  teaching,
+  // Construction & Manual
+  construction,
+  electrical,
+  plumbing,
+  painting,
+  carpentry,
+  // Automotive
+  carMaintenance,
+  carWash,
+  // Home Services
+  cleaning,
+  movingServices,
+  airConditioning,
+  applianceRepair,
+  // Professional Services
+  tourGuide,
+  driving,
+  delivery,
+  cooking,
+  tailoring,
+  beauty,
+  // Private / Specialized Services
+  privateTutoring,       // مدرس خصوصي
+  teachingConsultant,    // مستشار تدريس
+  eventCatering,         // تلبية طلبات مناسبات
+  baker,                 // فران
+  pastryChef,            // بنكجي
+  waiter,                // طاولجي
+  clinicReception,       // استقبال عيادات
+  appointmentBooking,    // حجز مواعيد
+  clinicInquiry,         // استفسار عيادات
+  lawyer,                // محامي
+  chef,                  // طباخ  
+  translator,            // مترجم
+  // Transport & Logistics
+  furnitureMoving,               // نقل أثاث
+  goodsTransport,                // نقل بضائع
+  privateRides,                  // مشاوير خاصة / ترحيل
+  vacuumTruck,                   // شفط بالهواء
+  buildingMaterialsTransport,    // نقل مواد بناء
+  dumpTruckDirt,                 // قلابات تراب
+  dumpTruckSand,                 // قلابات رملة
+  dumpTruckConcrete,             // قلابات خرسانة
+  // Other
+  other,
+}
+
+class MilestoneModel {
+  final String id;
+  final String title;
+  final double amount;
+  final bool isPaid;
+  final bool isCompleted;
+  final DateTime? completedAt;
+
+  MilestoneModel({
+    required this.id,
+    required this.title,
+    required this.amount,
+    this.isPaid = false,
+    this.isCompleted = false,
+    this.completedAt,
+  });
+
+  factory MilestoneModel.fromMap(Map<String, dynamic> map) {
+    return MilestoneModel(
+      id: map['id'] ?? '',
+      title: map['title'] ?? '',
+      amount: (map['amount'] as num?)?.toDouble() ?? 0,
+      isPaid: map['isPaid'] ?? false,
+      isCompleted: map['isCompleted'] ?? false,
+      completedAt: (map['completedAt'] as Timestamp?)?.toDate(),
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'title': title,
+      'amount': amount,
+      'isPaid': isPaid,
+      'isCompleted': isCompleted,
+      'completedAt': completedAt != null ? Timestamp.fromDate(completedAt!) : null,
+    };
+  }
+}
+
+class JobModel {
+  final String id;
+  final String clientId;
+  final String clientName;
+  final String? clientImageUrl;
+  final String title;
+  final String description;
+  final JobCategory category;
+  final double budgetMin;
+  final double budgetMax;
+  final String currency;
+  final DateTime deadline;
+  final JobStatus status;
+  final String? assignedFreelancerId;
+  final String? assignedFreelancerName;
+  final int proposalsCount;
+  final List<String> requiredSkills;
+  final List<String> attachments;
+  final List<MilestoneModel> milestones;
+  final String? contractUrl;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  JobModel({
+    required this.id,
+    required this.clientId,
+    required this.clientName,
+    this.clientImageUrl,
+    required this.title,
+    required this.description,
+    required this.category,
+    required this.budgetMin,
+    required this.budgetMax,
+    this.currency = 'SDG',
+    required this.deadline,
+    this.status = JobStatus.open,
+    this.assignedFreelancerId,
+    this.assignedFreelancerName,
+    this.proposalsCount = 0,
+    this.requiredSkills = const [],
+    this.attachments = const [],
+    this.milestones = const [],
+    this.contractUrl,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  factory JobModel.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return JobModel(
+      id: doc.id,
+      clientId: data['clientId'] ?? '',
+      clientName: data['clientName'] ?? '',
+      clientImageUrl: data['clientImageUrl'],
+      title: data['title'] ?? '',
+      description: data['description'] ?? '',
+      category: JobCategory.values.firstWhere(
+        (e) => e.name == data['category'],
+        orElse: () => JobCategory.other,
+      ),
+      budgetMin: (data['budgetMin'] as num?)?.toDouble() ?? 0,
+      budgetMax: (data['budgetMax'] as num?)?.toDouble() ?? 0,
+      currency: data['currency'] ?? 'SDG',
+      deadline: (data['deadline'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      status: JobStatus.values.firstWhere(
+        (e) => e.name == data['status'],
+        orElse: () => JobStatus.open,
+      ),
+      assignedFreelancerId: data['assignedFreelancerId'],
+      assignedFreelancerName: data['assignedFreelancerName'],
+      proposalsCount: data['proposalsCount'] ?? 0,
+      requiredSkills: List<String>.from(data['requiredSkills'] ?? []),
+      attachments: List<String>.from(data['attachments'] ?? []),
+      milestones: (data['milestones'] as List? ?? []).map((m) => MilestoneModel.fromMap(m)).toList(),
+      contractUrl: data['contractUrl'],
+      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+    );
+  }
+
+  Map<String, dynamic> toFirestore() {
+    return {
+      'clientId': clientId,
+      'clientName': clientName,
+      'clientImageUrl': clientImageUrl,
+      'title': title,
+      'description': description,
+      'category': category.name,
+      'budgetMin': budgetMin,
+      'budgetMax': budgetMax,
+      'currency': currency,
+      'deadline': Timestamp.fromDate(deadline),
+      'status': status.name,
+      'assignedFreelancerId': assignedFreelancerId,
+      'assignedFreelancerName': assignedFreelancerName,
+      'proposalsCount': proposalsCount,
+      'requiredSkills': requiredSkills,
+      'attachments': attachments,
+      'milestones': milestones.map((m) => m.toMap()).toList(),
+      'contractUrl': contractUrl,
+      'createdAt': Timestamp.fromDate(createdAt),
+      'updatedAt': Timestamp.fromDate(updatedAt),
+    };
+  }
+
+  JobModel copyWith({
+    String? id,
+    String? clientId,
+    String? clientName,
+    String? clientImageUrl,
+    String? title,
+    String? description,
+    JobCategory? category,
+    double? budgetMin,
+    double? budgetMax,
+    String? currency,
+    DateTime? deadline,
+    JobStatus? status,
+    String? assignedFreelancerId,
+    String? assignedFreelancerName,
+    int? proposalsCount,
+    List<String>? requiredSkills,
+    List<String>? attachments,
+    List<MilestoneModel>? milestones,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) {
+    return JobModel(
+      id: id ?? this.id,
+      clientId: clientId ?? this.clientId,
+      clientName: clientName ?? this.clientName,
+      clientImageUrl: clientImageUrl ?? this.clientImageUrl,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      category: category ?? this.category,
+      budgetMin: budgetMin ?? this.budgetMin,
+      budgetMax: budgetMax ?? this.budgetMax,
+      currency: currency ?? this.currency,
+      deadline: deadline ?? this.deadline,
+      status: status ?? this.status,
+      assignedFreelancerId: assignedFreelancerId ?? this.assignedFreelancerId,
+      assignedFreelancerName: assignedFreelancerName ?? this.assignedFreelancerName,
+      proposalsCount: proposalsCount ?? this.proposalsCount,
+      requiredSkills: requiredSkills ?? this.requiredSkills,
+      attachments: attachments ?? this.attachments,
+      milestones: milestones ?? this.milestones,
+      contractUrl: contractUrl ?? this.contractUrl,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  String get budgetRange => '$budgetMin - $budgetMax $currency';
+  
+  bool get isOpen => status == JobStatus.open;
+  bool get isInProgress => status == JobStatus.inProgress;
+  bool get isCompleted => status == JobStatus.completed;
+
+  String getCategoryDisplayName(String locale) {
+    if (locale == 'en') {
+      const namesEn = {
+        JobCategory.webDevelopment: 'Web Development',
+        JobCategory.mobileDevelopment: 'Mobile Development',
+        JobCategory.design: 'Design',
+        JobCategory.writing: 'Writing',
+        JobCategory.translation: 'Translation',
+        JobCategory.marketing: 'Marketing',
+        JobCategory.dataEntry: 'Data Entry',
+        JobCategory.videoEditing: 'Video Editing',
+        JobCategory.photography: 'Photography',
+        JobCategory.tutoring: 'Tutoring',
+        JobCategory.teaching: 'Teaching',
+        JobCategory.construction: 'Construction',
+        JobCategory.electrical: 'Electrical',
+        JobCategory.plumbing: 'Plumbing',
+        JobCategory.painting: 'Painting',
+        JobCategory.carpentry: 'Carpentry',
+        JobCategory.carMaintenance: 'Car Maintenance',
+        JobCategory.carWash: 'Car Wash',
+        JobCategory.cleaning: 'Cleaning',
+        JobCategory.movingServices: 'Moving Services',
+        JobCategory.airConditioning: 'Air Conditioning',
+        JobCategory.applianceRepair: 'Appliance Repair',
+        JobCategory.tourGuide: 'Tour Guide',
+        JobCategory.driving: 'Driving',
+        JobCategory.delivery: 'Delivery',
+        JobCategory.cooking: 'Cooking',
+        JobCategory.tailoring: 'Tailoring',
+        JobCategory.beauty: 'Beauty',
+        JobCategory.privateTutoring: 'Private Tutor',
+        JobCategory.teachingConsultant: 'Teaching Consultant',
+        JobCategory.eventCatering: 'Event Catering',
+        JobCategory.baker: 'Baker',
+        JobCategory.pastryChef: 'Pastry Chef',
+        JobCategory.waiter: 'Waiter',
+        JobCategory.clinicReception: 'Clinic Reception',
+        JobCategory.appointmentBooking: 'Appointment Booking',
+        JobCategory.clinicInquiry: 'Clinic Inquiry',
+        JobCategory.lawyer: 'Lawyer',
+        JobCategory.chef: 'Chef',
+        JobCategory.translator: 'Translator',
+        JobCategory.furnitureMoving: 'Furniture Moving',
+        JobCategory.goodsTransport: 'Goods Transport',
+        JobCategory.privateRides: 'Private Rides',
+        JobCategory.vacuumTruck: 'Vacuum Truck',
+        JobCategory.buildingMaterialsTransport: 'Building Materials Transport',
+        JobCategory.dumpTruckDirt: 'Dump Truck (Dirt)',
+        JobCategory.dumpTruckSand: 'Dump Truck (Sand)',
+        JobCategory.dumpTruckConcrete: 'Dump Truck (Concrete)',
+        JobCategory.other: 'Other',
+      };
+      return namesEn[category] ?? 'Other';
+    }
+
+    const namesAr = {
+      JobCategory.webDevelopment: 'تطوير الويب',
+      JobCategory.mobileDevelopment: 'تطوير التطبيقات',
+      JobCategory.design: 'التصميم',
+      JobCategory.writing: 'الكتابة',
+      JobCategory.translation: 'الترجمة',
+      JobCategory.marketing: 'التسويق',
+      JobCategory.dataEntry: 'إدخال البيانات',
+      JobCategory.videoEditing: 'مونتاج الفيديو',
+      JobCategory.photography: 'التصوير',
+      JobCategory.tutoring: 'دروس خصوصية',
+      JobCategory.teaching: 'التدريس',
+      JobCategory.construction: 'البناء',
+      JobCategory.electrical: 'الكهرباء',
+      JobCategory.plumbing: 'السباكة',
+      JobCategory.painting: 'الدهان',
+      JobCategory.carpentry: 'النجارة',
+      JobCategory.carMaintenance: 'صيانة السيارات',
+      JobCategory.carWash: 'غسيل السيارات',
+      JobCategory.cleaning: 'التنظيف',
+      JobCategory.movingServices: 'نقل الأثاث',
+      JobCategory.airConditioning: 'التكييف',
+      JobCategory.applianceRepair: 'صيانة الأجهزة',
+      JobCategory.tourGuide: 'مرشد سياحي',
+      JobCategory.driving: 'السياقة',
+      JobCategory.delivery: 'التوصيل',
+      JobCategory.cooking: 'الطبخ',
+      JobCategory.tailoring: 'الخياطة',
+      JobCategory.beauty: 'التجميل',
+      JobCategory.privateTutoring: 'مدرس خصوصي',
+      JobCategory.teachingConsultant: 'مستشار تدريس',
+      JobCategory.eventCatering: 'تلبية طلبات مناسبات',
+      JobCategory.baker: 'فران',
+      JobCategory.pastryChef: 'بنكجي',
+      JobCategory.waiter: 'طاولجي',
+      JobCategory.clinicReception: 'استقبال عيادات',
+      JobCategory.appointmentBooking: 'حجز مواعيد',
+      JobCategory.clinicInquiry: 'استفسار عيادات',
+      JobCategory.lawyer: 'محامي',
+      JobCategory.chef: 'طباخ',
+      JobCategory.translator: 'مترجم',
+      JobCategory.furnitureMoving: 'نقل أثاث',
+      JobCategory.goodsTransport: 'نقل بضائع',
+      JobCategory.privateRides: 'مشاوير خاصة / ترحيل',
+      JobCategory.vacuumTruck: 'شفط بالهواء',
+      JobCategory.buildingMaterialsTransport: 'نقل مواد بناء',
+      JobCategory.dumpTruckDirt: 'قلابات تراب',
+      JobCategory.dumpTruckSand: 'قلابات رملة',
+      JobCategory.dumpTruckConcrete: 'قلابات خرسانة',
+      JobCategory.other: 'أخرى',
+    };
+    return namesAr[category] ?? 'أخرى';
+  }
+}

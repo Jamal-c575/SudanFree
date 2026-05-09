@@ -1,0 +1,78 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Helper function
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    // User profile images
+    match /users/profile/{userId}/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(userId) && 
+        request.resource.size < 5 * 1024 * 1024 && // Max 5MB
+        request.resource.contentType.matches('image/.*');
+    }
+
+    // User portfolio images and videos
+    match /users/portfolio/{userId}/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(userId) && 
+        request.resource.size < 20 * 1024 * 1024; // Max 20MB for portfolio
+    }
+    
+    match /users/portfolio_videos/{userId}/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(userId) && 
+        request.resource.size < 50 * 1024 * 1024 && // Max 50MB for videos
+        request.resource.contentType.matches('video/.*');
+    }
+
+    // User verification files
+    match /users/verifications/{userId}/{allPaths=**} {
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId) && 
+        request.resource.size < 10 * 1024 * 1024;
+    }
+
+    // Job attachments
+    match /jobs/{jobId}/{allPaths=**} {
+      // Authenticated users can read job attachments
+      allow read: if isAuthenticated();
+      
+      // Anyone authenticated can upload (job owner verified in Firestore rules)
+      allow write: if isAuthenticated() && 
+        request.resource.size < 10 * 1024 * 1024; // Max 10MB
+    }
+
+    // Chat attachments
+    match /chats/{chatId}/{allPaths=**} {
+      // Authenticated users can read/write (participant check done in Firestore)
+      allow read, write: if isAuthenticated() && 
+        request.resource.size < 10 * 1024 * 1024; // Max 10MB
+    }
+
+    // Posts attachments
+    match /posts/{userId}/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(userId) && 
+        request.resource.size < 10 * 1024 * 1024 &&
+        request.resource.contentType.matches('image/.*');
+    }
+
+    // Payment receipts
+    match /payments/{paymentId}/{allPaths=**} {
+      // Authenticated users can read
+      allow read: if isAuthenticated();
+      
+      // Authenticated users can upload receipts
+      allow write: if isAuthenticated() && 
+        request.resource.size < 5 * 1024 * 1024 && // Max 5MB
+        request.resource.contentType.matches('image/.*');
+    }
+  }
+}
