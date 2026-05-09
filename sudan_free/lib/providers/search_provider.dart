@@ -1,16 +1,23 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/user_model.dart';
 import '../services/smart_search_service.dart';
 import '../services/firestore_service.dart';
+import '../services/analytics_service.dart';
 
 class SearchProvider extends ChangeNotifier {
   final FirestoreService _firestoreService = FirestoreService();
+  final AnalyticsService _analytics = AnalyticsService();
 
   List<UserModel> _searchResults = [];
   List<String> _suggestions = [];
   bool _isLoading = false;
   String? _errorMessage;
   List<UserModel> _cachedProviders = [];
+
+  // Debounce timer to avoid firing a search on every keystroke
+  Timer? _debounceTimer;
+  static const _debounceDuration = Duration(milliseconds: 300);
 
   List<UserModel> get searchResults => _searchResults;
   List<String> get suggestions => _suggestions;
@@ -35,6 +42,26 @@ class SearchProvider extends ChangeNotifier {
     // استخدم الكلمات المحفوظة داخل التطبيق (سريعة جداً ولا تعتمد على المستخدمين المحملين)
     _suggestions = SmartSearchService.getPredefinedSuggestions(query);
     notifyListeners();
+  }
+
+  /// Debounced search — waits 300ms after the last keystroke before executing
+  void searchFreelancersDebounced({
+    String? query,
+    String? state,
+    String? locality,
+    double? minRating,
+    String? category,
+  }) {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(_debounceDuration, () {
+      searchFreelancers(
+        query: query,
+        state: state,
+        locality: locality,
+        minRating: minRating,
+        category: category,
+      );
+    });
   }
 
   Future<void> searchFreelancers({
@@ -74,6 +101,9 @@ class SearchProvider extends ChangeNotifier {
             locality: u.locality,
           );
         }).toList();
+
+        // Track search analytics
+        _analytics.logSearchQuery(query, users.length);
       }
 
       if (state != null) users = users.where((u) => u.state == state).toList();
@@ -92,6 +122,7 @@ class SearchProvider extends ChangeNotifier {
   }
 
   void clearSearch() {
+    _debounceTimer?.cancel();
     _searchResults = [];
     _suggestions = [];
     _errorMessage = null;
@@ -113,5 +144,11 @@ class SearchProvider extends ChangeNotifier {
         .replaceAll('ى', 'ي')
         .replaceAll(RegExp(r'[\u064B-\u065F]'), '')
         .trim();
+  }
+
+  @override
+  void dispose() {
+    _debounceTimer?.cancel();
+    super.dispose();
   }
 }

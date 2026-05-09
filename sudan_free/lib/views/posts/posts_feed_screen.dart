@@ -39,6 +39,7 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
   Timer? _heartbeatTimer;
   AdModel? _currentAd;
   bool _isLoadingAd = true;
+  final AdService _adService = AdService();
 
   @override
   bool get wantKeepAlive => true;
@@ -67,12 +68,13 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
   Future<void> _fetchAd() async {
     final currentUser = context.read<AuthProvider>().user;
     if (currentUser != null) {
-      final ad = await AdService().getTargetedAd(currentUser);
+      final ad = await _adService.getTargetedAd(currentUser, placement: AdPlacement.communityFeed);
       if (mounted) {
         setState(() {
           _currentAd = ad;
           _isLoadingAd = false;
         });
+        if (ad != null) _adService.recordImpression(ad.id);
       }
     } else {
       if (mounted) setState(() => _isLoadingAd = false);
@@ -407,7 +409,10 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
                         itemCount: posts.length + (_currentAd != null && _searchQuery.isEmpty && _selectedCategory == null ? 1 : 0),
                         itemBuilder: (context, index) {
                           if (index == 0 && _currentAd != null && _searchQuery.isEmpty && _selectedCategory == null) {
-                            return AdWidget(ad: _currentAd!);
+                            return AdWidget(
+                              ad: _currentAd!,
+                              onTap: () => _adService.recordClick(_currentAd!.id),
+                            );
                           }
                           
                           final postIndex = (_currentAd != null && _searchQuery.isEmpty && _selectedCategory == null) ? index - 1 : index;

@@ -27,6 +27,14 @@ service cloud.firestore {
       return request.resource.data.keys().hasAll(fields);
     }
 
+    // ─── Timestamp Validation (Basic Rate Limiting) ─────────────
+    // Ensure createdAt is within the last 5 minutes (prevents replay attacks)
+    function isRecentTimestamp() {
+      return request.resource.data.createdAt is timestamp &&
+        request.resource.data.createdAt <= request.time &&
+        request.resource.data.createdAt > request.time - duration.value(5, 'm');
+    }
+
     // ═══════════════════ المستخدمين (Users) ═══════════════════
     match /users/{userId} {
       allow read: if true;
@@ -44,7 +52,7 @@ service cloud.firestore {
         ))
         || 
         // مستخدمون آخرون يعدلون فقط حقول التفاعل
-        (!isOwner(userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rating', 'reviewsCount', 'completedJobs', 'negativeReports', 'ratingCounts', 'updatedAt', 'profileViews', 'pendingPartnerIds', 'partnerIds', 'followers']))
+        (!isOwner(userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rating', 'reviewsCount', 'completedJobs', 'negativeReports', 'ratingCounts', 'updatedAt', 'profileViews', 'viewers', 'pendingPartnerIds', 'partnerIds', 'followers']))
         ||
         // المشرف يعدل أي شيء
         isAdmin()
@@ -314,7 +322,11 @@ service cloud.firestore {
     // ═══════════════════ الإعلانات (Ads) ═══════════════════
     match /ads/{adId} {
       allow read: if true;
-      allow write: if isAdmin();
+      // المشرفون يمكنهم إنشاء/حذف الإعلانات
+      allow create, delete: if isAdmin();
+      // المشرفون يعدلون أي شيء + المستخدمون يعدلون فقط عدادات المشاهدات والنقرات
+      allow update: if isAdmin() || 
+        (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['impressions', 'clicks']));
     }
   }
 }

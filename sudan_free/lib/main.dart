@@ -10,6 +10,8 @@ import 'app.dart';
 import 'services/notification_service.dart';
 import 'services/cache_service.dart';
 import 'services/error_service.dart';
+import 'services/network_service.dart';
+import 'services/performance_service.dart';
 import 'core/utils/app_error_handler.dart';
 
 // Background message handler
@@ -28,7 +30,11 @@ void main() {
     OneSignal.initialize("5b1ec6d9-34d2-44ee-b985-d58a598e71d7");
     OneSignal.Notifications.requestPermission(true);
 
-    // Initialize Firebase with error handling
+    // Initialize network monitoring
+    await NetworkService().initialize();
+
+    // Initialize Firebase with performance tracking
+    final initTrace = PerformanceService().startTrace('app_startup');
     try {
       await Firebase.initializeApp();
       
@@ -44,8 +50,10 @@ void main() {
         persistenceEnabled: true, 
         cacheSizeBytes: 50 * 1024 * 1024, // 50 MB limit instead of unlimited
       );
+      initTrace.putAttribute('status', 'success');
     } catch (e, stack) {
       debugPrint('Firebase initialization error: $e');
+      initTrace.putAttribute('status', 'error');
       // Try to log if Firebase initialized partially
       try {
         await ErrorService().logError(e, stack, context: 'FirebaseInit');
@@ -60,6 +68,8 @@ void main() {
       debugPrint('Cache service error: $e');
       ErrorService().logError(e, stack, context: 'CacheServiceInit');
     }
+
+    initTrace.stop();
     
     // Setup global error handling for Flutter framework errors
     FlutterError.onError = (FlutterErrorDetails details) {

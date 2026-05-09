@@ -148,9 +148,21 @@ class NotificationsScreen extends StatelessWidget {
               itemCount: notifications.length,
               itemBuilder: (context, index) {
                 final notif = notifications[index];
-                return _SimpleNotificationTile(
-                  notification: notif,
-                  locale: locale,
+                return TweenAnimationBuilder<double>(
+                  key: ValueKey(notif.id),
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  duration: Duration(milliseconds: 300 + (index.clamp(0, 10) * 50)),
+                  curve: Curves.easeOutCubic,
+                  builder: (context, value, child) {
+                    return Transform.translate(
+                      offset: Offset((1 - value) * 30, 0),
+                      child: Opacity(opacity: value, child: child),
+                    );
+                  },
+                  child: _SimpleNotificationTile(
+                    notification: notif,
+                    locale: locale,
+                  ),
                 );
               },
             ),

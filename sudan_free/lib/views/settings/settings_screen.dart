@@ -174,6 +174,30 @@ class SettingsScreen extends StatelessWidget {
           ),
           
           const SizedBox(height: 8),
+
+          // Client Interests Selection
+          Consumer<AuthProvider>(
+            builder: (context, auth, _) {
+              final user = auth.user;
+              if (user == null) return const SizedBox.shrink();
+              final totalInterests = (user.shopInterests.length + user.serviceInterests.length);
+              return Column(
+                children: [
+                  _SettingsTile(
+                    icon: Icons.interests_rounded,
+                    iconColor: AppColors.desertOrange,
+                    title: locale == 'ar' ? 'اهتماماتي' : 'My Interests',
+                    subtitle: totalInterests > 0
+                        ? (locale == 'ar' ? '$totalInterests اهتمام محدد' : '$totalInterests interests selected')
+                        : (locale == 'ar' ? 'حدد اهتماماتك لتخصيص المحتوى' : 'Set interests to personalize content'),
+                    onTap: () => _showInterestsSheet(context, locale),
+                  ),
+                  const SizedBox(height: 8),
+                ],
+              );
+            },
+          ),
+          
           
           // Privacy
           _SettingsTile(
@@ -279,6 +303,15 @@ class SettingsScreen extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  void _showInterestsSheet(BuildContext context, String locale) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _InterestsBottomSheet(locale: locale),
     );
   }
 
@@ -506,6 +539,314 @@ class _SettingsTileState extends State<_SettingsTile> {
             subtitle: widget.subtitle != null ? Text(widget.subtitle!) : null,
             trailing: widget.trailing ?? (widget.onTap != null ? const Icon(Icons.chevron_right) : null),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// Interests Bottom Sheet
+// ══════════════════════════════════════════════════════════════════
+class _InterestsBottomSheet extends StatefulWidget {
+  final String locale;
+  const _InterestsBottomSheet({required this.locale});
+
+  @override
+  State<_InterestsBottomSheet> createState() => _InterestsBottomSheetState();
+}
+
+class _InterestsBottomSheetState extends State<_InterestsBottomSheet> {
+  late Set<String> _selectedShopInterests;
+  late Set<String> _selectedServiceInterests;
+  bool _isSaving = false;
+
+  // Shop categories with icons
+  static const List<Map<String, dynamic>> _shopCategories = [
+    {'key': 'electronics', 'ar': 'إلكترونيات', 'en': 'Electronics', 'icon': Icons.devices},
+    {'key': 'clothing', 'ar': 'ملابس', 'en': 'Clothing', 'icon': Icons.checkroom},
+    {'key': 'furniture', 'ar': 'أثاث', 'en': 'Furniture', 'icon': Icons.chair},
+    {'key': 'food', 'ar': 'مواد غذائية', 'en': 'Food', 'icon': Icons.restaurant},
+    {'key': 'restaurant', 'ar': 'مطاعم', 'en': 'Restaurants', 'icon': Icons.local_dining},
+    {'key': 'supermarket', 'ar': 'سوبرماركت', 'en': 'Supermarket', 'icon': Icons.local_grocery_store},
+    {'key': 'pharmacy', 'ar': 'صيدلية', 'en': 'Pharmacy', 'icon': Icons.local_pharmacy},
+    {'key': 'beauty', 'ar': 'تجميل', 'en': 'Beauty', 'icon': Icons.face_retouching_natural},
+    {'key': 'automotive', 'ar': 'قطع غيار', 'en': 'Automotive', 'icon': Icons.directions_car},
+    {'key': 'building', 'ar': 'مواد بناء', 'en': 'Building', 'icon': Icons.construction},
+    {'key': 'jewelry', 'ar': 'مجوهرات', 'en': 'Jewelry', 'icon': Icons.diamond},
+    {'key': 'mobile', 'ar': 'جوالات', 'en': 'Mobile', 'icon': Icons.phone_android},
+    {'key': 'bookstore', 'ar': 'مكتبة', 'en': 'Bookstore', 'icon': Icons.menu_book},
+    {'key': 'sports', 'ar': 'رياضة', 'en': 'Sports', 'icon': Icons.sports_soccer},
+    {'key': 'toys', 'ar': 'ألعاب أطفال', 'en': 'Toys', 'icon': Icons.toys},
+    {'key': 'home', 'ar': 'أدوات منزلية', 'en': 'Home', 'icon': Icons.home},
+  ];
+
+  // Service categories
+  static const List<Map<String, dynamic>> _serviceCategories = [
+    {'key': 'plumbing', 'ar': 'سباكة', 'en': 'Plumbing', 'icon': Icons.plumbing},
+    {'key': 'electrical', 'ar': 'كهرباء', 'en': 'Electrical', 'icon': Icons.electrical_services},
+    {'key': 'painting', 'ar': 'دهانات', 'en': 'Painting', 'icon': Icons.format_paint},
+    {'key': 'carpentry', 'ar': 'نجارة', 'en': 'Carpentry', 'icon': Icons.handyman},
+    {'key': 'cleaning', 'ar': 'تنظيف', 'en': 'Cleaning', 'icon': Icons.cleaning_services},
+    {'key': 'design', 'ar': 'تصميم', 'en': 'Design', 'icon': Icons.design_services},
+    {'key': 'programming', 'ar': 'برمجة', 'en': 'Programming', 'icon': Icons.code},
+    {'key': 'photography', 'ar': 'تصوير', 'en': 'Photography', 'icon': Icons.camera_alt},
+    {'key': 'teaching', 'ar': 'تدريس', 'en': 'Teaching', 'icon': Icons.school},
+    {'key': 'transport', 'ar': 'نقل', 'en': 'Transport', 'icon': Icons.local_shipping},
+    {'key': 'ac_repair', 'ar': 'تكييف', 'en': 'AC Repair', 'icon': Icons.ac_unit},
+    {'key': 'mechanic', 'ar': 'ميكانيكا', 'en': 'Mechanic', 'icon': Icons.build},
+    {'key': 'tailoring', 'ar': 'خياطة', 'en': 'Tailoring', 'icon': Icons.content_cut},
+    {'key': 'catering', 'ar': 'تموين', 'en': 'Catering', 'icon': Icons.dinner_dining},
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    final user = context.read<AuthProvider>().user;
+    _selectedShopInterests = Set<String>.from(user?.shopInterests ?? []);
+    _selectedServiceInterests = Set<String>.from(user?.serviceInterests ?? []);
+  }
+
+  Future<void> _save() async {
+    setState(() => _isSaving = true);
+    final auth = context.read<AuthProvider>();
+    await auth.updateUserProfile({
+      'shopInterests': _selectedShopInterests.toList(),
+      'serviceInterests': _selectedServiceInterests.toList(),
+    });
+    if (mounted) {
+      setState(() => _isSaving = false);
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(widget.locale == 'ar' ? 'تم حفظ اهتماماتك ✅' : 'Interests saved ✅'),
+        backgroundColor: Colors.green,
+        behavior: SnackBarBehavior.floating,
+      ));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isAr = widget.locale == 'ar';
+
+    return Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.85,
+      ),
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Handle
+          Container(
+            margin: const EdgeInsets.only(top: 12, bottom: 8),
+            width: 40, height: 5,
+            decoration: BoxDecoration(
+              color: Colors.grey[400],
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+          // Header
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.desertOrange.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.interests_rounded, color: AppColors.desertOrange, size: 24),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        isAr ? 'اهتماماتي' : 'My Interests',
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        isAr ? 'اختر ما يهمك لتخصيص المحتوى' : 'Choose to personalize your feed',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close_rounded),
+                  style: IconButton.styleFrom(backgroundColor: Colors.grey.withValues(alpha: 0.1)),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+
+          // Content
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                // ── Services Section ──
+                _sectionTitle(
+                  icon: Icons.build_circle,
+                  title: isAr ? 'الخدمات' : 'Services',
+                  color: AppColors.primary,
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _serviceCategories.map((cat) {
+                    final isSelected = _selectedServiceInterests.contains(cat['key']);
+                    return _buildInterestChip(
+                      label: isAr ? cat['ar'] : cat['en'],
+                      icon: cat['icon'] as IconData,
+                      isSelected: isSelected,
+                      color: AppColors.primary,
+                      isDark: isDark,
+                      onTap: () {
+                        setState(() {
+                          isSelected
+                              ? _selectedServiceInterests.remove(cat['key'])
+                              : _selectedServiceInterests.add(cat['key']);
+                        });
+                      },
+                    );
+                  }).toList(),
+                ),
+
+                const SizedBox(height: 24),
+
+                // ── Shops Section ──
+                _sectionTitle(
+                  icon: Icons.storefront,
+                  title: isAr ? 'أنواع المتاجر' : 'Shop Types',
+                  color: AppColors.desertOrange,
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _shopCategories.map((cat) {
+                    final isSelected = _selectedShopInterests.contains(cat['key']);
+                    return _buildInterestChip(
+                      label: isAr ? cat['ar'] : cat['en'],
+                      icon: cat['icon'] as IconData,
+                      isSelected: isSelected,
+                      color: AppColors.desertOrange,
+                      isDark: isDark,
+                      onTap: () {
+                        setState(() {
+                          isSelected
+                              ? _selectedShopInterests.remove(cat['key'])
+                              : _selectedShopInterests.add(cat['key']);
+                        });
+                      },
+                    );
+                  }).toList(),
+                ),
+
+                const SizedBox(height: 24),
+
+                // Save Button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _isSaving ? null : _save,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      elevation: 2,
+                    ),
+                    child: _isSaving
+                        ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                        : Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.check_circle, color: Colors.white, size: 20),
+                              const SizedBox(width: 8),
+                              Text(
+                                isAr ? 'حفظ الاهتمامات' : 'Save Interests',
+                                style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _sectionTitle({required IconData icon, required String title, required Color color}) {
+    return Row(
+      children: [
+        Icon(icon, size: 20, color: color),
+        const SizedBox(width: 8),
+        Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: color)),
+      ],
+    );
+  }
+
+  Widget _buildInterestChip({
+    required String label,
+    required IconData icon,
+    required bool isSelected,
+    required Color color,
+    required bool isDark,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOutCubic,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected 
+              ? color.withValues(alpha: isDark ? 0.25 : 0.12)
+              : (isDark ? Colors.grey[800] : Colors.grey[100]),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? color : Colors.transparent,
+            width: 1.5,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 16,
+              color: isSelected ? color : (isDark ? Colors.grey[400] : Colors.grey[600]),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                color: isSelected ? color : (isDark ? Colors.grey[300] : Colors.grey[700]),
+              ),
+            ),
+            if (isSelected) ...[
+              const SizedBox(width: 4),
+              Icon(Icons.check_circle, size: 14, color: color),
+            ],
+          ],
         ),
       ),
     );

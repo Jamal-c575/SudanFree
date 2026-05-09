@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:async';
 import '../../models/user_model.dart';
 import '../../models/notification_model.dart';
+import '../performance_service.dart';
 
 class UserFirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -143,12 +144,27 @@ class UserFirestoreService {
   Future<Map<String, dynamic>> getFreelancersPaginated({
     DocumentSnapshot? startAfterDoc,
     int limit = 15,
+    String? state,
   }) async {
+    final trace = PerformanceService().startTrace('query_freelancers');
+    trace.putAttribute('limit', limit.toString());
+    trace.putAttribute('is_paginated', (startAfterDoc != null).toString());
+
     Query query = _firestore
         .collection('users')
         .where('role', whereIn: ['freelancer', 'privateService', 'techService', 'Freelancer', 'FREELANCER', 'freelancer ', 'Freelancer '])
         .orderBy('createdAt', descending: true)
         .limit(limit);
+
+    // Filter by state if provided
+    if (state != null && state.isNotEmpty) {
+      query = _firestore
+          .collection('users')
+          .where('state', isEqualTo: state)
+          .where('role', whereIn: ['freelancer', 'privateService', 'techService', 'Freelancer', 'FREELANCER', 'freelancer ', 'Freelancer '])
+          .orderBy('createdAt', descending: true)
+          .limit(limit);
+    }
 
     if (startAfterDoc != null) {
       query = query.startAfterDocument(startAfterDoc);
@@ -158,6 +174,9 @@ class UserFirestoreService {
     final users = snapshot.docs
         .map((doc) => UserModel.fromFirestore(doc))
         .toList();
+
+    trace.incrementMetric('result_count', users.length);
+    trace.stop();
 
     return {
       'users': users,
@@ -170,12 +189,23 @@ class UserFirestoreService {
   Future<Map<String, dynamic>> getShopsPaginated({
     DocumentSnapshot? startAfterDoc,
     int limit = 15,
+    String? state,
   }) async {
     Query query = _firestore
         .collection('users')
         .where('role', whereIn: ['shop', 'Shop', 'SHOP', 'shop ', 'Shop '])
         .orderBy('createdAt', descending: true)
         .limit(limit);
+
+    // Filter by state if provided
+    if (state != null && state.isNotEmpty) {
+      query = _firestore
+          .collection('users')
+          .where('state', isEqualTo: state)
+          .where('role', whereIn: ['shop', 'Shop', 'SHOP', 'shop ', 'Shop '])
+          .orderBy('createdAt', descending: true)
+          .limit(limit);
+    }
 
     if (startAfterDoc != null) {
       query = query.startAfterDocument(startAfterDoc);
@@ -198,6 +228,9 @@ class UserFirestoreService {
     DocumentSnapshot? startAfterDoc,
     int limit = 200,
   }) async {
+    final trace = PerformanceService().startTrace('query_all_providers');
+    trace.putAttribute('limit', limit.toString());
+
     Query query = _firestore
         .collection('users')
         .where('role', whereIn: [
@@ -216,6 +249,9 @@ class UserFirestoreService {
     final users = snapshot.docs
         .map((doc) => UserModel.fromFirestore(doc))
         .toList();
+
+    trace.incrementMetric('result_count', users.length);
+    trace.stop();
 
     return {
       'users': users,

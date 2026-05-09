@@ -14,6 +14,7 @@ import '../../widgets/inputs/custom_text_field.dart';
 class ReportDialog extends StatefulWidget {
   final UserModel reportedUser;
 
+
   const ReportDialog({super.key, required this.reportedUser});
 
   @override

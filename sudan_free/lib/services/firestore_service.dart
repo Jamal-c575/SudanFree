@@ -75,11 +75,11 @@ class FirestoreService {
   Future<void> toggleFollow(String followerId, String targetId, bool isFollowing) => _users.toggleFollow(followerId, targetId, isFollowing);
   Future<void> incrementProfileViews(String userId, [String? viewerId]) => _users.incrementProfileViews(userId, viewerId);
   
-  Future<Map<String, dynamic>> getFreelancersPaginated({DocumentSnapshot? startAfterDoc, int limit = 15}) => 
-      _users.getFreelancersPaginated(startAfterDoc: startAfterDoc, limit: limit);
+  Future<Map<String, dynamic>> getFreelancersPaginated({DocumentSnapshot? startAfterDoc, int limit = 15, String? state}) => 
+      _users.getFreelancersPaginated(startAfterDoc: startAfterDoc, limit: limit, state: state);
       
-  Future<Map<String, dynamic>> getShopsPaginated({DocumentSnapshot? startAfterDoc, int limit = 15}) => 
-      _users.getShopsPaginated(startAfterDoc: startAfterDoc, limit: limit);
+  Future<Map<String, dynamic>> getShopsPaginated({DocumentSnapshot? startAfterDoc, int limit = 15, String? state}) => 
+      _users.getShopsPaginated(startAfterDoc: startAfterDoc, limit: limit, state: state);
       
   Future<Map<String, dynamic>> getProvidersPaginated({DocumentSnapshot? startAfterDoc, int limit = 200}) => 
       _users.getProvidersPaginated(startAfterDoc: startAfterDoc, limit: limit);

@@ -13,6 +13,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class UserProvider extends ChangeNotifier {
   final FirestoreService _firestoreService = FirestoreService();
   final CacheService _cacheService = CacheService();
+  String? _currentUserState; // ولاية المستخدم الحالي
 
   UserModel? _viewedUser;
   List<UserModel> _freelancers = [];
@@ -46,6 +47,11 @@ class UserProvider extends ChangeNotifier {
   String get uploadStatus => _uploadStatus;
   bool get hasFreelancers => _freelancers.isNotEmpty;
   bool get hasShops => _shops.isNotEmpty;
+
+  /// Set current user's state/region for region-priority fetching
+  void setUserState(String? state) {
+    _currentUserState = state;
+  }
 
   // Pagination State
   DocumentSnapshot? _lastFreelancerDoc;
@@ -110,7 +116,7 @@ class UserProvider extends ChangeNotifier {
     });
   }
 
-  // Get freelancers with shuffle for variety - مع تخزين مؤقت
+  // Get freelancers with region priority (75% local, 25% discovery)
   Future<void> fetchFreelancers({String? skill, bool forceRefresh = false}) async {
     // 1. Try Load from Cache First (Instant Display)
     if (_freelancers.isEmpty && !forceRefresh) {
@@ -136,15 +142,41 @@ class UserProvider extends ChangeNotifier {
       notifyListeners();
     }
     
-    debugPrint('UserProvider: Fetching freelancers paginated...');
+    debugPrint('UserProvider: Fetching freelancers (region-priority)...');
     _freelancerError = null;
     
     try {
-      final result = await _firestoreService.getFreelancersPaginated(limit: 15);
-      _freelancers = result['users'] as List<UserModel>;
-      _lastFreelancerDoc = result['lastDoc'] as DocumentSnapshot?;
-      _hasMoreFreelancers = result['hasMore'] as bool;
-      
+      List<UserModel> combined = [];
+
+      if (_currentUserState != null && _currentUserState!.isNotEmpty) {
+        // 75% from user's region
+        final localResult = await _firestoreService.getFreelancersPaginated(
+          limit: 12,
+          state: _currentUserState,
+        );
+        final localUsers = localResult['users'] as List<UserModel>;
+        combined.addAll(localUsers);
+
+        // 25% from all regions (discovery)
+        final globalResult = await _firestoreService.getFreelancersPaginated(
+          limit: 5,
+        );
+        final globalUsers = globalResult['users'] as List<UserModel>;
+        // Deduplicate: add only users not already in local
+        final localIds = combined.map((u) => u.id).toSet();
+        combined.addAll(globalUsers.where((u) => !localIds.contains(u.id)));
+
+        _lastFreelancerDoc = localResult['lastDoc'] as DocumentSnapshot?;
+        _hasMoreFreelancers = (localResult['hasMore'] as bool) || (globalResult['hasMore'] as bool);
+      } else {
+        // No region info — fetch normally
+        final result = await _firestoreService.getFreelancersPaginated(limit: 15);
+        combined = result['users'] as List<UserModel>;
+        _lastFreelancerDoc = result['lastDoc'] as DocumentSnapshot?;
+        _hasMoreFreelancers = result['hasMore'] as bool;
+      }
+
+      _freelancers = combined;
       _isLoading = false;
       _freelancersLoaded = true;
       _lastFreelancersRefresh = DateTime.now();
@@ -195,7 +227,7 @@ class UserProvider extends ChangeNotifier {
     }
   }
 
-  // Get shops (معارض ومتاجر) with shuffle - مع تخزين مؤقت
+  // Get shops with region priority (75% local, 25% discovery)
   Future<void> fetchShops({ShopCategory? category, bool forceRefresh = false}) async {
     // 1. Try Load from Cache First
     if (_shops.isEmpty && !forceRefresh) {
@@ -221,15 +253,41 @@ class UserProvider extends ChangeNotifier {
       notifyListeners();
     }
     
-    debugPrint('UserProvider: Fetching shops paginated...');
+    debugPrint('UserProvider: Fetching shops (region-priority)...');
     _shopError = null;
     
     try {
-      final result = await _firestoreService.getShopsPaginated(limit: 15);
-      _shops = result['users'] as List<UserModel>;
-      _lastShopDoc = result['lastDoc'] as DocumentSnapshot?;
-      _hasMoreShops = result['hasMore'] as bool;
-      
+      List<UserModel> combined = [];
+
+      if (_currentUserState != null && _currentUserState!.isNotEmpty) {
+        // 75% from user's region
+        final localResult = await _firestoreService.getShopsPaginated(
+          limit: 12,
+          state: _currentUserState,
+        );
+        final localShops = localResult['users'] as List<UserModel>;
+        combined.addAll(localShops);
+
+        // 25% from all regions (discovery)
+        final globalResult = await _firestoreService.getShopsPaginated(
+          limit: 5,
+        );
+        final globalShops = globalResult['users'] as List<UserModel>;
+        // Deduplicate
+        final localIds = combined.map((u) => u.id).toSet();
+        combined.addAll(globalShops.where((u) => !localIds.contains(u.id)));
+
+        _lastShopDoc = localResult['lastDoc'] as DocumentSnapshot?;
+        _hasMoreShops = (localResult['hasMore'] as bool) || (globalResult['hasMore'] as bool);
+      } else {
+        // No region info — fetch normally
+        final result = await _firestoreService.getShopsPaginated(limit: 15);
+        combined = result['users'] as List<UserModel>;
+        _lastShopDoc = result['lastDoc'] as DocumentSnapshot?;
+        _hasMoreShops = result['hasMore'] as bool;
+      }
+
+      _shops = combined;
       _isLoading = false;
       _shopsLoaded = true;
       _lastShopsRefresh = DateTime.now();

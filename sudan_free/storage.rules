@@ -10,50 +10,72 @@ service firebase.storage {
       return request.auth.uid == userId;
     }
 
+    // Content type helpers
+    function isImageFile() {
+      return request.resource.contentType.matches('image/.*');
+    }
+
+    function isVideoFile() {
+      return request.resource.contentType.matches('video/.*');
+    }
+
+    function isAllowedDocFile() {
+      return request.resource.contentType.matches('image/.*')
+          || request.resource.contentType.matches('application/pdf')
+          || request.resource.contentType.matches('application/msword')
+          || request.resource.contentType.matches('application/vnd\\.openxmlformats.*');
+    }
+
     // User profile images
     match /users/profile/{userId}/{allPaths=**} {
       allow read: if isAuthenticated();
       allow write: if isOwner(userId) && 
         request.resource.size < 5 * 1024 * 1024 && // Max 5MB
-        request.resource.contentType.matches('image/.*');
+        isImageFile();
     }
 
-    // User portfolio images and videos
+    // User portfolio images — now validates content type (was missing)
     match /users/portfolio/{userId}/{allPaths=**} {
       allow read: if isAuthenticated();
       allow write: if isOwner(userId) && 
-        request.resource.size < 20 * 1024 * 1024; // Max 20MB for portfolio
+        request.resource.size < 20 * 1024 * 1024 && // Max 20MB for portfolio
+        (isImageFile() || isAllowedDocFile());
     }
     
     match /users/portfolio_videos/{userId}/{allPaths=**} {
       allow read: if isAuthenticated();
       allow write: if isOwner(userId) && 
         request.resource.size < 50 * 1024 * 1024 && // Max 50MB for videos
-        request.resource.contentType.matches('video/.*');
+        isVideoFile();
     }
 
-    // User verification files
+    // User verification files — now validates content type
     match /users/verifications/{userId}/{allPaths=**} {
       allow read: if isOwner(userId);
       allow write: if isOwner(userId) && 
-        request.resource.size < 10 * 1024 * 1024;
+        request.resource.size < 10 * 1024 * 1024 &&
+        (isImageFile() || isAllowedDocFile());
     }
 
-    // Job attachments
+    // Job attachments — now validates content type
     match /jobs/{jobId}/{allPaths=**} {
       // Authenticated users can read job attachments
       allow read: if isAuthenticated();
       
       // Anyone authenticated can upload (job owner verified in Firestore rules)
       allow write: if isAuthenticated() && 
-        request.resource.size < 10 * 1024 * 1024; // Max 10MB
+        request.resource.size < 10 * 1024 * 1024 && // Max 10MB
+        (isImageFile() || isAllowedDocFile());
     }
 
-    // Chat attachments
+    // Chat attachments — now validates content type
     match /chats/{chatId}/{allPaths=**} {
-      // Authenticated users can read/write (participant check done in Firestore)
-      allow read, write: if isAuthenticated() && 
-        request.resource.size < 10 * 1024 * 1024; // Max 10MB
+      // Read only requires authentication (no resource check needed)
+      allow read: if isAuthenticated();
+      // Write validates size and content type
+      allow write: if isAuthenticated() && 
+        request.resource.size < 10 * 1024 * 1024 && // Max 10MB
+        (isImageFile() || isVideoFile() || isAllowedDocFile());
     }
 
     // Posts attachments
@@ -61,7 +83,7 @@ service firebase.storage {
       allow read: if isAuthenticated();
       allow write: if isOwner(userId) && 
         request.resource.size < 10 * 1024 * 1024 &&
-        request.resource.contentType.matches('image/.*');
+        isImageFile();
     }
 
     // Payment receipts
@@ -72,7 +94,8 @@ service firebase.storage {
       // Authenticated users can upload receipts
       allow write: if isAuthenticated() && 
         request.resource.size < 5 * 1024 * 1024 && // Max 5MB
-        request.resource.contentType.matches('image/.*');
+        isImageFile();
     }
   }
 }
+

@@ -8,10 +8,12 @@ import '../models/notification_model.dart';
 import '../services/firestore_service.dart';
 import '../services/cache_service.dart';
 import '../services/cloudinary_service.dart';
+import '../services/analytics_service.dart';
 
 class PostsProvider extends ChangeNotifier {
   final FirestoreService _firestoreService = FirestoreService();
   final CacheService _cacheService = CacheService();
+  final AnalyticsService _analytics = AnalyticsService();
   
   List<PostModel> _posts = [];
   StreamSubscription? _postsSubscription;
@@ -286,6 +288,10 @@ class PostsProvider extends ChangeNotifier {
 
       _isCreating = false;
       notifyListeners();
+
+      // Track post creation analytics
+      _analytics.logPostCreated(newPostId, category, imageUrl != null);
+
       return true;
     } catch (e) {
       _errorMessage = e.toString();
@@ -542,6 +548,8 @@ class PostsProvider extends ChangeNotifier {
 
     try {
       await _firestoreService.incrementPostShares(postId);
+      // Track share analytics
+      _analytics.logPostShared(postId);
     } catch (e) {
       // Rollback
       _posts[index] = post;

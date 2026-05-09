@@ -159,7 +159,7 @@
           <div id="requests-list" class="cards-list"><div class="loading-spinner"><div class="spinner"></div></div></div>
         </section>
 
-        <!-- Ads Page (NEW) -->
+        <!-- Ads Page (Enhanced with placement types) -->
         <section id="page-ads" class="page">
           <div class="dashboard-row">
             <div class="card" style="flex:1;">
@@ -168,18 +168,45 @@
                 <div class="form-grid">
                   <div class="form-group full-width"><label>عنوان الإعلان</label><input type="text" id="ad-title" class="text-input" placeholder="عنوان واضح وجذاب"></div>
                   <div class="form-group full-width"><label>وصف الإعلان</label><textarea id="ad-description" class="text-input textarea" rows="2" placeholder="وصف مختصر..."></textarea></div>
-                  <div class="form-group full-width"><label>رابط الصورة</label><input type="url" id="ad-image" class="text-input" placeholder="https://..."></div>
+                  <div class="form-group full-width"><label>اسم المعلن</label><input type="text" id="ad-advertiser" class="text-input" placeholder="اسم الشركة أو المعلن (اختياري)"></div>
+                  <div class="form-group full-width"><label>رابط الصورة / الوسائط</label><input type="url" id="ad-image" class="text-input" placeholder="https://..."></div>
                   <div class="form-group full-width"><label>رابط الإعلان (عند الضغط)</label><input type="url" id="ad-link" class="text-input" placeholder="https://..."></div>
-                  <div class="form-group"><label>المنطقة المستهدفة</label><select id="ad-region" class="filter-select"><option value="all">الكل</option><option value="الخرطوم">الخرطوم</option><option value="الجزيرة">الجزيرة</option><option value="نهر النيل">نهر النيل</option></select></div>
+                  <div class="form-group"><label>موضع الإعلان</label>
+                    <select id="ad-placement" class="filter-select">
+                      <option value="homeBanner">🏠 بانر الرئيسية</option>
+                      <option value="communityFeed">👥 تغذية المجتمع</option>
+                      <option value="featuredService">💼 خدمة مميزة</option>
+                      <option value="featuredShop">🏪 متجر مميز</option>
+                      <option value="strip">📢 شريط إعلاني</option>
+                    </select>
+                  </div>
+                  <div class="form-group"><label>نوع الوسائط</label>
+                    <select id="ad-media-type" class="filter-select">
+                      <option value="image">صورة</option>
+                      <option value="video">فيديو</option>
+                      <option value="gif">GIF</option>
+                    </select>
+                  </div>
+                  <div class="form-group"><label>المنطقة المستهدفة</label><select id="ad-region" class="filter-select"><option value="all">الكل</option><option value="الخرطوم">الخرطوم</option><option value="الجزيرة">الجزيرة</option><option value="نهر النيل">نهر النيل</option><option value="كسلا">كسلا</option><option value="القضارف">القضارف</option><option value="البحر الأحمر">البحر الأحمر</option><option value="سنار">سنار</option></select></div>
                   <div class="form-group"><label>الفئة المستهدفة</label><select id="ad-profession" class="filter-select"><option value="all">الكل</option><option value="freelancer">خدمات فنية</option><option value="techService">خدمات تقنية</option><option value="shop">متاجر</option><option value="client">عملاء</option></select></div>
                   <div class="form-group"><label>الأولوية (1-10)</label><input type="number" id="ad-priority" class="text-input" value="5" min="1" max="10"></div>
                   <div class="form-group"><label>تاريخ الانتهاء</label><input type="date" id="ad-expiry" class="text-input"></div>
                 </div>
-                <div class="form-actions"><span></span><button class="btn btn-primary" onclick="AdminApp.createAd()"><span class="material-icons-outlined">campaign</span>نشر الإعلان</button></div>
+                <div class="form-actions"><span></span><button class="btn btn-primary" onclick="AdminExtras.createAd()"><span class="material-icons-outlined">campaign</span>نشر الإعلان</button></div>
               </div>
             </div>
             <div class="card" style="flex:2;">
-              <div class="card-header"><h3><span class="material-icons-outlined">list</span> الإعلانات الحالية</h3></div>
+              <div class="card-header">
+                <h3><span class="material-icons-outlined">list</span> الإعلانات الحالية</h3>
+                <select id="ads-placement-filter" class="filter-select" onchange="AdminExtras.filterAds()" style="margin-right:auto;margin-left:8px;min-width:140px;">
+                  <option value="">كل المواضع</option>
+                  <option value="homeBanner">🏠 بانر الرئيسية</option>
+                  <option value="communityFeed">👥 تغذية المجتمع</option>
+                  <option value="featuredService">💼 خدمة مميزة</option>
+                  <option value="featuredShop">🏪 متجر مميز</option>
+                  <option value="strip">📢 شريط إعلاني</option>
+                </select>
+              </div>
               <div class="card-body" id="ads-list"><div class="loading-spinner"><div class="spinner"></div></div></div>
             </div>
           </div>

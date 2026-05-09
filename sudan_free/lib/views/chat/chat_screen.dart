@@ -16,7 +16,6 @@ import '../../models/message_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/chat_provider.dart';
 import '../../providers/job_provider.dart';
-import '../../models/job_model.dart';
 import '../../views/jobs/active_job_tracking_screen.dart';
 import '../../widgets/common/loading_widget.dart';
 import '../../widgets/common/linkable_text.dart';
@@ -1063,19 +1062,52 @@ class VoiceMessageWidget extends StatefulWidget {
   State<VoiceMessageWidget> createState() => _VoiceMessageWidgetState();
 }
 
-class _VoiceMessageWidgetState extends State<VoiceMessageWidget> {
+class _VoiceMessageWidgetState extends State<VoiceMessageWidget> with SingleTickerProviderStateMixin {
   final AudioPlayer _audioPlayer = AudioPlayer();
   bool _isPlaying = false;
+  bool _isLoading = false;
   Duration _position = Duration.zero;
   Duration _totalDuration = Duration.zero;
+  double _playbackSpeed = 1.0;
+  late AnimationController _pulseController;
+
+  // Fake waveform data for visual effect
+  static const List<double> _waveformBars = [
+    0.3, 0.5, 0.7, 0.4, 0.8, 0.6, 0.9, 0.5, 0.7, 0.3,
+    0.6, 0.8, 0.4, 0.7, 0.5, 0.9, 0.6, 0.4, 0.8, 0.5,
+    0.7, 0.3, 0.6, 0.9, 0.5, 0.7, 0.4, 0.8, 0.6, 0.3,
+    0.5, 0.8, 0.4, 0.7, 0.6, 0.9, 0.3, 0.5, 0.7, 0.4,
+  ];
 
   @override
   void initState() {
     super.initState();
     _totalDuration = Duration(seconds: widget.duration);
-    _audioPlayer.onPositionChanged.listen((p) => setState(() => _position = p));
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
+
+    _audioPlayer.onPositionChanged.listen((p) {
+      if (mounted) setState(() => _position = p);
+    });
+
+    _audioPlayer.onDurationChanged.listen((d) {
+      if (mounted && d.inSeconds > 0) setState(() => _totalDuration = d);
+    });
+
     _audioPlayer.onPlayerStateChanged.listen((s) {
-      setState(() => _isPlaying = s == PlayerState.playing);
+      if (!mounted) return;
+      setState(() {
+        _isPlaying = s == PlayerState.playing;
+        _isLoading = false;
+      });
+      if (s == PlayerState.playing) {
+        _pulseController.repeat(reverse: true);
+      } else {
+        _pulseController.stop();
+        _pulseController.reset();
+      }
       if (s == PlayerState.completed) {
         setState(() => _position = Duration.zero);
       }
@@ -1084,6 +1116,7 @@ class _VoiceMessageWidgetState extends State<VoiceMessageWidget> {
 
   @override
   void dispose() {
+    _pulseController.dispose();
     _audioPlayer.dispose();
     super.dispose();
   }
@@ -1092,45 +1125,233 @@ class _VoiceMessageWidgetState extends State<VoiceMessageWidget> {
     if (_isPlaying) {
       await _audioPlayer.pause();
     } else {
+      setState(() => _isLoading = true);
       await _audioPlayer.play(UrlSource(widget.url));
+      await _audioPlayer.setPlaybackRate(_playbackSpeed);
     }
+  }
+
+  void _cycleSpeed() {
+    setState(() {
+      if (_playbackSpeed == 1.0) {
+        _playbackSpeed = 1.5;
+      } else if (_playbackSpeed == 1.5) {
+        _playbackSpeed = 2.0;
+      } else {
+        _playbackSpeed = 1.0;
+      }
+    });
+    _audioPlayer.setPlaybackRate(_playbackSpeed);
+  }
+
+  String _formatDuration(Duration d) {
+    final min = d.inMinutes;
+    final sec = d.inSeconds % 60;
+    return '$min:${sec.toString().padLeft(2, '0')}';
   }
 
   @override
   Widget build(BuildContext context) {
-    final textColor = widget.isMe ? Colors.white : Colors.black87;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        IconButton(
-          icon: Icon(_isPlaying ? Icons.pause : Icons.play_arrow, color: textColor),
-          onPressed: _togglePlay,
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(),
-        ),
-        const SizedBox(width: 4),
-        SizedBox(
-          width: 150, // Fixed width instead of Expanded
-          child: SliderTheme(
-            data: SliderTheme.of(context).copyWith(
-              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-              overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
-              trackHeight: 2,
-            ),
-            child: Slider(
-              value: _position.inSeconds.toDouble(),
-              max: _totalDuration.inSeconds.toDouble() > 0 ? _totalDuration.inSeconds.toDouble() : 1,
-              activeColor: textColor,
-              inactiveColor: textColor.withValues(alpha: 0.3),
-              onChanged: (v) => _audioPlayer.seek(Duration(seconds: v.toInt())),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryColor = widget.isMe ? Colors.white : AppColors.primary;
+    final secondaryColor = widget.isMe 
+        ? Colors.white.withValues(alpha: 0.4) 
+        : (isDark ? Colors.grey[600]! : Colors.grey[400]!);
+    final textColor = widget.isMe ? Colors.white : (isDark ? Colors.white70 : Colors.black87);
+
+    final totalMs = _totalDuration.inMilliseconds;
+    final posMs = _position.inMilliseconds;
+    final progress = totalMs > 0 ? (posMs / totalMs).clamp(0.0, 1.0) : 0.0;
+
+    return SizedBox(
+      width: 240,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              // ── Play/Pause Button ──
+              GestureDetector(
+                onTap: _togglePlay,
+                child: AnimatedBuilder(
+                  animation: _pulseController,
+                  builder: (context, child) {
+                    final scale = _isPlaying ? 1.0 + (_pulseController.value * 0.08) : 1.0;
+                    return Transform.scale(
+                      scale: scale,
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: widget.isMe 
+                              ? Colors.white.withValues(alpha: 0.2)
+                              : AppColors.primary.withValues(alpha: 0.12),
+                        ),
+                        child: _isLoading
+                            ? Padding(
+                                padding: const EdgeInsets.all(10),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: primaryColor,
+                                ),
+                              )
+                            : Icon(
+                                _isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                                color: primaryColor,
+                                size: 24,
+                              ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
+
+              // ── Waveform ──
+              Expanded(
+                child: GestureDetector(
+                  onHorizontalDragUpdate: (details) {
+                    final box = context.findRenderObject() as RenderBox?;
+                    if (box == null) return;
+                    // Account for the play button width (48px)
+                    final waveWidth = box.size.width - 48;
+                    final localX = details.localPosition.dx - 48;
+                    final ratio = (localX / waveWidth).clamp(0.0, 1.0);
+                    final seekPos = Duration(milliseconds: (totalMs * ratio).toInt());
+                    _audioPlayer.seek(seekPos);
+                  },
+                  onTapDown: (details) {
+                    final box = context.findRenderObject() as RenderBox?;
+                    if (box == null) return;
+                    final waveWidth = box.size.width - 48;
+                    final localX = details.localPosition.dx - 48;
+                    final ratio = (localX / waveWidth).clamp(0.0, 1.0);
+                    final seekPos = Duration(milliseconds: (totalMs * ratio).toInt());
+                    _audioPlayer.seek(seekPos);
+                  },
+                  child: SizedBox(
+                    height: 32,
+                    child: CustomPaint(
+                      painter: _WaveformPainter(
+                        bars: _waveformBars,
+                        progress: progress,
+                        activeColor: primaryColor,
+                        inactiveColor: secondaryColor,
+                      ),
+                      size: const Size(double.infinity, 32),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+
+          // ── Timer + Speed ──
+          Padding(
+            padding: const EdgeInsets.only(right: 48),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  _isPlaying || _position.inSeconds > 0
+                      ? _formatDuration(_position)
+                      : _formatDuration(_totalDuration),
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: textColor.withValues(alpha: 0.7),
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
+                if (_isPlaying || _position.inSeconds > 0)
+                  Text(
+                    _formatDuration(_totalDuration),
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: textColor.withValues(alpha: 0.5),
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                // Speed button
+                GestureDetector(
+                  onTap: _cycleSpeed,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: widget.isMe 
+                          ? Colors.white.withValues(alpha: 0.15) 
+                          : AppColors.primary.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '${_playbackSpeed}x',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: primaryColor,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-        ),
-        Text(
-          '${_position.inSeconds ~/ 60}:${(_position.inSeconds % 60).toString().padLeft(2, '0')}',
-          style: TextStyle(color: textColor, fontSize: 10),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
+
+/// Custom waveform painter — draws vertical bars with progress coloring
+class _WaveformPainter extends CustomPainter {
+  final List<double> bars;
+  final double progress;
+  final Color activeColor;
+  final Color inactiveColor;
+
+  _WaveformPainter({
+    required this.bars,
+    required this.progress,
+    required this.activeColor,
+    required this.inactiveColor,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final barCount = bars.length;
+    final totalGaps = barCount - 1;
+    const barGap = 2.0;
+    final barWidth = (size.width - totalGaps * barGap) / barCount;
+    final maxBarHeight = size.height * 0.85;
+    final centerY = size.height / 2;
+
+    for (int i = 0; i < barCount; i++) {
+      final x = i * (barWidth + barGap);
+      final barHeight = bars[i] * maxBarHeight;
+      final isActive = (i / barCount) <= progress;
+
+      final paint = Paint()
+        ..color = isActive ? activeColor : inactiveColor
+        ..strokeCap = StrokeCap.round;
+
+      final rect = RRect.fromRectAndRadius(
+        Rect.fromCenter(
+          center: Offset(x + barWidth / 2, centerY),
+          width: barWidth.clamp(1.5, 3.5),
+          height: barHeight.clamp(3.0, maxBarHeight),
+        ),
+        const Radius.circular(2),
+      );
+
+      canvas.drawRRect(rect, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _WaveformPainter oldDelegate) {
+    return oldDelegate.progress != progress;
+  }
+}
+

@@ -7,7 +7,6 @@ import '../../providers/user_provider.dart';
 import '../../providers/chat_provider.dart';
 
 import '../freelancers/browse_freelancers_screen.dart';
-import '../notifications/notifications_screen.dart';
 import '../../providers/posts_provider.dart';
 import '../../providers/job_provider.dart';
 import '../profile/profile_screen.dart';
@@ -17,6 +16,7 @@ import '../../l10n/generated/app_localizations.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../services/firestore_service.dart';
+import 'dashboard_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -26,8 +26,8 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
-  int _currentIndex = 2; // Community is home
-  final List<int> _history = [2];
+  int _currentIndex = 0; // Dashboard is home now
+  final List<int> _history = [0];
   Key _freelancersKey = UniqueKey();
 
   @override
@@ -50,6 +50,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (user == null) return;
 
     final userProvider = context.read<UserProvider>();
+    userProvider.setUserState(user.state); // Region-priority: 75% local
     userProvider.fetchFreelancers();
     userProvider.fetchShops();
     context.read<PostsProvider>().fetchPosts();
@@ -138,6 +139,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
+  /// Navigate to a specific tab — used by DashboardScreen
+  void _navigateToTab(int index) {
+    if (index >= 0 && index <= 4) {
+      setState(() {
+        _currentIndex = index;
+        _history.remove(index);
+        _history.add(index);
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthProvider>().user;
@@ -149,17 +161,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
 
     final l10n = AppLocalizations.of(context)!;
+    final locale = context.watch<LocaleProvider>().locale.languageCode;
 
     final screens = [
-      BrowseFreelancersScreen(key: _freelancersKey),
-      const BrowseShopsScreen(),
-      const PostsFeedScreen(),
-      const NotificationsScreen(),
-      const ProfileScreen(),
+      DashboardScreen(onNavigateToTab: _navigateToTab),    // 0 - الرئيسية
+      BrowseFreelancersScreen(key: _freelancersKey),        // 1 - الخدمات
+      const BrowseShopsScreen(),                            // 2 - المتاجر
+      const PostsFeedScreen(),                              // 3 - المجتمع
+      const ProfileScreen(),                                // 4 - حسابي
     ];
 
     return PopScope(
-      canPop: _currentIndex == 2 && _history.length <= 1,
+      canPop: _currentIndex == 0 && _history.length <= 1,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
         
@@ -168,11 +181,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             _history.removeLast();
             _currentIndex = _history.last;
           });
-        } else if (_currentIndex != 2) {
+        } else if (_currentIndex != 0) {
           setState(() {
-            _currentIndex = 2;
+            _currentIndex = 0;
             _history.clear();
-            _history.add(2);
+            _history.add(0);
           });
         }
       },
@@ -182,10 +195,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           index: _currentIndex,
           children: screens,
         ),
-        bottomNavigationBar: StreamBuilder<int>(
-          stream: FirestoreService().getUnreadNotificationsCount(user.id),
-          builder: (context, notifSnapshot) {
-            final notifCount = notifSnapshot.data ?? 0;
+        bottomNavigationBar: Builder(
+          builder: (context) {
             final isDark = Theme.of(context).brightness == Brightness.dark;
             
             return Container(
@@ -227,33 +238,32 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     children: [
                       _buildNavItem(
                         index: 0,
-                        icon: Icons.people_outline,
-                        activeIcon: Icons.people,
-                        label: l10n.freelancers,
+                        icon: Icons.home_outlined,
+                        activeIcon: Icons.home,
+                        label: locale == 'ar' ? 'الرئيسية' : 'Home',
                         isDark: isDark,
                       ),
                       _buildNavItem(
                         index: 1,
+                        icon: Icons.work_outline,
+                        activeIcon: Icons.work,
+                        label: l10n.freelancers,
+                        isDark: isDark,
+                      ),
+                      _buildNavItem(
+                        index: 2,
                         icon: Icons.store_outlined,
                         activeIcon: Icons.store,
                         label: l10n.shops,
                         isDark: isDark,
                       ),
                       _buildNavItem(
-                        index: 2,
+                        index: 3,
                         icon: Icons.forum_outlined,
                         activeIcon: Icons.forum,
                         label: l10n.community,
                         isDark: isDark,
                         hasBadge: context.watch<PostsProvider>().hasNewPosts,
-                      ),
-                      _buildNavItem(
-                        index: 3,
-                        icon: Icons.notifications_outlined,
-                        activeIcon: Icons.notifications,
-                        label: l10n.notifications,
-                        isDark: isDark,
-                        badgeCount: notifCount,
                       ),
                       _buildNavItem(
                         index: 4,
@@ -293,8 +303,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       onTap: () {
         if (_currentIndex == index) {
           setState(() {
-            if (index == 0) _freelancersKey = UniqueKey();
-            if (index == 2) context.read<PostsProvider>().fetchPosts(forceRefresh: true);
+            if (index == 1) _freelancersKey = UniqueKey();
+            if (index == 3) context.read<PostsProvider>().fetchPosts(forceRefresh: true);
           });
         } else {
           setState(() {
