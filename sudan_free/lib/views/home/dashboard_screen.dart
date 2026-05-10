@@ -16,6 +16,7 @@ import '../notifications/notifications_screen.dart';
 import '../../views/widgets/ad_widget.dart';
 import '../../core/routes/premium_page_route.dart';
 import '../search/smart_search_delegate.dart';
+import '../settings/settings_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   /// Callback to switch to a specific tab in the parent HomeScreen
@@ -185,6 +186,18 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                         ),
                       );
                     },
+                  ),
+                  IconButton(
+                    onPressed: () {
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        useSafeArea: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (_) => const SettingsScreen(asBottomSheet: true),
+                      );
+                    },
+                    icon: Icon(Icons.menu, color: isDark ? Colors.white70 : AppColors.textSecondary),
                   ),
                   const SizedBox(width: 4),
                 ],

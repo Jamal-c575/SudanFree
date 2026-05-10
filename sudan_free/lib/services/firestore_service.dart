@@ -98,7 +98,7 @@ class FirestoreService {
   Future<void> updatePost(String postId, Map<String, dynamic> data) => _firestore.collection('posts').doc(postId).update({...data, 'updatedAt': Timestamp.now()});
 
   // ==================== COMMENTS ====================
-  Future<void> addComment(CommentModel comment, {String? postOwnerId}) => _posts.addComment(comment, postOwnerId: postOwnerId);
+  Future<void> addComment(CommentModel comment, {String? postOwnerId, String? parentUserId}) => _posts.addComment(comment, postOwnerId: postOwnerId, parentUserId: parentUserId);
   Stream<List<CommentModel>> getPostComments(String postId, {int limit = 50}) => _posts.getComments(postId);
   Future<void> toggleCommentLike(String postId, String commentId, String userId, bool isLiked) => _posts.toggleCommentLike(postId, commentId, userId, isLiked);
   Future<void> deleteComment(String postId, String commentId) => _posts.deleteComment(postId, commentId);

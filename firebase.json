@@ -19,6 +19,21 @@
             ]
         }
     ],
+    "hosting": {
+        "site": "sudanfree-d04fc",
+        "public": "sudan_free/build/web",
+        "ignore": [
+            "firebase.json",
+            "**/.*",
+            "**/node_modules/**"
+        ],
+        "rewrites": [
+            {
+                "source": "**",
+                "destination": "/index.html"
+            }
+        ]
+    },
     "emulators": {
         "auth": {
             "port": 9099

@@ -8,7 +8,6 @@ import '../../core/constants/app_colors.dart';
 // Import the new separate screens
 import 'shop_profile_screen.dart';
 import 'freelancer_profile_screen.dart';
-import '../settings/settings_screen.dart';
 import '../auth/profile_setup_screen.dart';
 import '../../widgets/common/verification_badge.dart';
 
@@ -83,6 +82,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       
       case UserRole.freelancer:
       case UserRole.techService:
+      case UserRole.privateService:
         return FreelancerProfileScreen(user: _user!, isMe: isMe);
       
       default:
@@ -98,13 +98,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(locale == 'ar' ? 'الملف الشخصي' : 'Profile'),
-        actions: [
-          if (isMe)
-            IconButton(
-              icon: const Icon(Icons.settings),
-              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen())),
-            ),
-        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),

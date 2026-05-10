@@ -121,7 +121,9 @@ class _RequestsScreenState extends State<RequestsScreen> {
         },
       ),
       floatingActionButton: currentUser != null
-          ? FloatingActionButton.extended(
+          ? Padding(
+              padding: const EdgeInsets.only(bottom: 80),
+              child: FloatingActionButton.extended(
               onPressed: () {
                 showModalBottomSheet(
                   context: context,
@@ -136,7 +138,8 @@ class _RequestsScreenState extends State<RequestsScreen> {
                 style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
               ),
               backgroundColor: AppColors.primary,
-            )
+            ),
+          )
           : null,
     );
   }

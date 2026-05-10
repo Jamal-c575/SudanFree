@@ -310,6 +310,7 @@ class PostsProvider extends ChangeNotifier {
     required String content,
     String? parentId,
     String? parentUserName,
+    String? parentUserId,
     List<String> mentionedNames = const [],
   }) async {
     final comment = CommentModel(
@@ -334,7 +335,7 @@ class PostsProvider extends ChangeNotifier {
       notifyListeners();
     }
 
-    await _firestoreService.addComment(comment, postOwnerId: postOwnerId);
+    await _firestoreService.addComment(comment, postOwnerId: postOwnerId, parentUserId: parentUserId);
   }
 
   /// Optimistic decrement of comment count when deleting a comment

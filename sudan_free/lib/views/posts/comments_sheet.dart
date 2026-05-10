@@ -40,6 +40,7 @@ class _CommentsSheetState extends State<CommentsSheet> {
   // Reply State
   String? _parentId;
   String? _replyingToName;
+  String? _parentUserId;
   final Set<String> _expandedComments = {}; // Track expanded reply sections
   
   // Mentions State
@@ -163,10 +164,11 @@ class _CommentsSheetState extends State<CommentsSheet> {
     }
   }
 
-  void _startReply(String parentId, String replyingToName) {
+  void _startReply(String parentId, String replyingToName, String parentUserId) {
     setState(() {
       _parentId = parentId;
       _replyingToName = replyingToName;
+      _parentUserId = parentUserId;
     });
     // Add focus to text field
     FocusScope.of(context).requestFocus(_commentFocusNode);
@@ -176,6 +178,7 @@ class _CommentsSheetState extends State<CommentsSheet> {
     setState(() {
       _parentId = null;
       _replyingToName = null;
+      _parentUserId = null;
     });
     FocusScope.of(context).unfocus();
   }
@@ -202,6 +205,7 @@ class _CommentsSheetState extends State<CommentsSheet> {
         content: text,
         parentId: _parentId,
         parentUserName: _replyingToName,
+        parentUserId: _parentUserId,
         mentionedNames: mentionedNames,
       );
 
@@ -381,7 +385,7 @@ class _CommentsSheetState extends State<CommentsSheet> {
                         isMe: currentUser?.id == comment.userId,
                         depth: depth,
                         isLiked: isLiked,
-                        onReply: () => _startReply(comment.id, comment.userName),
+                        onReply: () => _startReply(comment.id, comment.userName, comment.userId),
                         onProfileTap: () {
                           Navigator.pop(context);
                           Navigator.push(context, MaterialPageRoute(builder: (_) => ProfileScreen(userId: comment.userId)));

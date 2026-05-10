@@ -157,9 +157,14 @@ class UserProvider extends ChangeNotifier {
         final localUsers = localResult['users'] as List<UserModel>;
         combined.addAll(localUsers);
 
-        // 25% from all regions (discovery)
+        // 25% from all regions (discovery), or more if local is insufficient
+        int globalLimit = 5;
+        if (localUsers.length < 12) {
+          globalLimit = 17 - localUsers.length;
+        }
+
         final globalResult = await _firestoreService.getFreelancersPaginated(
-          limit: 5,
+          limit: globalLimit,
         );
         final globalUsers = globalResult['users'] as List<UserModel>;
         // Deduplicate: add only users not already in local
@@ -268,9 +273,14 @@ class UserProvider extends ChangeNotifier {
         final localShops = localResult['users'] as List<UserModel>;
         combined.addAll(localShops);
 
-        // 25% from all regions (discovery)
+        // 25% from all regions (discovery), or more if local is insufficient
+        int globalLimit = 5;
+        if (localShops.length < 12) {
+          globalLimit = 17 - localShops.length;
+        }
+
         final globalResult = await _firestoreService.getShopsPaginated(
-          limit: 5,
+          limit: globalLimit,
         );
         final globalShops = globalResult['users'] as List<UserModel>;
         // Deduplicate

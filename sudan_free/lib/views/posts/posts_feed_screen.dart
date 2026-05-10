@@ -1,8 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:shimmer/shimmer.dart';
 import 'package:provider/provider.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/constants/app_colors.dart';
 import '../../providers/posts_provider.dart';
 import '../../providers/auth_provider.dart';
@@ -14,8 +12,6 @@ import '../../widgets/cards/post_card.dart';
 import '../../widgets/common/staggered_animated_widget.dart';
 import '../../widgets/common/empty_state_widget.dart';
 import 'create_post_screen.dart';
-import '../profile/profile_screen.dart';
-import '../requests/requests_screen.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../services/firestore_service.dart';
 import '../../services/firestore/ad_service.dart';
@@ -145,14 +141,6 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
     // Restrict clients from posting
     final bool canPost = currentUser != null && currentUser.role != UserRole.client;
 
-    // Show only the user's partners instead of random freelancers/shops
-    // Sort: online partners first, then the rest
-    final allPartners = authProvider.partners.take(15).toList();
-    final featuredUsers = [
-      ...allPartners.where((u) => u.isOnline),
-      ...allPartners.where((u) => !u.isOnline),
-    ];
-
     return Scaffold(
       body: SafeArea(
         bottom: false,
@@ -166,35 +154,12 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
               elevation: 0,
               centerTitle: false,
               backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-              title: GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const RequestsScreen()),
-                  );
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.assignment_outlined, color: AppColors.primary, size: 20),
-                      const SizedBox(width: 8),
-                      Text(
-                        locale == 'ar' ? 'الطلبات' : 'Requests',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ],
-                  ),
+              title: Text(
+                locale == 'ar' ? 'المجتمع' : 'Community',
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primary,
                 ),
               ),
               actions: [
@@ -250,141 +215,7 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
                 ),
               ),
 
-            // Featured Users Bar - Shimmer while loading
-            if (featuredUsers.isEmpty && currentUser != null && currentUser.partnerIds.isNotEmpty && !_showSearch)
-              SliverToBoxAdapter(
-                child: Container(
-                  height: 110,
-                  margin: const EdgeInsets.only(bottom: 12, top: 8),
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: 5,
-                    itemBuilder: (context, index) {
-                      return Padding(
-                        padding: const EdgeInsets.only(left: 12),
-                        child: Shimmer.fromColors(
-                          baseColor: Theme.of(context).brightness == Brightness.dark 
-                              ? Colors.grey[800]! : Colors.grey[300]!,
-                          highlightColor: Theme.of(context).brightness == Brightness.dark 
-                              ? Colors.grey[700]! : Colors.grey[100]!,
-                          child: Column(
-                            children: [
-                              Container(
-                                width: 70, height: 70,
-                                decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.white),
-                              ),
-                              const SizedBox(height: 6),
-                              Container(
-                                width: 50, height: 10,
-                                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(5)),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ),
 
-            // Featured Users Bar (Match reference image - "Stories")
-            if (featuredUsers.isNotEmpty && !_showSearch)
-              SliverToBoxAdapter(
-                child: Container(
-                  height: 110,
-                  margin: const EdgeInsets.only(bottom: 12, top: 8),
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: featuredUsers.length,
-                    itemBuilder: (context, index) {
-                      final user = featuredUsers[index];
-                      return GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context, 
-                            MaterialPageRoute(builder: (_) => ProfileScreen(userId: user.id)),
-                          );
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.only(left: 12),
-                          child: Column(
-                            children: [
-                              Stack(
-                                children: [
-                                  Container(
-                                    width: 70,
-                                    height: 70,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      gradient: LinearGradient(
-                                        colors: user.role == UserRole.shop 
-                                            ? [Colors.amber, Colors.orange]
-                                            : [AppColors.primary, AppColors.secondary],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      ),
-                                    ),
-                                    padding: const EdgeInsets.all(3),
-                                    child: CircleAvatar(
-                                      radius: 32,
-                                      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-                                      backgroundImage: user.profileImageUrl != null
-                                          ? CachedNetworkImageProvider(user.profileImageUrl!)
-                                          : null,
-                                      child: user.profileImageUrl == null
-                                          ? Icon(
-                                              user.role == UserRole.shop ? Icons.store : Icons.person,
-                                              color: AppColors.textSecondary,
-                                            )
-                                          : null,
-                                    ),
-                                  ),
-                                  // Green dot for online users
-                                  if (user.isOnline)
-                                    Positioned(
-                                      bottom: 3,
-                                      right: 3,
-                                      child: Container(
-                                        width: 14,
-                                        height: 14,
-                                        decoration: BoxDecoration(
-                                          color: Colors.green,
-                                          shape: BoxShape.circle,
-                                          border: Border.all(
-                                            color: Theme.of(context).scaffoldBackgroundColor,
-                                            width: 2,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                ],
-                              ),
-
-                              const SizedBox(height: 6),
-                              SizedBox(
-                                width: 70,
-                                child: Text(
-                                  user.name.split(' ').first,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
-                                    color: Theme.of(context).textTheme.bodySmall?.color,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ),
           ],
           body: (postsProvider.isLoading && !postsProvider.hasPosts)
               ? ListView.builder(

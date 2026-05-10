@@ -23,7 +23,6 @@ import '../../widgets/common/image_carousel.dart';
 import '../../widgets/reviews/review_widgets.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../core/utils/job_titles_utils.dart';
-import '../settings/settings_screen.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../services/storage_service.dart';
 import '../../core/constants/sudan_locations.dart';
@@ -122,14 +121,6 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
                             MaterialPageRoute(
                                 builder: (_) =>
                                     ProfileSetupScreen(existingUser: user))),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.settings, color: Colors.white),
-                        tooltip: l10n.settings,
-                        onPressed: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (_) => const SettingsScreen())),
                       ),
                     ] else ...[
                       IconButton(
@@ -487,7 +478,7 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
       floatingActionButton: widget.isMe 
           ? ((_tabController.index == 0 || _tabController.index == 1)
               ? Padding(
-                  padding: const EdgeInsets.only(bottom: 80),
+                  padding: const EdgeInsets.only(bottom: 16),
                   child: FloatingActionButton(
                     heroTag: 'add_portfolio_fab',
                     onPressed: () {
@@ -786,6 +777,8 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
       context: context,
       builder: (context) => AddReviewDialog(
         freelancerId: widget.user.id,
+        targetName: widget.user.name,
+        targetImageUrl: widget.user.profileImageUrl,
         onSubmit: (rating, comment, isNegative, isJobCompleted, wouldWorkAgain) async {
           final l10n = AppLocalizations.of(context)!;
           final messenger = ScaffoldMessenger.of(this.context);

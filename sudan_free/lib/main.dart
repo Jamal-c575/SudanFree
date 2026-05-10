@@ -13,11 +13,14 @@ import 'services/error_service.dart';
 import 'services/network_service.dart';
 import 'services/performance_service.dart';
 import 'core/utils/app_error_handler.dart';
+import 'firebase_options.dart';
 
 // Background message handler
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   debugPrint('Handling background message: ${message.messageId}');
 }
 
@@ -36,7 +39,9 @@ void main() {
     // Initialize Firebase with performance tracking
     final initTrace = PerformanceService().startTrace('app_startup');
     try {
-      await Firebase.initializeApp();
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
       
       // Setup background message handler
       FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);

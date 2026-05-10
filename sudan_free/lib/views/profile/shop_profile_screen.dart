@@ -14,7 +14,6 @@ import '../../services/firestore_service.dart';
 
 import 'create_product_screen.dart';
 // To show comments/details
-import '../settings/settings_screen.dart';
 import '../auth/profile_setup_screen.dart'; // For editing
 import '../../views/common/report_dialog.dart';
 import 'package:provider/provider.dart';
@@ -253,14 +252,6 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
                               MaterialPageRoute(
                                   builder: (_) =>
                                       ProfileSetupScreen(existingUser: user))),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.settings, color: Colors.white),
-                          tooltip: l10n.settings,
-                          onPressed: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (_) => const SettingsScreen())),
                         ),
                       ] else ...[
                         // VISITOR ACTIONS: Report
@@ -797,6 +788,9 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
       context: context,
       builder: (context) => AddReviewDialog(
         freelancerId: widget.user.id,
+        targetName: widget.user.name,
+        targetImageUrl: widget.user.profileImageUrl,
+        isShop: true,
         onSubmit: (rating, comment, isNegative, isJobCompleted,
             wouldWorkAgain) async {
           final messenger = ScaffoldMessenger.of(this.context);

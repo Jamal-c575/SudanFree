@@ -7,15 +7,20 @@ import '../../views/profile/profile_screen.dart';
 
 class AddReviewDialog extends StatefulWidget {
   final String freelancerId;
+  final String targetName;
+  final String? targetImageUrl;
   final String? jobId;
   final String? jobTitle;
+  final bool isShop;
   final Function(double rating, String comment, bool isNegative, bool isJobCompleted, bool? wouldWorkAgain) onSubmit;
 
   const AddReviewDialog({
-    super.key,
     required this.freelancerId,
+    required this.targetName,
+    this.targetImageUrl,
     this.jobId,
     this.jobTitle,
+    this.isShop = false,
     required this.onSubmit,
   });
 
@@ -35,153 +40,165 @@ class _AddReviewDialogState extends State<AddReviewDialog> {
     final locale = context.watch<LocaleProvider>().locale.languageCode;
 
     return AlertDialog(
-      title: Text(locale == 'ar' ? 'تقييم العمل' : 'Rate Work'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: Row(
         children: [
-          if (widget.jobTitle != null)
-            Text(widget.jobTitle!, style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 16),
-          
-          // Star Rating
-          Center(
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: List.generate(5, (index) {
-                return GestureDetector(
-                  onTap: () => setState(() => _rating = index + 1.0),
-                  child: Padding(
-                    padding: const EdgeInsets.all(4),
-                    child: Icon(
-                      index < _rating ? Icons.star : Icons.star_border,
-                      color: Colors.amber,
-                      size: 40,
-                    ),
-                  ),
-                );
-              }),
-            ),
+          CircleAvatar(
+            radius: 20,
+            backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+            backgroundImage: widget.targetImageUrl != null ? NetworkImage(widget.targetImageUrl!) : null,
+            child: widget.targetImageUrl == null 
+                ? Text(
+                    widget.targetName.isNotEmpty ? widget.targetName[0].toUpperCase() : '?',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.primary),
+                  )
+                : null,
           ),
-          const SizedBox(height: 8),
-          Center(
+          const SizedBox(width: 12),
+          Expanded(
             child: Text(
-              _getRatingText(_rating, locale),
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          
-          // Comment
-          TextField(
-            controller: _commentController,
-            maxLines: 3,
-            decoration: InputDecoration(
-              hintText: locale == 'ar' ? 'اكتب تعليقك (اختياري)' : 'Write a comment (optional)',
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-          ),
-          const SizedBox(height: 16),
-          
-          // Job Completion Check
-          CheckboxListTile(
-            value: _isJobCompleted,
-            onChanged: (v) => setState(() => _isJobCompleted = v ?? false),
-            title: Text(
-              locale == 'ar' ? 'هل أكمل الحرفي العمل بنجاح؟' : 'Did the freelancer complete the work?',
-              style: const TextStyle(fontSize: 14),
-            ),
-            controlAffinity: ListTileControlAffinity.leading,
-            contentPadding: EdgeInsets.zero,
-            dense: true,
-          ),
-          
-          const SizedBox(height: 8),
-          
-          // === سؤال الضمان الاجتماعي ===
-          // سؤال مهم للسوق السوداني لبناء الثقة
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.sudanGold.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.sudanGold.withValues(alpha: 0.3)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.handshake, color: AppColors.sudanGold, size: 20),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        locale == 'ar' 
-                            ? 'هل ستتعامل معه مرة أخرى؟' 
-                            : 'Would you work with them again?',
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () => setState(() => _wouldWorkAgain = true),
-                        icon: Icon(
-                          _wouldWorkAgain == true ? Icons.check_circle : Icons.check_circle_outline,
-                          color: _wouldWorkAgain == true ? Colors.green : Colors.grey,
-                        ),
-                        label: Text(
-                          locale == 'ar' ? 'نعم، بالتأكيد' : 'Yes, definitely',
-                          style: TextStyle(
-                            color: _wouldWorkAgain == true ? Colors.green : Colors.grey[700],
-                            fontWeight: _wouldWorkAgain == true ? FontWeight.bold : FontWeight.normal,
-                          ),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          side: BorderSide(
-                            color: _wouldWorkAgain == true ? Colors.green : Colors.grey[300]!,
-                            width: _wouldWorkAgain == true ? 2 : 1,
-                          ),
-                          backgroundColor: _wouldWorkAgain == true ? Colors.green.withValues(alpha: 0.1) : null,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () => setState(() => _wouldWorkAgain = false),
-                        icon: Icon(
-                          _wouldWorkAgain == false ? Icons.cancel : Icons.cancel_outlined,
-                          color: _wouldWorkAgain == false ? Colors.red : Colors.grey,
-                        ),
-                        label: Text(
-                          locale == 'ar' ? 'لا أنصح' : 'No, I wouldn\'t',
-                          style: TextStyle(
-                            color: _wouldWorkAgain == false ? Colors.red : Colors.grey[700],
-                            fontWeight: _wouldWorkAgain == false ? FontWeight.bold : FontWeight.normal,
-                          ),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          side: BorderSide(
-                            color: _wouldWorkAgain == false ? Colors.red : Colors.grey[300]!,
-                            width: _wouldWorkAgain == false ? 2 : 1,
-                          ),
-                          backgroundColor: _wouldWorkAgain == false ? Colors.red.withValues(alpha: 0.1) : null,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+              locale == 'ar' ? 'تقييم ${widget.targetName}' : 'Rate ${widget.targetName}',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
           ),
         ],
+      ),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (widget.jobTitle != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: Text(
+                  widget.jobTitle!, 
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
+                ),
+              ),
+            
+            // Star Rating
+            Center(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: List.generate(5, (index) {
+                  return GestureDetector(
+                    onTap: () => setState(() => _rating = index + 1.0),
+                    child: Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: Icon(
+                        index < _rating ? Icons.star : Icons.star_border,
+                        color: Colors.amber,
+                        size: 36,
+                      ),
+                    ),
+                  );
+                }),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Center(
+              child: Text(
+                _getRatingText(_rating, locale),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            
+            // Comment
+            TextField(
+              controller: _commentController,
+              maxLines: 3,
+              decoration: InputDecoration(
+                hintText: locale == 'ar' ? 'اكتب تعليقك (اختياري)' : 'Write a comment (optional)',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+            const SizedBox(height: 16),
+            
+            // Job Completion Check
+            Container(
+              decoration: BoxDecoration(
+                color: Theme.of(context).cardColor,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+              ),
+              child: CheckboxListTile(
+                value: _isJobCompleted,
+                onChanged: (v) => setState(() => _isJobCompleted = v ?? false),
+                title: Text(
+                  widget.isShop
+                      ? (locale == 'ar' ? 'هل تمت عملية الشراء بنجاح؟' : 'Was the purchase completed successfully?')
+                      : (locale == 'ar' ? 'هل أكمل الحرفي العمل بنجاح؟' : 'Did the freelancer complete the work?'),
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                ),
+                controlAffinity: ListTileControlAffinity.leading,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                activeColor: AppColors.primary,
+                dense: true,
+              ),
+            ),
+            
+            const SizedBox(height: 12),
+            
+            // Social Proof
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.sudanGold.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.sudanGold.withValues(alpha: 0.3)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.isShop
+                        ? (locale == 'ar' ? 'هل تنصح بالشراء منه؟' : 'Would you recommend them?')
+                        : (locale == 'ar' ? 'هل ستتعامل معه مرة أخرى؟' : 'Would you work with them again?'),
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => setState(() => _wouldWorkAgain = true),
+                          style: OutlinedButton.styleFrom(
+                            backgroundColor: _wouldWorkAgain == true ? Colors.green.withValues(alpha: 0.1) : null,
+                            side: BorderSide(color: _wouldWorkAgain == true ? Colors.green : Colors.grey[300]!),
+                            padding: EdgeInsets.zero,
+                          ),
+                          child: Text(
+                            locale == 'ar' ? 'نعم' : 'Yes',
+                            style: TextStyle(color: _wouldWorkAgain == true ? Colors.green : Colors.grey[700], fontSize: 12),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => setState(() => _wouldWorkAgain = false),
+                          style: OutlinedButton.styleFrom(
+                            backgroundColor: _wouldWorkAgain == false ? Colors.red.withValues(alpha: 0.1) : null,
+                            side: BorderSide(color: _wouldWorkAgain == false ? Colors.red : Colors.grey[300]!),
+                            padding: EdgeInsets.zero,
+                          ),
+                          child: Text(
+                            locale == 'ar' ? 'لا' : 'No',
+                            style: TextStyle(color: _wouldWorkAgain == false ? Colors.red : Colors.grey[700], fontSize: 12),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
       actions: [
         TextButton(
@@ -195,6 +212,11 @@ class _AddReviewDialogState extends State<AddReviewDialog> {
                   Navigator.pop(context);
                 }
               : null,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.primary,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
           child: Text(locale == 'ar' ? 'إرسال' : 'Submit'),
         ),
       ],

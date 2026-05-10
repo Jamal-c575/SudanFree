@@ -15,7 +15,8 @@ import '../settings/admin_dashboard_screen.dart';
 import '../auth/identity_verification_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
-  const SettingsScreen({super.key});
+  final bool asBottomSheet;
+  const SettingsScreen({super.key, this.asBottomSheet = false});
 
   Future<void> _launchURL(String urlString) async {
     final Uri url = Uri.parse(urlString);
@@ -36,14 +37,9 @@ class SettingsScreen extends StatelessWidget {
 
     final l10n = AppLocalizations.of(context)!;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.settings),
-        centerTitle: true,
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
+    final listContent = ListView(
+      padding: asBottomSheet ? const EdgeInsets.fromLTRB(16, 0, 16, 24) : const EdgeInsets.all(16),
+      children: [
           // Dark Mode Toggle
           _SettingsTile(
             icon: isDark ? Icons.dark_mode : Icons.light_mode,
@@ -302,7 +298,61 @@ class SettingsScreen extends StatelessWidget {
             onTap: () => _showLogoutDialog(context, locale),
           ),
         ],
+      );
+
+    Widget finalContent = listContent;
+
+    if (asBottomSheet) {
+      finalContent = Column(
+        children: [
+          // Fixed Header
+          Container(
+            padding: const EdgeInsets.only(top: 8, bottom: 16),
+            decoration: BoxDecoration(
+              color: Theme.of(context).scaffoldBackgroundColor,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            child: Column(
+              children: [
+                Center(
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[400],
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                ),
+                Text(
+                  l10n.settings,
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+          // Scrollable List
+          Expanded(child: listContent),
+        ],
+      );
+
+      return Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: SafeArea(child: finalContent),
+      );
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(l10n.settings),
+        centerTitle: true,
       ),
+      body: finalContent,
     );
   }
 

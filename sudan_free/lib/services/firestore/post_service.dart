@@ -119,7 +119,7 @@ class PostsFirestoreService {
   // ==================== COMMENTS ====================
 
   // Add Comment
-  Future<void> addComment(CommentModel comment, {String? postOwnerId}) async {
+  Future<void> addComment(CommentModel comment, {String? postOwnerId, String? parentUserId}) async {
     final batch = _firestore.batch();
     final commentRef = _firestore.collection('posts').doc(comment.postId).collection('comments').doc();
     
@@ -149,8 +149,23 @@ class PostsFirestoreService {
         id: notifRef.id,
         userId: postOwnerId,
         type: NotificationType.comment,
-        title: '\u062a\u0639\u0644\u064a\u0642 \u062c\u062f\u064a\u062f',
-        message: '\u0639\u0644\u0642 ${comment.userName} \u0639\u0644\u0649 \u0645\u0646\u0634\u0648\u0631\u0643: "${comment.content.length > 40 ? comment.content.substring(0, 40) + '...' : comment.content}"',
+        title: 'تعليق جديد',
+        message: 'علق ${comment.userName} على منشورك: "${comment.content.length > 40 ? comment.content.substring(0, 40) + '...' : comment.content}"',
+        createdAt: Timestamp.now(),
+        relatedId: comment.postId,
+      );
+      batch.set(notifRef, notification.toFirestore());
+    }
+
+    // Notify the user being replied to
+    if (comment.isReply && parentUserId != null && parentUserId != comment.userId) {
+      final notifRef = _firestore.collection('notifications').doc();
+      final notification = NotificationModel(
+        id: notifRef.id,
+        userId: parentUserId,
+        type: NotificationType.comment, // Can be comment type for replies
+        title: 'رد جديد',
+        message: 'رد ${comment.userName} على تعليقك: "${comment.content.length > 40 ? comment.content.substring(0, 40) + '...' : comment.content}"',
         createdAt: Timestamp.now(),
         relatedId: comment.postId,
       );

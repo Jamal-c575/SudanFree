@@ -9,7 +9,7 @@ import '../../providers/chat_provider.dart';
 import '../freelancers/browse_freelancers_screen.dart';
 import '../../providers/posts_provider.dart';
 import '../../providers/job_provider.dart';
-import '../profile/profile_screen.dart';
+import '../requests/requests_screen.dart';
 import '../shops/browse_shops_screen.dart';
 import '../posts/posts_feed_screen.dart';
 import '../../l10n/generated/app_localizations.dart';
@@ -168,7 +168,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       BrowseFreelancersScreen(key: _freelancersKey),        // 1 - الخدمات
       const BrowseShopsScreen(),                            // 2 - المتاجر
       const PostsFeedScreen(),                              // 3 - المجتمع
-      const ProfileScreen(),                                // 4 - حسابي
+      const RequestsScreen(),                               // 4 - الطلبات
     ];
 
     return PopScope(
@@ -267,10 +267,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       ),
                       _buildNavItem(
                         index: 4,
-                        icon: Icons.person_outline,
-                        activeIcon: Icons.person,
-                        label: l10n.profile,
+                        icon: Icons.assignment_outlined,
+                        activeIcon: Icons.assignment,
+                        label: locale == 'ar' ? 'الطلبات' : 'Requests',
                         isDark: isDark,
+                        hasBadge: false, // Could be hooked to a provider if needed
                       ),
                     ],
                   ),
