@@ -170,7 +170,8 @@ const AdminExtras = {
     const title = document.getElementById('ad-title').value.trim();
     const desc = document.getElementById('ad-description').value.trim();
     const advertiser = document.getElementById('ad-advertiser').value.trim();
-    const img = document.getElementById('ad-image').value.trim();
+    let imgUrl = document.getElementById('ad-image').value.trim();
+    const fileInput = document.getElementById('ad-file-upload');
     const link = document.getElementById('ad-link').value.trim();
     const placement = document.getElementById('ad-placement').value;
     const mediaType = document.getElementById('ad-media-type').value;
@@ -182,28 +183,45 @@ const AdminExtras = {
     if (!title) { showToast('أدخل عنوان الإعلان','error'); return; }
     if (!expiry) { showToast('حدد تاريخ الانتهاء','error'); return; }
 
-    await db.collection('ads').add({
-      title,
-      description: desc,
-      mediaUrl: img,
-      imageUrl: img, // backward compat
-      mediaType: mediaType,
-      actionUrl: link,
-      placement: placement,
-      advertiserName: advertiser || null,
-      targetRegion: region,
-      targetProfession: prof,
-      priority,
-      isActive: true,
-      impressions: 0,
-      clicks: 0,
-      expiryDate: firebase.firestore.Timestamp.fromDate(new Date(expiry)),
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
+    try {
+      showToast('جاري تجهيز ونشر الإعلان...', 'info');
+      
+      // Upload file if selected
+      if (fileInput.files.length > 0) {
+        const file = fileInput.files[0];
+        const ext = file.name.split('.').pop();
+        const ref = storage.ref().child(`ads/${Date.now()}_${Math.random().toString(36).substring(7)}.${ext}`);
+        await ref.put(file);
+        imgUrl = await ref.getDownloadURL();
+      }
 
-    showToast('تم إنشاء الإعلان بنجاح');
-    ['ad-title','ad-description','ad-advertiser','ad-image','ad-link','ad-expiry'].forEach(id => document.getElementById(id).value = '');
-    this.loadAds();
+      await db.collection('ads').add({
+        title,
+        description: desc,
+        mediaUrl: imgUrl,
+        imageUrl: imgUrl, // backward compat
+        mediaType: mediaType,
+        actionUrl: link,
+        placement: placement,
+        advertiserName: advertiser || null,
+        targetRegion: region,
+        targetProfession: prof,
+        priority,
+        isActive: true,
+        impressions: 0,
+        clicks: 0,
+        expiryDate: firebase.firestore.Timestamp.fromDate(new Date(expiry)),
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      showToast('تم إنشاء الإعلان بنجاح');
+      ['ad-title','ad-description','ad-advertiser','ad-image','ad-link','ad-expiry'].forEach(id => document.getElementById(id).value = '');
+      fileInput.value = '';
+      this.loadAds();
+    } catch (e) {
+      console.error(e);
+      showToast('خطأ أثناء رفع الإعلان: ' + e.message, 'error');
+    }
   },
 
   async toggleAd(id, active) {
