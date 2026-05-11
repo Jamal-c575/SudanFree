@@ -82,11 +82,22 @@ class PostsProvider extends ChangeNotifier {
     debugPrint('PostsProvider: Fetching paginated posts...');
     try {
       final result = await _firestoreService.getFeedPostsPaginated(limit: 15);
-      final fetchedPosts = result['posts'] as List<PostModel>;
+      
+      // Safe type extraction with null checks
+      final fetchedPosts = result['posts'];
+      if (fetchedPosts is! List<PostModel>) {
+        throw TypeError();
+      }
       
       _posts = fetchedPosts;
       _lastDoc = result['lastDoc'] as DocumentSnapshot?;
-      _hasMore = result['hasMore'] as bool;
+      
+      final hasMore = result['hasMore'];
+      if (hasMore is! bool) {
+        throw TypeError();
+      }
+      _hasMore = hasMore;
+      
       _hasNewPosts = false; // Reset new posts indicator
       _isLoading = false;
       _postsLoaded = true;
@@ -124,14 +135,24 @@ class PostsProvider extends ChangeNotifier {
         limit: 15,
       );
       
-      final morePosts = result['posts'] as List<PostModel>;
+      // Safe type extraction with null checks
+      final morePosts = result['posts'];
+      if (morePosts is! List<PostModel>) {
+        throw TypeError();
+      }
+      
       if (morePosts.isNotEmpty) {
         // Deduplicate: only add posts not already in the list
         final existingIds = _posts.map((p) => p.id).toSet();
         final uniquePosts = morePosts.where((p) => !existingIds.contains(p.id)).toList();
         _posts.addAll(uniquePosts);
         _lastDoc = result['lastDoc'] as DocumentSnapshot?;
-        _hasMore = result['hasMore'] as bool;
+        
+        final hasMore = result['hasMore'];
+        if (hasMore is! bool) {
+          throw TypeError();
+        }
+        _hasMore = hasMore;
         
         try {
           _cacheService.cachePosts(_posts.map((e) => e.toJsonMap()).toList());

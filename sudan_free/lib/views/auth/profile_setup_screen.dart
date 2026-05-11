@@ -533,6 +533,11 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           shopCategory: _selectedShopCategory,
           role: _selectedRole,
         ),
+        // ── اهتمامات العميل (للتحديث) ──
+        if (_selectedRole == UserRole.client) ...{
+          'shopInterests': _selectedShopInterests.map((e) => e.name).toList(),
+          'serviceInterests': _selectedServiceInterests.map((e) => e.name).toList(),
+        },
       };
       // Removed legacy idCard upload from profile creation
 
@@ -599,6 +604,13 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           closingHours: _closingHoursController.text.trim().isNotEmpty 
               ? _closingHoursController.text.trim() 
               : null,
+          // ── اهتمامات العميل ──
+          shopInterests: _selectedRole == UserRole.client
+              ? _selectedShopInterests.map((e) => e.name).toList()
+              : null,
+          serviceInterests: _selectedRole == UserRole.client
+              ? _selectedServiceInterests.map((e) => e.name).toList()
+              : null,
         );
       }
     } catch (e, stack) {
@@ -628,25 +640,17 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           ),
         );
       } else {
-        // إنشاء حساب جديد
+        // إنشاء حساب جديد — app.dart سيتولى التوجيه تلقائياً إلى HomeScreen
+        // بعد notifyListeners() في createUserProfile
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('تم إنشاء الحساب بنجاح!'),
+            content: Text('تم إنشاء الحساب بنجاح! 🎉'),
             backgroundColor: AppColors.success,
+            duration: Duration(seconds: 2),
           ),
         );
-
-        // الانتقال لخطوة التوثيق لمقدمي الخدمات
-        if (_isServiceProvider) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const IdentityVerificationScreen()),
-          );
-        } else {
-          if (Navigator.canPop(context)) {
-            Navigator.popUntil(context, (route) => route.isFirst);
-          }
-        }
+        // لا نحتاج Navigator هنا — app.dart يعرض HomeScreen تلقائياً
+        // عند تغيُّر isNewUser إلى false
       }
     } else {
       // ── Operation returned false without exception → show error ──

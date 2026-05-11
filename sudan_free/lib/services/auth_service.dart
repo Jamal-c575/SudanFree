@@ -10,7 +10,7 @@ class AuthService {
   FirebaseFirestore get _firestore => FirebaseFirestore.instance;
   
   final GoogleSignIn _googleSignIn = GoogleSignIn(
-    serverClientId: '233114260-jeg27c91ei64504t0fbm0b3k3jiu7cl5.apps.googleusercontent.com',
+    serverClientId: '233114260-kht4nnnsp9icmnmbsb87pp7fjvf93ike.apps.googleusercontent.com',
   );
 
   // Sign in with Google

@@ -81,7 +81,7 @@ class FirestoreService {
   Future<Map<String, dynamic>> getShopsPaginated({DocumentSnapshot? startAfterDoc, int limit = 15, String? state}) => 
       _users.getShopsPaginated(startAfterDoc: startAfterDoc, limit: limit, state: state);
       
-  Future<Map<String, dynamic>> getProvidersPaginated({DocumentSnapshot? startAfterDoc, int limit = 200}) => 
+  Future<Map<String, dynamic>> getProvidersPaginated({DocumentSnapshot? startAfterDoc, int limit = 50}) => 
       _users.getProvidersPaginated(startAfterDoc: startAfterDoc, limit: limit);
 
   // ==================== POSTS ====================

@@ -191,9 +191,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       },
       child: Scaffold(
         extendBody: true, // المحتوى يمتد تحت الشريط العائم
-        body: IndexedStack(
-          index: _currentIndex,
-          children: screens,
+        body: Stack(
+          children: [
+            // Use Offstage instead of IndexedStack to reduce memory usage
+            // Offstage still keeps widgets in tree but doesn't render them
+            for (int i = 0; i < screens.length; i++)
+              Offstage(
+                offstage: _currentIndex != i,
+                child: screens[i],
+              ),
+          ],
         ),
         bottomNavigationBar: Builder(
           builder: (context) {

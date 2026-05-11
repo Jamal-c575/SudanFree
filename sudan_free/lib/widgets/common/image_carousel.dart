@@ -28,6 +28,9 @@ class ImageCarousel extends StatefulWidget {
 class _ImageCarouselState extends State<ImageCarousel> {
   int _currentIndex = 0;
   final PageController _pageController = PageController();
+  
+  // Track precached images to avoid redundant precaching
+  final Set<int> _precachedIndices = {};
 
   @override
   void dispose() {
@@ -35,9 +38,43 @@ class _ImageCarouselState extends State<ImageCarousel> {
     super.dispose();
   }
 
+  /// Precache the current and adjacent images (current-1, current, current+1)
+  void _precacheAdjacentImages(int currentIndex) {
+    final indicesToPrecache = [
+      if (currentIndex > 0) currentIndex - 1,
+      currentIndex,
+      if (currentIndex < widget.imageUrls.length - 1) currentIndex + 1,
+    ];
+
+    for (final index in indicesToPrecache) {
+      // Skip if already precached
+      if (_precachedIndices.contains(index)) continue;
+      
+      _precachedIndices.add(index);
+      
+      final url = widget.imageUrls[index];
+      try {
+        precacheImage(
+          CachedNetworkImageProvider(
+            CloudinaryService.getOptimizedUrl(url, width: 1200, quality: 'auto'),
+          ),
+          context,
+        ).catchError((error) {
+          // Silently handle precache errors
+          debugPrint('Image precache error for index $index: $error');
+        });
+      } catch (e) {
+        debugPrint('Image precache exception for index $index: $e');
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (widget.imageUrls.isEmpty) return const SizedBox.shrink();
+
+    // Precache adjacent images on initial build
+    _precacheAdjacentImages(_currentIndex);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -49,6 +86,8 @@ class _ImageCarouselState extends State<ImageCarousel> {
             onPageChanged: (index) {
               setState(() {
                 _currentIndex = index;
+                // Precache adjacent images when user scrolls
+                _precacheAdjacentImages(index);
               });
             },
             itemCount: widget.imageUrls.length,
@@ -77,14 +116,8 @@ class _ImageCarouselState extends State<ImageCarousel> {
                     }
                   }
                 },
-                child: Builder(builder: (ctx) {
-                  // Precache high-res version in background
-                  precacheImage(
-                    CachedNetworkImageProvider(CloudinaryService.getOptimizedUrl(url, width: 1200, quality: 'auto')),
-                    ctx,
-                  );
-                  return CachedNetworkImage(
-                    imageUrl: CloudinaryService.getOptimizedUrl(url, width: 600, quality: 'auto'),
+                child: CachedNetworkImage(
+                  imageUrl: CloudinaryService.getOptimizedUrl(url, width: 600, quality: 'auto'),
                   fit: widget.fit,
                   placeholder: (context, url) => Container(
                     color: AppColors.border.withValues(alpha: 0.1),
@@ -96,9 +129,11 @@ class _ImageCarouselState extends State<ImageCarousel> {
                       ),
                     ),
                   ),
-                  errorWidget: (context, url, error) => const Icon(Icons.broken_image, color: Colors.grey),
-                );
-                }),
+                  errorWidget: (context, url, error) => const Icon(
+                    Icons.broken_image,
+                    color: Colors.grey,
+                  ),
+                ),
               );
             },
           ),
@@ -129,3 +164,4 @@ class _ImageCarouselState extends State<ImageCarousel> {
     );
   }
 }
+

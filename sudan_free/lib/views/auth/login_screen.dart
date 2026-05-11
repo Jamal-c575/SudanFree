@@ -57,6 +57,86 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  void _showForgotPasswordDialog(String locale) {
+    final emailCtrl = TextEditingController(text: _emailController.text.trim());
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.lock_reset, color: AppColors.primary),
+            const SizedBox(width: 8),
+            Text(
+              locale == 'ar' ? 'استعادة كلمة المرور' : 'Reset Password',
+              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              locale == 'ar'
+                  ? 'أدخل بريدك الإلكتروني وسنرسل لك رابط إعادة تعيين كلمة المرور.'
+                  : 'Enter your email and we will send you a password reset link.',
+              style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: emailCtrl,
+              autofocus: true,
+              keyboardType: TextInputType.emailAddress,
+              decoration: InputDecoration(
+                labelText: locale == 'ar' ? 'البريد الإلكتروني' : 'Email',
+                hintText: 'example@email.com',
+                prefixIcon: const Icon(Icons.email_outlined),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(locale == 'ar' ? 'إلغاء' : 'Cancel'),
+          ),
+          ElevatedButton.icon(
+            icon: const Icon(Icons.send, size: 18),
+            label: Text(locale == 'ar' ? 'إرسال' : 'Send'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () async {
+              final email = emailCtrl.text.trim();
+              if (email.isEmpty) return;
+              Navigator.pop(ctx);
+              final authProvider = context.read<AuthProvider>();
+              final success = await authProvider.resetPassword(email);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      success
+                          ? (locale == 'ar'
+                              ? 'تم إرسال رابط الاستعادة إلى بريدك ✉️'
+                              : 'Reset link sent to your email ✉️')
+                          : (authProvider.errorMessage ?? 'Failed'),
+                    ),
+                    backgroundColor: success ? AppColors.success : AppColors.error,
+                  ),
+                );
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showBanDialog(String reason) {
     showDialog(
       context: context,
@@ -213,9 +293,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 Align(
                   alignment: locale == 'ar' ? Alignment.centerLeft : Alignment.centerRight,
                   child: TextButton(
-                    onPressed: () {
-                      // TODO: Navigate to forgot password
-                    },
+                    onPressed: () => _showForgotPasswordDialog(locale),
                     child: Text(l10n.forgotPassword),
                   ),
                 ),
@@ -260,7 +338,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     final success = await authProvider.signInWithGoogle();
                     
                     if (success && context.mounted) {
-                       if (Navigator.canPop(context)) {
+                      if (Navigator.canPop(context)) {
                         Navigator.popUntil(context, (route) => route.isFirst);
                       }
                     } else if (authProvider.errorMessage != null && context.mounted) {
@@ -276,25 +354,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         );
                       }
                     }
-                  },
-                ),
-                
-                const SizedBox(height: 12),
-                
-                // Facebook Login Button
-                _FacebookSignInButton(
-                  isLoading: isLoading,
-                  locale: locale,
-                  onPressed: () {
-                    // TODO: Implement Facebook login
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(locale == 'ar' 
-                            ? 'قريباً - تسجيل Facebook' 
-                            : 'Coming soon - Facebook login'),
-                        backgroundColor: AppColors.primary,
-                      ),
-                    );
                   },
                 ),
                 
@@ -364,17 +423,19 @@ class _GoogleSignInButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
+        color: isDark ? const Color(0xFF2D2D2D) : Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
+        border: Border.all(
+          color: isDark ? Colors.white12 : Colors.grey.shade300,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withValues(alpha: 0.1),
-            spreadRadius: 1,
-            blurRadius: 2,
-            offset: const Offset(0, 1),
+            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.06),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -384,17 +445,22 @@ class _GoogleSignInButton extends StatelessWidget {
           onTap: isLoading ? null : onPressed,
           borderRadius: BorderRadius.circular(12),
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12),
+            padding: const EdgeInsets.symmetric(vertical: 13),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Modern Google Icon replacement (using text/shape if asset not available)
-                const Icon(Icons.g_mobiledata, size: 32, color: Colors.blue), // Placeholder for logo
-                const SizedBox(width: 8),
+                // Google 'G' icon built from colored arcs
+                SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CustomPaint(painter: _GoogleIconPainter()),
+                ),
+                const SizedBox(width: 10),
                 Text(
                   locale == 'ar' ? 'المتابعة باستخدام Google' : 'Continue with Google',
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                     fontWeight: FontWeight.w600,
+                    fontSize: 15,
                   ),
                 ),
               ],
@@ -406,57 +472,56 @@ class _GoogleSignInButton extends StatelessWidget {
   }
 }
 
-// Facebook Sign-In Button Widget
-class _FacebookSignInButton extends StatelessWidget {
-  final bool isLoading;
-  final String locale;
-  final VoidCallback onPressed;
-
-  const _FacebookSignInButton({
-    required this.isLoading,
-    required this.locale,
-    required this.onPressed,
-  });
-
+/// Paints the Google 'G' logo colors
+class _GoogleIconPainter extends CustomPainter {
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFF1877F2),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF1877F2).withValues(alpha: 0.3),
-            spreadRadius: 1,
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: isLoading ? null : onPressed,
-          borderRadius: BorderRadius.circular(12),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.facebook, color: Colors.white, size: 24),
-                const SizedBox(width: 12),
-                Text(
-                  locale == 'ar' ? 'المتابعة باستخدام Facebook' : 'Continue with Facebook',
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2;
+    final rect = Rect.fromCircle(center: center, radius: radius);
+
+    // Draw colored quarters
+    final colors = [
+      (const Color(0xFF4285F4), -30.0, 120.0),  // Blue
+      (const Color(0xFF34A853), 90.0, 90.0),   // Green
+      (const Color(0xFFFBBC05), 180.0, 90.0),  // Yellow
+      (const Color(0xFFEA4335), 270.0, 120.0), // Red
+    ];
+
+    for (final (color, start, sweep) in colors) {
+      final paint = Paint()
+        ..color = color
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = size.width * 0.22
+        ..strokeCap = StrokeCap.butt;
+      canvas.drawArc(
+        rect.deflate(size.width * 0.11),
+        start * 3.14159 / 180,
+        sweep * 3.14159 / 180,
+        false,
+        paint,
+      );
+    }
+
+    // White center circle to create ring effect
+    canvas.drawCircle(
+      center,
+      radius * 0.52,
+      Paint()..color = Colors.white,
+    );
+
+    // Draw the 'G' bar (horizontal line into center)
+    final barPaint = Paint()
+      ..color = const Color(0xFF4285F4)
+      ..strokeWidth = size.width * 0.22
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(
+      Offset(center.dx, center.dy),
+      Offset(center.dx + radius * 0.72, center.dy),
+      barPaint,
     );
   }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

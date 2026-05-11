@@ -13,6 +13,7 @@ import 'services/error_service.dart';
 import 'services/network_service.dart';
 import 'services/performance_service.dart';
 import 'core/utils/app_error_handler.dart';
+import 'core/config/image_cache_config.dart';
 import 'firebase_options.dart';
 
 // Background message handler
@@ -27,6 +28,10 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 void main() {
   runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
+    
+    // Configure image caching to prevent OOM
+    imageCache.maximumSize = ImageCacheConfig.maxMemoryCacheCount;
+    imageCache.maximumSizeBytes = ImageCacheConfig.maxMemoryCacheSizeMB * 1024 * 1024;
     
     // Initialize OneSignal (debug logging activated for this build)
     OneSignal.Debug.setLogLevel(OSLogLevel.verbose);

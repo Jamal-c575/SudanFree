@@ -8,18 +8,43 @@ import '../core/constants/app_colors.dart';
 
 class UpdateService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  static bool _updateCheckInProgress = false;
+  static DateTime? _lastUpdateCheckTime;
+  static const Duration _updateCheckCooldown = Duration(minutes: 30);
 
+  /// Check for app updates with rate limiting to prevent excessive Firebase calls
   static Future<void> checkForUpdate(BuildContext context) async {
+    // Rate limit: don't check more than once per 30 minutes
+    if (_updateCheckInProgress) return;
+    if (_lastUpdateCheckTime != null &&
+        DateTime.now().difference(_lastUpdateCheckTime!) < _updateCheckCooldown) {
+      return;
+    }
+
+    _updateCheckInProgress = true;
     try {
       // Fetch minimum required version from Firestore
       final doc = await _firestore.collection('app_config').doc('main').get();
-      if (!doc.exists) return;
+      if (!doc.exists) {
+        debugPrint('UpdateService: app_config document not found');
+        return;
+      }
 
-      final data = doc.data()!;
+      final data = doc.data();
+      if (data == null) {
+        debugPrint('UpdateService: app_config data is null');
+        return;
+      }
+
       final minVersion = data['min_version'] as String?;
       final storeUrl = data['store_url'] as String?;
 
-      if (minVersion == null || storeUrl == null) return;
+      if (minVersion == null || storeUrl == null) {
+        debugPrint(
+          'UpdateService: Missing version or URL in config. minVersion=$minVersion, storeUrl=$storeUrl',
+        );
+        return;
+      }
 
       // Get current app version
       final packageInfo = await PackageInfo.fromPlatform();
@@ -30,8 +55,13 @@ class UpdateService {
           _showUpdateDialog(context, storeUrl);
         }
       }
-    } catch (e) {
-      debugPrint('UpdateService check error: $e');
+
+      _lastUpdateCheckTime = DateTime.now();
+    } catch (e, stackTrace) {
+      debugPrint('UpdateService check error: $e\n$stackTrace');
+      // Silently fail - don't interrupt user experience
+    } finally {
+      _updateCheckInProgress = false;
     }
   }
 
@@ -58,19 +88,39 @@ class UpdateService {
           child: AlertDialog(
             title: Text(
               isArabic ? 'تحديث إجباري' : 'Update Required',
-              style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: AppColors.primary,
+              ),
             ),
             content: Text(
-              isArabic 
+              isArabic
                   ? 'نسختك الحالية قديمة جداً. يرجى تحديث التطبيق للمتابعة واستخدام أحدث الميزات بأمان.'
                   : 'Your app version is too old. Please update to continue using the app safely.',
             ),
             actions: [
               ElevatedButton(
                 onPressed: () async {
-                  final uri = Uri.parse(storeUrl);
-                  if (await canLaunchUrl(uri)) {
-                    await launchUrl(uri, mode: LaunchMode.externalApplication);
+                  try {
+                    final uri = Uri.parse(storeUrl);
+                    if (await canLaunchUrl(uri)) {
+                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                    } else {
+                      debugPrint('UpdateService: Cannot launch URL: $storeUrl');
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              isArabic
+                                  ? 'لا يمكن فتح المتجر. يرجى محاولة يدويًا.'
+                                  : 'Cannot open store. Please try manually.',
+                            ),
+                          ),
+                        );
+                      }
+                    }
+                  } catch (e) {
+                    debugPrint('UpdateService: Error launching URL: $e');
                   }
                 },
                 style: ElevatedButton.styleFrom(

@@ -435,6 +435,8 @@ class AuthProvider extends ChangeNotifier {
     ShopCategory? shopCategory,
     String? openingHours,
     String? closingHours,
+    List<String>? shopInterests,
+    List<String>? serviceInterests,
   }) async {
     // Don't set status=loading here — it triggers app.dart to rebuild
     // and show SplashScreen, which unmounts ProfileSetupScreen mid-operation.
@@ -447,6 +449,7 @@ class AuthProvider extends ChangeNotifier {
       }
 
       final now = DateTime.now();
+      debugPrint('AuthProvider.createUserProfile: saving role=${role.name} for uid=${currentUser.uid}');
       final user = UserModel(
         id: currentUser.uid,
         email: currentUser.email ?? '',
@@ -462,11 +465,14 @@ class AuthProvider extends ChangeNotifier {
         openingHours: openingHours,
         closingHours: closingHours,
         whatsappNumber: phoneNumber ?? currentUser.phoneNumber,
+        shopInterests: shopInterests ?? [],
+        serviceInterests: serviceInterests ?? [],
         createdAt: now,
         updatedAt: now,
       );
 
       await _authService.createUserProfile(user);
+      debugPrint('AuthProvider.createUserProfile: Firestore write complete. role=${role.name}');
       await _deviceService.saveDeviceIdToUser(user.id);
       
       // ✅ Ensure FCM Token is saved BEFORE sending the welcome notification

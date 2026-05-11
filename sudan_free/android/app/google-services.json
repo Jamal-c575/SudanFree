@@ -22,7 +22,7 @@
           }
         },
         {
-          "client_id": "233114260-jeg27c91ei64504t0fbm0b3k3jiu7cl5.apps.googleusercontent.com",
+          "client_id": "233114260-kht4nnnsp9icmnmbsb87pp7fjvf93ike.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
@@ -35,7 +35,7 @@
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "233114260-jeg27c91ei64504t0fbm0b3k3jiu7cl5.apps.googleusercontent.com",
+              "client_id": "233114260-kht4nnnsp9icmnmbsb87pp7fjvf93ike.apps.googleusercontent.com",
               "client_type": 3
             }
           ]
@@ -51,6 +51,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "233114260-8002gddisfnnod5pgs6ba45hbdnag9ss.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.sudanfree.sudan_free",
+            "certificate_hash": "6671b0b2f7e1264eeb02934a2764ad495d6519af"
+          }
+        },
+        {
           "client_id": "233114260-mhq1j18uoaaqk61cgc8422492etppre1.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
@@ -59,7 +67,7 @@
           }
         },
         {
-          "client_id": "233114260-jeg27c91ei64504t0fbm0b3k3jiu7cl5.apps.googleusercontent.com",
+          "client_id": "233114260-kht4nnnsp9icmnmbsb87pp7fjvf93ike.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
@@ -72,7 +80,7 @@
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "233114260-jeg27c91ei64504t0fbm0b3k3jiu7cl5.apps.googleusercontent.com",
+              "client_id": "233114260-kht4nnnsp9icmnmbsb87pp7fjvf93ike.apps.googleusercontent.com",
               "client_type": 3
             }
           ]
