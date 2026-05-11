@@ -91,24 +91,35 @@ const AdminApp = {
     document.getElementById('sidebar').classList.toggle('open');
   },
 
+  async getCount(query) {
+    // Prefer aggregate count queries when supported to avoid full collection reads
+    if (typeof query.count === 'function') {
+      const agg = await query.count().get();
+      return agg.data().count || 0;
+    }
+    const snap = await query.get();
+    return snap.size;
+  },
+
   // ── Dashboard ──
   async loadDashboard() {
-    const [usersSnap, postsSnap, jobsSnap, verifiedSnap, requestsSnap, adsSnap] = await Promise.all([
-      db.collection('users').get(),
-      db.collection('posts').get(),
-      db.collection('jobs').get(),
-      db.collection('users').where('isVerified','==',true).get(),
-      db.collection('requests').get(),
-      db.collection('ads').where('isActive','==',true).get()
+    const [usersCount, verifiedCount, postsCount, jobsCount, requestsCount, adsCount] = await Promise.all([
+      this.getCount(db.collection('users')),
+      this.getCount(db.collection('users').where('isVerified', '==', true)),
+      this.getCount(db.collection('posts')),
+      this.getCount(db.collection('jobs')),
+      this.getCount(db.collection('requests')),
+      this.getCount(db.collection('ads').where('isActive', '==', true)),
     ]);
+
     const grid = document.getElementById('stats-grid');
     const stats = [
-      { icon:'people', label:'المستخدمون', value:usersSnap.size, color:'#6c5ce7' },
-      { icon:'verified', label:'الموثقون', value:verifiedSnap.size, color:'#00cec9' },
-      { icon:'article', label:'المنشورات', value:postsSnap.size, color:'#fdcb6e' },
-      { icon:'work', label:'المشاريع', value:jobsSnap.size, color:'#00b894' },
-      { icon:'assignment', label:'الطلبات', value:requestsSnap.size, color:'#e17055' },
-      { icon:'campaign', label:'إعلانات نشطة', value:adsSnap.size, color:'#0984e3' },
+      { icon:'people', label:'المستخدمون', value:usersCount, color:'#6c5ce7' },
+      { icon:'verified', label:'الموثقون', value:verifiedCount, color:'#00cec9' },
+      { icon:'article', label:'المنشورات', value:postsCount, color:'#fdcb6e' },
+      { icon:'work', label:'المشاريع', value:jobsCount, color:'#00b894' },
+      { icon:'assignment', label:'الطلبات', value:requestsCount, color:'#e17055' },
+      { icon:'campaign', label:'إعلانات نشطة', value:adsCount, color:'#0984e3' },
     ];
     grid.innerHTML = stats.map(s => `
       <div class="stat-card">
@@ -121,7 +132,8 @@ const AdminApp = {
 
   // ── Users ──
   async loadUsers() {
-    const snap = await db.collection('users').orderBy('createdAt','desc').get();
+    // Limit users returned for dashboard performance; admins can still filter locally.
+    const snap = await db.collection('users').orderBy('createdAt','desc').limit(200).get();
     this.allUsers = snap.docs.map(d => ({ id:d.id, ...d.data() }));
     this.renderUsers(this.allUsers);
   },
@@ -258,7 +270,7 @@ const AdminApp = {
 
   // ── Reports ──
   async loadReports() {
-    const snap = await db.collection('reports').orderBy('createdAt','desc').get();
+    const snap = await db.collection('reports').orderBy('createdAt','desc').limit(200).get();
     this.allReports = snap.docs.map(d => ({ id:d.id, ...d.data() }));
     this.renderReports(this.allReports);
     // Badge
@@ -310,7 +322,7 @@ const AdminApp = {
 
   // ── Deletions ──
   async loadDeletions() {
-    const snap = await db.collection('deletion_requests').orderBy('createdAt','desc').get();
+    const snap = await db.collection('deletion_requests').orderBy('createdAt','desc').limit(200).get();
     const requests = snap.docs.map(d => ({ id:d.id, ...d.data() }));
     this.renderDeletions(requests);
     
@@ -343,17 +355,18 @@ const AdminApp = {
   async approveDeletion(reqId, userId) {
     if (!confirm('هل أنت متأكد من حذف حساب هذا المستخدم نهائياً؟ ستُحذف جميع بياناته.')) return;
     try {
-      // 1. Update request status
-      await db.collection('deletion_requests').doc(reqId).update({ status: 'approved', processedAt: firebase.firestore.FieldValue.serverTimestamp() });
-      
-      // 2. Delete user data (Auth deletion needs Cloud Function, but this clears Firestore)
-      await db.collection('users').doc(userId).delete();
-      
-      showToast('تمت الموافقة وحذف بيانات المستخدم بنجاح');
-      this.loadDeletions();
-      this.loadUsers(); // Refresh users
+      const result = await deleteUserAccount({ userId });
+      if (result?.data?.success) {
+        await db.collection('deletion_requests').doc(reqId).update({ status: 'approved', processedAt: firebase.firestore.FieldValue.serverTimestamp() });
+        showToast('تمت الموافقة وحذف بيانات المستخدم بنجاح');
+        this.loadDeletions();
+        this.loadUsers();
+      } else {
+        throw new Error('Failed to delete account');
+      }
     } catch (e) {
-      showToast('حدث خطأ أثناء الحذف: ' + e.message, 'error');
+      console.error('approveDeletion error', e);
+      showToast('حدث خطأ أثناء الحذف: ' + (e.message || e), 'error');
     }
   },
 

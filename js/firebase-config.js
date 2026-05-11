@@ -5,12 +5,15 @@ const firebaseConfig = {
   projectId: "sudanfree-d04fc",
   storageBucket: "sudanfree-d04fc.firebasestorage.app",
   messagingSenderId: "233114260",
-  appId: "1:233114260:android:6072e0d3914aa8a1620281"
+  appId: "1:233114260:web:de4ee3967ea04073620281",
+  measurementId: "G-XXXXXXXXXX" // Optional, replace when available
 };
 
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
+const functions = firebase.functions();
+const deleteUserAccount = functions.httpsCallable('deleteUserAccount');
 
 // Role names mapping
 const ROLE_NAMES = {

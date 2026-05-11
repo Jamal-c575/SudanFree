@@ -114,7 +114,8 @@ const AdminExtras = {
 
   // ── Ads (Enhanced with placement types + stats) ──
   async loadAds() {
-    const snap = await db.collection('ads').orderBy('createdAt','desc').get();
+    // Limit ads query to a reasonable threshold for dashboard performance.
+    const snap = await db.collection('ads').orderBy('createdAt','desc').limit(200).get();
     this.allAds = snap.docs.map(d => ({ id:d.id, ...d.data() }));
     this.renderAds(this.allAds);
   },
