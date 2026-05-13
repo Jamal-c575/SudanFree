@@ -170,12 +170,13 @@
                   <div class="form-group full-width"><label>وصف الإعلان</label><textarea id="ad-description" class="text-input textarea" rows="2" placeholder="وصف مختصر..."></textarea></div>
                   <div class="form-group full-width"><label>اسم المعلن</label><input type="text" id="ad-advertiser" class="text-input" placeholder="اسم الشركة أو المعلن (اختياري)"></div>
                   <div class="form-group full-width">
-                    <label>صورة / فيديو الإعلان (رفع مباشر أو رابط)</label>
+                    <label>صور الإعلان (يمكن رفع عدة صور)</label>
                     <div style="display:flex;gap:10px;">
-                      <input type="file" id="ad-file-upload" accept="image/*,video/*" class="text-input" style="flex:1">
+                      <input type="file" id="ad-file-upload" accept="image/*,video/*" multiple class="text-input" style="flex:1">
                       <span style="align-self:center;color:var(--text-muted)">أو</span>
                       <input type="url" id="ad-image" class="text-input" placeholder="أدخل رابط مباشر https://..." style="flex:2">
                     </div>
+                    <small style="color:var(--text-muted);font-size:12px;">يمكنك رفع عدة صور لعرضها كمعرض متحرك</small>
                   </div>
                   <div class="form-group full-width"><label>رابط الإعلان (عند الضغط)</label><input type="url" id="ad-link" class="text-input" placeholder="https://..."></div>
                   <div class="form-group"><label>موضع الإعلان</label>

@@ -198,74 +198,145 @@ const AdminApp = {
 
   // ── Verification ──
   listenVerifications() {
-    db.collection('users').where('verificationStatus','==','pending').onSnapshot(snap => {
+    db.collection('verification_requests').where('status','==','pending').onSnapshot(async snap => {
       const badge = document.getElementById('verification-badge');
       badge.textContent = snap.size;
       badge.style.display = snap.size > 0 ? 'inline' : 'none';
-      this.renderVerifications(snap.docs.map(d => ({ id:d.id, ...d.data() })));
+
+      // Get user data for each request
+      const requestsWithUsers = await Promise.all(snap.docs.map(async doc => {
+        const request = { id: doc.id, ...doc.data() };
+        try {
+          const userDoc = await db.collection('users').doc(request.userId).get();
+          const userData = userDoc.exists ? userDoc.data() : {};
+          return { ...request, user: userData };
+        } catch (e) {
+          console.error('Error fetching user for verification request:', e);
+          return { ...request, user: {} };
+        }
+      }));
+
+      this.renderVerifications(requestsWithUsers);
+
       // Dashboard mini-list
       const dashEl = document.getElementById('dashboard-pending-verifications');
       if (snap.empty) { dashEl.innerHTML = '<p class="empty-state">لا توجد طلبات معلقة</p>'; return; }
-      dashEl.innerHTML = snap.docs.slice(0,3).map(d => {
-        const u = d.data();
+      dashEl.innerHTML = requestsWithUsers.slice(0,3).map(req => {
+        const u = req.user || {};
         return `<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">
-          <img style="width:40px;height:40px;border-radius:50%;object-fit:cover" src="${u.profileImageUrl||'https://ui-avatars.com/api/?name='+encodeURIComponent(u.name)+'&background=6c5ce7&color=fff'}" alt="">
-          <div style="flex:1"><strong>${u.name}</strong><br><small style="color:var(--text-muted)">${ROLE_NAMES[u.role]||''}</small></div>
-          <button class="btn btn-sm btn-primary" onclick="AdminApp.showVerifyModal('${d.id}')">مراجعة</button>
+          <img style="width:40px;height:40px;border-radius:50%;object-fit:cover" src="${u.profileImageUrl||'https://ui-avatars.com/api/?name='+encodeURIComponent(u.name||'User')+'&background=6c5ce7&color=fff'}" alt="">
+          <div style="flex:1"><strong>${u.name||'مستخدم'}</strong><br><small style="color:var(--text-muted)">${ROLE_NAMES[u.role]||''}</small></div>
+          <button class="btn btn-sm btn-primary" onclick="AdminApp.navigateTo('verification')">مراجعة</button>
         </div>`;
       }).join('');
     });
   },
 
-  renderVerifications(users) {
+  renderVerifications(requests) {
     const el = document.getElementById('verification-list');
-    if (!users.length) { el.innerHTML = '<p class="empty-state">لا توجد طلبات توثيق معلقة 🎉</p>'; return; }
-    el.innerHTML = users.map(u => `
+    if (!requests.length) { el.innerHTML = '<p class="empty-state">لا توجد طلبات توثيق معلقة 🎉</p>'; return; }
+    el.innerHTML = requests.map(req => {
+      const u = req.user || {};
+      return `
       <div class="verify-card">
         <div class="verify-card-header">
-          <img src="${u.profileImageUrl||'https://ui-avatars.com/api/?name='+encodeURIComponent(u.name)+'&background=6c5ce7&color=fff'}" alt="">
-          <div class="verify-card-info"><h4>${u.name}</h4><p>${ROLE_NAMES[u.role]||u.role} — ${u.state||''} ${u.locality||''}</p><p>${u.phoneNumber||u.email||''}</p></div>
+          <img src="${u.profileImageUrl||'https://ui-avatars.com/api/?name='+encodeURIComponent(u.name||'User')+'&background=6c5ce7&color=fff'}" alt="">
+          <div class="verify-card-info"><h4>${u.name||'مستخدم'}</h4><p>${ROLE_NAMES[u.role]||u.role} — ${u.state||''} ${u.locality||''}</p><p>${u.phoneNumber||u.email||''}</p></div>
         </div>
         <div class="verify-card-body">
           ${u.idCardUrl ? `<img class="verify-id-image" src="${u.idCardUrl}" onclick="AdminApp.previewImage('${u.idCardUrl}')" alt="صورة الهوية">` : '<p class="empty-state">لم يرفق صورة هوية</p>'}
+          ${req.submittedData?.notes ? `<p><strong>ملاحظات:</strong> ${req.submittedData.notes}</p>` : ''}
         </div>
         <div class="verify-card-actions">
-          <button class="btn btn-success btn-sm" onclick="AdminApp.approveVerification('${u.id}')"><span class="material-icons-outlined">check</span>توثيق</button>
-          <button class="btn btn-danger btn-sm" onclick="AdminApp.rejectVerification('${u.id}')"><span class="material-icons-outlined">close</span>رفض</button>
+          <button class="btn btn-success btn-sm" onclick="AdminApp.approveVerification('${req.id}')"><span class="material-icons-outlined">check</span>توثيق</button>
+          <button class="btn btn-danger btn-sm" onclick="AdminApp.rejectVerification('${req.id}')"><span class="material-icons-outlined">close</span>رفض</button>
         </div>
-      </div>`).join('');
+      </div>`;
+    }).join('');
   },
 
-  async approveVerification(uid) {
+  async approveVerification(requestId) {
     if (!confirm('هل تريد توثيق هذا الحساب؟')) return;
-    await db.collection('users').doc(uid).update({
-      verificationStatus: 'verified',
-      isVerified: true,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    // Send notification
-    await db.collection('notifications').add({
-      userId: uid, type: 'system',
-      title: 'تم توثيق حسابك! ✅',
-      message: 'مبروك! تم توثيق حسابك بنجاح. ستظهر شارة التحقق على ملفك الآن.',
-      isRead: false, createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    showToast('تم توثيق الحساب بنجاح');
+
+    try {
+      // Get the verification request
+      const requestDoc = await db.collection('verification_requests').doc(requestId).get();
+      if (!requestDoc.exists) {
+        showToast('طلب التوثيق غير موجود', 'error');
+        return;
+      }
+
+      const requestData = requestDoc.data();
+      const userId = requestData.userId;
+
+      // Update verification request
+      await db.collection('verification_requests').doc(requestId).update({
+        status: 'approved',
+        reviewedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      // Update user document
+      await db.collection('users').doc(userId).update({
+        isVerified: true,
+        verifiedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        verificationStatus: 'verified',
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      // Send notification
+      await db.collection('notifications').add({
+        userId: userId, type: 'system',
+        title: 'تم توثيق حسابك! ✅',
+        message: 'مبروك! تم توثيق حسابك بنجاح. ستظهر شارة التحقق على ملفك الآن.',
+        isRead: false, createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      showToast('تم توثيق الحساب بنجاح');
+    } catch (error) {
+      console.error('Error approving verification:', error);
+      showToast('حدث خطأ أثناء توثيق الحساب', 'error');
+    }
   },
 
-  async rejectVerification(uid) {
+  async rejectVerification(requestId) {
     if (!confirm('هل تريد رفض طلب التوثيق؟')) return;
-    await db.collection('users').doc(uid).update({
-      verificationStatus: 'rejected',
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    await db.collection('notifications').add({
-      userId: uid, type: 'system',
-      title: 'طلب التوثيق',
-      message: 'عذراً، تم رفض طلب التوثيق. تأكد من وضوح صورة الهوية وإعادة المحاولة.',
-      isRead: false, createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    showToast('تم رفض الطلب');
+
+    try {
+      // Get the verification request
+      const requestDoc = await db.collection('verification_requests').doc(requestId).get();
+      if (!requestDoc.exists) {
+        showToast('طلب التوثيق غير موجود', 'error');
+        return;
+      }
+
+      const requestData = requestDoc.data();
+      const userId = requestData.userId;
+
+      // Update verification request
+      await db.collection('verification_requests').doc(requestId).update({
+        status: 'rejected',
+        reviewedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      // Update user document (don't set isVerified to false, just update status)
+      await db.collection('users').doc(userId).update({
+        verificationStatus: 'rejected',
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      // Send notification
+      await db.collection('notifications').add({
+        userId: userId, type: 'system',
+        title: 'طلب التوثيق',
+        message: 'عذراً، تم رفض طلب التوثيق. تأكد من وضوح صورة الهوية وإعادة المحاولة.',
+        isRead: false, createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      showToast('تم رفض الطلب');
+    } catch (error) {
+      console.error('Error rejecting verification:', error);
+      showToast('حدث خطأ أثناء رفض الطلب', 'error');
+    }
   },
 
   // ── Reports ──
