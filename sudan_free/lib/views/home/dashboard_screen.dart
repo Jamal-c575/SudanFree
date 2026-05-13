@@ -21,6 +21,7 @@ import '../search/smart_search_delegate.dart';
 import '../settings/settings_screen.dart';
 import '../../core/utils/job_titles_utils.dart';
 import 'ad_details_screen.dart';
+import 'filtered_providers_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   /// Callback to switch to a specific tab in the parent HomeScreen
@@ -650,27 +651,29 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
       {
         'title': locale == 'ar' ? 'الأقرب إليك' : 'Near You',
         'icon': Icons.location_on,
-        'action': () => widget.onNavigateToTab?.call(1),
+        'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => FilteredProvidersScreen(filterType: FilterType.nearYou, title: locale == 'ar' ? 'الأقرب إليك' : 'Near You'))),
       },
       {
         'title': locale == 'ar' ? 'الأعلى تقييماً' : 'Top Rated',
         'icon': Icons.star,
-        'action': () => widget.onNavigateToTab?.call(1),
+        'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => FilteredProvidersScreen(filterType: FilterType.topRated, title: locale == 'ar' ? 'الأعلى تقييماً' : 'Top Rated'))),
       },
       {
         'title': locale == 'ar' ? 'الجديد' : 'New',
         'icon': Icons.fiber_new,
-        'action': () => widget.onNavigateToTab?.call(1),
+        'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => FilteredProvidersScreen(filterType: FilterType.newest, title: locale == 'ar' ? 'الجديد' : 'New'))),
       },
       {
         'title': locale == 'ar' ? 'المتاجر' : 'Shops',
         'icon': Icons.storefront,
-        'action': () => widget.onNavigateToTab?.call(2),
+        'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => FilteredProvidersScreen(filterType: FilterType.shops, title: locale == 'ar' ? 'المتاجر' : 'Shops'))),
       },
       {
         'title': locale == 'ar' ? 'الفئات' : 'Categories',
         'icon': Icons.category,
-        'action': () => widget.onNavigateToTab?.call(1),
+        // Categories can still navigate to search/tab 1 if preferred, or open a special sheet
+        // but for consistency, we'll route it to the filtered screen for now
+        'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => FilteredProvidersScreen(filterType: FilterType.categories, title: locale == 'ar' ? 'كل الفئات' : 'All Categories'))),
       },
     ];
 
