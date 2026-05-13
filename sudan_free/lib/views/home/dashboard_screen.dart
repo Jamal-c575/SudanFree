@@ -19,6 +19,7 @@ import '../../views/widgets/ad_widget.dart';
 import '../../core/routes/premium_page_route.dart';
 import '../search/smart_search_delegate.dart';
 import '../settings/settings_screen.dart';
+import '../../core/utils/job_titles_utils.dart';
 
 class DashboardScreen extends StatefulWidget {
   /// Callback to switch to a specific tab in the parent HomeScreen
@@ -816,9 +817,9 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                           const SizedBox(height: 2),
                           Text(
                             user.jobTitle?.isNotEmpty == true 
-                                ? user.jobTitle! 
+                                ? JobTitlesUtils.getLocalizedTitle(user.jobTitle!, locale) 
                                 : (user.skills.isNotEmpty 
-                                    ? user.skills.join('، ') 
+                                    ? user.skills.map((s) => JobTitlesUtils.getLocalizedTitle(s, locale)).join('، ') 
                                     : user.getRoleDisplayName(locale)),
                             style: TextStyle(
                               fontSize: 10,
