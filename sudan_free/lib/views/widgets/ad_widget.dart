@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../models/ad_model.dart';
 import '../../core/constants/app_colors.dart';
 import '../../widgets/common/image_carousel.dart';
@@ -19,13 +18,6 @@ class AdWidget extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        gradient: LinearGradient(
-          colors: isDark
-              ? [const Color(0xFF1A3A5C), const Color(0xFF0D2B45)]
-              : [Colors.teal.shade50, Colors.blue.shade50],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
         border: Border.all(
           color: isDark ? Colors.teal.shade800 : Colors.teal.shade200,
           width: 1.5,
@@ -40,87 +32,74 @@ class AdWidget extends StatelessWidget {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Stack(
           children: [
-            // Sponsored badge
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.teal.shade600,
-                borderRadius: const BorderRadius.only(bottomRight: Radius.circular(16)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.campaign, color: Colors.white, size: 14),
-                  const SizedBox(width: 4),
-                  Text(
-                    ad.advertiserName != null ? 'إعلان من ${ad.advertiserName}' : 'إعلان ممول',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                    ),
+            // Background Image
+            Positioned.fill(
+              child: _buildMediaBackground(isDark),
+            ),
+            
+            // Gradient Overlay for text readability
+            Positioned.fill(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withValues(alpha: 0.2),
+                      Colors.black.withValues(alpha: 0.85),
+                    ],
+                    stops: const [0.4, 0.6, 1.0],
                   ),
-                ],
+                ),
               ),
             ),
             
-            // Ad Media
-            if (ad.mediaUrls.isNotEmpty)
-              ad.mediaUrls.length == 1
-                ? CachedNetworkImage(
-                    imageUrl: ad.mediaUrls.first,
-                    height: 180,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    placeholder: (context, url) => Container(
-                      height: 180,
-                      color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
-                      child: const Center(child: CircularProgressIndicator()),
-                    ),
-                    errorWidget: (context, url, error) => Container(
-                      height: 180,
-                      color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
-                      child: const Icon(Icons.error, color: Colors.grey),
-                    ),
-                  )
-                : ImageCarousel(
-                    imageUrls: ad.mediaUrls,
-                    height: 180,
-                    fit: BoxFit.cover,
-                  )
-            else if (ad.mediaUrl.isNotEmpty)
-              CachedNetworkImage(
-                imageUrl: ad.mediaUrl,
-                height: 180,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                placeholder: (context, url) => Container(
-                  height: 180,
-                  color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
-                  child: const Center(child: CircularProgressIndicator()),
+            // Sponsored badge at top right
+            Positioned(
+              top: 0,
+              right: 0,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.teal.shade700.withValues(alpha: 0.9),
+                  borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(16)),
                 ),
-                errorWidget: (context, url, error) => Container(
-                  height: 180,
-                  color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
-                  child: const Icon(Icons.error, color: Colors.grey),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.campaign, color: Colors.white, size: 14),
+                    const SizedBox(width: 4),
+                    Text(
+                      ad.advertiserName != null ? 'إعلان من ${ad.advertiserName}' : 'إعلان ممول',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              
-            // Ad Content
-            Padding(
-              padding: const EdgeInsets.all(12),
+            ),
+            
+            // Ad Content at the bottom
+            Positioned(
+              left: 12,
+              right: 12,
+              bottom: 12,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
                     ad.title,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
-                      color: Theme.of(context).textTheme.bodyLarge?.color,
+                      color: Colors.white,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -128,14 +107,16 @@ class AdWidget extends StatelessWidget {
                     ad.description,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: Theme.of(context).textTheme.bodyMedium?.color,
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 12,
                     ),
                   ),
                   if (ad.actionUrl != null && ad.actionUrl!.isNotEmpty) ...[
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 10),
                     SizedBox(
                       width: double.infinity,
+                      height: 36,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
@@ -143,12 +124,12 @@ class AdWidget extends StatelessWidget {
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          padding: EdgeInsets.zero,
                         ),
                         onPressed: () {
                           onTap?.call();
                         },
-                        child: const Text('عرض التفاصيل', style: TextStyle(fontWeight: FontWeight.w600)),
+                        child: const Text('عرض التفاصيل', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
                       ),
                     )
                   ]
@@ -159,5 +140,30 @@ class AdWidget extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Widget _buildMediaBackground(bool isDark) {
+    if (ad.mediaUrls.isNotEmpty) {
+      return ad.mediaUrls.length == 1
+          ? CachedNetworkImage(
+              imageUrl: ad.mediaUrls.first,
+              fit: BoxFit.cover,
+              placeholder: (context, url) => Container(color: isDark ? Colors.grey.shade800 : Colors.grey.shade200, child: const Center(child: CircularProgressIndicator())),
+              errorWidget: (context, url, error) => Container(color: isDark ? Colors.grey.shade800 : Colors.grey.shade200, child: const Icon(Icons.error, color: Colors.grey)),
+            )
+          : ImageCarousel(
+              imageUrls: ad.mediaUrls,
+              height: 220, // Match typical banner height just in case, but fit handles it
+              fit: BoxFit.cover,
+            );
+    } else if (ad.mediaUrl.isNotEmpty) {
+      return CachedNetworkImage(
+        imageUrl: ad.mediaUrl,
+        fit: BoxFit.cover,
+        placeholder: (context, url) => Container(color: isDark ? Colors.grey.shade800 : Colors.grey.shade200, child: const Center(child: CircularProgressIndicator())),
+        errorWidget: (context, url, error) => Container(color: isDark ? Colors.grey.shade800 : Colors.grey.shade200, child: const Icon(Icons.error, color: Colors.grey)),
+      );
+    }
+    return Container(color: isDark ? Colors.grey.shade800 : Colors.grey.shade200);
   }
 }
