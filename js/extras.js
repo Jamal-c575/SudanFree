@@ -234,6 +234,61 @@ const AdminExtras = {
       }
 
       showToast('تم إنشاء الإعلان بنجاح');
+      
+      // Auto-Notification Feature
+      if (confirm('هل تود إرسال إشعار (Notification) للمستخدمين المستهدفين بهذا الإعلان؟')) {
+         showToast('جاري تحضير الإشعارات...');
+         let query = db.collection('users');
+         if (region !== 'all') query = query.where('state', '==', region);
+         if (prof !== 'all') query = query.where('role', '==', prof);
+         
+         const snap = await query.get();
+         if (!snap.empty) {
+           let batches = [];
+           let currentBatch = db.batch();
+           let operationCount = 0;
+           let totalCount = 0;
+
+           snap.docs.forEach(doc => {
+             const ref = db.collection('notifications').doc();
+             currentBatch.set(ref, {
+               userId: doc.id,
+               type: 'system',
+               title: 'إعلان جديد يهمك! 📢',
+               message: title,
+               isRead: false,
+               createdAt: firebase.firestore.FieldValue.serverTimestamp()
+             });
+             operationCount++;
+             totalCount++;
+
+             if (operationCount === 490) { // Keep under 500 limit
+               batches.push(currentBatch.commit());
+               currentBatch = db.batch();
+               operationCount = 0;
+             }
+           });
+
+           if (operationCount > 0) {
+             batches.push(currentBatch.commit());
+           }
+
+           await Promise.all(batches);
+           
+           await db.collection('admin_notifications_log').add({
+             title: 'إشعار إعلان: ' + title,
+             body: 'نشر تلقائي للإعلان',
+             type: 'ad',
+             targetCount: totalCount,
+             sentBy: firebase.auth().currentUser ? firebase.auth().currentUser.uid : 'admin',
+             createdAt: firebase.firestore.FieldValue.serverTimestamp()
+           });
+           showToast(`تم إرسال الإشعار لـ ${totalCount} مستخدم بنجاح!`);
+         } else {
+           showToast('لم يتم العثور على مستخدمين بهذه المواصفات المستهدفة.');
+         }
+      }
+
       ['ad-title','ad-description','ad-advertiser','ad-image','ad-link','ad-expiry'].forEach(id => document.getElementById(id).value = '');
       fileInput.value = '';
       this.loadAds();
