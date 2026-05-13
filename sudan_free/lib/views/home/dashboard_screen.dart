@@ -20,6 +20,7 @@ import '../../core/routes/premium_page_route.dart';
 import '../search/smart_search_delegate.dart';
 import '../settings/settings_screen.dart';
 import '../../core/utils/job_titles_utils.dart';
+import 'ad_details_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   /// Callback to switch to a specific tab in the parent HomeScreen
@@ -596,10 +597,22 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 child: GestureDetector(
-                  onTap: () => _adService.recordClick(ad.id),
+                  onTap: () {
+                    _adService.recordClick(ad.id);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => AdDetailsScreen(ad: ad)),
+                    );
+                  },
                   child: AdWidget(
                     ad: ad,
-                    onTap: () => _adService.recordClick(ad.id),
+                    onTap: () {
+                      _adService.recordClick(ad.id);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => AdDetailsScreen(ad: ad)),
+                      );
+                    },
                   ),
                 ),
               );
@@ -1052,19 +1065,14 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     );
   }
 
-  // ────────────── Strip Ad (compact horizontal banner) ──────────────
   Widget _buildStripAd(BuildContext context, AdModel ad, bool isDark) {
     return GestureDetector(
-      onTap: () async {
+      onTap: () {
         _adService.recordClick(ad.id);
-        if (ad.actionUrl != null && ad.actionUrl!.isNotEmpty) {
-          final uri = Uri.tryParse(ad.actionUrl!);
-          if (uri != null) {
-            try {
-              await launchUrl(uri, mode: LaunchMode.externalApplication);
-            } catch (_) {}
-          }
-        }
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => AdDetailsScreen(ad: ad)),
+        );
       },
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),

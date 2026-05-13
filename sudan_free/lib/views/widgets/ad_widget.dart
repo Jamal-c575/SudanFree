@@ -145,14 +145,10 @@ class AdWidget extends StatelessWidget {
                           ),
                           padding: const EdgeInsets.symmetric(vertical: 10),
                         ),
-                        onPressed: () async {
+                        onPressed: () {
                           onTap?.call();
-                          final uri = Uri.parse(ad.actionUrl!);
-                          if (await canLaunchUrl(uri)) {
-                            await launchUrl(uri, mode: LaunchMode.externalApplication);
-                          }
                         },
-                        child: const Text('تصفح الآن', style: TextStyle(fontWeight: FontWeight.w600)),
+                        child: const Text('عرض التفاصيل', style: TextStyle(fontWeight: FontWeight.w600)),
                       ),
                     )
                   ]
