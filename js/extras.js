@@ -2,6 +2,7 @@
 const PLACEMENT_NAMES = {
   homeBanner: '🏠 بانر الرئيسية',
   communityFeed: '👥 تغذية المجتمع',
+  both: 'الرئيسية والمجتمع معاً',
   featuredService: '💼 خدمة مميزة',
   featuredShop: '🏪 متجر مميز',
   strip: '📢 شريط إعلاني',
@@ -208,25 +209,29 @@ const AdminExtras = {
         imgUrl = mediaUrls[0] || imgUrl; // Primary image for backward compatibility
       }
 
-      await db.collection('ads').add({
-        title,
-        description: desc,
-        mediaUrl: imgUrl,
-        mediaUrls: mediaUrls.length > 0 ? mediaUrls : (imgUrl ? [imgUrl] : []),
-        imageUrl: imgUrl, // backward compat
-        mediaType: mediaType,
-        actionUrl: link,
-        placement: placement,
-        advertiserName: advertiser || null,
-        targetRegion: region,
-        targetProfession: prof,
-        priority,
-        isActive: true,
-        impressions: 0,
-        clicks: 0,
-        expiryDate: firebase.firestore.Timestamp.fromDate(new Date(expiry)),
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
+      const placementsToPublish = placement === 'both' ? ['homeBanner', 'communityFeed'] : [placement];
+
+      for (const p of placementsToPublish) {
+        await db.collection('ads').add({
+          title,
+          description: desc,
+          mediaUrl: imgUrl,
+          mediaUrls: mediaUrls.length > 0 ? mediaUrls : (imgUrl ? [imgUrl] : []),
+          imageUrl: imgUrl, // backward compat
+          mediaType: mediaType,
+          actionUrl: link,
+          placement: p,
+          advertiserName: advertiser || null,
+          targetRegion: region,
+          targetProfession: prof,
+          priority,
+          isActive: true,
+          impressions: 0,
+          clicks: 0,
+          expiryDate: firebase.firestore.Timestamp.fromDate(new Date(expiry)),
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      }
 
       showToast('تم إنشاء الإعلان بنجاح');
       ['ad-title','ad-description','ad-advertiser','ad-image','ad-link','ad-expiry'].forEach(id => document.getElementById(id).value = '');
