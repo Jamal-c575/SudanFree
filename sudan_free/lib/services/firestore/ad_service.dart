@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/ad_model.dart';
 import '../../models/user_model.dart';
 
@@ -109,6 +110,13 @@ class AdService {
   /// Record an ad impression
   Future<void> recordImpression(String adId) async {
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final viewedAds = prefs.getStringList('viewed_ads') ?? [];
+      
+      if (viewedAds.contains(adId)) return;
+      viewedAds.add(adId);
+      await prefs.setStringList('viewed_ads', viewedAds);
+
       await _firestore.collection('ads').doc(adId).update({
         'impressions': FieldValue.increment(1),
       });
@@ -120,6 +128,13 @@ class AdService {
   /// Record an ad click
   Future<void> recordClick(String adId) async {
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final clickedAds = prefs.getStringList('clicked_ads') ?? [];
+      
+      if (clickedAds.contains(adId)) return;
+      clickedAds.add(adId);
+      await prefs.setStringList('clicked_ads', clickedAds);
+
       await _firestore.collection('ads').doc(adId).update({
         'clicks': FieldValue.increment(1),
       });

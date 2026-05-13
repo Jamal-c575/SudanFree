@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../models/ad_model.dart';
 import '../../core/constants/app_colors.dart';
 import '../../widgets/common/image_carousel.dart';
+import '../../services/firestore/ad_service.dart';
 
 class AdDetailsScreen extends StatelessWidget {
   final AdModel ad;
@@ -170,6 +171,7 @@ class AdDetailsScreen extends StatelessWidget {
                           elevation: 4,
                         ),
                         onPressed: () async {
+                          AdService().recordClick(ad.id);
                           final uri = Uri.tryParse(ad.actionUrl!);
                           if (uri != null) {
                             try {

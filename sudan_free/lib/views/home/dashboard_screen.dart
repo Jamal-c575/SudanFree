@@ -590,7 +590,6 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
               setState(() {
                 _currentBannerAdIndex = index;
               });
-              _adService.recordImpression(_homeBannerAds[index].id);
             },
             itemCount: _homeBannerAds.length,
             itemBuilder: (context, index) {
@@ -599,7 +598,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 child: GestureDetector(
                   onTap: () {
-                    _adService.recordClick(ad.id);
+                    _adService.recordImpression(ad.id);
                     Navigator.push(
                       context,
                       MaterialPageRoute(builder: (_) => AdDetailsScreen(ad: ad)),
@@ -608,7 +607,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                   child: AdWidget(
                     ad: ad,
                     onTap: () {
-                      _adService.recordClick(ad.id);
+                      _adService.recordImpression(ad.id);
                       Navigator.push(
                         context,
                         MaterialPageRoute(builder: (_) => AdDetailsScreen(ad: ad)),
@@ -1071,7 +1070,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
   Widget _buildStripAd(BuildContext context, AdModel ad, bool isDark) {
     return GestureDetector(
       onTap: () {
-        _adService.recordClick(ad.id);
+        _adService.recordImpression(ad.id);
         Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => AdDetailsScreen(ad: ad)),

@@ -17,6 +17,7 @@ import '../../services/firestore_service.dart';
 import '../../services/firestore/ad_service.dart';
 import '../../models/ad_model.dart';
 import '../../views/widgets/ad_widget.dart';
+import '../../views/home/ad_details_screen.dart';
 import '../../widgets/inputs/smart_search_field.dart';
 
 class PostsFeedScreen extends StatefulWidget {
@@ -242,7 +243,13 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
                           if (index == 0 && _currentAd != null && _searchQuery.isEmpty && _selectedCategory == null) {
                             return AdWidget(
                               ad: _currentAd!,
-                              onTap: () => _adService.recordClick(_currentAd!.id),
+                              onTap: () {
+                                _adService.recordClick(_currentAd!.id);
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (_) => AdDetailsScreen(ad: _currentAd!)),
+                                );
+                              },
                             );
                           }
                           
