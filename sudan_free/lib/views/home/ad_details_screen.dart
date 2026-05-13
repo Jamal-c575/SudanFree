@@ -3,22 +3,37 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../models/ad_model.dart';
 import '../../core/constants/app_colors.dart';
-import '../../widgets/common/image_carousel.dart';
 import '../../services/firestore/ad_service.dart';
 
-class AdDetailsScreen extends StatelessWidget {
+class AdDetailsScreen extends StatefulWidget {
   final AdModel ad;
 
   const AdDetailsScreen({super.key, required this.ad});
 
   @override
+  State<AdDetailsScreen> createState() => _AdDetailsScreenState();
+}
+
+class _AdDetailsScreenState extends State<AdDetailsScreen> {
+  int _selectedImageIndex = 0;
+  List<String> _images = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _images = widget.ad.mediaUrls.isNotEmpty 
+        ? widget.ad.mediaUrls 
+        : (widget.ad.mediaUrl.isNotEmpty ? [widget.ad.mediaUrl] : []);
+        
+    // Limit to maximum 5 images as requested
+    if (_images.length > 5) {
+      _images = _images.sublist(0, 5);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
-    // Fallback for mediaUrls
-    final List<String> images = ad.mediaUrls.isNotEmpty 
-        ? ad.mediaUrls 
-        : (ad.mediaUrl.isNotEmpty ? [ad.mediaUrl] : []);
 
     return Scaffold(
       appBar: AppBar(
@@ -35,36 +50,74 @@ class AdDetailsScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Hero Image or Carousel
-            if (images.isNotEmpty)
-              images.length == 1
-                  ? CachedNetworkImage(
-                      imageUrl: images.first,
-                      height: 350,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      placeholder: (context, url) => Container(
-                        height: 350,
-                        color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
-                        child: const Center(child: CircularProgressIndicator()),
-                      ),
-                      errorWidget: (context, url, error) => Container(
-                        height: 350,
-                        color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
-                        child: const Icon(Icons.error, size: 50, color: Colors.grey),
-                      ),
-                    )
-                  : ImageCarousel(
-                      imageUrls: images,
-                      height: 350,
-                      fit: BoxFit.cover,
-                    )
+            // Main Hero Image
+            if (_images.isNotEmpty)
+              CachedNetworkImage(
+                imageUrl: _images[_selectedImageIndex],
+                height: 350,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                placeholder: (context, url) => Container(
+                  height: 350,
+                  color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
+                  child: const Center(child: CircularProgressIndicator()),
+                ),
+                errorWidget: (context, url, error) => Container(
+                  height: 350,
+                  color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
+                  child: const Icon(Icons.error, size: 50, color: Colors.grey),
+                ),
+              )
             else
               Container(
                 height: 350,
                 color: isDark ? Colors.grey.shade900 : Colors.grey.shade300,
                 child: const Center(
                   child: Icon(Icons.campaign, size: 80, color: Colors.grey),
+                ),
+              ),
+
+            // Thumbnails Row
+            if (_images.length > 1)
+              Container(
+                height: 80,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(_images.length, (index) {
+                    final isSelected = index == _selectedImageIndex;
+                    return GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _selectedImageIndex = index;
+                        });
+                      },
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 4),
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: isSelected ? AppColors.primary : Colors.transparent,
+                            width: 2.5,
+                          ),
+                          boxShadow: isSelected 
+                              ? [BoxShadow(color: AppColors.primary.withValues(alpha: 0.3), blurRadius: 4)]
+                              : null,
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(6),
+                          child: CachedNetworkImage(
+                            imageUrl: _images[index],
+                            fit: BoxFit.cover,
+                            placeholder: (context, url) => Container(color: isDark ? Colors.grey.shade800 : Colors.grey.shade300),
+                            errorWidget: (context, url, error) => const Icon(Icons.error, size: 20),
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
                 ),
               ),
 
@@ -75,7 +128,7 @@ class AdDetailsScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Advertiser Badge
-                  if (ad.advertiserName != null)
+                  if (widget.ad.advertiserName != null)
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                       margin: const EdgeInsets.only(bottom: 16),
@@ -90,7 +143,7 @@ class AdDetailsScreen extends StatelessWidget {
                           Icon(Icons.storefront, color: AppColors.primary, size: 20),
                           const SizedBox(width: 8),
                           Text(
-                            ad.advertiserName!,
+                            widget.ad.advertiserName!,
                             style: TextStyle(
                               color: AppColors.primary,
                               fontWeight: FontWeight.bold,
@@ -103,7 +156,7 @@ class AdDetailsScreen extends StatelessWidget {
 
                   // Title
                   Text(
-                    ad.title,
+                    widget.ad.title,
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.w800,
@@ -114,19 +167,17 @@ class AdDetailsScreen extends StatelessWidget {
 
                   // Description
                   Text(
-                    ad.description,
+                    widget.ad.description,
                     style: TextStyle(
                       fontSize: 16,
                       height: 1.6,
                       color: isDark ? Colors.grey.shade300 : Colors.grey.shade700,
                     ),
                   ),
-                  const SizedBox(height: 24),
-
-
+                  const SizedBox(height: 32),
 
                   // Action Button
-                  if (ad.actionUrl != null && ad.actionUrl!.isNotEmpty)
+                  if (widget.ad.actionUrl != null && widget.ad.actionUrl!.isNotEmpty)
                     SizedBox(
                       width: double.infinity,
                       height: 56,
@@ -140,8 +191,8 @@ class AdDetailsScreen extends StatelessWidget {
                           elevation: 4,
                         ),
                         onPressed: () async {
-                          AdService().recordClick(ad.id);
-                          final uri = Uri.tryParse(ad.actionUrl!);
+                          AdService().recordClick(widget.ad.id);
+                          final uri = Uri.tryParse(widget.ad.actionUrl!);
                           if (uri != null) {
                             try {
                               await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -174,6 +225,4 @@ class AdDetailsScreen extends StatelessWidget {
       ),
     );
   }
-
-
 }
