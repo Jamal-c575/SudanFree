@@ -47,8 +47,19 @@ class _FilteredProvidersScreenState extends State<FilteredProvidersScreen> {
         }).toList();
         break;
       case FilterType.topRated:
-        displayList = List<UserModel>.from(userProvider.freelancers)
-          ..sort((a, b) => b.rating.compareTo(a.rating));
+        // Combine freelancers + shops, then sort by totalStars (rating × reviewsCount)
+        // This is fairer: someone with 50 reviews at 4.8 ranks higher than 1 review at 5.0
+        displayList = [
+          ...userProvider.freelancers,
+          ...userProvider.shops,
+        ];
+        displayList.sort((a, b) {
+          // Primary: totalStars (weighted score)
+          final cmp = b.totalStars.compareTo(a.totalStars);
+          if (cmp != 0) return cmp;
+          // Secondary: average rating as tiebreaker
+          return b.rating.compareTo(a.rating);
+        });
         break;
       case FilterType.newest:
         displayList = List<UserModel>.from(userProvider.freelancers)
