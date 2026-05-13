@@ -22,10 +22,13 @@ class AdDetailsScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('تفاصيل الإعلان'),
-        backgroundColor: Colors.transparent,
+        toolbarHeight: 48,
+        title: const Text('تفاصيل الإعلان', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.black.withValues(alpha: 0.45),
         elevation: 0,
         centerTitle: true,
+        iconTheme: const IconThemeData(color: Colors.white),
+        titleTextStyle: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
       ),
       extendBodyBehindAppBar: true,
       body: SingleChildScrollView(
@@ -120,41 +123,7 @@ class AdDetailsScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 24),
 
-                  // Target Information
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: isDark ? Colors.grey.shade900 : Colors.grey.shade50,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
-                      ),
-                    ),
-                    child: Column(
-                      children: [
-                        _buildInfoRow(
-                          context, 
-                          icon: Icons.location_on, 
-                          title: 'المنطقة المستهدفة', 
-                          value: ad.targetRegion ?? 'جميع المناطق',
-                          isDark: isDark,
-                        ),
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 8),
-                          child: Divider(),
-                        ),
-                        _buildInfoRow(
-                          context, 
-                          icon: Icons.work, 
-                          title: 'الفئة المستهدفة', 
-                          value: ad.targetProfession ?? 'الكل',
-                          isDark: isDark,
-                        ),
-                      ],
-                    ),
-                  ),
 
-                  const SizedBox(height: 32),
 
                   // Action Button
                   if (ad.actionUrl != null && ad.actionUrl!.isNotEmpty)
@@ -206,39 +175,5 @@ class AdDetailsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoRow(BuildContext context, {required IconData icon, required String title, required String value, required bool isDark}) {
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(icon, color: AppColors.primary, size: 20),
-        ),
-        const SizedBox(width: 12),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 12,
-                color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
+
 }

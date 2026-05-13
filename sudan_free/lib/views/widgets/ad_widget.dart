@@ -112,27 +112,6 @@ class AdWidget extends StatelessWidget {
                       fontSize: 12,
                     ),
                   ),
-                  if (ad.actionUrl != null && ad.actionUrl!.isNotEmpty) ...[
-                    const SizedBox(height: 10),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 36,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          padding: EdgeInsets.zero,
-                        ),
-                        onPressed: () {
-                          onTap?.call();
-                        },
-                        child: const Text('عرض التفاصيل', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                      ),
-                    )
-                  ]
                 ],
               ),
             ),
