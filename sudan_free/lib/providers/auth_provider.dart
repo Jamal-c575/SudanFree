@@ -29,11 +29,12 @@ class AuthProvider extends ChangeNotifier {
   bool _isNewUser = false;
   bool _isLoadingProfile = false;
   bool _isManualSignIn = false;
-  StreamSubscription? _authSubscription; // Fix: track auth stream to cancel on dispose
+  StreamSubscription?
+      _authSubscription; // Fix: track auth stream to cancel on dispose
+  StreamSubscription<UserModel?>? _userSubscription;
 
   // Partners
   List<UserModel> _partners = [];
-
 
   AuthStatus get status => _status;
   UserModel? get user => _user;
@@ -47,12 +48,14 @@ class AuthProvider extends ChangeNotifier {
   // Toggle Partner (Add/Remove Colleague)
   Future<void> sendPartnerRequest(String targetId) async {
     if (_user == null) return;
-    
+
     // Prevent if already partner or already pending
-    if (_user!.partnerIds.contains(targetId) || _user!.pendingPartnerIds.contains(targetId)) return;
-    
+    if (_user!.partnerIds.contains(targetId) ||
+        _user!.pendingPartnerIds.contains(targetId)) return;
+
     try {
-      await _firestoreService.sendPartnerRequest(_user!.id, _user!.name, targetId);
+      await _firestoreService.sendPartnerRequest(
+          _user!.id, _user!.name, targetId);
       // Wait for stream update instead of optimistic
     } catch (e) {
       debugPrint('Error sending partner request: $e');
@@ -60,22 +63,40 @@ class AuthProvider extends ChangeNotifier {
   }
 
   // Handle Partner Request (Accept/Decline)
-  Future<void> handlePartnerRequest(String requesterId, bool accept) async {
-     if (_user == null) return;
-     try {
-       await _firestoreService.handlePartnerRequest(_user!.id, _user!.name, requesterId, accept);
-       
-       if (accept) {
-         // Optionally fetch new partner to add to list
-         final newPartners = await _firestoreService.getUsersByIds([requesterId]);
-         if (newPartners.isNotEmpty) {
-           _partners.add(newPartners.first);
-           notifyListeners();
-         }
-       }
-     } catch (e) {
-       debugPrint('Error handling partner request: $e');
-     }
+  Future<void> handlePartnerRequest(String requesterId, bool accept,
+      {UserModel? requester}) async {
+    if (_user == null) return;
+
+    try {
+      await _firestoreService.handlePartnerRequest(
+          _user!.id, _user!.name, requesterId, accept);
+
+      final updatedPending = List<String>.from(_user!.pendingPartnerIds);
+      updatedPending.remove(requesterId);
+
+      final updatedPartners = List<String>.from(_user!.partnerIds);
+      if (accept && !updatedPartners.contains(requesterId)) {
+        updatedPartners.add(requesterId);
+      }
+
+      _user = _user!.copyWith(
+        pendingPartnerIds: updatedPending,
+        partnerIds: updatedPartners,
+      );
+
+      if (accept && requester != null) {
+        final existing =
+            _partners.where((user) => user.id == requester.id).isNotEmpty;
+        if (!existing) {
+          _partners.add(requester);
+        }
+      }
+
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error handling partner request: $e');
+      rethrow;
+    }
   }
 
   // Fetch My Partners & Followed Shops
@@ -85,16 +106,16 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       return;
     }
-    
+
     // Merge partners and followed shops
     final Set<String> combinedIds = {..._user!.partnerIds, ..._user!.following};
-    
+
     if (combinedIds.isEmpty) {
       _partners = [];
       notifyListeners();
       return;
     }
-    
+
     try {
       _partners = await _firestoreService.getUsersByIds(combinedIds.toList());
       notifyListeners();
@@ -128,6 +149,8 @@ class AuthProvider extends ChangeNotifier {
       _user = null;
       _isNewUser = false;
       _isLoadingProfile = false;
+      _userSubscription?.cancel();
+      _userSubscription = null;
       notifyListeners();
       return;
     }
@@ -136,10 +159,11 @@ class AuthProvider extends ChangeNotifier {
     if (_isManualSignIn) return;
 
     // prevent redundant loading if already authenticated with same user
-    if (_status == AuthStatus.authenticated && (_user?.id == firebaseUser.uid || _isNewUser)) {
+    if (_status == AuthStatus.authenticated &&
+        (_user?.id == firebaseUser.uid || _isNewUser)) {
       return;
     }
-    
+
     // prevent multiple concurrent loads
     if (_isLoadingProfile) return;
     _isLoadingProfile = true;
@@ -148,7 +172,7 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
     await _loadUserData(firebaseUser.uid);
     _isLoadingProfile = false;
-    
+
     // Sync FCM Token
     _syncFCMToken(firebaseUser.uid);
   }
@@ -175,13 +199,15 @@ class AuthProvider extends ChangeNotifier {
       if (profile != null) {
         _user = profile;
         _isNewUser = false;
-        
+
         // OneSignal User Tagging
         OneSignal.login(uid);
         OneSignal.User.addTags({
           "state": profile.state,
           "role": profile.role.name,
         });
+
+        _subscribeToUserStream(uid);
       } else {
         _isNewUser = true;
       }
@@ -190,9 +216,24 @@ class AuthProvider extends ChangeNotifier {
     } catch (e) {
       _errorMessage = e.toString();
       debugPrint('Error loading user data: $e');
-      _status = AuthStatus.error; 
+      _status = AuthStatus.error;
       notifyListeners();
     }
+  }
+
+  void _subscribeToUserStream(String uid) {
+    _userSubscription?.cancel();
+    _userSubscription = _firestoreService.getUserStream(uid).listen(
+      (profile) {
+        if (profile != null) {
+          _user = profile;
+          notifyListeners();
+        }
+      },
+      onError: (error) {
+        debugPrint('AuthProvider user stream error: $error');
+      },
+    );
   }
 
   // Sign up with email
@@ -240,7 +281,7 @@ class AuthProvider extends ChangeNotifier {
         notifyListeners();
         return false;
       }
-      
+
       // Load user data directly to ensure immediate state update
       if (credential.user != null) {
         // Check device ban
@@ -282,7 +323,7 @@ class AuthProvider extends ChangeNotifier {
         email: email,
         password: password,
       );
-      
+
       // Load user data directly instead of relying on _handleAuthStateChange
       if (credential.user != null) {
         // Check device ban
@@ -362,12 +403,12 @@ class AuthProvider extends ChangeNotifier {
         verificationId: _verificationId!,
         smsCode: smsCode,
       );
-      
+
       await _handlePhoneSignIn(PhoneAuthProvider.credential(
         verificationId: _verificationId!,
         smsCode: smsCode,
       ));
-      
+
       return true;
     } catch (e) {
       _status = AuthStatus.error;
@@ -394,7 +435,7 @@ class AuthProvider extends ChangeNotifier {
         verificationId: _verificationId!,
         smsCode: smsCode,
       );
-      
+
       // Verification successful, status will be updated in Firestore by the caller
       _status = AuthStatus.authenticated;
       notifyListeners();
@@ -407,17 +448,77 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  // Send WhatsApp OTP
+  Future<bool> sendWhatsAppOTP(String phoneNumber) async {
+    _status = AuthStatus.loading;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final result = await _firestoreService.callFunction('sendWhatsAppOTP', {
+        'phoneNumber': phoneNumber,
+      });
+
+      if (result['success'] == true) {
+        _status = AuthStatus.authenticated;
+        notifyListeners();
+        return true;
+      } else {
+        _status = AuthStatus.error;
+        _errorMessage = result['message'] ?? 'Failed to send WhatsApp OTP';
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      _status = AuthStatus.error;
+      _errorMessage = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // Verify WhatsApp OTP
+  Future<bool> verifyWhatsAppOTP(String phoneNumber, String otp) async {
+    _status = AuthStatus.loading;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final result = await _firestoreService.callFunction('verifyWhatsAppOTP', {
+        'phoneNumber': phoneNumber,
+        'otp': otp,
+      });
+
+      if (result['success'] == true) {
+        _status = AuthStatus.authenticated;
+        notifyListeners();
+        return true;
+      } else {
+        _status = AuthStatus.error;
+        _errorMessage = result['message'] ?? 'Invalid OTP';
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      _status = AuthStatus.error;
+      _errorMessage = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<void> _handlePhoneSignIn(PhoneAuthCredential credential) async {
-    final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+    final userCredential =
+        await FirebaseAuth.instance.signInWithCredential(credential);
     final profile = await _authService.getUserProfile(userCredential.user!.uid);
-    
+
     if (profile != null) {
       _user = profile;
       _isNewUser = false;
     } else {
       _isNewUser = true;
     }
-    
+
     _status = AuthStatus.authenticated;
     notifyListeners();
   }
@@ -449,7 +550,8 @@ class AuthProvider extends ChangeNotifier {
       }
 
       final now = DateTime.now();
-      debugPrint('AuthProvider.createUserProfile: saving role=${role.name} for uid=${currentUser.uid}');
+      debugPrint(
+          'AuthProvider.createUserProfile: saving role=${role.name} for uid=${currentUser.uid}');
       final user = UserModel(
         id: currentUser.uid,
         email: currentUser.email ?? '',
@@ -472,30 +574,34 @@ class AuthProvider extends ChangeNotifier {
       );
 
       await _authService.createUserProfile(user);
-      debugPrint('AuthProvider.createUserProfile: Firestore write complete. role=${role.name}');
+      debugPrint(
+          'AuthProvider.createUserProfile: Firestore write complete. role=${role.name}');
       await _deviceService.saveDeviceIdToUser(user.id);
-      
+
       // ✅ Ensure FCM Token is saved BEFORE sending the welcome notification
       await _syncFCMToken(user.id);
-      
+
       // ✅ Send Welcome Notification
       try {
         String welcomeTitle = 'مرحباً بك في سودان فري! 🎉';
         String welcomeMessage = 'شكراً لانضمامك إلينا.';
-        
+
         switch (role) {
           case UserRole.client:
-            welcomeMessage = 'يمكنك الآن الوصول إلى أمهر مقدمي الخدمات وتصفح أفضل المعارض والمحلات في السودان.';
+            welcomeMessage =
+                'يمكنك الآن الوصول إلى أمهر مقدمي الخدمات وتصفح أفضل المعارض والمحلات في السودان.';
             break;
           case UserRole.freelancer:
           case UserRole.techService:
           case UserRole.privateService:
             welcomeTitle = 'مرحباً بك كمقدم خدمة! 🛠️';
-            welcomeMessage = 'الآن يمكن للعملاء الوصول إليك وطلب خدماتك بسهولة وزيادة دخلك.';
+            welcomeMessage =
+                'الآن يمكن للعملاء الوصول إليك وطلب خدماتك بسهولة وزيادة دخلك.';
             break;
           case UserRole.shop:
             welcomeTitle = 'مرحباً بك صاحب معرض! 🏪';
-            welcomeMessage = 'يمكنك الآن البدء بعرض منتجاتك وجذب العملاء لمعرضك ومحلك التجاري.';
+            welcomeMessage =
+                'يمكنك الآن البدء بعرض منتجاتك وجذب العملاء لمعرضك ومحلك التجاري.';
             break;
           case UserRole.admin:
             welcomeTitle = 'مرحباً بك كمسؤول! 🛡️';
@@ -511,10 +617,11 @@ class AuthProvider extends ChangeNotifier {
           message: welcomeMessage,
           createdAt: Timestamp.now(),
         );
-        
+
         await _firestoreService.sendNotification(notification);
       } catch (notifErr) {
-        debugPrint('AuthProvider: Welcome notification failed (non-fatal): $notifErr');
+        debugPrint(
+            'AuthProvider: Welcome notification failed (non-fatal): $notifErr');
       }
 
       _user = user;
@@ -538,7 +645,7 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       await _authService.updateUserProfile(userId!, data);
-      
+
       // Refresh user profile
       final updatedProfile = await _authService.getUserProfile(userId!);
       if (updatedProfile != null) {
@@ -556,18 +663,17 @@ class AuthProvider extends ChangeNotifier {
   // Toggle User Role (Client <-> Freelancer)
   Future<bool> toggleUserRole() async {
     if (_user == null) return false;
-    
-    final newRole = _user!.role == UserRole.client 
-        ? UserRole.freelancer 
-        : UserRole.client;
-        
+
+    final newRole =
+        _user!.role == UserRole.client ? UserRole.freelancer : UserRole.client;
+
     return await updateUserProfile({'role': newRole.name});
   }
 
   // Toggle Availability Status (For Freelancers)
   Future<bool> toggleAvailability() async {
     if (_user == null) return false;
-    
+
     final newStatus = !_user!.isAvailable;
     return await updateUserProfile({'isAvailable': newStatus});
   }
@@ -575,13 +681,14 @@ class AuthProvider extends ChangeNotifier {
   // Toggle Push Notifications
   Future<bool> togglePushNotifications(bool enabled) async {
     if (_user == null) return false;
-    
+
     try {
-      final updatedSettings = Map<String, bool>.from(_user!.notificationSettings);
+      final updatedSettings =
+          Map<String, bool>.from(_user!.notificationSettings);
       updatedSettings['pushEnabled'] = enabled;
-      
+
       await updateUserProfile({'notificationSettings': updatedSettings});
-      
+
       if (enabled) {
         OneSignal.User.pushSubscription.optIn();
       } else {
@@ -709,6 +816,7 @@ class AuthProvider extends ChangeNotifier {
   @override
   void dispose() {
     _authSubscription?.cancel();
+    _userSubscription?.cancel();
     super.dispose();
   }
 }

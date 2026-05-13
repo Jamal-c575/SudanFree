@@ -16,10 +16,10 @@ class VerificationBadge extends StatelessWidget {
     
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4.0),
-      child: Image.asset(
-        'assets/images/static_handshake.png',
-        width: size,
-        height: size,
+      child: Icon(
+        Icons.verified,
+        color: Colors.blue,
+        size: size,
       ),
     );
   }

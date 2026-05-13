@@ -7,7 +7,16 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == userId;
     }
     
+    // PHASE 1 FIX: Use custom claims instead of Firestore read
+    // Admin status should be set in Auth custom claims: await admin.auth().setCustomUserClaims(uid, {admin: true})
+    // This eliminates the Firestore read on every rule check
     function isAdmin() {
+      return request.auth != null && request.auth.token.admin == true;
+    }
+    
+    // Fallback for backward compatibility (during transition)
+    // After all admins have claims set, remove this
+    function isAdminLegacy() {
       return request.auth != null && 
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
@@ -315,6 +324,18 @@ service cloud.firestore {
     match /ads/{adId} {
       allow read: if true;
       allow write: if isAdmin();
+    }
+
+    // ═══════════════════ رموز OTP (OTP Codes) ═══════════════════
+    match /otp_codes/{otpId} {
+      allow create: if request.auth != null;
+      allow read, write: if false; // Only functions can access
+    }
+
+    // ═══════════════════ OTP Debug Codes (Development Only) ═══════════════════
+    match /otp_debug_codes/{debugId} {
+      allow create: if false; // only server-side Function should write
+      allow read, update, delete: if isAdmin();
     }
   }
 }

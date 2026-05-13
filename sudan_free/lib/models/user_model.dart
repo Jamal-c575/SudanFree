@@ -30,6 +30,7 @@ class UserModel {
   final String? username;  // @username للإشارات (اختياري)
   final String? phoneNumber;
   final bool isVerified;
+  final DateTime? verifiedAt;
   final VerificationStatus verificationStatus;
   final String? idCardUrl;
   final String? verificationSelfieUrl;
@@ -118,6 +119,7 @@ class UserModel {
     this.following = const [],
     this.lastActive,
     this.isVerified = false,
+    this.verifiedAt,
     this.verificationStatus = VerificationStatus.none,
     this.idCardUrl,
     this.verificationSelfieUrl,
@@ -199,6 +201,9 @@ class UserModel {
           ? (data['lastActive'] as Timestamp).toDate()
           : null,
       isVerified: data['isVerified'] ?? false,
+      verifiedAt: data['verifiedAt'] is Timestamp
+          ? (data['verifiedAt'] as Timestamp).toDate()
+          : null,
       verificationStatus: VerificationStatus.values.firstWhere(
         (e) => e.name == (data['verificationStatus'] ?? 'none'),
         orElse: () => VerificationStatus.none,
@@ -328,6 +333,7 @@ class UserModel {
     List<String>? pendingPartnerIds,
     DateTime? lastActive,
     bool? isVerified,
+    DateTime? verifiedAt,
     VerificationStatus? verificationStatus,
     String? idCardUrl,
     String? verificationSelfieUrl,
@@ -373,11 +379,12 @@ class UserModel {
       pendingPartnerIds: pendingPartnerIds ?? this.pendingPartnerIds,
       lastActive: lastActive ?? this.lastActive,
       isVerified: isVerified ?? this.isVerified,
+      verifiedAt: verifiedAt ?? this.verifiedAt,
       verificationStatus: verificationStatus ?? this.verificationStatus,
       idCardUrl: idCardUrl ?? this.idCardUrl,
       verificationSelfieUrl: verificationSelfieUrl ?? this.verificationSelfieUrl,
       notificationSettings: notificationSettings ?? this.notificationSettings,
-      searchKeywords: this.searchKeywords,
+      searchKeywords: searchKeywords,
       shopInterests: shopInterests ?? this.shopInterests,
       serviceInterests: serviceInterests ?? this.serviceInterests,
     );

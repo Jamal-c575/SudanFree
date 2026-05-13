@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'dart:async';
 
 // New specialized services
@@ -36,6 +37,7 @@ import '../models/contact_log_model.dart';
 /// This class delegates to specialized services for better maintainability.
 class FirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseFunctions _functions = FirebaseFunctions.instance;
   
   // Service Instances
   final _users = UserFirestoreService();
@@ -51,6 +53,14 @@ class FirestoreService {
   final _story = StoryFirestoreService();
 
   final _reviews = ReviewFirestoreService();
+
+  Future<Map<String, dynamic>> callFunction(String name, Map<String, dynamic> data) async {
+    final callable = _functions.httpsCallable(name);
+    final result = await callable.call(data);
+    final payload = result.data;
+    if (payload is Map<String, dynamic>) return payload;
+    return Map<String, dynamic>.from(payload as Map);
+  }
 
   // ==================== STORIES ====================
   Future<String> addStory(StoryModel story) => _story.addStory(story);

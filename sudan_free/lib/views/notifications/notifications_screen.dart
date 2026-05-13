@@ -19,7 +19,6 @@ import '../requests/request_details_screen.dart';
 import '../chat/chats_list_screen.dart';
 import '../../providers/chat_provider.dart';
 
-
 class NotificationsScreen extends StatelessWidget {
   const NotificationsScreen({super.key});
 
@@ -50,7 +49,8 @@ class NotificationsScreen extends StatelessWidget {
                   );
                 },
               ),
-              if (context.watch<ChatProvider>().getTotalUnreadCount(user.id) > 0)
+              if (context.watch<ChatProvider>().getTotalUnreadCount(user.id) >
+                  0)
                 Positioned(
                   right: 4,
                   top: 4,
@@ -62,7 +62,10 @@ class NotificationsScreen extends StatelessWidget {
                     ),
                     child: Text(
                       '${context.watch<ChatProvider>().getTotalUnreadCount(user.id)}',
-                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold),
                     ),
                   ),
                 ),
@@ -70,34 +73,41 @@ class NotificationsScreen extends StatelessWidget {
           ),
 
           // Icon for Pending Partner Requests
-          if (user.role == UserRole.freelancer || user.role == UserRole.shop || user.role == UserRole.techService)
+          if (user.role == UserRole.freelancer ||
+              user.role == UserRole.shop ||
+              user.role == UserRole.techService)
             Stack(
-               alignment: Alignment.center,
-               children: [
-                 IconButton(
-                   icon: const Icon(Icons.person_add_alt_1_outlined),
-                   onPressed: () => _showPendingRequestsSheet(context, user, locale),
-                 ),
-                 if (user.pendingPartnerIds.isNotEmpty)
-                   Positioned(
-                     right: 8,
-                     top: 8,
-                     child: Container(
-                       padding: const EdgeInsets.all(4),
-                       decoration: const BoxDecoration(
-                         color: Colors.red,
-                         shape: BoxShape.circle,
-                       ),
-                       child: Text(
-                         '${user.pendingPartnerIds.length}',
-                         style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
-                       ),
-                     ),
-                   )
-               ],
+              alignment: Alignment.center,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.person_add_alt_1_outlined),
+                  onPressed: () =>
+                      _showPendingRequestsSheet(context, user, locale),
+                ),
+                if (user.pendingPartnerIds.isNotEmpty)
+                  Positioned(
+                    right: 8,
+                    top: 8,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text(
+                        '${user.pendingPartnerIds.length}',
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  )
+              ],
             ),
           StreamBuilder<List<NotificationModel>>(
-            stream: context.read<UserProvider>().getNotificationsStream(user.id),
+            stream:
+                context.read<UserProvider>().getNotificationsStream(user.id),
             builder: (context, snapshot) {
               final notifications = snapshot.data ?? [];
               final hasUnread = notifications.any((n) => !n.isRead);
@@ -123,9 +133,9 @@ class NotificationsScreen extends StatelessWidget {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-          
+
           if (snapshot.hasError) {
-             return Center(child: Text('Error: ${snapshot.error}'));
+            return Center(child: Text('Error: ${snapshot.error}'));
           }
 
           final notifications = snapshot.data ?? [];
@@ -134,13 +144,15 @@ class NotificationsScreen extends StatelessWidget {
             return EmptyStateWidget(
               icon: Icons.notifications_off_rounded,
               title: locale == 'ar' ? 'لا توجد تنبيهات' : 'No notifications',
-              subtitle: locale == 'ar' ? 'سيتم عرض الإشعارات الجديدة هنا' : 'New notifications will appear here',
+              subtitle: locale == 'ar'
+                  ? 'سيتم عرض الإشعارات الجديدة هنا'
+                  : 'New notifications will appear here',
             );
           }
 
           return RefreshIndicator(
             onRefresh: () async {
-              await Future.delayed(const Duration(seconds: 1)); 
+              await Future.delayed(const Duration(seconds: 1));
             },
             child: ListView.builder(
               physics: const AlwaysScrollableScrollPhysics(),
@@ -151,7 +163,8 @@ class NotificationsScreen extends StatelessWidget {
                 return TweenAnimationBuilder<double>(
                   key: ValueKey(notif.id),
                   tween: Tween(begin: 0.0, end: 1.0),
-                  duration: Duration(milliseconds: 300 + (index.clamp(0, 10) * 50)),
+                  duration:
+                      Duration(milliseconds: 300 + (index.clamp(0, 10) * 50)),
                   curve: Curves.easeOutCubic,
                   builder: (context, value, child) {
                     return Transform.translate(
@@ -172,7 +185,8 @@ class NotificationsScreen extends StatelessWidget {
     );
   }
 
-  void _showPendingRequestsSheet(BuildContext context, UserModel currentUser, String locale) {
+  void _showPendingRequestsSheet(
+      BuildContext context, UserModel currentUser, String locale) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -181,7 +195,6 @@ class NotificationsScreen extends StatelessWidget {
     );
   }
 }
-
 
 class _SimpleNotificationTile extends StatefulWidget {
   final NotificationModel notification;
@@ -193,7 +206,8 @@ class _SimpleNotificationTile extends StatefulWidget {
   });
 
   @override
-  State<_SimpleNotificationTile> createState() => _SimpleNotificationTileState();
+  State<_SimpleNotificationTile> createState() =>
+      _SimpleNotificationTileState();
 }
 
 class _SimpleNotificationTileState extends State<_SimpleNotificationTile> {
@@ -261,7 +275,7 @@ class _SimpleNotificationTileState extends State<_SimpleNotificationTile> {
   // ── Readable title per type ──
   String get _title {
     if (notification.title.isNotEmpty) return notification.title;
-    
+
     switch (notification.type) {
       case NotificationType.like:
         return locale == 'ar' ? 'تفاعل جديد' : 'New Reaction';
@@ -294,17 +308,11 @@ class _SimpleNotificationTileState extends State<_SimpleNotificationTile> {
     if (diff.inMinutes < 1) {
       return locale == 'ar' ? 'الآن' : 'now';
     } else if (diff.inMinutes < 60) {
-      return locale == 'ar'
-          ? 'منذ ${diff.inMinutes} د'
-          : '${diff.inMinutes}m';
+      return locale == 'ar' ? 'منذ ${diff.inMinutes} د' : '${diff.inMinutes}m';
     } else if (diff.inHours < 24) {
-      return locale == 'ar'
-          ? 'منذ ${diff.inHours} س'
-          : '${diff.inHours}h';
+      return locale == 'ar' ? 'منذ ${diff.inHours} س' : '${diff.inHours}h';
     } else {
-      return locale == 'ar'
-          ? 'منذ ${diff.inDays} يوم'
-          : '${diff.inDays}d';
+      return locale == 'ar' ? 'منذ ${diff.inDays} يوم' : '${diff.inDays}d';
     }
   }
 
@@ -391,8 +399,8 @@ class _SimpleNotificationTileState extends State<_SimpleNotificationTile> {
                     Text(
                       notification.message,
                       style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.textTheme.bodyMedium?.color
-                            ?.withValues(alpha: notification.isRead ? 0.6 : 0.85),
+                        color: theme.textTheme.bodyMedium?.color?.withValues(
+                            alpha: notification.isRead ? 0.6 : 0.85),
                         height: 1.3,
                       ),
                       maxLines: 2,
@@ -424,13 +432,15 @@ class _SimpleNotificationTileState extends State<_SimpleNotificationTile> {
       switch (notification.type) {
         case NotificationType.like:
           if (notification.relatedId != null) {
-            await _navigateToPost(context, notification.relatedId!, openComments: false);
+            await _navigateToPost(context, notification.relatedId!,
+                openComments: false);
           }
           break;
         case NotificationType.comment:
         case NotificationType.mention:
           if (notification.relatedId != null) {
-            await _navigateToPost(context, notification.relatedId!, openComments: true);
+            await _navigateToPost(context, notification.relatedId!,
+                openComments: true);
           }
           break;
         case NotificationType.rating:
@@ -439,7 +449,8 @@ class _SimpleNotificationTileState extends State<_SimpleNotificationTile> {
           }
           break;
         case NotificationType.fraudWarning:
-          await Navigator.push(context, MaterialPageRoute(builder: (_) => const SafetyTipsScreen()));
+          await Navigator.push(context,
+              MaterialPageRoute(builder: (_) => const SafetyTipsScreen()));
           break;
         case NotificationType.reviewRequest:
           if (notification.relatedId != null) {
@@ -483,7 +494,9 @@ class _SimpleNotificationTileState extends State<_SimpleNotificationTile> {
       context: context,
       builder: (context) => AlertDialog(
         title: Text(locale == 'ar' ? 'حذف الإشعار' : 'Delete Notification'),
-        content: Text(locale == 'ar' ? 'هل أنت متأكد من حذف هذا الإشعار؟' : 'Are you sure you want to delete this notification?'),
+        content: Text(locale == 'ar'
+            ? 'هل أنت متأكد من حذف هذا الإشعار؟'
+            : 'Are you sure you want to delete this notification?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -491,7 +504,8 @@ class _SimpleNotificationTileState extends State<_SimpleNotificationTile> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: Text(locale == 'ar' ? 'حذف' : 'Delete', style: const TextStyle(color: Colors.red)),
+            child: Text(locale == 'ar' ? 'حذف' : 'Delete',
+                style: const TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -502,12 +516,14 @@ class _SimpleNotificationTileState extends State<_SimpleNotificationTile> {
     }
   }
 
-  Future<void> _navigateToPost(BuildContext context, String postId, {bool openComments = false}) async {
+  Future<void> _navigateToPost(BuildContext context, String postId,
+      {bool openComments = false}) async {
     final post = await FirestoreService().getPost(postId);
     if (!context.mounted) return;
-    
+
     if (post != null) {
-      final route = MaterialPageRoute(builder: (_) => PostDetailsScreen(post: post));
+      final route =
+          MaterialPageRoute(builder: (_) => PostDetailsScreen(post: post));
       Navigator.push(context, route);
       if (openComments) {
         // Wait for the push animation to finish before showing comments
@@ -535,24 +551,36 @@ class _SimpleNotificationTileState extends State<_SimpleNotificationTile> {
   Future<void> _navigateToProfile(BuildContext context, String userId) async {
     final user = await FirestoreService().getUser(userId);
     if (!context.mounted) return;
-    
+
     if (user != null) {
       if (user.isFreelancer) {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => FreelancerProfileScreen(user: user, isMe: false)));
+        Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (_) =>
+                    FreelancerProfileScreen(user: user, isMe: false)));
       } else if (user.isShop) {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => ShopProfileScreen(user: user, isMe: false)));
+        Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (_) => ShopProfileScreen(user: user, isMe: false)));
       } else {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => ProfileScreen(userId: userId)));
+        Navigator.push(context,
+            MaterialPageRoute(builder: (_) => ProfileScreen(userId: userId)));
       }
     }
   }
 
-  Future<void> _navigateToRequest(BuildContext context, String requestId) async {
+  Future<void> _navigateToRequest(
+      BuildContext context, String requestId) async {
     final request = await FirestoreService().getRequestById(requestId);
     if (!context.mounted) return;
 
     if (request != null) {
-      Navigator.push(context, MaterialPageRoute(builder: (_) => RequestDetailsScreen(request: request)));
+      Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (_) => RequestDetailsScreen(request: request)));
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('عذراً، هذا الطلب لم يعد موجوداً')),
@@ -560,18 +588,21 @@ class _SimpleNotificationTileState extends State<_SimpleNotificationTile> {
     }
   }
 
-  Future<void> _handleReviewRequestTap(BuildContext context, NotificationModel notification) async {
+  Future<void> _handleReviewRequestTap(
+      BuildContext context, NotificationModel notification) async {
     final freelancerId = notification.relatedId!;
     final currentUser = context.read<AuthProvider>().user;
     if (currentUser == null) return;
 
-    final contactLog = await FirestoreService().getContactLog(currentUser.id, freelancerId);
+    final contactLog =
+        await FirestoreService().getContactLog(currentUser.id, freelancerId);
     if (contactLog != null && contactLog.hasReviewed) {
       if (!context.mounted) return;
       final isArabic = context.read<LocaleProvider>().isArabic;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(isArabic ? 'تم التقييم مسبقاً ✅' : 'Already reviewed ✅'),
+          content:
+              Text(isArabic ? 'تم التقييم مسبقاً ✅' : 'Already reviewed ✅'),
           backgroundColor: Colors.green,
         ),
       );
@@ -638,8 +669,13 @@ class _PendingRequestsSheetState extends State<_PendingRequestsSheet> {
       return;
     }
     try {
-      final users = await FirestoreService().getUsersByIds(user.pendingPartnerIds);
-      if (mounted) setState(() { _requesters = users; _isLoading = false; });
+      final users =
+          await FirestoreService().getUsersByIds(user.pendingPartnerIds);
+      if (mounted)
+        setState(() {
+          _requesters = users;
+          _isLoading = false;
+        });
     } catch (e) {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -648,25 +684,34 @@ class _PendingRequestsSheetState extends State<_PendingRequestsSheet> {
   Future<void> _handleRequest(String requesterId, bool accept) async {
     if (_processingIds.contains(requesterId)) return;
 
+    final requesterIndex = _requesters.indexWhere((u) => u.id == requesterId);
+    if (requesterIndex == -1) return;
+    final requester = _requesters[requesterIndex];
+
     setState(() {
       _processingIds.add(requesterId);
+      _requesters.removeAt(requesterIndex);
     });
 
     try {
       final authProvider = context.read<AuthProvider>();
-      await authProvider.handlePartnerRequest(requesterId, accept);
-      
+      await authProvider.handlePartnerRequest(requesterId, accept,
+          requester: requester);
+
       if (mounted) {
         setState(() {
-          _requesters.removeWhere((u) => u.id == requesterId);
           _processingIds.remove(requesterId);
         });
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(accept
-                ? (widget.locale == 'ar' ? 'تم قبول طلب الزمالة ✅' : 'Partner request accepted ✅')
-                : (widget.locale == 'ar' ? 'تم رفض طلب الزمالة ❌' : 'Partner request declined ❌')),
+                ? (widget.locale == 'ar'
+                    ? 'تم قبول طلب الزمالة ✅'
+                    : 'Partner request accepted ✅')
+                : (widget.locale == 'ar'
+                    ? 'تم رفض طلب الزمالة ❌'
+                    : 'Partner request declined ❌')),
             backgroundColor: accept ? Colors.green : Colors.red,
             duration: const Duration(seconds: 2),
           ),
@@ -676,10 +721,13 @@ class _PendingRequestsSheetState extends State<_PendingRequestsSheet> {
       if (mounted) {
         setState(() {
           _processingIds.remove(requesterId);
+          _requesters.insert(requesterIndex, requester);
         });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(widget.locale == 'ar' ? 'حدث خطأ، يرجى المحاولة' : 'An error occurred'),
+            content: Text(widget.locale == 'ar'
+                ? 'حدث خطأ، يرجى المحاولة'
+                : 'An error occurred'),
             backgroundColor: Colors.red,
           ),
         );
@@ -690,11 +738,19 @@ class _PendingRequestsSheetState extends State<_PendingRequestsSheet> {
   void _navigateToProfile(UserModel user) {
     Navigator.pop(context);
     if (user.isFreelancer) {
-      Navigator.push(context, MaterialPageRoute(builder: (_) => FreelancerProfileScreen(user: user, isMe: false)));
+      Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (_) =>
+                  FreelancerProfileScreen(user: user, isMe: false)));
     } else if (user.isShop) {
-      Navigator.push(context, MaterialPageRoute(builder: (_) => ShopProfileScreen(user: user, isMe: false)));
+      Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (_) => ShopProfileScreen(user: user, isMe: false)));
     } else {
-      Navigator.push(context, MaterialPageRoute(builder: (_) => ProfileScreen(userId: user.id)));
+      Navigator.push(context,
+          MaterialPageRoute(builder: (_) => ProfileScreen(userId: user.id)));
     }
   }
 
@@ -718,13 +774,14 @@ class _PendingRequestsSheetState extends State<_PendingRequestsSheet> {
           // Drag handle
           Container(
             margin: const EdgeInsets.only(top: 12, bottom: 8),
-            width: 40, height: 5,
+            width: 40,
+            height: 5,
             decoration: BoxDecoration(
-              color: Colors.grey[400], 
+              color: Colors.grey[400],
               borderRadius: BorderRadius.circular(10),
             ),
           ),
-          
+
           // Header
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -739,179 +796,234 @@ class _PendingRequestsSheetState extends State<_PendingRequestsSheet> {
                         color: AppColors.primary.withValues(alpha: 0.1),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.people_alt_rounded, color: AppColors.primary, size: 24),
+                      child: const Icon(Icons.people_alt_rounded,
+                          color: AppColors.primary, size: 24),
                     ),
                     const SizedBox(width: 12),
                     Text(
                       isArabic ? 'طلبات الزمالة' : 'Partner Requests',
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                     if (_requesters.isNotEmpty) ...[
                       const SizedBox(width: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
                           color: Colors.red,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
                           '${_requesters.length}',
-                          style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold),
                         ),
                       ),
                     ],
                   ],
                 ),
                 IconButton(
-                  icon: const Icon(Icons.close_rounded), 
+                  icon: const Icon(Icons.close_rounded),
                   onPressed: () => Navigator.pop(context),
-                  style: IconButton.styleFrom(backgroundColor: Colors.grey.withValues(alpha: 0.1)),
+                  style: IconButton.styleFrom(
+                      backgroundColor: Colors.grey.withValues(alpha: 0.1)),
                 ),
               ],
             ),
           ),
-          
+
           const Divider(height: 1),
-          
+
           // Content
           Expanded(
-            child: _isLoading 
-              ? const Center(child: CircularProgressIndicator())
-              : _requesters.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.person_add_disabled_rounded, size: 72, color: Colors.grey.withValues(alpha: 0.3)),
-                        const SizedBox(height: 16),
-                        Text(
-                          isArabic ? 'لا توجد طلبات زمالة معلقة' : 'No pending partner requests',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey[600]),
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _requesters.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.person_add_disabled_rounded,
+                                size: 72,
+                                color: Colors.grey.withValues(alpha: 0.3)),
+                            const SizedBox(height: 16),
+                            Text(
+                              isArabic
+                                  ? 'لا توجد طلبات زمالة معلقة'
+                                  : 'No pending partner requests',
+                              style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.grey[600]),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              isArabic
+                                  ? 'ستظهر هنا طلبات الزمالة الجديدة'
+                                  : 'New partner requests will appear here',
+                              style: TextStyle(
+                                  fontSize: 14, color: Colors.grey[500]),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          isArabic ? 'ستظهر هنا طلبات الزمالة الجديدة' : 'New partner requests will appear here',
-                          style: TextStyle(fontSize: 14, color: Colors.grey[500]),
-                        ),
-                      ],
-                    ),
-                  )
-                : ListView.separated(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _requesters.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 12),
-                    itemBuilder: (context, index) {
-                      final requester = _requesters[index];
-                      final isProcessing = _processingIds.contains(requester.id);
-                      
-                      final roleText = requester.role == UserRole.freelancer || requester.role == UserRole.techService
-                          ? (isArabic ? 'حرفي' : 'Freelancer')
-                          : (requester.role == UserRole.shop ? (isArabic ? 'معرض / متجر' : 'Shop') : '');
+                      )
+                    : ListView.separated(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: _requesters.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 12),
+                        itemBuilder: (context, index) {
+                          final requester = _requesters[index];
+                          final isProcessing =
+                              _processingIds.contains(requester.id);
 
-                      return GestureDetector(
-                        onTap: () => _navigateToProfile(requester),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          decoration: BoxDecoration(
-                            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
-                            boxShadow: [
-                              if (!isDark)
-                                BoxShadow(
-                                  color: AppColors.primary.withValues(alpha: 0.05),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4),
-                                ),
-                            ],
-                          ),
-                          child: Row(
-                            children: [
-                              // Avatar
-                              CircleAvatar(
-                                radius: 28,
-                                backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                                backgroundImage: requester.profileImageUrl != null ? NetworkImage(requester.profileImageUrl!) : null,
-                                child: requester.profileImageUrl == null ? const Icon(Icons.person, color: AppColors.primary, size: 30) : null,
-                              ),
-                              const SizedBox(width: 14),
-                              
-                              // Info
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      requester.name, 
-                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
+                          final roleText =
+                              requester.role == UserRole.freelancer ||
+                                      requester.role == UserRole.techService
+                                  ? (isArabic ? 'حرفي' : 'Freelancer')
+                                  : (requester.role == UserRole.shop
+                                      ? (isArabic ? 'معرض / متجر' : 'Shop')
+                                      : '');
+
+                          return GestureDetector(
+                            onTap: () => _navigateToProfile(requester),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 12),
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? Colors.white.withValues(alpha: 0.05)
+                                    : Colors.white,
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                    color: AppColors.primary
+                                        .withValues(alpha: 0.2)),
+                                boxShadow: [
+                                  if (!isDark)
+                                    BoxShadow(
+                                      color: AppColors.primary
+                                          .withValues(alpha: 0.05),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 4),
                                     ),
-                                    const SizedBox(height: 4),
-                                    Row(
+                                ],
+                              ),
+                              child: Row(
+                                children: [
+                                  // Avatar
+                                  CircleAvatar(
+                                    radius: 28,
+                                    backgroundColor: AppColors.primary
+                                        .withValues(alpha: 0.1),
+                                    backgroundImage:
+                                        requester.profileImageUrl != null
+                                            ? NetworkImage(
+                                                requester.profileImageUrl!)
+                                            : null,
+                                    child: requester.profileImageUrl == null
+                                        ? const Icon(Icons.person,
+                                            color: AppColors.primary, size: 30)
+                                        : null,
+                                  ),
+                                  const SizedBox(width: 14),
+
+                                  // Info
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
-                                        Icon(Icons.work_outline, size: 14, color: Colors.grey[600]),
-                                        const SizedBox(width: 4),
                                         Text(
-                                          roleText,
-                                          style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                                          requester.name,
+                                          style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Row(
+                                          children: [
+                                            Icon(Icons.work_outline,
+                                                size: 14,
+                                                color: Colors.grey[600]),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              roleText,
+                                              style: TextStyle(
+                                                  color: Colors.grey[600],
+                                                  fontSize: 13),
+                                            ),
+                                          ],
                                         ),
                                       ],
                                     ),
-                                  ],
-                                ),
-                              ),
-                              
-                              // Action Buttons (Incoming Call Style)
-                              if (isProcessing)
-                                const Padding(
-                                  padding: EdgeInsets.symmetric(horizontal: 20),
-                                  child: SizedBox(
-                                    width: 24, height: 24,
-                                    child: CircularProgressIndicator(strokeWidth: 2),
                                   ),
-                                )
-                              else
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    // Accept (Green Check)
-                                    GestureDetector(
-                                      onTap: () => _handleRequest(requester.id, true),
-                                      child: Container(
-                                        padding: const EdgeInsets.all(8),
-                                        decoration: BoxDecoration(
-                                          color: Colors.green.withValues(alpha: 0.15),
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: const Icon(Icons.check_rounded, color: Colors.green, size: 22),
+
+                                  // Action Buttons (Incoming Call Style)
+                                  if (isProcessing)
+                                    const Padding(
+                                      padding:
+                                          EdgeInsets.symmetric(horizontal: 20),
+                                      child: SizedBox(
+                                        width: 24,
+                                        height: 24,
+                                        child: CircularProgressIndicator(
+                                            strokeWidth: 2),
                                       ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    // Reject (Red X)
-                                    GestureDetector(
-                                      onTap: () => _handleRequest(requester.id, false),
-                                      child: Container(
-                                        padding: const EdgeInsets.all(8),
-                                        decoration: BoxDecoration(
-                                          color: Colors.red.withValues(alpha: 0.15),
-                                          shape: BoxShape.circle,
+                                    )
+                                  else
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        // Accept (Green Check)
+                                        GestureDetector(
+                                          onTap: () => _handleRequest(
+                                              requester.id, true),
+                                          child: Container(
+                                            padding: const EdgeInsets.all(8),
+                                            decoration: BoxDecoration(
+                                              color: Colors.green
+                                                  .withValues(alpha: 0.15),
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: const Icon(
+                                                Icons.check_rounded,
+                                                color: Colors.green,
+                                                size: 22),
+                                          ),
                                         ),
-                                        child: const Icon(Icons.close_rounded, color: Colors.red, size: 22),
-                                      ),
+                                        const SizedBox(width: 8),
+                                        // Reject (Red X)
+                                        GestureDetector(
+                                          onTap: () => _handleRequest(
+                                              requester.id, false),
+                                          child: Container(
+                                            padding: const EdgeInsets.all(8),
+                                            decoration: BoxDecoration(
+                                              color: Colors.red
+                                                  .withValues(alpha: 0.15),
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: const Icon(
+                                                Icons.close_rounded,
+                                                color: Colors.red,
+                                                size: 22),
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ],
-                                ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
           ),
         ],
       ),
     );
   }
 }
-

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:pinput/pinput.dart';
 import '../../core/constants/app_colors.dart';
@@ -27,6 +28,7 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
   bool _codeSent = false;
   bool _isLoading = false;
   bool _isPhoneVerified = false;
+  bool _useWhatsAppOTP = false; // Toggle between SMS and WhatsApp
 
   File? _personalPhoto;
   File? _idCardPhoto;
@@ -62,11 +64,20 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
     final messenger = ScaffoldMessenger.of(context);
 
     setState(() => _isLoading = true);
-    final success = await authProvider.sendPhoneVerification(_phoneController.text.trim());
+    
+    final success = _useWhatsAppOTP 
+        ? await authProvider.sendWhatsAppOTP(_phoneController.text.trim())
+        : await authProvider.sendPhoneVerification(_phoneController.text.trim());
+        
     if (!mounted) return;
     setState(() => _isLoading = false);
 
     if (success) {
+      await authProvider.updateUserProfile({
+        'verificationMethod': _useWhatsAppOTP ? 'whatsapp' : 'sms',
+        'verificationPhoneNumber': _phoneController.text.trim(),
+        'verificationRequestedAt': Timestamp.now(),
+      });
       setState(() => _codeSent = true);
     } else {
       final error = authProvider.errorMessage ?? 'Failed to send code';
@@ -81,7 +92,10 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
     final messenger = ScaffoldMessenger.of(context);
 
     setState(() => _isLoading = true);
-    final success = await authProvider.verifyOTPAndLink(_otpController.text.trim());
+    
+    final success = _useWhatsAppOTP
+        ? await authProvider.verifyWhatsAppOTP(_phoneController.text.trim(), _otpController.text.trim())
+        : await authProvider.verifyOTPAndLink(_otpController.text.trim());
     
     if (success) {
       await authProvider.updateUserProfile({'isVerified': true});
@@ -145,7 +159,21 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
         throw Exception('فشل رفع صورة الهوية');
       }
 
-      // 3. Update Firestore
+      // 3. Create verification request
+      await FirebaseFirestore.instance.collection('verification_requests').add({
+        'userId': userId,
+        'status': 'pending',
+        'submittedData': {
+          'method': _useWhatsAppOTP ? 'whatsapp' : 'sms',
+          'phoneNumber': _phoneController.text.trim(),
+          'selfieUrl': selfieUrl,
+          'idCardUrl': idCardUrl,
+          'notes': '', // Optional notes field
+        },
+        'createdAt': Timestamp.now(),
+      });
+
+      // 4. Update user profile with verification data (but not isVerified yet)
       await auth.updateUserProfile({
         'verificationSelfieUrl': selfieUrl,
         'idCardUrl': idCardUrl,
@@ -381,6 +409,50 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 if (!_codeSent) ...[
+                  // OTP Method Selection
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: theme.colorScheme.outline.withValues(alpha: 0.3)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          isArabic ? 'طريقة التحقق' : 'Verification Method',
+                          style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: RadioListTile<bool>(
+                                title: Text(isArabic ? 'رسالة نصية (SMS)' : 'SMS Message'),
+                                subtitle: Text(isArabic ? 'تلقي الرمز عبر SMS' : 'Receive code via SMS'),
+                                value: false,
+                                groupValue: _useWhatsAppOTP,
+                                onChanged: (value) => setState(() => _useWhatsAppOTP = value ?? false),
+                                dense: true,
+                              ),
+                            ),
+                            Expanded(
+                              child: RadioListTile<bool>(
+                                title: Text(isArabic ? 'واتساب' : 'WhatsApp'),
+                                subtitle: Text(isArabic ? 'تلقي الرمز عبر واتساب' : 'Receive code via WhatsApp'),
+                                value: true,
+                                groupValue: _useWhatsAppOTP,
+                                onChanged: (value) => setState(() => _useWhatsAppOTP = value ?? false),
+                                dense: true,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                   CustomTextField(
                     label: isArabic ? 'رقم الهاتف' : 'Phone Number',
                     hint: '09xxxxxxxx',

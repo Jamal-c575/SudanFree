@@ -165,6 +165,39 @@
                 { "fieldPath": "type", "order": "ASCENDING" },
                 { "fieldPath": "createdAt", "order": "DESCENDING" }
             ]
+        },
+        {
+            "collectionGroup": "otp_codes",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "phoneNumber", "order": "ASCENDING" },
+                { "fieldPath": "used", "order": "ASCENDING" },
+                { "fieldPath": "expiresAt", "order": "DESCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "_rate_limits",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "resetAt", "order": "DESCENDING" },
+                { "fieldPath": "count", "order": "ASCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "audit_logs",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "action", "order": "ASCENDING" },
+                { "fieldPath": "timestamp", "order": "DESCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "audit_logs",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "userId", "order": "ASCENDING" },
+                { "fieldPath": "timestamp", "order": "DESCENDING" }
+            ]
         }
     ],
     "fieldOverrides": []

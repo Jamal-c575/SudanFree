@@ -3,6 +3,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../models/ad_model.dart';
 import '../../core/constants/app_colors.dart';
+import '../../widgets/common/image_carousel.dart';
 
 class AdWidget extends StatelessWidget {
   final AdModel ad;
@@ -67,7 +68,30 @@ class AdWidget extends StatelessWidget {
             ),
             
             // Ad Media
-            if (ad.mediaUrl.isNotEmpty)
+            if (ad.mediaUrls.isNotEmpty)
+              ad.mediaUrls.length == 1
+                ? CachedNetworkImage(
+                    imageUrl: ad.mediaUrls.first,
+                    height: 180,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => Container(
+                      height: 180,
+                      color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
+                      child: const Center(child: CircularProgressIndicator()),
+                    ),
+                    errorWidget: (context, url, error) => Container(
+                      height: 180,
+                      color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
+                      child: const Icon(Icons.error, color: Colors.grey),
+                    ),
+                  )
+                : ImageCarousel(
+                    imageUrls: ad.mediaUrls,
+                    height: 180,
+                    fit: BoxFit.cover,
+                  )
+            else if (ad.mediaUrl.isNotEmpty)
               CachedNetworkImage(
                 imageUrl: ad.mediaUrl,
                 height: 180,

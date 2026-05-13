@@ -186,19 +186,26 @@ const AdminExtras = {
     try {
       showToast('جاري تجهيز ونشر الإعلان...', 'info');
       
-      // Upload file if selected
+      let mediaUrls = [];
+      
+      // Upload multiple files if selected
       if (fileInput.files.length > 0) {
-        const file = fileInput.files[0];
-        const ext = file.name.split('.').pop();
-        const ref = storage.ref().child(`ads/${Date.now()}_${Math.random().toString(36).substring(7)}.${ext}`);
-        await ref.put(file);
-        imgUrl = await ref.getDownloadURL();
+        const uploadPromises = Array.from(fileInput.files).map(async (file) => {
+          const ext = file.name.split('.').pop();
+          const ref = storage.ref().child(`ads/${Date.now()}_${Math.random().toString(36).substring(7)}.${ext}`);
+          await ref.put(file);
+          return await ref.getDownloadURL();
+        });
+        
+        mediaUrls = await Promise.all(uploadPromises);
+        imgUrl = mediaUrls[0] || imgUrl; // Primary image for backward compatibility
       }
 
       await db.collection('ads').add({
         title,
         description: desc,
         mediaUrl: imgUrl,
+        mediaUrls: mediaUrls.length > 0 ? mediaUrls : (imgUrl ? [imgUrl] : []),
         imageUrl: imgUrl, // backward compat
         mediaType: mediaType,
         actionUrl: link,

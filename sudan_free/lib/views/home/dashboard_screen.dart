@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:provider/provider.dart';
@@ -29,27 +31,18 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> with TickerProviderStateMixin {
-  AdModel? _homeBannerAd;
+  List<AdModel> _homeBannerAds = [];
+  int _currentBannerAdIndex = 0;
   AdModel? _stripAd;
   bool _isLoadingAds = true;
   final AdService _adService = AdService();
-  late AnimationController _fadeController;
-  late Animation<double> _fadeAnimation;
-  late Animation<Offset> _slideAnimation;
+  PageController? _bannerPageController;
+  Timer? _bannerAutoScrollTimer;
 
   @override
   void initState() {
     super.initState();
-    _fadeController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 600),
-    );
-    _fadeAnimation = CurvedAnimation(parent: _fadeController, curve: Curves.easeOut);
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.15),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _fadeController, curve: Curves.easeOutCubic));
-    _fadeController.forward();
+    _bannerPageController = PageController();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _fetchAds();
     });
@@ -57,30 +50,51 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
 
   @override
   void dispose() {
-    _fadeController.dispose();
+    _bannerAutoScrollTimer?.cancel();
+    _bannerPageController?.dispose();
     super.dispose();
+  }
+
+  void _startBannerAutoScroll() {
+    _bannerAutoScrollTimer?.cancel();
+    if (_homeBannerAds.length <= 1) return;
+
+    _bannerAutoScrollTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (!mounted || _homeBannerAds.isEmpty || _bannerPageController == null) return;
+      final nextPage = (_currentBannerAdIndex + 1) % _homeBannerAds.length;
+      _bannerPageController!.animateToPage(
+        nextPage,
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeInOut,
+      );
+    });
   }
 
   Future<void> _fetchAds() async {
     final currentUser = context.read<AuthProvider>().user;
-    if (currentUser != null) {
-      final results = await Future.wait([
-        _adService.getTargetedAd(currentUser, placement: AdPlacement.homeBanner),
-        _adService.getTargetedAd(currentUser, placement: AdPlacement.strip),
-      ]);
-      if (mounted) {
-        setState(() {
-          _homeBannerAd = results[0];
-          _stripAd = results[1];
-          _isLoadingAds = false;
-        });
-        // Record impressions
-        if (_homeBannerAd != null) _adService.recordImpression(_homeBannerAd!.id);
-        if (_stripAd != null) _adService.recordImpression(_stripAd!.id);
-      }
-    } else {
+    if (currentUser == null) {
       if (mounted) setState(() => _isLoadingAds = false);
+      return;
     }
+
+    setState(() => _isLoadingAds = true);
+
+    final homeBannerAds = await _adService.getAdsForPlacement(currentUser, AdPlacement.homeBanner, limit: 4);
+    final stripAd = await _adService.getTargetedAd(currentUser, placement: AdPlacement.strip);
+
+    if (!mounted) return;
+
+    setState(() {
+      _homeBannerAds = homeBannerAds;
+      _stripAd = stripAd;
+      _currentBannerAdIndex = 0;
+      _isLoadingAds = false;
+    });
+
+    if (_homeBannerAds.isNotEmpty) {
+      _adService.recordImpression(_homeBannerAds[0].id);
+    }
+    _startBannerAutoScroll();
   }
 
   @override
@@ -111,6 +125,25 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
       if (currentUser.state == null) return true;
       return s.state == currentUser.state || s.state == null;
     }).toList();
+
+    // Freelancers from user's region (prioritizing essential services)
+    final nearbyFreelancers = List<UserModel>.from(userProvider.freelancers).where((f) {
+      if (currentUser.state == null) return true;
+      return f.state == currentUser.state;
+    }).toList();
+
+    final essentialKeywords = ['كهربائي', 'كهرباء', 'سباك', 'سباكة', 'ترحيل', 'نقل', 'ميكانيكي', 'صيانة', 'سيارات'];
+    nearbyFreelancers.sort((a, b) {
+      final aBio = '${a.jobTitle ?? ''} ${a.skills.join(' ')} ${a.bio ?? ''}'.toLowerCase();
+      final bBio = '${b.jobTitle ?? ''} ${b.skills.join(' ')} ${b.bio ?? ''}'.toLowerCase();
+      
+      bool aEssential = essentialKeywords.any((k) => aBio.contains(k));
+      bool bEssential = essentialKeywords.any((k) => bBio.contains(k));
+
+      if (aEssential && !bEssential) return -1;
+      if (!aEssential && bEssential) return 1;
+      return b.rating.compareTo(a.rating); // Then by rating
+    });
 
     return Scaffold(
       body: SafeArea(
@@ -247,34 +280,15 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                   child: _buildStoriesShimmer(context),
                 ),
 
-              // ═══════════ HOME BANNER AD ═══════════
-              if (_homeBannerAd != null)
-                SliverToBoxAdapter(
-                  child: FadeTransition(
-                    opacity: _fadeAnimation,
-                    child: SlideTransition(
-                      position: _slideAnimation,
-                      child: Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: AdWidget(
-                          ad: _homeBannerAd!,
-                          onTap: () => _adService.recordClick(_homeBannerAd!.id),
-                        ),
-                      ),
-                    ),
-                  ),
-                )
-              else if (_isLoadingAds)
-                SliverToBoxAdapter(
-                  child: Container(
-                    height: 100,
-                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: isDark ? Colors.grey[800] : Colors.grey[200],
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                ),
+              // ═══════════ HOME BANNER CAROUSEL ═══════════
+              SliverToBoxAdapter(
+                child: _buildHomeBannerCarousel(context, locale, isDark),
+              ),
+
+              // ═══════════ QUICK ACCESS CATEGORIES ═══════════
+              SliverToBoxAdapter(
+                child: _buildQuickCategories(context, locale),
+              ),
 
               // ═══════════ FEATURED FREELANCERS ═══════════
               SliverToBoxAdapter(
@@ -292,6 +306,25 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                     ? _buildHorizontalCardShimmer(context)
                     : _buildFeaturedFreelancers(context, featuredFreelancers.take(10).toList(), locale, isDark),
               ),
+
+              // ═══════════ NEARBY FREELANCERS (ESSENTIALS) ═══════════
+              if (nearbyFreelancers.isNotEmpty || userProvider.isLoading)
+                SliverToBoxAdapter(
+                  child: _buildSectionHeader(
+                    context,
+                    icon: Icons.handyman,
+                    title: locale == 'ar' ? 'خدمات في منطقتك' : 'Services Near You',
+                    iconColor: AppColors.secondary,
+                    onSeeAll: () => widget.onNavigateToTab?.call(1),
+                    locale: locale,
+                  ),
+                ),
+              if (nearbyFreelancers.isNotEmpty || userProvider.isLoading)
+                SliverToBoxAdapter(
+                  child: userProvider.isLoading && nearbyFreelancers.isEmpty
+                      ? _buildHorizontalCardShimmer(context)
+                      : _buildFeaturedFreelancers(context, nearbyFreelancers.take(10).toList(), locale, isDark),
+                ),
 
               // ═══════════ STRIP AD ═══════════
               if (_stripAd != null)
@@ -516,6 +549,199 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildHomeBannerCarousel(BuildContext context, String locale, bool isDark) {
+    if (_isLoadingAds) {
+      return Container(
+        height: 220,
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isDark ? Colors.grey[850] : Colors.grey[200],
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_homeBannerAds.isEmpty) {
+      return Container(
+        height: 180,
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isDark ? Colors.grey[900] : const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: isDark ? Colors.grey[700]! : Colors.grey[300]!),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              locale == 'ar' ? 'إعلانات مميزة قيد التحميل...' : 'Featured offers are loading...',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: Theme.of(context).textTheme.bodyLarge?.color,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              locale == 'ar'
+                  ? 'يتم إعداد المحتوى الشخصي الخاص بك. حاول التحديث لاحقاً.'
+                  : 'Personalized content is being prepared. Pull down to refresh.',
+              style: TextStyle(color: AppColors.softGrey),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SizedBox(
+          height: 220,
+          child: PageView.builder(
+            controller: _bannerPageController,
+            onPageChanged: (index) {
+              setState(() {
+                _currentBannerAdIndex = index;
+              });
+              _adService.recordImpression(_homeBannerAds[index].id);
+            },
+            itemCount: _homeBannerAds.length,
+            itemBuilder: (context, index) {
+              final ad = _homeBannerAds[index];
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                child: GestureDetector(
+                  onTap: () => _adService.recordClick(ad.id),
+                  child: AdWidget(
+                    ad: ad,
+                    onTap: () => _adService.recordClick(ad.id),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        if (_homeBannerAds.length > 1)
+          Padding(
+            padding: const EdgeInsets.only(top: 8, left: 16, right: 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(
+                _homeBannerAds.length,
+                (index) => AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  width: _currentBannerAdIndex == index ? 16 : 8,
+                  height: 8,
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  decoration: BoxDecoration(
+                    color: _currentBannerAdIndex == index
+                        ? AppColors.primary
+                        : AppColors.primary.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildQuickCategories(BuildContext context, String locale) {
+    final categories = [
+      {
+        'title': locale == 'ar' ? 'الأقرب إليك' : 'Near You',
+        'icon': Icons.location_on,
+        'action': () => widget.onNavigateToTab?.call(1),
+      },
+      {
+        'title': locale == 'ar' ? 'الأعلى تقييماً' : 'Top Rated',
+        'icon': Icons.star,
+        'action': () => widget.onNavigateToTab?.call(1),
+      },
+      {
+        'title': locale == 'ar' ? 'الجديد' : 'New',
+        'icon': Icons.fiber_new,
+        'action': () => widget.onNavigateToTab?.call(1),
+      },
+      {
+        'title': locale == 'ar' ? 'المتاجر' : 'Shops',
+        'icon': Icons.storefront,
+        'action': () => widget.onNavigateToTab?.call(2),
+      },
+      {
+        'title': locale == 'ar' ? 'الفئات' : 'Categories',
+        'icon': Icons.category,
+        'action': () => widget.onNavigateToTab?.call(1),
+      },
+    ];
+
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      height: 88,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemBuilder: (context, index) {
+          final item = categories[index];
+          return GestureDetector(
+            onTap: item['action'] as void Function(),
+            child: Container(
+              width: 110,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Theme.of(context).cardColor,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.border.withValues(alpha: 0.15)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.02),
+                    blurRadius: 14,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      item['icon'] as IconData,
+                      size: 20,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    item['title'] as String,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: Theme.of(context).textTheme.bodyLarge?.color,
+                      fontSize: 12,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        itemCount: categories.length,
       ),
     );
   }

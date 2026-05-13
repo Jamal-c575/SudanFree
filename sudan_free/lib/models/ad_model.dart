@@ -20,7 +20,8 @@ class AdModel {
   final String id;
   final String title;
   final String description;
-  final String mediaUrl;
+  final String mediaUrl; // Primary image for backward compatibility
+  final List<String> mediaUrls; // Multiple images support
   final AdMediaType mediaType;
   final String? actionUrl;
   final String targetRegion; // 'all' for everyone
@@ -39,6 +40,7 @@ class AdModel {
     required this.title,
     required this.description,
     required this.mediaUrl,
+    this.mediaUrls = const [], // Default to empty list
     this.mediaType = AdMediaType.image,
     this.actionUrl,
     this.targetRegion = 'all',
@@ -55,11 +57,17 @@ class AdModel {
 
   factory AdModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
+    final mediaUrl = data['mediaUrl'] ?? data['imageUrl'] ?? '';
+    final List<String> mediaUrls = data['mediaUrls'] != null 
+        ? (data['mediaUrls'] as List<dynamic>).map((url) => url.toString()).toList()
+        : (mediaUrl.isNotEmpty ? [mediaUrl] : []);
+    
     return AdModel(
       id: doc.id,
       title: data['title'] ?? '',
       description: data['description'] ?? '',
-      mediaUrl: data['mediaUrl'] ?? data['imageUrl'] ?? '',
+      mediaUrl: mediaUrl,
+      mediaUrls: mediaUrls,
       mediaType: AdMediaType.values.firstWhere(
         (e) => e.name == data['mediaType'],
         orElse: () => AdMediaType.image,
@@ -86,6 +94,7 @@ class AdModel {
       'title': title,
       'description': description,
       'mediaUrl': mediaUrl,
+      'mediaUrls': mediaUrls,
       'mediaType': mediaType.name,
       'actionUrl': actionUrl,
       'targetRegion': targetRegion,

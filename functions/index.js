@@ -1,13 +1,260 @@
 const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/firestore");
+const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { FieldValue } = require("firebase-admin/firestore");
 const { initializeApp } = require("firebase-admin/app");
 const { getFirestore } = require("firebase-admin/firestore");
+const { getAuth } = require("firebase-admin/auth");
+const { getStorage } = require("firebase-admin/storage");
 const { getMessaging } = require("firebase-admin/messaging");
+const twilio = require("twilio");
 
 initializeApp();
 
 const db = getFirestore();
+const authAdmin = getAuth();
+const storage = getStorage();
+const bucket = storage.bucket();
 const messaging = getMessaging();
+
+// Development flag: set IS_PRODUCTION=true in prod env
+const isProduction = process.env.IS_PRODUCTION === 'true' || process.env.NODE_ENV === 'production';
+
+// ─── Twilio Client (Production Only) ───────────────────────────────────
+let twilioClient = null;
+if (isProduction && process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
+    twilioClient = twilio(
+        process.env.TWILIO_ACCOUNT_SID,
+        process.env.TWILIO_AUTH_TOKEN
+    );
+    console.log("✓ Twilio client initialized for production OTP delivery");
+} else if (isProduction) {
+    console.warn("⚠️ WARNING: Production mode enabled but Twilio credentials missing. OTP will not be sent!");
+} else {
+    console.log("✓ Development mode: OTP delivery disabled, using debug codes");
+}
+
+// ─── Rate Limiting Configuration ───────────────────────────────────────
+const RATE_LIMIT_WINDOW = 10 * 60 * 1000; // 10 minutes
+const RATE_LIMIT_MAX_ATTEMPTS = 3;
+const BRUTE_FORCE_WINDOW = 15 * 60 * 1000; // 15 minutes
+const BRUTE_FORCE_MAX_ATTEMPTS = 5;
+
+// ─── Helper: Audit Logging ────────────────────────────────────────────
+/**
+ * Logs important events for compliance and debugging
+ * @param {string} action - Action performed (e.g., 'OTP_SENT', 'OTP_VERIFIED', 'USER_DELETED')
+ * @param {string} userId - User ID (optional for OTP pre-auth)
+ * @param {object} details - Additional context
+ */
+async function logAudit(action, userId = null, details = {}) {
+    try {
+        await db.collection('audit_logs').add({
+            action,
+            userId: userId || null,
+            phoneNumber: details.phoneNumber || null,
+            status: details.status || 'success',
+            errorMessage: details.errorMessage || null,
+            timestamp: FieldValue.serverTimestamp(),
+            ipAddress: details.ipAddress || null,
+            adminId: details.adminId || null,
+            details: details.metadata || {}
+        });
+    } catch (error) {
+        console.error(`Failed to log audit event ${action}:`, error);
+        // Don't throw - audit failure shouldn't block main flow
+    }
+}
+
+// ─── Helper: Rate Limiting ────────────────────────────────────────────
+/**
+ * Checks if phone number has exceeded OTP request limit
+ * Throws HttpsError if limit exceeded
+ */
+async function checkOTPRateLimit(phoneNumber) {
+    const limitKey = `otp_send_${phoneNumber}`;
+    const limitDoc = db.collection('_rate_limits').doc(limitKey);
+    
+    try {
+        const doc = await limitDoc.get();
+        const now = Date.now();
+        
+        if (doc.exists) {
+            const data = doc.data();
+            const windowExpiry = data.resetAt.toMillis ? data.resetAt.toMillis() : data.resetAt.getTime();
+            
+            if (windowExpiry > now) {
+                // Window still active
+                if (data.count >= RATE_LIMIT_MAX_ATTEMPTS) {
+                    await logAudit('OTP_REQUEST_BLOCKED', null, {
+                        phoneNumber,
+                        status: 'blocked',
+                        errorMessage: 'Rate limit exceeded',
+                        metadata: { attempt: data.count }
+                    });
+                    throw new HttpsError(
+                        'resource-exhausted',
+                        `Too many OTP requests. Please try again in ${Math.ceil((windowExpiry - now) / 60000)} minutes.`
+                    );
+                }
+                // Increment counter
+                await limitDoc.update({ count: FieldValue.increment(1) });
+            } else {
+                // Window expired, reset
+                await limitDoc.set({
+                    count: 1,
+                    resetAt: new Date(now + RATE_LIMIT_WINDOW)
+                });
+            }
+        } else {
+            // First request, create new limit doc
+            await limitDoc.set({
+                count: 1,
+                resetAt: new Date(now + RATE_LIMIT_WINDOW),
+                createdAt: FieldValue.serverTimestamp()
+            });
+        }
+    } catch (error) {
+        if (error instanceof HttpsError) throw error;
+        console.error('Rate limit check error:', error);
+        // On error, allow request but log it
+        await logAudit('OTP_RATE_LIMIT_ERROR', null, {
+            phoneNumber,
+            status: 'error',
+            errorMessage: error.message
+        });
+    }
+}
+
+// ─── Helper: Brute-Force Protection ────────────────────────────────────
+/**
+ * Checks if phone number has exceeded OTP verification attempts
+ * Throws HttpsError if limit exceeded
+ */
+async function checkOTPBruteForceLimit(phoneNumber) {
+    const bruteForceKey = `otp_verify_${phoneNumber}`;
+    const bruteForceDoc = db.collection('_brute_force_attempts').doc(bruteForceKey);
+    
+    try {
+        const doc = await bruteForceDoc.get();
+        const now = Date.now();
+        
+        if (doc.exists) {
+            const data = doc.data();
+            const windowExpiry = data.resetAt.toMillis ? data.resetAt.toMillis() : data.resetAt.getTime();
+            
+            if (windowExpiry > now && data.count >= BRUTE_FORCE_MAX_ATTEMPTS) {
+                await logAudit('OTP_VERIFY_BLOCKED', null, {
+                    phoneNumber,
+                    status: 'blocked',
+                    errorMessage: 'Too many failed verification attempts',
+                    metadata: { attemptCount: data.count }
+                });
+                throw new HttpsError(
+                    'permission-denied',
+                    'Too many failed verification attempts. Request a new OTP and try again.'
+                );
+            }
+        }
+    } catch (error) {
+        if (error instanceof HttpsError) throw error;
+        console.error('Brute-force check error:', error);
+    }
+}
+
+// ─── Helper: Record Failed OTP Verification ────────────────────────────
+async function recordFailedOTPVerification(phoneNumber) {
+    const bruteForceKey = `otp_verify_${phoneNumber}`;
+    const bruteForceDoc = db.collection('_brute_force_attempts').doc(bruteForceKey);
+    
+    try {
+        const doc = await bruteForceDoc.get();
+        const now = Date.now();
+        
+        if (doc.exists) {
+            const data = doc.data();
+            const windowExpiry = data.resetAt.toMillis ? data.resetAt.toMillis() : data.resetAt.getTime();
+            
+            if (windowExpiry > now) {
+                await bruteForceDoc.update({ count: FieldValue.increment(1) });
+            } else {
+                // Reset counter on new window
+                await bruteForceDoc.set({
+                    count: 1,
+                    resetAt: new Date(now + BRUTE_FORCE_WINDOW)
+                });
+            }
+        } else {
+            // First failed attempt
+            await bruteForceDoc.set({
+                count: 1,
+                resetAt: new Date(now + BRUTE_FORCE_WINDOW),
+                createdAt: FieldValue.serverTimestamp()
+            });
+        }
+    } catch (error) {
+        console.error('Failed to record OTP verification attempt:', error);
+    }
+}
+
+async function isAdminUser(uid) {
+    const userDoc = await db.collection('users').doc(uid).get();
+    return userDoc.exists && userDoc.data()?.role === 'admin';
+}
+
+async function deleteUserFirestoreData(userId) {
+    const allRefs = [];
+    const posts = await db.collection('posts').where('userId', '==', userId).get();
+    allRefs.push(...posts.docs.map(d => d.ref));
+
+    const comments = await db.collectionGroup('comments').where('userId', '==', userId).get();
+    allRefs.push(...comments.docs.map(d => d.ref));
+
+    const reviews = await db.collection('reviews').where('reviewerId', '==', userId).get();
+    allRefs.push(...reviews.docs.map(d => d.ref));
+
+    const notifications = await db.collection('notifications').where('userId', '==', userId).get();
+    allRefs.push(...notifications.docs.map(d => d.ref));
+
+    const reports = await db.collection('reports').where('reporterId', '==', userId).get();
+    allRefs.push(...reports.docs.map(d => d.ref));
+
+    const deletionRequests = await db.collection('deletion_requests').where('userId', '==', userId).get();
+    allRefs.push(...deletionRequests.docs.map(d => d.ref));
+
+    const portfolio = await db.collection('users').doc(userId).collection('portfolio').get();
+    allRefs.push(...portfolio.docs.map(d => d.ref));
+
+    const settings = await db.collection('users').doc(userId).collection('settings').get();
+    allRefs.push(...settings.docs.map(d => d.ref));
+
+    allRefs.push(db.collection('users').doc(userId));
+
+    for (let i = 0; i < allRefs.length; i += 400) {
+        const batch = db.batch();
+        const end = Math.min(i + 400, allRefs.length);
+        for (let j = i; j < end; j += 1) {
+            batch.delete(allRefs[j]);
+        }
+        await batch.commit();
+    }
+}
+
+async function deleteUserStorageData(userId) {
+    const prefixes = [
+        `users/profile/${userId}`,
+        `users/portfolio/${userId}`,
+        `users/portfolio_videos/${userId}`,
+        `users/verifications/${userId}`,
+    ];
+
+    for (const prefix of prefixes) {
+        const [files] = await bucket.getFiles({ prefix });
+        if (!files.length) continue;
+        await Promise.all(files.map((file) => file.delete().catch((error) => {
+            console.error(`Failed to delete file at ${file.name}:`, error);
+        })));
+    }
+}
 
 /**
  * Cloud Function: onNotificationCreated
@@ -294,5 +541,415 @@ exports.onMessageCreated = onDocumentCreated(
             console.error(`Error sending chat push to receiver ${receiverId}:`, error);
             return null;
         }
+    }
+);
+
+/**
+ * Callable Cloud Function: sendWhatsAppOTP
+ *
+ * Sends an OTP code via WhatsApp or SMS for user verification
+ * 
+ * Production: Sends real OTP via Twilio (requires TWILIO_* env vars)
+ * Development: Returns debug code without sending (set IS_PRODUCTION=false)
+ * 
+ * Rate Limited: Max 3 requests per phone number per 10 minutes
+ */
+exports.sendWhatsAppOTP = onCall(async (request) => {
+    const { phoneNumber, method = 'whatsapp' } = request.data || {};
+    
+    if (!phoneNumber || typeof phoneNumber !== 'string') {
+        throw new HttpsError('invalid-argument', 'Valid phone number is required');
+    }
+
+    // Basic phone number validation (Sudanese format)
+    const sudanesePhoneRegex = /^(\+249|249|0)?[9][0-9]{8}$/;
+    const cleanPhone = phoneNumber.replace(/\s+/g, '');
+    if (!sudanesePhoneRegex.test(cleanPhone)) {
+        throw new HttpsError('invalid-argument', 'Invalid Sudanese phone number format');
+    }
+
+    try {
+        // ─── PHASE 1: Rate Limiting ───────────────────────────────────────
+        await checkOTPRateLimit(phoneNumber);
+
+        // Generate 6-digit OTP
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        
+        // Store OTP in Firestore with expiration (5 minutes)
+        const otpDoc = {
+            phoneNumber: phoneNumber,
+            otp: otp,
+            method: method,
+            createdAt: FieldValue.serverTimestamp(),
+            expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5 minutes
+            used: false,
+            deliveryAttempts: 1
+        };
+
+        // ─── PHASE 2: Send via Twilio (Production) or Debug (Dev) ────────
+        let deliveryStatus = 'queued';
+        let deliveryMessageSid = null;
+
+        if (isProduction && twilioClient) {
+            try {
+                let message;
+                if (method === 'whatsapp') {
+                    message = await twilioClient.messages.create({
+                        body: `Your SudanFree verification code is: ${otp}\n\nValid for 5 minutes. Do not share this code.`,
+                        from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
+                        to: `whatsapp:${cleanPhone}`
+                    });
+                } else {
+                    // SMS fallback
+                    message = await twilioClient.messages.create({
+                        body: `Your SudanFree verification code is: ${otp}. Valid for 5 minutes.`,
+                        from: process.env.TWILIO_SMS_NUMBER,
+                        to: cleanPhone
+                    });
+                }
+                
+                deliveryStatus = 'sent';
+                deliveryMessageSid = message.sid;
+                console.log(`✓ OTP sent via ${method} to ${phoneNumber} (SID: ${message.sid})`);
+                
+            } catch (twilioError) {
+                deliveryStatus = 'failed';
+                console.error(`✗ Twilio delivery error for ${phoneNumber}:`, twilioError.message);
+                
+                // Log but continue - store OTP for retry
+                await logAudit('OTP_TWILIO_DELIVERY_ERROR', null, {
+                    phoneNumber,
+                    method,
+                    status: 'failed',
+                    errorMessage: twilioError.message
+                });
+            }
+        } else if (!isProduction) {
+            // Development mode: no actual delivery
+            deliveryStatus = 'debug_mode';
+            console.log(`[DEV] OTP for ${phoneNumber}: ${otp}`);
+        } else {
+            deliveryStatus = 'production_no_credentials';
+            console.warn(`[WARN] Production mode but no Twilio credentials. OTP not sent to ${phoneNumber}`);
+        }
+
+        otpDoc.deliveryStatus = deliveryStatus;
+        if (deliveryMessageSid) otpDoc.deliveryMessageSid = deliveryMessageSid;
+
+        // Store OTP record
+        const docRef = await db.collection('otp_codes').add(otpDoc);
+
+        // ─── PHASE 3: Audit Logging ───────────────────────────────────────
+        await logAudit('OTP_SENT', null, {
+            phoneNumber,
+            method,
+            status: 'success',
+            deliveryStatus,
+            metadata: {
+                otpDocId: docRef.id,
+                messageSid: deliveryMessageSid
+            }
+        });
+
+        // Prepare response
+        const response = {
+            success: true,
+            message: isProduction 
+                ? `OTP sent via ${method.toUpperCase()}`
+                : 'OTP generated (development mode)',
+            expiresIn: 300, // 5 minutes in seconds
+            deliveryStatus,
+            method
+        };
+
+        if (!isProduction) {
+            // Development mode: return debug OTP
+            await db.collection('otp_debug_codes').add({
+                phoneNumber: phoneNumber,
+                otp: otp,
+                method: method,
+                createdAt: FieldValue.serverTimestamp(),
+                expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+                used: false,
+                environment: 'development',
+                docRefId: docRef.id
+            });
+            response.debugOtp = otp;
+            response.note = 'DEBUG MODE: Use debugOtp above. In production, user receives code via Twilio.';
+        }
+
+        return response;
+
+    } catch (error) {
+        if (error instanceof HttpsError) {
+            // Rate limit or validation errors
+            throw error;
+        }
+
+        console.error('Error in sendWhatsAppOTP:', error);
+        
+        await logAudit('OTP_SEND_ERROR', null, {
+            phoneNumber,
+            status: 'error',
+            errorMessage: error.message
+        });
+
+        throw new HttpsError('internal', 'Failed to send OTP');
+    }
+});
+
+/**
+ * Callable Cloud Function: verifyWhatsAppOTP
+ *
+ * Verifies the OTP code sent via WhatsApp/SMS
+ * 
+ * Rate Limited: Max 5 failed verification attempts per phone per 15 minutes
+ * Audited: All verification attempts logged for security analysis
+ */
+exports.verifyWhatsAppOTP = onCall(async (request) => {
+    const { phoneNumber, otp } = request.data || {};
+    
+    if (!phoneNumber || !otp || typeof phoneNumber !== 'string' || typeof otp !== 'string') {
+        throw new HttpsError('invalid-argument', 'Phone number and OTP are required');
+    }
+
+    const cleanPhone = phoneNumber.replace(/\s+/g, '');
+
+    try {
+        // ─── PHASE 1: Brute-Force Protection ──────────────────────────────
+        await checkOTPBruteForceLimit(cleanPhone);
+
+        // ─── PHASE 2: Find Valid OTP ──────────────────────────────────────
+        const otpQuery = await db.collection('otp_codes')
+            .where('phoneNumber', '==', phoneNumber)
+            .where('used', '==', false)
+            .where('expiresAt', '>', new Date())
+            .orderBy('expiresAt', 'desc')
+            .limit(1)
+            .get();
+
+        if (otpQuery.empty) {
+            // Log failed verification
+            await logAudit('OTP_VERIFY_FAILED', null, {
+                phoneNumber,
+                status: 'failed',
+                errorMessage: 'OTP not found or expired'
+            });
+
+            // Record failed attempt for brute-force tracking
+            await recordFailedOTPVerification(cleanPhone);
+
+            throw new HttpsError('not-found', 'OTP not found or expired. Request a new OTP.');
+        }
+
+        const otpDoc = otpQuery.docs[0];
+        const otpData = otpDoc.data();
+
+        // ─── PHASE 3: Validate OTP Code ───────────────────────────────────
+        if (otpData.otp !== otp) {
+            // Log failed verification
+            await logAudit('OTP_VERIFY_FAILED', null, {
+                phoneNumber,
+                status: 'failed',
+                errorMessage: 'Invalid OTP code'
+            });
+
+            // Record failed attempt for brute-force tracking
+            await recordFailedOTPVerification(cleanPhone);
+
+            throw new HttpsError('invalid-argument', 'Incorrect OTP code. Please try again.');
+        }
+
+        // ─── PHASE 4: Mark OTP as Used ────────────────────────────────────
+        await otpDoc.ref.update({ 
+            used: true,
+            verifiedAt: FieldValue.serverTimestamp()
+        });
+
+        // ─── PHASE 5: Clear Brute-Force Counter ───────────────────────────
+        // Reset failed attempts counter on successful verification
+        try {
+            await db.collection('_brute_force_attempts')
+                .doc(`otp_verify_${cleanPhone}`)
+                .delete();
+        } catch (err) {
+            // Silently fail if doc doesn't exist
+            console.log(`No brute-force counter to clear for ${cleanPhone}`);
+        }
+
+        // ─── PHASE 6: Audit Logging ───────────────────────────────────────
+        await logAudit('OTP_VERIFIED', null, {
+            phoneNumber,
+            status: 'success',
+            metadata: {
+                otpDocId: otpDoc.id,
+                method: otpData.method || 'unknown'
+            }
+        });
+
+        return { 
+            success: true, 
+            message: 'OTP verified successfully',
+            verifiedAt: FieldValue.serverTimestamp(),
+            method: otpData.method || 'unknown'
+        };
+
+    } catch (error) {
+        if (error instanceof HttpsError) {
+            throw error;
+        }
+
+        console.error('Error verifying WhatsApp OTP:', error);
+        
+        await logAudit('OTP_VERIFY_ERROR', null, {
+            phoneNumber,
+            status: 'error',
+            errorMessage: error.message
+        });
+
+        throw new HttpsError('internal', 'Failed to verify OTP');
+    }
+});
+
+/**
+ * Callable Cloud Function: deleteUserAccount
+ *
+ * Allows an admin to delete a user account completely from Auth, Firestore, and Storage.
+ * This is intended for the admin dashboard and is protected by the admin role check.
+ */
+exports.deleteUserAccount = onCall(async (request) => {
+    const authUid = request.auth?.uid;
+    if (!authUid) {
+        throw new HttpsError('unauthenticated', 'Authentication is required');
+    }
+
+    const isAdmin = await isAdminUser(authUid);
+    if (!isAdmin) {
+        throw new HttpsError('permission-denied', 'Admin privileges are required');
+    }
+
+    const { userId } = request.data || {};
+    if (!userId || typeof userId !== 'string') {
+        throw new HttpsError('invalid-argument', 'userId is required');
+    }
+
+    try {
+        await deleteUserFirestoreData(userId);
+        await deleteUserStorageData(userId);
+        try {
+            await authAdmin.deleteUser(userId);
+        } catch (authError) {
+            if (authError.code !== 'auth/user-not-found') {
+                throw authError;
+            }
+            console.warn(`Auth user ${userId} not found, continuing deletion of Firestore/Storage data.`);
+        }
+        return { success: true };
+    } catch (error) {
+        console.error(`Error deleting user account ${userId}:`, error);
+        throw new HttpsError('internal', 'Failed to delete user account');
+    }
+});
+
+/**
+ * Cloud Function: onUserUpdated
+ * 
+ * PHASE 1 FIX: Syncs admin role to Firebase Auth custom claims
+ * Eliminates performance issue from repeated Firestore reads in firestore.rules
+ * 
+ * When user.role changes to/from 'admin', updates Auth custom claims
+ * This allows firestore.rules to use request.auth.token.admin (fast) 
+ * instead of get() Firestore read (slow)
+ */
+exports.onUserUpdated = onDocumentUpdated(
+    { document: "users/{userId}", concurrency: 80 },
+    async (event) => {
+        const userBefore = event.data.before.data();
+        const userAfter = event.data.after.data();
+        const userId = event.params.userId;
+
+        if (!userBefore || !userAfter) return null;
+
+        const roleBefore = userBefore.role;
+        const roleAfter = userAfter.role;
+
+        // Only process if role changed
+        if (roleBefore === roleAfter) return null;
+
+        try {
+            // If promoted to admin, set custom claim
+            if (roleAfter === 'admin' && roleBefore !== 'admin') {
+                await authAdmin.setCustomUserClaims(userId, { admin: true });
+                console.log(`✓ Admin custom claim SET for user ${userId}`);
+                
+                await logAudit('ADMIN_ROLE_GRANTED', userId, {
+                    status: 'success',
+                    metadata: { previousRole: roleBefore, newRole: roleAfter }
+                });
+            }
+            // If demoted from admin, remove custom claim
+            else if (roleAfter !== 'admin' && roleBefore === 'admin') {
+                await authAdmin.setCustomUserClaims(userId, { admin: false });
+                console.log(`✓ Admin custom claim REMOVED for user ${userId}`);
+                
+                await logAudit('ADMIN_ROLE_REVOKED', userId, {
+                    status: 'success',
+                    metadata: { previousRole: roleBefore, newRole: roleAfter }
+                });
+            }
+        } catch (error) {
+            console.error(`Error syncing admin role for user ${userId}:`, error);
+            await logAudit('ADMIN_SYNC_ERROR', userId, {
+                status: 'error',
+                errorMessage: error.message
+            });
+        }
+
+        return null;
+    }
+);
+
+// ═══ Verification Request Approved - Auto-sync User Status ═══
+exports.onVerificationRequestUpdated = onDocumentUpdated(
+    "verification_requests/{requestId}",
+    async (event) => {
+        const requestData = event.data.after.data();
+        const previousData = event.data.before.data();
+
+        // Only trigger when status changes to 'approved'
+        if (requestData.status === 'approved' && previousData.status !== 'approved') {
+            const userId = requestData.userId;
+
+            try {
+                console.log(`🔄 Syncing verification status for user ${userId}`);
+
+                // Update user document to ensure consistency
+                await db.collection('users').doc(userId).update({
+                    isVerified: true,
+                    verifiedAt: FieldValue.serverTimestamp(),
+                    verificationStatus: 'verified',
+                    updatedAt: FieldValue.serverTimestamp()
+                });
+
+                console.log(`✓ User ${userId} verification status synced successfully`);
+
+                await logAudit('VERIFICATION_APPROVED_SYNC', userId, {
+                    status: 'success',
+                    requestId: event.params.requestId,
+                    metadata: { syncedFields: ['isVerified', 'verifiedAt', 'verificationStatus'] }
+                });
+
+            } catch (error) {
+                console.error(`Error syncing verification for user ${userId}:`, error);
+
+                await logAudit('VERIFICATION_SYNC_ERROR', userId, {
+                    status: 'error',
+                    requestId: event.params.requestId,
+                    errorMessage: error.message
+                });
+            }
+        }
+
+        return null;
     }
 );

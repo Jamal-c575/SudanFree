@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import '../../models/user_model.dart';
 import '../../models/ad_model.dart';
 import '../../widgets/common/loading_widget.dart';
@@ -241,6 +242,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           ],
         ),
         actions: [
+          if (user.phoneNumber != null)
+            TextButton(
+              onPressed: () => _sendAdminOtp(context, user.phoneNumber!),
+              child: const Text('إرسال رمز واتساب', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
+            ),
           TextButton(
             onPressed: () => _updateVerification(user.id, VerificationStatus.rejected),
             child: const Text('رفض الطلب', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
@@ -269,6 +275,22 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       content: Text(status == VerificationStatus.verified ? 'تم توثيق الحساب بنجاح' : 'تم رفض التوثيق'),
       backgroundColor: status == VerificationStatus.verified ? Colors.green : Colors.red,
     ));
+  }
+
+  Future<void> _sendAdminOtp(BuildContext context, String phoneNumber) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final callable = FirebaseFunctions.instance.httpsCallable('sendWhatsAppOTP');
+      final result = await callable.call({'phoneNumber': phoneNumber});
+      final data = result.data as Map<String, dynamic>;
+      if (data['success'] == true) {
+        messenger.showSnackBar(const SnackBar(content: Text('تم إرسال رمز التحقق عبر واتساب')));
+      } else {
+        messenger.showSnackBar(SnackBar(content: Text(data['message'] ?? 'فشل إرسال الرمز'), backgroundColor: Colors.red));
+      }
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('فشل إرسال رمز واتساب: $e'), backgroundColor: Colors.red));
+    }
   }
 
   Widget _buildDeletionQueue() {
