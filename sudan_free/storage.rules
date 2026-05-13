@@ -96,6 +96,12 @@ service firebase.storage {
         request.resource.size < 5 * 1024 * 1024 && // Max 5MB
         isImageFile();
     }
+
+    // Ads images
+    match /ads/{userId}/{fileName} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
   }
 }
 
