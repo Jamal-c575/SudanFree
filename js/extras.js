@@ -183,6 +183,13 @@ const AdminExtras = {
     if (!title) { showToast('أدخل عنوان الإعلان','error'); return; }
     if (!expiry) { showToast('حدد تاريخ الانتهاء','error'); return; }
 
+    const user = firebase.auth().currentUser;
+    if (!user) {
+      showToast('يجب تسجيل الدخول لرفع الإعلانات', 'error');
+      return;
+    }
+    const userId = user.uid;
+
     try {
       showToast('جاري تجهيز ونشر الإعلان...', 'info');
       
@@ -192,7 +199,7 @@ const AdminExtras = {
       if (fileInput.files.length > 0) {
         const uploadPromises = Array.from(fileInput.files).map(async (file) => {
           const ext = file.name.split('.').pop();
-          const ref = storage.ref().child(`ads/${Date.now()}_${Math.random().toString(36).substring(7)}.${ext}`);
+          const ref = storage.ref().child(`ads/${userId}/${Date.now()}_${Math.random().toString(36).substring(7)}.${ext}`);
           await ref.put(file);
           return await ref.getDownloadURL();
         });
