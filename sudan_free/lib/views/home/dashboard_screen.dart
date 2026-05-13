@@ -679,7 +679,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
-      height: 88,
+      height: 74,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -688,8 +688,8 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
           return GestureDetector(
             onTap: item['action'] as void Function(),
             child: Container(
-              width: 110,
-              padding: const EdgeInsets.all(12),
+              width: 92,
+              padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: Theme.of(context).cardColor,
                 borderRadius: BorderRadius.circular(16),
