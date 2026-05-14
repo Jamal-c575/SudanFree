@@ -17,6 +17,7 @@ class AdDetailsScreen extends StatefulWidget {
 class _AdDetailsScreenState extends State<AdDetailsScreen> {
   int _selectedImageIndex = 0;
   List<String> _images = [];
+  bool _showFullDescription = false;
 
   @override
   void initState() {
@@ -46,36 +47,44 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
         titleTextStyle: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
       ),
       extendBodyBehindAppBar: true,
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Main Hero Image
-            if (_images.isNotEmpty)
-              CachedNetworkImage(
-                imageUrl: _images[_selectedImageIndex],
-                height: 350,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                placeholder: (context, url) => Container(
+      body: SafeArea(
+        top: false, // Allow app bar to extend behind, but protect content below
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Main Hero Image - Now properly positioned below status bar
+              if (_images.isNotEmpty)
+                Container(
                   height: 350,
-                  color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
-                  child: const Center(child: CircularProgressIndicator()),
-                ),
-                errorWidget: (context, url, error) => Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(top: 48), // Account for app bar height
+                  child: CachedNetworkImage(
+                    imageUrl: _images[_selectedImageIndex],
+                    height: 350,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => Container(
+                      height: 350,
+                      color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
+                      child: const Center(child: CircularProgressIndicator()),
+                    ),
+                    errorWidget: (context, url, error) => Container(
+                      height: 350,
+                      color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
+                      child: const Icon(Icons.error, size: 50, color: Colors.grey),
+                    ),
+                  ),
+                )
+              else
+                Container(
                   height: 350,
-                  color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
-                  child: const Icon(Icons.error, size: 50, color: Colors.grey),
+                  margin: const EdgeInsets.only(top: 48), // Account for app bar height
+                  color: isDark ? Colors.grey.shade900 : Colors.grey.shade300,
+                  child: const Center(
+                    child: Icon(Icons.campaign, size: 80, color: Colors.grey),
+                  ),
                 ),
-              )
-            else
-              Container(
-                height: 350,
-                color: isDark ? Colors.grey.shade900 : Colors.grey.shade300,
-                child: const Center(
-                  child: Icon(Icons.campaign, size: 80, color: Colors.grey),
-                ),
-              ),
 
             // Thumbnails Row
             if (_images.length > 1)
@@ -122,8 +131,23 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
               ),
 
             // Content
-            Padding(
-              padding: const EdgeInsets.all(20),
+            Container(
+              margin: const EdgeInsets.only(top: 16),
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 40),
+              decoration: BoxDecoration(
+                color: Theme.of(context).scaffoldBackgroundColor,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(24),
+                  topRight: Radius.circular(24),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, -2),
+                  ),
+                ],
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -131,7 +155,7 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
                   if (widget.ad.advertiserName != null)
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                      margin: const EdgeInsets.only(bottom: 16),
+                      margin: const EdgeInsets.only(bottom: 20),
                       decoration: BoxDecoration(
                         color: AppColors.primary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
@@ -161,18 +185,76 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
                       fontSize: 24,
                       fontWeight: FontWeight.w800,
                       color: Theme.of(context).textTheme.bodyLarge?.color,
+                      height: 1.3,
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
 
-                  // Description
-                  Text(
-                    widget.ad.description,
-                    style: TextStyle(
-                      fontSize: 16,
-                      height: 1.6,
-                      color: isDark ? Colors.grey.shade300 : Colors.grey.shade700,
+                  // Category/Location info
+                  if (widget.ad.targetCategory != 'all')
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: AppColors.secondary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.secondary.withValues(alpha: 0.2)),
+                      ),
+                      child: Text(
+                        widget.ad.targetCategory,
+                        style: TextStyle(
+                          color: AppColors.secondary,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
                     ),
+
+                  // Description with Read More
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'الوصف',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: Theme.of(context).textTheme.bodyLarge?.color,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        widget.ad.description,
+                        style: TextStyle(
+                          fontSize: 16,
+                          height: 1.6,
+                          color: isDark ? Colors.grey.shade300 : Colors.grey.shade700,
+                        ),
+                        maxLines: _showFullDescription ? null : 4,
+                        overflow: _showFullDescription ? null : TextOverflow.ellipsis,
+                      ),
+                      if (widget.ad.description.length > 200)
+                        TextButton(
+                          onPressed: () {
+                            setState(() {
+                              _showFullDescription = !_showFullDescription;
+                            });
+                          },
+                          style: TextButton.styleFrom(
+                            padding: EdgeInsets.zero,
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          child: Text(
+                            _showFullDescription ? 'عرض أقل' : 'قراءة المزيد',
+                            style: TextStyle(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                   const SizedBox(height: 32),
 
@@ -201,7 +283,7 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
                         },
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
-                          children: const [
+                          children: [
                             Text(
                               'زيارة الرابط',
                               style: TextStyle(
@@ -216,12 +298,13 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
                       ),
                     ),
                     
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 20),
                 ],
               ),
             ),
           ],
         ),
+      ),
       ),
     );
   }

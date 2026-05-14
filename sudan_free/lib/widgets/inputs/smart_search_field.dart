@@ -222,6 +222,8 @@ class _SmartSearchFieldState extends State<SmartSearchField> {
     return Icons.search;
   }
 
+  final String _tapRegionGroupId = UniqueKey().toString();
+
   void _showOverlay() {
     _removeOverlay();
     
@@ -238,79 +240,86 @@ class _SmartSearchFieldState extends State<SmartSearchField> {
           link: _layerLink,
           showWhenUnlinked: false,
           offset: Offset(0, size.height + 4),
-          child: Material(
-            elevation: 8,
-            borderRadius: BorderRadius.circular(12),
-            shadowColor: Colors.black26,
-            child: Container(
-              constraints: BoxConstraints(
-                maxHeight: _suggestions.length * 52.0 + 16,
-              ),
-              decoration: BoxDecoration(
-                color: Theme.of(context).cardColor,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: accent.withValues(alpha: 0.15),
+          child: TapRegion(
+            groupId: _tapRegionGroupId,
+            onTapOutside: (_) {
+              _focusNode.unfocus();
+              _removeOverlay();
+            },
+            child: Material(
+              elevation: 8,
+              borderRadius: BorderRadius.circular(12),
+              shadowColor: Colors.black26,
+              child: Container(
+                constraints: BoxConstraints(
+                  maxHeight: _suggestions.length * 52.0 + 16,
                 ),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: ListView.builder(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  shrinkWrap: true,
-                  itemCount: _suggestions.length,
-                  itemBuilder: (context, index) {
-                    final suggestion = _suggestions[index];
-                    final isComposite = suggestion.contains('في ');
-                    
-                    return InkWell(
-                      onTap: () {
-                        _controller.text = suggestion;
-                        _controller.selection = TextSelection.fromPosition(
-                          TextPosition(offset: suggestion.length),
-                        );
-                        _removeOverlay();
-                        widget.onSearch(suggestion);
-                        _focusNode.unfocus();
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 32,
-                              height: 32,
-                              decoration: BoxDecoration(
-                                color: accent.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Icon(
-                                _getSuggestionIcon(suggestion),
-                                size: 18,
-                                color: accent,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                suggestion,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: isComposite ? FontWeight.w600 : FontWeight.w500,
-                                  color: Theme.of(context).textTheme.bodyLarge?.color,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).cardColor,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: accent.withValues(alpha: 0.15),
+                  ),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: ListView.builder(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    shrinkWrap: true,
+                    itemCount: _suggestions.length,
+                    itemBuilder: (context, index) {
+                      final suggestion = _suggestions[index];
+                      final isComposite = suggestion.contains('في ');
+                      
+                      return InkWell(
+                        onTap: () {
+                          _controller.text = suggestion;
+                          _controller.selection = TextSelection.fromPosition(
+                            TextPosition(offset: suggestion.length),
+                          );
+                          _removeOverlay();
+                          widget.onSearch(suggestion);
+                          _focusNode.unfocus();
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 32,
+                                height: 32,
+                                decoration: BoxDecoration(
+                                  color: accent.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Icon(
+                                  _getSuggestionIcon(suggestion),
+                                  size: 18,
+                                  color: accent,
                                 ),
                               ),
-                            ),
-                            Icon(
-                              Icons.north_west,
-                              size: 14,
-                              color: Colors.grey[400],
-                            ),
-                          ],
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  suggestion,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: isComposite ? FontWeight.w600 : FontWeight.w500,
+                                    color: Theme.of(context).textTheme.bodyLarge?.color,
+                                  ),
+                                ),
+                              ),
+                              Icon(
+                                Icons.north_west,
+                                size: 14,
+                                color: Colors.grey[400],
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    );
-                  },
+                      );
+                    },
+                  ),
                 ),
               ),
             ),
@@ -331,55 +340,62 @@ class _SmartSearchFieldState extends State<SmartSearchField> {
   Widget build(BuildContext context) {
     final accent = widget.accentColor ?? AppColors.primary;
     
-    return CompositedTransformTarget(
-      link: _layerLink,
-      child: SizedBox(
-        height: 40,
-        child: TextField(
-          controller: _controller,
-          focusNode: _focusNode,
-          textInputAction: TextInputAction.search,
-          onChanged: _onTextChanged,
-          onSubmitted: (val) {
-            _removeOverlay();
-            widget.onSearch(val);
-          },
-          textAlignVertical: TextAlignVertical.center,
-          style: const TextStyle(fontSize: 14),
-          decoration: InputDecoration(
-            hintText: widget.hintText,
-            hintStyle: TextStyle(
-              fontSize: 14,
-              color: AppColors.textSecondary.withValues(alpha: 0.6),
+    return TapRegion(
+      groupId: _tapRegionGroupId,
+      onTapOutside: (_) {
+        _focusNode.unfocus();
+        _removeOverlay();
+      },
+      child: CompositedTransformTarget(
+        link: _layerLink,
+        child: SizedBox(
+          height: 40,
+          child: TextField(
+            controller: _controller,
+            focusNode: _focusNode,
+            textInputAction: TextInputAction.search,
+            onChanged: _onTextChanged,
+            onSubmitted: (val) {
+              _removeOverlay();
+              widget.onSearch(val);
+            },
+            textAlignVertical: TextAlignVertical.center,
+            style: const TextStyle(fontSize: 14),
+            decoration: InputDecoration(
+              hintText: widget.hintText,
+              hintStyle: TextStyle(
+                fontSize: 14,
+                color: AppColors.textSecondary.withValues(alpha: 0.6),
+              ),
+              prefixIcon: Icon(Icons.search, size: 20, color: _hasFocus ? accent : AppColors.textSecondary),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: AppColors.border.withValues(alpha: 0.3)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: AppColors.border.withValues(alpha: 0.3)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: accent, width: 1.5),
+              ),
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+              suffixIcon: _controller.text.isNotEmpty
+                  ? IconButton(
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      icon: const Icon(Icons.clear, size: 16),
+                      onPressed: () {
+                        _controller.clear();
+                        _removeOverlay();
+                        widget.onSearch('');
+                        setState(() {});
+                      },
+                    )
+                  : null,
             ),
-            prefixIcon: Icon(Icons.search, size: 20, color: _hasFocus ? accent : AppColors.textSecondary),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: AppColors.border.withValues(alpha: 0.3)),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: AppColors.border.withValues(alpha: 0.3)),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: accent, width: 1.5),
-            ),
-            isDense: true,
-            contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
-            suffixIcon: _controller.text.isNotEmpty
-                ? IconButton(
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    icon: const Icon(Icons.clear, size: 16),
-                    onPressed: () {
-                      _controller.clear();
-                      _removeOverlay();
-                      widget.onSearch('');
-                      setState(() {});
-                    },
-                  )
-                : null,
           ),
         ),
       ),

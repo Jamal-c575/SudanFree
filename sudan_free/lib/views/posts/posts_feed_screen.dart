@@ -31,7 +31,7 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
-  PostCategory? _selectedCategory;
+  PostCategoryGroup? _selectedGroup;
   bool _showSearch = false;
   Timer? _heartbeatTimer;
   AdModel? _currentAd;
@@ -65,7 +65,12 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
   Future<void> _fetchAd() async {
     final currentUser = context.read<AuthProvider>().user;
     if (currentUser != null) {
-      final ad = await _adService.getTargetedAd(currentUser, placement: AdPlacement.communityFeed);
+      final categoryTarget = _selectedGroup != null ? 'PostCategoryGroup.${_selectedGroup!.name}' : null;
+      final ad = await _adService.getTargetedAd(
+        currentUser, 
+        placement: AdPlacement.communityFeed,
+        targetCategory: categoryTarget,
+      );
       if (mounted) {
         setState(() {
           _currentAd = ad;
@@ -94,7 +99,7 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
   }
 
   List<PostModel> _filterPosts(List<PostModel> posts) {
-    if (_searchQuery.isEmpty && _selectedCategory == null) {
+    if (_searchQuery.isEmpty && _selectedGroup == null) {
        final sorted = List<PostModel>.from(posts);
        // Combined sorting: Latest + Interactive Auto-sort
        // Every interaction adds virtual 2 hours to the post's "newness"
@@ -113,8 +118,14 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
         final matchesUser = post.userName.toLowerCase().contains(query);
         if (!matchesCaption && !matchesUser) return false;
       }
-      if (_selectedCategory != null && post.category != _selectedCategory!.name) {
-        return false;
+      if (_selectedGroup != null) {
+        if (post.category == null) return false;
+        try {
+          final postCat = PostCategory.values.firstWhere((e) => e.name == post.category);
+          if (postCat.group != _selectedGroup) return false;
+        } catch (_) {
+          return false;
+        }
       }
       return true;
     }).toList();
@@ -192,7 +203,7 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
                         onSearch: (val) => setState(() => _searchQuery = val),
                       ),
                       const SizedBox(height: 6),
-                      // Category Chips
+                      // Category Group Chips
                       SizedBox(
                         height: 36,
                         child: ListView(
@@ -200,13 +211,19 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
                           children: [
                             _buildCategoryChip(
                               locale == 'ar' ? 'الكل' : 'All',
-                              _selectedCategory == null,
-                              () => setState(() => _selectedCategory = null),
+                              _selectedGroup == null,
+                              () {
+                                setState(() => _selectedGroup = null);
+                                _fetchAd();
+                              },
                             ),
-                            ...PostCategory.values.map((cat) => _buildCategoryChip(
-                              cat.getName(locale),
-                              _selectedCategory == cat,
-                              () => setState(() => _selectedCategory = cat),
+                            ...PostCategoryGroup.values.map((group) => _buildCategoryChip(
+                              group.getName(locale),
+                              _selectedGroup == group,
+                              () {
+                                setState(() => _selectedGroup = group);
+                                _fetchAd();
+                              },
                             )),
                           ],
                         ),
@@ -225,7 +242,7 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
                   itemBuilder: (_, __) => const PostCardShimmer(),
                 )
               : posts.isEmpty && !postsProvider.isLoading
-                  ? _searchQuery.isNotEmpty || _selectedCategory != null
+                  ? _searchQuery.isNotEmpty || _selectedGroup != null
                       ? _buildNoSearchResults(context, locale)
                       : _buildEmptyState(context, locale, canPost)
                   : postsProvider.isLoading && posts.isNotEmpty 
@@ -238,9 +255,9 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
                       child: ListView.builder(
                         padding: const EdgeInsets.only(bottom: 96),
                         cacheExtent: 250, // Reduced cache extent to save memory
-                        itemCount: posts.length + (_currentAd != null && _searchQuery.isEmpty && _selectedCategory == null ? 1 : 0),
+                        itemCount: posts.length + (_currentAd != null && _searchQuery.isEmpty ? 1 : 0),
                         itemBuilder: (context, index) {
-                          if (index == 0 && _currentAd != null && _searchQuery.isEmpty && _selectedCategory == null) {
+                          if (index == 0 && _currentAd != null && _searchQuery.isEmpty) {
                             return AdWidget(
                               ad: _currentAd!,
                               onTap: () {
@@ -253,7 +270,7 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
                             );
                           }
                           
-                          final postIndex = (_currentAd != null && _searchQuery.isEmpty && _selectedCategory == null) ? index - 1 : index;
+                          final postIndex = (_currentAd != null && _searchQuery.isEmpty) ? index - 1 : index;
                           final post = posts[postIndex];
 
                           return Column(
@@ -343,7 +360,7 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
         setState(() {
           _searchController.clear();
           _searchQuery = '';
-          _selectedCategory = null;
+          _selectedGroup = null;
         });
       },
     );

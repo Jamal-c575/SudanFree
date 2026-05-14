@@ -178,6 +178,7 @@ const AdminExtras = {
     const mediaType = document.getElementById('ad-media-type').value;
     const region = document.getElementById('ad-region').value;
     const prof = document.getElementById('ad-profession').value;
+    const category = document.getElementById('ad-category')?.value || 'all';
     const priority = parseInt(document.getElementById('ad-priority').value) || 5;
     const expiry = document.getElementById('ad-expiry').value;
 
@@ -224,6 +225,7 @@ const AdminExtras = {
           advertiserName: advertiser || null,
           targetRegion: region,
           targetProfession: prof,
+          targetCategory: category,
           priority,
           isActive: true,
           impressions: 0,

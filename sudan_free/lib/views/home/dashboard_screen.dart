@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/constants/app_colors.dart';
@@ -36,11 +35,13 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> with TickerProviderStateMixin {
   List<AdModel> _homeBannerAds = [];
   int _currentBannerAdIndex = 0;
-  AdModel? _stripAd;
+  List<AdModel> _stripAds = [];
+  int _currentStripAdIndex = 0;
   bool _isLoadingAds = true;
   final AdService _adService = AdService();
   PageController? _bannerPageController;
   Timer? _bannerAutoScrollTimer;
+  Timer? _stripAutoScrollTimer;
 
   @override
   void initState() {
@@ -54,6 +55,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
   @override
   void dispose() {
     _bannerAutoScrollTimer?.cancel();
+    _stripAutoScrollTimer?.cancel();
     _bannerPageController?.dispose();
     super.dispose();
   }
@@ -73,6 +75,18 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     });
   }
 
+  void _startStripAutoScroll() {
+    _stripAutoScrollTimer?.cancel();
+    if (_stripAds.length <= 1) return;
+
+    _stripAutoScrollTimer = Timer.periodic(const Duration(seconds: 8), (_) {
+      if (!mounted || _stripAds.isEmpty) return;
+      setState(() {
+        _currentStripAdIndex = (_currentStripAdIndex + 1) % _stripAds.length;
+      });
+    });
+  }
+
   Future<void> _fetchAds() async {
     final currentUser = context.read<AuthProvider>().user;
     if (currentUser == null) {
@@ -83,14 +97,15 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     setState(() => _isLoadingAds = true);
 
     final homeBannerAds = await _adService.getAdsForPlacement(currentUser, AdPlacement.homeBanner, limit: 4);
-    final stripAd = await _adService.getTargetedAd(currentUser, placement: AdPlacement.strip);
+    final stripAds = await _adService.getAdsForPlacement(currentUser, AdPlacement.strip, limit: 3);
 
     if (!mounted) return;
 
     setState(() {
       _homeBannerAds = homeBannerAds;
-      _stripAd = stripAd;
+      _stripAds = stripAds;
       _currentBannerAdIndex = 0;
+      _currentStripAdIndex = 0;
       _isLoadingAds = false;
     });
 
@@ -98,6 +113,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
       _adService.recordImpression(_homeBannerAds[0].id);
     }
     _startBannerAutoScroll();
+    _startStripAutoScroll();
   }
 
   @override
@@ -299,13 +315,13 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                 child: _buildQuickCategories(context, locale),
               ),
 
-              // ═══════════ FEATURED FREELANCERS ═══════════
+              // ═══════════ TRENDING SERVICES ═══════════
               SliverToBoxAdapter(
                 child: _buildSectionHeader(
                   context,
-                  icon: Icons.workspace_premium,
-                  title: locale == 'ar' ? 'مقدمو خدمات مميزون' : 'Top Professionals',
-                  iconColor: AppColors.sudanGold,
+                  icon: Icons.trending_up,
+                  title: locale == 'ar' ? 'الخدمات الرائجة' : 'Trending Services',
+                  iconColor: AppColors.accent,
                   onSeeAll: () => widget.onNavigateToTab?.call(1),
                   locale: locale,
                 ),
@@ -313,8 +329,27 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
               SliverToBoxAdapter(
                 child: userProvider.isLoading && featuredFreelancers.isEmpty
                     ? _buildHorizontalCardShimmer(context)
-                    : _buildFeaturedFreelancers(context, featuredFreelancers.take(10).toList(), locale, isDark),
+                    : _buildTrendingServices(context, featuredFreelancers.take(8).toList(), locale, isDark),
               ),
+
+              // ═══════════ RECOMMENDED FOR YOU ═══════════
+              if (currentUser.role == UserRole.client)
+                SliverToBoxAdapter(
+                  child: _buildSectionHeader(
+                    context,
+                    icon: Icons.recommend,
+                    title: locale == 'ar' ? 'موصى به لك' : 'Recommended for You',
+                    iconColor: AppColors.secondary,
+                    onSeeAll: () => widget.onNavigateToTab?.call(1),
+                    locale: locale,
+                  ),
+                ),
+              if (currentUser.role == UserRole.client)
+                SliverToBoxAdapter(
+                  child: userProvider.isLoading && nearbyFreelancers.isEmpty
+                      ? _buildHorizontalCardShimmer(context)
+                      : _buildRecommendedSection(context, nearbyFreelancers.take(6).toList(), locale, isDark),
+                ),
 
               // ═══════════ NEARBY FREELANCERS (ESSENTIALS) ═══════════
               if (nearbyFreelancers.isNotEmpty || userProvider.isLoading)
@@ -336,9 +371,9 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                 ),
 
               // ═══════════ STRIP AD ═══════════
-              if (_stripAd != null)
+              if (_stripAds.isNotEmpty)
                 SliverToBoxAdapter(
-                  child: _buildStripAd(context, _stripAd!, isDark),
+                  child: _buildStripAd(context, _stripAds[_currentStripAdIndex], isDark),
                 ),
 
               // ═══════════ NEARBY SHOPS ═══════════
@@ -1069,75 +1104,456 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
 
   Widget _buildStripAd(BuildContext context, AdModel ad, bool isDark) {
     return GestureDetector(
-      onTap: () {
-        _adService.recordImpression(ad.id);
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => AdDetailsScreen(ad: ad)),
-        );
+      onTap: () async {
+        _adService.recordClick(ad.id);
+        if (ad.actionUrl != null && ad.actionUrl!.isNotEmpty) {
+          // Handle different action types
+          if (ad.actionUrl!.startsWith('http')) {
+            // External URL
+            // Note: url_launcher is not imported, but we can add it back if needed
+            // For now, navigate to ad details
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => AdDetailsScreen(ad: ad)),
+            );
+          } else {
+            // Internal navigation (could be a route like '/shops' or '/services')
+            // For now, navigate to ad details
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => AdDetailsScreen(ad: ad)),
+            );
+          }
+        } else {
+          // Default: navigate to ad details
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => AdDetailsScreen(ad: ad)),
+          );
+        }
       },
       child: Container(
+        height: 120,
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: isDark
-                ? [const Color(0xFF1A3A5C), const Color(0xFF0D2B45)]
-                : [AppColors.primary.withValues(alpha: 0.08), AppColors.secondary.withValues(alpha: 0.08)],
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
-          ),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: AppColors.primary.withValues(alpha: 0.2),
-          ),
+          border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
-        child: Row(
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
+          fit: StackFit.expand,
           children: [
-            Icon(Icons.campaign, color: AppColors.primary, size: 20),
-            const SizedBox(width: 10),
-            Expanded(
+            // Background Image with shimmer loading
+            CachedNetworkImage(
+              imageUrl: CloudinaryService.getOptimizedUrl(
+                ad.mediaUrl, 
+                width: 800, 
+                height: 250, 
+                quality: 'auto',
+                extraTransformations: ['f_auto']
+              ),
+              fit: BoxFit.cover,
+              placeholder: (context, url) => _buildShimmerLoader(isDark),
+              errorWidget: (context, url, error) => Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: isDark
+                        ? [const Color(0xFF1A3A5C), const Color(0xFF0D2B45)]
+                        : [AppColors.primary, AppColors.secondary],
+                  ),
+                ),
+                child: const Center(
+                  child: Icon(Icons.image_not_supported, color: Colors.white70, size: 32),
+                ),
+              ),
+            ),
+
+            // Dark Gradient Overlay for text readability
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.black.withValues(alpha: 0.85),
+                    Colors.black.withValues(alpha: 0.4),
+                    Colors.transparent,
+                  ],
+                  begin: AlignmentDirectional.centerStart,
+                  end: AlignmentDirectional.centerEnd,
+                ),
+              ),
+            ),
+
+            // Content
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withValues(alpha: 0.9),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Text(
+                                'إعلان ممول',
+                                style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                ad.title,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (ad.description.isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            ad.description,
+                            style: const TextStyle(fontSize: 11, color: Colors.white70),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ]
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.secondary,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text(
+                      'تصفح',
+                      style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Auto-rotation indicator for multiple ads
+            if (_stripAds.length > 1)
+              Positioned(
+                top: 8,
+                left: 8,
+                child: Row(
+                  children: List.generate(
+                    _stripAds.length,
+                    (index) => AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      width: _currentStripAdIndex == index ? 16 : 6,
+                      height: 6,
+                      margin: const EdgeInsets.symmetric(horizontal: 2),
+                      decoration: BoxDecoration(
+                        color: _currentStripAdIndex == index 
+                            ? Colors.white.withValues(alpha: 0.9) 
+                            : Colors.white.withValues(alpha: 0.4),
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildShimmerLoader(bool isDark) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: isDark 
+              ? [Colors.grey[850]!, Colors.grey[800]!, Colors.grey[850]!]
+              : [Colors.grey[200]!, Colors.grey[100]!, Colors.grey[200]!],
+          stops: const [0.0, 0.5, 1.0],
+        ),
+      ),
+      child: const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+  }
+
+  // ────────────── Trending Services (Horizontal Scroll with Badges) ──────────────
+  Widget _buildTrendingServices(BuildContext context, List<UserModel> freelancers, String locale, bool isDark) {
+    if (freelancers.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Text(
+          locale == 'ar' ? 'لا توجد خدمات رائجة حالياً' : 'No trending services yet',
+          style: TextStyle(color: AppColors.softGrey),
+        ),
+      );
+    }
+
+    return Container(
+      height: 180,
+      margin: const EdgeInsets.only(bottom: 16),
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: freelancers.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        itemBuilder: (context, index) {
+          final freelancer = freelancers[index];
+          return _AnimatedCardItem(
+            index: index,
+            child: _buildTrendingServiceCard(context, freelancer, locale, isDark),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildTrendingServiceCard(BuildContext context, UserModel freelancer, String locale, bool isDark) {
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => ProfileScreen(userId: freelancer.id)),
+      ),
+      child: Container(
+        width: 140,
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.border.withValues(alpha: 0.3)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Stack(
+          children: [
+            // Trending badge
+            Positioned(
+              top: 8,
+              right: 8,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppColors.accent,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text(
+                  '🔥',
+                  style: TextStyle(fontSize: 10),
+                ),
+              ),
+            ),
+
+            Padding(
+              padding: const EdgeInsets.all(12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Profile image
+                  CircleAvatar(
+                    radius: 24,
+                    backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                    backgroundImage: freelancer.profileImageUrl != null
+                        ? CachedNetworkImageProvider(
+                            CloudinaryService.getOptimizedUrl(freelancer.profileImageUrl!, width: 100, quality: 'auto'))
+                        : null,
+                    child: freelancer.profileImageUrl == null
+                        ? Icon(Icons.person, size: 20, color: AppColors.primary)
+                        : null,
+                  ),
+                  const SizedBox(height: 8),
+
+                  // Name
                   Text(
-                    ad.title,
+                    freelancer.name,
                     style: TextStyle(
+                      fontWeight: FontWeight.w600,
                       fontSize: 13,
-                      fontWeight: FontWeight.w700,
                       color: Theme.of(context).textTheme.bodyLarge?.color,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  if (ad.description.isNotEmpty)
-                    Text(
-                      ad.description,
-                      style: TextStyle(fontSize: 11, color: AppColors.softGrey),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+
+                  // Job title
+                  Text(
+                    freelancer.jobTitle ?? '',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: AppColors.softGrey,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+
+                  const Spacer(),
+
+                  // Rating
+                  Row(
+                    children: [
+                      Icon(Icons.star, size: 12, color: AppColors.sudanGold),
+                      const SizedBox(width: 2),
+                      Text(
+                        freelancer.rating.toStringAsFixed(1),
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.sudanGold,
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
-            if (ad.actionUrl != null) ...[
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ────────────── Recommended Section (Personalized) ──────────────
+  Widget _buildRecommendedSection(BuildContext context, List<UserModel> freelancers, String locale, bool isDark) {
+    if (freelancers.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Text(
+          locale == 'ar' ? 'لا توجد توصيات حالياً' : 'No recommendations yet',
+          style: TextStyle(color: AppColors.softGrey),
+        ),
+      );
+    }
+
+    return Container(
+      height: 160,
+      margin: const EdgeInsets.only(bottom: 16),
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: freelancers.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        itemBuilder: (context, index) {
+          final freelancer = freelancers[index];
+          return _AnimatedCardItem(
+            index: index,
+            child: _buildRecommendedCard(context, freelancer, locale, isDark),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildRecommendedCard(BuildContext context, UserModel freelancer, String locale, bool isDark) {
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => ProfileScreen(userId: freelancer.id)),
+      ),
+      child: Container(
+        width: 120,
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.secondary.withValues(alpha: 0.3)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Stack(
+          children: [
+            // Recommended badge
+            Positioned(
+              top: 6,
+              right: 6,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                 decoration: BoxDecoration(
-                  color: AppColors.primary,
-                  borderRadius: BorderRadius.circular(8),
+                  color: AppColors.secondary,
+                  borderRadius: BorderRadius.circular(6),
                 ),
-                child: const Text(
-                  'تصفح',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                  ),
+                child: Text(
+                  locale == 'ar' ? 'موصى' : 'Rec',
+                  style: const TextStyle(fontSize: 8, color: Colors.white, fontWeight: FontWeight.bold),
                 ),
               ),
-            ],
+            ),
+
+            Padding(
+              padding: const EdgeInsets.all(10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Profile image
+                  CircleAvatar(
+                    radius: 20,
+                    backgroundColor: AppColors.secondary.withValues(alpha: 0.1),
+                    backgroundImage: freelancer.profileImageUrl != null
+                        ? CachedNetworkImageProvider(
+                            CloudinaryService.getOptimizedUrl(freelancer.profileImageUrl!, width: 80, quality: 'auto'))
+                        : null,
+                    child: freelancer.profileImageUrl == null
+                        ? Icon(Icons.person, size: 16, color: AppColors.secondary)
+                        : null,
+                  ),
+                  const SizedBox(height: 6),
+
+                  // Name
+                  Text(
+                    freelancer.name,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                      color: Theme.of(context).textTheme.bodyLarge?.color,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                  ),
+
+                  // Job title
+                  Text(
+                    freelancer.jobTitle ?? '',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: AppColors.softGrey,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),

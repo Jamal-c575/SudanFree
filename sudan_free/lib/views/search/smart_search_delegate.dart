@@ -131,7 +131,7 @@ class SmartSearchDelegate extends SearchDelegate<UserModel?> {
       return _buildEmptyState(context, isAr);
     }
 
-    // Trigger suggestions update
+    // Trigger suggestions update with debounce
     final searchProvider = context.read<SearchProvider>();
     searchProvider.updateSuggestions(query);
 
@@ -140,51 +140,98 @@ class SmartSearchDelegate extends SearchDelegate<UserModel?> {
         final suggestions = search.suggestions;
 
         if (suggestions.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.search, size: 48, color: Colors.grey[300]),
-                const SizedBox(height: 12),
-                Text(
-                  isAr ? 'اضغط بحث للعرض الكامل' : 'Press search for full results',
-                  style: TextStyle(color: Colors.grey[500], fontSize: 14),
-                ),
-              ],
+          return AnimatedOpacity(
+            opacity: 1.0,
+            duration: const Duration(milliseconds: 200),
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.search, size: 48, color: Colors.grey[300]),
+                  const SizedBox(height: 12),
+                  Text(
+                    isAr ? 'اضغط بحث للعرض الكامل' : 'Press search for full results',
+                    style: TextStyle(color: Colors.grey[500], fontSize: 14),
+                  ),
+                ],
+              ),
             ),
           );
         }
 
-        return ListView.builder(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          itemCount: suggestions.length,
-          itemBuilder: (context, index) {
-            final suggestion = suggestions[index];
-            return ListTile(
-              leading: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  _getSuggestionIcon(suggestion),
-                  color: AppColors.primary,
-                  size: 20,
-                ),
-              ),
-              title: Text(
-                suggestion,
-                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
-              ),
-              trailing: Icon(Icons.north_west, size: 16, color: Colors.grey[400]),
-              onTap: () {
-                query = suggestion;
-                showResults(context);
-              },
-            );
-          },
+        return AnimatedSwitcher(
+          duration: const Duration(milliseconds: 300),
+          child: ListView.builder(
+            key: ValueKey<String>(query), // Rebuild animation when query changes
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            itemCount: suggestions.length,
+            itemBuilder: (context, index) {
+              final suggestion = suggestions[index];
+              return _buildSuggestionTile(context, suggestion, query);
+            },
+          ),
         );
+      },
+    );
+  }
+
+  Widget _buildSuggestionTile(BuildContext context, String suggestion, String query) {
+    // Highlight matched parts of the suggestion
+    final lowerSuggestion = suggestion.toLowerCase();
+    final lowerQuery = query.toLowerCase();
+    
+    List<TextSpan> spans = [];
+    int start = 0;
+    
+    while (start < suggestion.length) {
+      final index = lowerSuggestion.indexOf(lowerQuery, start);
+      if (index == -1) {
+        // No more matches, add remaining text
+        spans.add(TextSpan(text: suggestion.substring(start)));
+        break;
+      }
+      
+      // Add text before match
+      if (index > start) {
+        spans.add(TextSpan(text: suggestion.substring(start, index)));
+      }
+      
+      // Add highlighted match
+      final end = index + query.length;
+      spans.add(TextSpan(
+        text: suggestion.substring(index, end),
+        style: const TextStyle(
+          fontWeight: FontWeight.bold,
+          color: AppColors.primary,
+        ),
+      ));
+      
+      start = end;
+    }
+
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: AppColors.primary.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(
+          _getSuggestionIcon(suggestion),
+          color: AppColors.primary,
+          size: 20,
+        ),
+      ),
+      title: RichText(
+        text: TextSpan(
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: Colors.black),
+          children: spans,
+        ),
+      ),
+      trailing: Icon(Icons.north_west, size: 16, color: Colors.grey[400]),
+      onTap: () {
+        query = suggestion;
+        showResults(context);
       },
     );
   }

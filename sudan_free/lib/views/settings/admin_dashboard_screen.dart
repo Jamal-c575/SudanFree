@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:provider/provider.dart';
 import '../../models/user_model.dart';
 import '../../models/ad_model.dart';
 import '../../widgets/common/loading_widget.dart';
 import '../../core/constants/app_colors.dart';
+import '../../providers/auth_provider.dart';
+import '../auth/login_screen.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
@@ -17,6 +20,73 @@ class AdminDashboardScreen extends StatefulWidget {
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   @override
   Widget build(BuildContext context) {
+    final authProvider = context.watch<AuthProvider>();
+    final currentUser = authProvider.user;
+
+    // CRITICAL SECURITY CHECK: Must be authenticated AND admin
+    if (!authProvider.isAuthenticated || currentUser == null) {
+      // Not authenticated - redirect to login
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+          (route) => false,
+        );
+      });
+      return const Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('جاري التحقق من الهوية...'),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (currentUser.role != UserRole.admin) {
+      // Authenticated but not admin - show access denied
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('غير مصرح', style: TextStyle(fontWeight: FontWeight.bold)),
+          backgroundColor: Colors.red,
+          foregroundColor: Colors.white,
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.security, size: 80, color: Colors.red),
+              const SizedBox(height: 16),
+              const Text(
+                'غير مصرح لك بالوصول إلى لوحة التحكم',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'هذه الصفحة مخصصة للمشرفين فقط',
+                style: TextStyle(color: Colors.grey),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                ),
+                child: const Text('العودة'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // User is authenticated and is admin - show dashboard
     return DefaultTabController(
       length: 5,
       child: Scaffold(

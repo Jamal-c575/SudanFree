@@ -26,6 +26,7 @@ class AdModel {
   final String? actionUrl;
   final String targetRegion; // 'all' for everyone
   final String targetProfession; // 'all' for everyone
+  final String targetCategory; // 'all' for everyone, or 'PostCategoryGroup.name'
   final int priority; // Higher number = higher priority
   final DateTime expiryDate;
   final DateTime createdAt;
@@ -45,6 +46,7 @@ class AdModel {
     this.actionUrl,
     this.targetRegion = 'all',
     this.targetProfession = 'all',
+    this.targetCategory = 'all',
     this.priority = 0,
     required this.expiryDate,
     required this.createdAt,
@@ -58,23 +60,24 @@ class AdModel {
   factory AdModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
     final mediaUrl = data['mediaUrl'] ?? data['imageUrl'] ?? '';
-    final List<String> mediaUrls = data['mediaUrls'] != null 
-        ? (data['mediaUrls'] as List<dynamic>).map((url) => url.toString()).toList()
-        : (mediaUrl.isNotEmpty ? [mediaUrl] : []);
     
+    AdMediaType parseMediaType(String? typeStr) {
+      if (typeStr == 'video') return AdMediaType.video;
+      if (typeStr == 'gif') return AdMediaType.gif;
+      return AdMediaType.image;
+    }
+
     return AdModel(
       id: doc.id,
       title: data['title'] ?? '',
       description: data['description'] ?? '',
       mediaUrl: mediaUrl,
-      mediaUrls: mediaUrls,
-      mediaType: AdMediaType.values.firstWhere(
-        (e) => e.name == data['mediaType'],
-        orElse: () => AdMediaType.image,
-      ),
+      mediaUrls: data['mediaUrls'] != null ? List<String>.from(data['mediaUrls']) : (mediaUrl.isNotEmpty ? [mediaUrl] : []),
+      mediaType: parseMediaType(data['mediaType'] as String?),
       actionUrl: data['actionUrl'],
       targetRegion: data['targetRegion'] ?? 'all',
       targetProfession: data['targetProfession'] ?? 'all',
+      targetCategory: data['targetCategory'] ?? 'all',
       priority: data['priority'] ?? 0,
       expiryDate: (data['expiryDate'] as Timestamp?)?.toDate() ?? DateTime.now().add(const Duration(days: 1)),
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),

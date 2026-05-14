@@ -434,7 +434,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                   ],
                   
                   // Category Selection (Only for Community Posts)
-                  if (_showInCommunity) ...[
+                  if (_showInCommunity) ...[ 
                     SizedBox(
                       width: double.infinity,
                       child: Column(
@@ -445,36 +445,73 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                           ),
                           const SizedBox(height: 10),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: PostCategory.values.map((category) {
-                              final isSelected = _selectedCategory == category;
-                              final locale = context.read<LocaleProvider>().locale.languageCode;
-                              final catData = _getCategoryStyle(category);
-                              return GestureDetector(
-                                onTap: () => setState(() => _selectedCategory = isSelected ? null : category),
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 200),
-                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                  decoration: BoxDecoration(
-                                    color: isSelected ? catData['color'] : (catData['color'] as Color).withValues(alpha: 0.08),
-                                    borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(color: isSelected ? catData['color'] : (catData['color'] as Color).withValues(alpha: 0.3)),
+                          // Step 1: Main Group Selection
+                          SizedBox(
+                            height: 44,
+                            child: ListView.separated(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: PostCategoryGroup.values.length,
+                              separatorBuilder: (_, __) => const SizedBox(width: 8),
+                              itemBuilder: (context, index) {
+                                final group = PostCategoryGroup.values[index];
+                                final isSelected = _selectedCategory != null && _selectedCategory!.group == group;
+                                return GestureDetector(
+                                  onTap: () => _showSubcategoryPicker(group),
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 200),
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                    decoration: BoxDecoration(
+                                      color: isSelected ? group.color : group.color.withValues(alpha: 0.08),
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(color: isSelected ? group.color : group.color.withValues(alpha: 0.3)),
+                                    ),
+                                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                                      Icon(group.icon, size: 16, color: isSelected ? Colors.white : group.color),
+                                      const SizedBox(width: 6),
+                                      Text(group.getName(context.read<LocaleProvider>().locale.languageCode), style: TextStyle(
+                                        color: isSelected ? Colors.white : group.color,
+                                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                                        fontSize: 13,
+                                      )),
+                                    ]),
                                   ),
-                                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                                    Icon(catData['icon'] as IconData, size: 16, color: isSelected ? Colors.white : catData['color']),
-                                    const SizedBox(width: 6),
-                                    Text(category.getName(locale), style: TextStyle(
-                                      color: isSelected ? Colors.white : catData['color'],
-                                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                                      fontSize: 13,
-                                    )),
-                                  ]),
-                                ),
-                              );
-                            }).toList(),
+                                );
+                              },
+                            ),
                           ),
+                          // Selected Category Display
+                          if (_selectedCategory != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 10),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: _selectedCategory!.group.color.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: _selectedCategory!.group.color.withValues(alpha: 0.3)),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.check_circle, size: 16, color: _selectedCategory!.group.color),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      '${_selectedCategory!.group.getName(context.read<LocaleProvider>().locale.languageCode)} › ${_selectedCategory!.getName(context.read<LocaleProvider>().locale.languageCode)}',
+                                      style: TextStyle(
+                                        color: _selectedCategory!.group.color,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    GestureDetector(
+                                      onTap: () => setState(() => _selectedCategory = null),
+                                      child: Icon(Icons.close, size: 16, color: _selectedCategory!.group.color),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
                         ],
                       ),
                     ),
@@ -800,20 +837,74 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     );
   }
 
-  Map<String, dynamic> _getCategoryStyle(PostCategory cat) {
-    switch (cat) {
-      case PostCategory.general:
-        return {'color': const Color(0xFF6c5ce7), 'icon': Icons.public};
-      case PostCategory.question:
-        return {'color': const Color(0xFF0984e3), 'icon': Icons.help_outline};
-      case PostCategory.help:
-        return {'color': const Color(0xFF00b894), 'icon': Icons.volunteer_activism};
-      case PostCategory.announcement:
-        return {'color': const Color(0xFFe17055), 'icon': Icons.campaign};
-      case PostCategory.discussion:
-        return {'color': const Color(0xFF00cec9), 'icon': Icons.forum};
-      case PostCategory.buySell:
-        return {'color': const Color(0xFFfdcb6e), 'icon': Icons.shopping_bag};
-    }
+  void _showSubcategoryPicker(PostCategoryGroup group) {
+    final locale = context.read<LocaleProvider>().locale.languageCode;
+    final subcategories = PostCategory.getCategoriesForGroup(group);
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 16), decoration: BoxDecoration(color: Colors.grey[400], borderRadius: BorderRadius.circular(2))),
+                Row(
+                  children: [
+                    Icon(group.icon, color: group.color, size: 24),
+                    const SizedBox(width: 8),
+                    Text(
+                      group.getName(locale),
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: group.color),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Flexible(
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: subcategories.length,
+                    itemBuilder: (ctx, index) {
+                      final cat = subcategories[index];
+                      final isSelected = _selectedCategory == cat;
+                      return ListTile(
+                        leading: Container(
+                          width: 36, height: 36,
+                          decoration: BoxDecoration(
+                            color: isSelected ? group.color : group.color.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(
+                            isSelected ? Icons.check : group.icon,
+                            color: isSelected ? Colors.white : group.color,
+                            size: 18,
+                          ),
+                        ),
+                        title: Text(
+                          cat.getName(locale),
+                          style: TextStyle(
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                            color: isSelected ? group.color : null,
+                          ),
+                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        tileColor: isSelected ? group.color.withValues(alpha: 0.06) : null,
+                        onTap: () {
+                          setState(() => _selectedCategory = cat);
+                          Navigator.pop(ctx);
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 }

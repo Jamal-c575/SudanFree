@@ -11,6 +11,7 @@ class SearchProvider extends ChangeNotifier {
 
   List<UserModel> _searchResults = [];
   List<String> _suggestions = [];
+  List<String> _recentSearches = [];
   bool _isLoading = false;
   String? _errorMessage;
   List<UserModel> _cachedProviders = [];
@@ -21,6 +22,7 @@ class SearchProvider extends ChangeNotifier {
 
   List<UserModel> get searchResults => _searchResults;
   List<String> get suggestions => _suggestions;
+  List<String> get recentSearches => _recentSearches;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
@@ -29,6 +31,21 @@ class SearchProvider extends ChangeNotifier {
     if (_cachedProviders.isNotEmpty) return;
     final result = await _firestoreService.getProvidersPaginated(limit: 200);
     _cachedProviders = List<UserModel>.from(result['users']);
+  }
+
+  /// Save search to recent searches
+  void _addToRecentSearches(String query) {
+    if (query.isEmpty) return;
+    
+    _recentSearches.remove(query); // Remove if already exists
+    _recentSearches.insert(0, query); // Add to beginning
+    
+    // Keep only last 10 searches
+    if (_recentSearches.length > 10) {
+      _recentSearches = _recentSearches.sublist(0, 10);
+    }
+    
+    notifyListeners();
   }
 
   /// Generate keyword suggestions based on partial query
@@ -83,7 +100,7 @@ class SearchProvider extends ChangeNotifier {
         final normalizedQuery = _normalize(query);
         
         users = users.where((u) {
-          // 1. Check searchKeywords first (fastest)
+          // 1. Check searchKeywords first (fastest - uses pre-computed index)
           for (final keyword in u.searchKeywords) {
             if (keyword.contains(normalizedQuery) || normalizedQuery.contains(keyword)) {
               return true;
@@ -101,6 +118,28 @@ class SearchProvider extends ChangeNotifier {
             locality: u.locality,
           );
         }).toList();
+
+        // Sort by relevance score
+        users.sort((a, b) {
+          final scoreA = SmartSearchService.calculateRelevanceScore(
+            query,
+            name: a.name,
+            skills: a.skills,
+            jobTitle: a.jobTitle,
+            bio: a.bio,
+          );
+          final scoreB = SmartSearchService.calculateRelevanceScore(
+            query,
+            name: b.name,
+            skills: b.skills,
+            jobTitle: b.jobTitle,
+            bio: b.bio,
+          );
+          return scoreB.compareTo(scoreA); // Higher score first
+        });
+
+        // Add to recent searches
+        _addToRecentSearches(query);
 
         // Track search analytics
         _analytics.logSearchQuery(query, users.length);

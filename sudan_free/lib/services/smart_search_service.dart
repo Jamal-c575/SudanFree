@@ -52,12 +52,30 @@ class SmartSearchService {
     'نظافة': ['تنظيف', 'عامل نظافة'],
     
     // النقل
-    'سائق': ['سواق', 'توصيل', 'نقل'],
-    'نقل': ['سائق', 'سواق', 'توصيل', 'ناقل'],
+    'سائق': ['سواق', 'توصيل', 'نقل', 'ترحيل', 'مشاوير'],
+    'نقل': ['سائق', 'سواق', 'توصيل', 'ناقل', 'ترحيل', 'عفش'],
     
     // الطبخ
-    'طباخ': ['طبخ', 'شيف', 'طاهي'],
-    'شيف': ['طباخ', 'طبخ', 'طاهي'],
+    'طباخ': ['طبخ', 'شيف', 'طاهي', 'مأكولات', 'طعام', 'وجبات'],
+    'شيف': ['طباخ', 'طبخ', 'طاهي', 'مطعم'],
+    
+    // الهواتف وصيانتها
+    'موبايل': ['موبايلات', 'هاتف', 'هواتف', 'جوال', 'جوالات', 'تلفون', 'تلفونات'],
+    'موبايلات': ['موبايل', 'هاتف', 'هواتف', 'جوال', 'جوالات', 'تلفون', 'تلفونات'],
+    'هاتف': ['موبايل', 'هواتف', 'جوال', 'تلفون', 'تلفونات'],
+    'جوال': ['موبايل', 'موبايلات', 'هاتف', 'هواتف', 'تلفون', 'تلفونات'],
+    
+    // الصيانة بشكل عام
+    'صيانة': ['تصليح', 'تصلح', 'مهندس صيانة', 'فني صيانة'],
+    'تصليح': ['صيانة', 'مهندس صيانة', 'فني صيانة', 'تصلح'],
+    
+    // الأجهزة الإلكترونية
+    'إلكترونيات': ['اجهزه', 'أجهزة', 'لابتوب', 'حاسوب', 'كمبيوتر', 'شاشات'],
+    'كمبيوتر': ['لابتوب', 'حاسوب', 'إلكترونيات', 'صيانة كمبيوتر'],
+    
+    // صيانة الهواتف المدمجة
+    'صيانة موبايل': ['صيانة هواتف', 'تصليح موبايلات', 'صيانة جوالات', 'صيانة تلفونات', 'تصليح هواتف', 'صيانة موبايلات'],
+    'صيانة هواتف': ['صيانة موبايل', 'تصليح موبايلات', 'صيانة جوالات', 'صيانة تلفونات', 'تصليح هواتف', 'صيانة موبايلات'],
   };
 
   /// استخراج اقتراحات بحث محفوظة محلياً في التطبيق بناءً على الإدخال
@@ -445,28 +463,67 @@ class SmartSearchService {
     return queries.toList();
   }
 
-  /// التطابق الجزئي (Fuzzy)
+  /// التطابق الجزئي (Fuzzy) والكلمات المتعددة
   static bool _containsMatch(String text, String query) {
-    // تطابق مباشر
     if (text.contains(query)) return true;
     
-    // التطابق إذا كان الفرق حرف واحد فقط
-    final words = text.split(' ');
-    for (final word in words) {
-      if (_isCloseMatch(word, query)) return true;
+    final queryWords = query.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+    if (queryWords.isEmpty) return false;
+
+    final textWords = text.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+
+    // يجب أن تتطابق كل كلمة في جملة البحث مع كلمة في النص
+    for (final qWord in queryWords) {
+      bool foundMatchForThisQueryWord = false;
+      for (final tWord in textWords) {
+        if (_isCloseMatch(tWord, qWord)) {
+          foundMatchForThisQueryWord = true;
+          break;
+        }
+      }
+      if (!foundMatchForThisQueryWord) {
+        return false;
+      }
     }
     
-    return false;
+    return true;
   }
 
-  /// التطابق التقريبي - يسمح بفرق حرف واحد
+  /// التطابق التقريبي - يسمح بفرق بسيط وتجاهل السوابق مثل "ال"
   static bool _isCloseMatch(String word, String query) {
     if (word == query) return true;
-    if ((word.length - query.length).abs() > 2) return false;
+
+    // معالجة السوابق الشائعة في اللغة العربية
+    String cleanWord = word;
+    if (cleanWord.startsWith('ال')) {
+      cleanWord = cleanWord.substring(2);
+    } else if (cleanWord.startsWith('بال')) {
+      cleanWord = cleanWord.substring(3);
+    } else if (cleanWord.startsWith('كال')) {
+      cleanWord = cleanWord.substring(3);
+    } else if (cleanWord.startsWith('فال')) {
+      cleanWord = cleanWord.substring(3);
+    } else if (cleanWord.startsWith('ول')) {
+      cleanWord = cleanWord.substring(2);
+    } else if (cleanWord.startsWith('ب') && cleanWord.length > 3) {
+      cleanWord = cleanWord.substring(1);
+    }
+
+    String cleanQuery = query;
+    if (cleanQuery.startsWith('ال')) {
+      cleanQuery = cleanQuery.substring(2);
+    }
+
+    if (cleanWord == cleanQuery) return true;
+    if (cleanWord.isNotEmpty && cleanQuery.isNotEmpty) {
+      if (cleanWord.contains(cleanQuery) || cleanQuery.contains(cleanWord)) return true;
+    }
+    
+    if ((cleanWord.length - cleanQuery.length).abs() > 2) return false;
     
     // إذا كانت الكلمة تبدأ بنفس الأحرف
-    if (word.length >= 3 && query.length >= 3) {
-      if (word.substring(0, 3) == query.substring(0, 3)) return true;
+    if (cleanWord.length >= 3 && cleanQuery.length >= 3) {
+      if (cleanWord.substring(0, 3) == cleanQuery.substring(0, 3)) return true;
     }
     
     return false;
@@ -481,6 +538,46 @@ class SmartSearchService {
         .replaceAll('ة', 'ه')
         .replaceAll('ى', 'ي')
         .replaceAll(RegExp(r'[\u064B-\u065F]'), ''); // إزالة التشكيل
+  }
+
+  /// Calculate relevance score for search results ranking
+  static int calculateRelevanceScore(String query, {
+    required String name,
+    required List<String> skills,
+    String? jobTitle,
+    String? bio,
+  }) {
+    int score = 0;
+    final normalizedQuery = _normalizeArabic(query.toLowerCase());
+    
+    // Exact matches get highest score
+    if (_normalizeArabic(name.toLowerCase()).contains(normalizedQuery)) score += 100;
+    if (jobTitle != null && _normalizeArabic(jobTitle.toLowerCase()).contains(normalizedQuery)) score += 90;
+    
+    // Skill matches
+    for (final skill in skills) {
+      if (_normalizeArabic(skill.toLowerCase()).contains(normalizedQuery)) {
+        score += 80;
+        break; // Only count once for skills
+      }
+    }
+    
+    // Bio matches
+    if (bio != null && _normalizeArabic(bio.toLowerCase()).contains(normalizedQuery)) score += 50;
+    
+    // Fuzzy matches get lower score
+    if (score == 0) {
+      if (_isFuzzyMatch(normalizedQuery, _normalizeArabic(name.toLowerCase()))) score += 30;
+      if (jobTitle != null && _isFuzzyMatch(normalizedQuery, _normalizeArabic(jobTitle.toLowerCase()))) score += 25;
+      for (final skill in skills) {
+        if (_isFuzzyMatch(normalizedQuery, _normalizeArabic(skill.toLowerCase()))) {
+          score += 20;
+          break;
+        }
+      }
+    }
+    
+    return score;
   }
 }
 
