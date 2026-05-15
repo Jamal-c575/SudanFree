@@ -70,7 +70,7 @@ const AdminApp = {
     document.getElementById('page-' + page).classList.add('active');
     const navEl = document.querySelector(`[data-page="${page}"]`);
     if (navEl) navEl.classList.add('active');
-    const titles = { dashboard:'الرئيسية', users:'المستخدمون', posts:'المنشورات', requests:'الطلبات', ads:'الإعلانات', verification:'طلبات التوثيق', reports:'البلاغات', deletions:'طلبات الحذف', admins:'المشرفون', notifications:'الإشعارات', statistics:'الإحصائيات' };
+    const titles = { dashboard:'الرئيسية', users:'المستخدمون', posts:'المنشورات', requests:'الطلبات', ads:'الإعلانات', promotions:'الترويجات', contracts:'العقود', settings:'إعدادات التطبيق', verification:'طلبات التوثيق', reports:'البلاغات', deletions:'طلبات الحذف', admins:'المشرفون', notifications:'الإشعارات', statistics:'الإحصائيات' };
     document.getElementById('page-title').textContent = titles[page] || page;
     if (page === 'statistics') this.loadStatistics();
     if (page === 'deletions') this.loadDeletions();
@@ -79,6 +79,9 @@ const AdminApp = {
     if (page === 'requests') AdminExtras.loadRequests();
     if (page === 'ads') AdminExtras.loadAds();
     if (page === 'notifications') this.loadNotifHistory();
+    if (page === 'promotions') this.loadPromotions();
+    if (page === 'contracts') this.loadContracts();
+    if (page === 'settings') this.loadSettings();
     document.getElementById('sidebar').classList.remove('open');
   },
   refreshCurrentPage() {
@@ -192,8 +195,46 @@ const AdminApp = {
         <div class="detail-item"><div class="label">المهارات</div><div class="value">${(u.skills||[]).join(', ')||'—'}</div></div>
         <div class="detail-item"><div class="label">حالة التوثيق</div><div class="value">${u.verificationStatus||'none'}</div></div>
         <div class="detail-item"><div class="label">الرصيد</div><div class="value">${u.walletBalance||0} SDG</div></div>
+      </div>
+      <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
+        <h4 style="margin-bottom:10px;font-size:14px;">⭐ ترويج هذا المستخدم في الصفحة الرئيسية</h4>
+        <textarea id="promo-text-input" placeholder="اكتب نص ترويجي مميز يظهر في الصفحة الرئيسية..." style="width:100%;min-height:80px;padding:10px;border-radius:10px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-primary);font-size:14px;resize:vertical;font-family:inherit;"></textarea>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:10px;">
+          <label style="font-size:13px;">مدة الترويج:</label>
+          <select id="promo-duration" style="padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-primary);font-size:13px;">
+            <option value="7">أسبوع</option>
+            <option value="14">أسبوعين</option>
+            <option value="30" selected>شهر</option>
+            <option value="90">3 أشهر</option>
+          </select>
+          <button class="btn btn-primary" onclick="AdminApp.promoteUser('${u.id}')" style="margin-right:auto;">
+            <span class="material-icons-outlined" style="font-size:16px;">campaign</span> نشر الترويج
+          </button>
+        </div>
       </div>`;
     document.getElementById('user-modal').style.display = 'flex';
+  },
+
+  async promoteUser(userId) {
+    const promoText = document.getElementById('promo-text-input').value.trim();
+    if (!promoText) { alert('يرجى كتابة نص ترويجي'); return; }
+    const days = parseInt(document.getElementById('promo-duration').value) || 30;
+    const now = new Date();
+    const expiry = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+    try {
+      await db.collection('promotions').add({
+        userId: userId,
+        promoText: promoText,
+        isActive: true,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        expiryDate: firebase.firestore.Timestamp.fromDate(expiry),
+      });
+      alert('✅ تم نشر الترويج بنجاح! سيظهر في الصفحة الرئيسية.');
+      document.getElementById('user-modal').style.display = 'none';
+    } catch (e) {
+      console.error('Error creating promotion:', e);
+      alert('❌ حدث خطأ: ' + e.message);
+    }
   },
 
   // ── Verification ──
@@ -642,6 +683,142 @@ const AdminApp = {
   previewImage(url) {
     document.getElementById('image-preview-img').src = url;
     document.getElementById('image-modal').style.display = 'flex';
+  },
+
+  // ── Promotions Page ──
+  async loadPromotions() {
+    const container = document.getElementById('promotions-list');
+    container.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
+    try {
+      const now = new Date();
+      const snap = await db.collection('promotions').orderBy('createdAt', 'desc').get();
+      if (snap.empty) {
+        container.innerHTML = '<p class="empty-state">لا توجد ترويجات حالياً</p>';
+        return;
+      }
+      container.innerHTML = snap.docs.map(doc => {
+        const d = doc.data();
+        const endDate = d.endDate?.toDate ? d.endDate.toDate() : new Date(d.endDate);
+        const isActive = endDate > now;
+        const statusClass = isActive ? 'active' : 'dismissed';
+        const statusText = isActive ? 'نشط' : 'منتهي';
+        const endStr = endDate.toLocaleDateString('ar-EG');
+        return `<div class="promo-card">
+          <div class="promo-card-header">
+            <img src="${d.userImage || ''}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%236c5ce7%22 width=%22100%22 height=%22100%22/><text x=%2250%22 y=%2255%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2240%22>${(d.userName||'?')[0]}</text></svg>'">
+            <div class="promo-card-info">
+              <h4>${d.userName || 'مستخدم'}</h4>
+              <p>${d.userProfession || d.userRole || ''} — ${d.userLocation || ''}</p>
+            </div>
+            <span class="report-status ${statusClass}" style="margin-right:auto;">${statusText}</span>
+          </div>
+          <div class="promo-card-body">
+            <div class="promo-text">"${d.promotionText || ''}"</div>
+            <div class="promo-meta">
+              <span><span class="material-icons-outlined" style="font-size:14px;">calendar_today</span> ينتهي: ${endStr}</span>
+              <span><span class="material-icons-outlined" style="font-size:14px;">star</span> التقييم: ${d.userRating ? d.userRating.toFixed(1) : 'N/A'}</span>
+            </div>
+          </div>
+          <div class="promo-card-actions">
+            <button class="btn btn-sm btn-danger" onclick="AdminApp.deletePromotion('${doc.id}')"><span class="material-icons-outlined">delete</span> حذف</button>
+          </div>
+        </div>`;
+      }).join('');
+    } catch (e) {
+      container.innerHTML = '<p class="empty-state">خطأ في تحميل الترويجات: ' + e.message + '</p>';
+    }
+  },
+
+  async deletePromotion(id) {
+    if (!confirm('هل أنت متأكد من حذف هذا الترويج؟')) return;
+    try {
+      await db.collection('promotions').doc(id).delete();
+      showToast('تم حذف الترويج بنجاح');
+      this.loadPromotions();
+    } catch (e) {
+      showToast('خطأ: ' + e.message, 'error');
+    }
+  },
+
+  // ── Contracts Page ──
+  async loadContracts() {
+    const container = document.getElementById('contracts-list');
+    container.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
+    try {
+      const snap = await db.collectionGroup('contracts').orderBy('createdAt', 'desc').limit(50).get();
+      if (snap.empty) {
+        container.innerHTML = '<p class="empty-state">لا توجد عقود حتى الآن</p>';
+        return;
+      }
+      const STATUS_NAMES = { pending: 'معلق', accepted: 'مقبول', active: 'نشط', completed: 'مكتمل', cancelled: 'ملغي', rejected: 'مرفوض' };
+      container.innerHTML = snap.docs.map(doc => {
+        const d = doc.data();
+        const status = d.status || 'pending';
+        const statusClass = ['active','accepted'].includes(status) ? 'active' : status === 'completed' ? 'completed' : 'cancelled';
+        const date = d.createdAt?.toDate ? d.createdAt.toDate().toLocaleDateString('ar-EG') : '';
+        return `<div class="contract-item">
+          <div class="contract-header">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span class="material-icons-outlined" style="color:var(--primary-light)">description</span>
+              <strong>${d.title || d.serviceType || 'عقد خدمة'}</strong>
+            </div>
+            <span class="contract-status ${statusClass}">${STATUS_NAMES[status] || status}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div style="color:var(--text-secondary);font-size:13px;">
+              <span>💰 ${d.agreedPrice || d.price || 'غير محدد'}</span>
+              <span style="margin-right:16px;">📅 ${date}</span>
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+    } catch (e) {
+      container.innerHTML = '<p class="empty-state">خطأ في تحميل العقود: ' + e.message + '</p>';
+    }
+  },
+
+  // ── Settings Page ──
+  async loadSettings() {
+    try {
+      const doc = await db.collection('app_config').doc('settings').get();
+      if (doc.exists) {
+        const d = doc.data();
+        // Links
+        if (d.playStoreUrl) document.getElementById('setting-playstore').value = d.playStoreUrl;
+        if (d.appStoreUrl) document.getElementById('setting-appstore').value = d.appStoreUrl;
+        if (d.apkUrl) document.getElementById('setting-apk').value = d.apkUrl;
+        // Policies
+        if (d.privacyUrl) document.getElementById('setting-privacy').value = d.privacyUrl;
+        if (d.termsUrl) document.getElementById('setting-terms').value = d.termsUrl;
+        if (d.supportUrl) document.getElementById('setting-support').value = d.supportUrl;
+      }
+    } catch (e) {
+      console.error('Error loading settings:', e);
+    }
+  },
+
+  async saveSettings(section) {
+    try {
+      let data = {};
+      if (section === 'links') {
+        data = {
+          playStoreUrl: document.getElementById('setting-playstore').value.trim(),
+          appStoreUrl: document.getElementById('setting-appstore').value.trim(),
+          apkUrl: document.getElementById('setting-apk').value.trim(),
+        };
+      } else if (section === 'policies') {
+        data = {
+          privacyUrl: document.getElementById('setting-privacy').value.trim(),
+          termsUrl: document.getElementById('setting-terms').value.trim(),
+          supportUrl: document.getElementById('setting-support').value.trim(),
+        };
+      }
+      data.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+      await db.collection('app_config').doc('settings').set(data, { merge: true });
+      showToast('تم حفظ الإعدادات بنجاح ✅');
+    } catch (e) {
+      showToast('خطأ في الحفظ: ' + e.message, 'error');
+    }
   },
 };
 
