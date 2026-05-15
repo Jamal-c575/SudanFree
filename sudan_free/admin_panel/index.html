@@ -63,6 +63,12 @@
         <a href="#" class="nav-item" data-page="ads" onclick="AdminApp.navigateTo('ads')">
           <span class="material-icons-outlined">campaign</span><span class="nav-text">الإعلانات</span>
         </a>
+        <a href="#" class="nav-item" data-page="promotions" onclick="AdminApp.navigateTo('promotions')">
+          <span class="material-icons-outlined">star</span><span class="nav-text">الترويجات</span>
+        </a>
+        <a href="#" class="nav-item" data-page="contracts" onclick="AdminApp.navigateTo('contracts')">
+          <span class="material-icons-outlined">handshake</span><span class="nav-text">العقود</span>
+        </a>
         <div class="nav-section-title">المراجعة والأمان</div>
         <a href="#" class="nav-item" data-page="verification" onclick="AdminApp.navigateTo('verification')">
           <span class="material-icons-outlined">verified_user</span><span class="nav-text">طلبات التوثيق</span>
@@ -77,6 +83,9 @@
           <span class="badge" id="deletions-badge" style="display:none;">0</span>
         </a>
         <div class="nav-section-title">النظام</div>
+        <a href="#" class="nav-item" data-page="settings" onclick="AdminApp.navigateTo('settings')">
+          <span class="material-icons-outlined">settings</span><span class="nav-text">إعدادات التطبيق</span>
+        </a>
         <a href="#" class="nav-item" data-page="notifications" onclick="AdminApp.navigateTo('notifications')">
           <span class="material-icons-outlined">notifications</span><span class="nav-text">الإشعارات</span>
         </a>
@@ -201,16 +210,21 @@
                   <div class="form-group">
                     <label>فئة المجتمع المستهدفة</label>
                     <select id="ad-category" class="filter-select">
-                      <option value="all">الكل (يظهر في جميع الفئات)</option>
+                      <option value="all">الكل (يظهر في جميع الأقسام)</option>
                       <option value="PostCategoryGroup.general">عام</option>
-                      <option value="PostCategoryGroup.shops">المتاجر</option>
-                      <option value="PostCategoryGroup.services">الخدمات</option>
-                      <option value="PostCategoryGroup.tech">التقنية</option>
-                      <option value="PostCategoryGroup.education">التعليم</option>
-                      <option value="PostCategoryGroup.health">الصحة</option>
-                      <option value="PostCategoryGroup.automotive">السيارات</option>
-                      <option value="PostCategoryGroup.realEstate">العقارات</option>
-                      <option value="PostCategoryGroup.food">الطعام</option>
+                      <option value="PostCategoryGroup.clothing">ملبوسات وأزياء</option>
+                      <option value="PostCategoryGroup.beauty">صحة وجمال</option>
+                      <option value="PostCategoryGroup.electronics">إلكترونيات</option>
+                      <option value="PostCategoryGroup.building">مواد بناء</option>
+                      <option value="PostCategoryGroup.grocery">مأكولات وبقالة</option>
+                      <option value="PostCategoryGroup.homeFurniture">أثاث ومنزليات</option>
+                      <option value="PostCategoryGroup.automotive">سوق العربات</option>
+                      <option value="PostCategoryGroup.realEstate">عقارات وسمسرة</option>
+                      <option value="PostCategoryGroup.craftsmen">صنايعية وحرفيين</option>
+                      <option value="PostCategoryGroup.specialServices">خدمات خاصة</option>
+                      <option value="PostCategoryGroup.techCommunity">مبرمجين ومصممين</option>
+                      <option value="PostCategoryGroup.education">تعليم وتدريب</option>
+                      <option value="PostCategoryGroup.jobs">وظائف وفرص</option>
                     </select>
                   </div>
                   <div class="form-group"><label>الأولوية (1-10)</label><input type="number" id="ad-priority" class="text-input" value="5" min="1" max="10"></div>
@@ -289,6 +303,65 @@
           <div class="dashboard-row">
             <div class="card"><div class="card-header"><h3>توزيع المستخدمين حسب المنطقة</h3></div><div class="card-body" id="stats-by-region"></div></div>
             <div class="card"><div class="card-header"><h3>توزيع المستخدمين حسب نوع الحساب</h3></div><div class="card-body" id="stats-by-role"></div></div>
+          </div>
+        </section>
+        <!-- Promotions Page -->
+        <section id="page-promotions" class="page">
+          <div class="page-subtitle">إدارة الحسابات المُروَّج لها حالياً</div>
+          <div id="promotions-list" class="cards-grid"><div class="loading-spinner"><div class="spinner"></div></div></div>
+        </section>
+
+        <!-- Contracts Page -->
+        <section id="page-contracts" class="page">
+          <div class="page-subtitle">سجل العقود والمشاورات بين المستخدمين</div>
+          <div id="contracts-list" class="cards-list"><div class="loading-spinner"><div class="spinner"></div></div></div>
+        </section>
+
+        <!-- Settings Page -->
+        <section id="page-settings" class="page">
+          <div class="page-subtitle">إعدادات وروابط التطبيق</div>
+          <div class="dashboard-row">
+            <div class="card">
+              <div class="card-header"><h3><span class="material-icons-outlined">link</span> روابط التطبيق</h3></div>
+              <div class="card-body">
+                <div class="form-group full-width">
+                  <label>رابط متجر بلاي (Play Store)</label>
+                  <input type="text" id="setting-playstore" class="text-input" placeholder="https://play.google.com/store/apps/details?id=...">
+                </div>
+                <div class="form-group full-width" style="margin-top: 12px;">
+                  <label>رابط متجر آبل (App Store)</label>
+                  <input type="text" id="setting-appstore" class="text-input" placeholder="https://apps.apple.com/app/...">
+                </div>
+                <div class="form-group full-width" style="margin-top: 12px;">
+                  <label>رابط تحميل APK المباشر</label>
+                  <input type="text" id="setting-apk" class="text-input" placeholder="https://example.com/sudanfree.apk">
+                </div>
+                <button class="btn btn-primary" style="margin-top: 16px;" onclick="AdminApp.saveSettings('links')">
+                  <span class="material-icons-outlined">save</span> حفظ الروابط
+                </button>
+              </div>
+            </div>
+            
+            <div class="card">
+              <div class="card-header"><h3><span class="material-icons-outlined">policy</span> السياسات والشروط</h3></div>
+              <div class="card-body">
+                <div class="form-group full-width">
+                  <label>سياسة الخصوصية (Privacy Policy)</label>
+                  <input type="text" id="setting-privacy" class="text-input" placeholder="رابط سياسة الخصوصية...">
+                </div>
+                <div class="form-group full-width" style="margin-top: 12px;">
+                  <label>شروط الاستخدام (Terms of Service)</label>
+                  <input type="text" id="setting-terms" class="text-input" placeholder="رابط شروط الاستخدام...">
+                </div>
+                <div class="form-group full-width" style="margin-top: 12px;">
+                  <label>رابط الدعم الفني / واتساب</label>
+                  <input type="text" id="setting-support" class="text-input" placeholder="رابط التواصل مع الدعم...">
+                </div>
+                <button class="btn btn-primary" style="margin-top: 16px;" onclick="AdminApp.saveSettings('policies')">
+                  <span class="material-icons-outlined">save</span> حفظ السياسات
+                </button>
+              </div>
+            </div>
           </div>
         </section>
       </div>
