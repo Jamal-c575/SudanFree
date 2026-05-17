@@ -1,5 +1,13 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import '../app.dart';
+import '../services/firestore_service.dart';
+import '../views/chat/chat_screen.dart';
+import '../views/posts/post_details_screen.dart';
+import '../views/profile/profile_screen.dart';
+import '../views/profile/freelancer_profile_screen.dart';
+import '../views/profile/shop_profile_screen.dart';
+import '../views/requests/request_details_screen.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'dart:io';
 
@@ -27,15 +35,27 @@ class NotificationService {
     debugPrint('Notification permission: ${settings.authorizationStatus}');
 
     // 2. Setup Local Notifications (for Foreground)
-    const androidInit = AndroidInitializationSettings('@mipmap/launcher_icon');
+    const androidInit = AndroidInitializationSettings('sudan1');
     const iosInit = DarwinInitializationSettings();
     const initSettings = InitializationSettings(android: androidInit, iOS: iosInit);
     
     await _localNotifications.initialize(
       initSettings,
       onDidReceiveNotificationResponse: (details) {
-        // Handle notification click here if needed
         debugPrint('Notification clicked: ${details.payload}');
+        if (details.payload != null) {
+          try {
+            // Simple payload format: "type:relatedId"
+            final parts = details.payload!.split(':');
+            if (parts.length >= 2) {
+              final type = parts[0];
+              final relatedId = parts.sublist(1).join(':');
+              _navigateBasedOnData({'type': type, 'relatedId': relatedId});
+            }
+          } catch (e) {
+            debugPrint('Error parsing notification payload: $e');
+          }
+        }
       },
     );
 
@@ -93,7 +113,7 @@ class NotificationService {
             isChat ? 'الدردشة والرسائل' : 'SudanFree Notifications',
             importance: Importance.max,
             priority: Priority.high,
-            icon: '@drawable/ic_notification',
+            icon: 'sudan1',
             channelDescription: isChat ? 'إشعارات الرسائل والدردشة الخاصة' : 'الإشعارات العامة للتطبيق',
           ),
           iOS: const DarwinNotificationDetails(
@@ -109,11 +129,51 @@ class NotificationService {
 
   void _handleMessageNavigation(RemoteMessage message) {
     debugPrint('Notification message opened: ${message.notification?.title}');
-    final data = message.data;
-    if (data.containsKey('relatedId')) {
-       // We can use a global navigator key or a stream to handle this in the UI
-       // For now, we log it. In a real app, you'd navigate:
-       // Navigator.pushNamed(context, '/post', arguments: data['relatedId']);
+    _navigateBasedOnData(message.data);
+  }
+
+  Future<void> _navigateBasedOnData(Map<String, dynamic> data) async {
+    final relatedId = data['relatedId'];
+    final type = data['type'];
+    if (relatedId == null) return;
+
+    // Use a small delay to ensure navigator key is attached
+    await Future.delayed(const Duration(milliseconds: 500));
+    final context = SudanFreeApp.navigatorKey.currentContext;
+    if (context == null) return;
+
+    final firestore = FirestoreService();
+
+    try {
+      if (type == 'message' || type == 'contract') {
+        final chat = await firestore.getChatById(relatedId);
+        if (chat != null && context.mounted) {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => ChatScreen(chat: chat)));
+        }
+      } else if (type == 'comment' || type == 'like' || type == 'mention') {
+        final post = await firestore.getPost(relatedId);
+        if (post != null && context.mounted) {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => PostDetailsScreen(post: post)));
+        }
+      } else if (type == 'partnerRequest' || type == 'follow') {
+        final user = await firestore.getUser(relatedId);
+        if (user != null && context.mounted) {
+          if (user.isFreelancer) {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => FreelancerProfileScreen(user: user, isMe: false)));
+          } else if (user.isShop) {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => ShopProfileScreen(user: user, isMe: false)));
+          } else {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => ProfileScreen(userId: user.id)));
+          }
+        }
+      } else if (type == 'offer') {
+        final req = await firestore.getRequestById(relatedId);
+        if (req != null && context.mounted) {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => RequestDetailsScreen(request: req)));
+        }
+      }
+    } catch (e) {
+      debugPrint('Navigation error from notification: $e');
     }
   }
 
@@ -135,7 +195,7 @@ class NotificationService {
             channelDescription: 'إشعارات التفاعلات مثل الإعجابات والتعليقات',
             importance: Importance.high,
             priority: Priority.high,
-            icon: '@drawable/ic_notification',
+            icon: 'sudan1',
             enableVibration: true,
             playSound: true,
           ),

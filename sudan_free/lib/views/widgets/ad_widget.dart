@@ -14,26 +14,15 @@ class AdWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isDark ? Colors.teal.shade800 : Colors.teal.shade200,
-          width: 1.5,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.teal.withValues(alpha: isDark ? 0.05 : 0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: Stack(
-          children: [
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        color: Theme.of(context).cardColor,
+        child: SizedBox(
+          height: 400, // Match typical post image height
+          child: Stack(
+            children: [
             // Background Image
             Positioned.fill(
               child: _buildMediaBackground(isDark),
@@ -117,6 +106,7 @@ class AdWidget extends StatelessWidget {
             ),
           ],
         ),
+       ),
       ),
     );
   }

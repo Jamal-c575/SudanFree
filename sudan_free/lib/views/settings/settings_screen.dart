@@ -133,7 +133,9 @@ class SettingsScreen extends StatelessWidget {
             },
           ),
           
-          const Divider(height: 32),
+          const SizedBox(height: 20),
+          _SectionHeader(title: locale == 'ar' ? 'الأمان والحماية' : 'Safety & Security'),
+          const SizedBox(height: 8),
           
           // Safety Tips - NEW
           _SettingsTile(
@@ -205,20 +207,9 @@ class SettingsScreen extends StatelessWidget {
             ),
           ),
           
-          // ... existing code ...
-          const Divider(height: 32),
-          
-          // Connect with Us Section
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-            child: Text(
-              locale == 'ar' ? 'تواصل معنا' : 'Connect with Us',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-            ),
-          ),
+          const SizedBox(height: 20),
+          _SectionHeader(title: locale == 'ar' ? 'تواصل معنا' : 'Connect with Us'),
+          const SizedBox(height: 8),
           
           // WhatsApp Support
           _SettingsTile(
@@ -275,7 +266,7 @@ class SettingsScreen extends StatelessWidget {
             },
           ),
 
-          const Divider(height: 32),
+          const SizedBox(height: 20),
           
           // About
           _SettingsTile(
@@ -513,6 +504,48 @@ class SettingsScreen extends StatelessWidget {
   }
 }
 
+class _SectionHeader extends StatelessWidget {
+  final String title;
+  const _SectionHeader({required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Row(
+        children: [
+          Container(
+            width: 3,
+            height: 16,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.6),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: isDark ? Colors.grey[400] : Colors.grey[600],
+              letterSpacing: 0.3,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Container(
+              height: 0.5,
+              color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.grey.shade200,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _SettingsTile extends StatefulWidget {
   final IconData icon;
   final Color? iconColor;
@@ -557,6 +590,7 @@ class _SettingsTileState extends State<_SettingsTile> {
   @override
   Widget build(BuildContext context) {
     final color = widget.iconColor ?? AppColors.primary;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       onTapDown: _onTapDown,
       onTapUp: _onTapUp,
@@ -567,27 +601,30 @@ class _SettingsTileState extends State<_SettingsTile> {
         curve: Curves.easeInOut,
         child: Container(
           decoration: BoxDecoration(
-            color: Theme.of(context).cardColor,
-            borderRadius: BorderRadius.circular(12),
+            color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.white,
+            borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+              color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.grey.shade200,
+              width: 0.5,
             ),
-            boxShadow: Theme.of(context).brightness == Brightness.light 
-              ? [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 4, offset: const Offset(0, 2))]
-              : null,
           ),
           child: ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
             leading: Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(9),
               decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
+                color: color.withValues(alpha: isDark ? 0.15 : 0.08),
+                borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(widget.icon, color: color),
+              child: Icon(widget.icon, color: color, size: 22),
             ),
-            title: Text(widget.title),
-            subtitle: widget.subtitle != null ? Text(widget.subtitle!) : null,
-            trailing: widget.trailing ?? (widget.onTap != null ? const Icon(Icons.chevron_right) : null),
+            title: Text(widget.title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+            subtitle: widget.subtitle != null 
+                ? Text(widget.subtitle!, style: TextStyle(fontSize: 12, color: isDark ? Colors.grey[500] : Colors.grey[600]))
+                : null,
+            trailing: widget.trailing ?? (widget.onTap != null 
+                ? Icon(Icons.chevron_right, size: 20, color: Colors.grey[400]) 
+                : null),
           ),
         ),
       ),

@@ -65,13 +65,31 @@ async function logAudit(action, userId = null, details = {}) {
     }
 }
 
+function normalizeSudanesePhone(phoneNumber) {
+    const digits = phoneNumber.replace(/\D+/g, '');
+    if (digits.startsWith('249') && digits.length === 12) {
+        return `+${digits}`;
+    }
+    if (digits.startsWith('0') && digits.length === 10) {
+        return `+249${digits.slice(1)}`;
+    }
+    if (digits.startsWith('9') && digits.length === 9) {
+        return `+249${digits}`;
+    }
+    return null;
+}
+
 // ─── Helper: Rate Limiting ────────────────────────────────────────────
 /**
  * Checks if phone number has exceeded OTP request limit
  * Throws HttpsError if limit exceeded
  */
 async function checkOTPRateLimit(phoneNumber) {
-    const limitKey = `otp_send_${phoneNumber}`;
+    const normalizedPhone = normalizeSudanesePhone(phoneNumber);
+    if (!normalizedPhone) {
+        throw new HttpsError('invalid-argument', 'Invalid Sudanese phone number format');
+    }
+    const limitKey = `otp_send_${normalizedPhone}`;
     const limitDoc = db.collection('_rate_limits').doc(limitKey);
     
     try {
@@ -131,7 +149,11 @@ async function checkOTPRateLimit(phoneNumber) {
  * Throws HttpsError if limit exceeded
  */
 async function checkOTPBruteForceLimit(phoneNumber) {
-    const bruteForceKey = `otp_verify_${phoneNumber}`;
+    const normalizedPhone = normalizeSudanesePhone(phoneNumber);
+    if (!normalizedPhone) {
+        throw new HttpsError('invalid-argument', 'Invalid Sudanese phone number format');
+    }
+    const bruteForceKey = `otp_verify_${normalizedPhone}`;
     const bruteForceDoc = db.collection('_brute_force_attempts').doc(bruteForceKey);
     
     try {
@@ -163,7 +185,11 @@ async function checkOTPBruteForceLimit(phoneNumber) {
 
 // ─── Helper: Record Failed OTP Verification ────────────────────────────
 async function recordFailedOTPVerification(phoneNumber) {
-    const bruteForceKey = `otp_verify_${phoneNumber}`;
+    const normalizedPhone = normalizeSudanesePhone(phoneNumber);
+    if (!normalizedPhone) {
+        return;
+    }
+    const bruteForceKey = `otp_verify_${normalizedPhone}`;
     const bruteForceDoc = db.collection('_brute_force_attempts').doc(bruteForceKey);
     
     try {
@@ -320,7 +346,7 @@ exports.onNotificationCreated = onDocumentCreated(
                     priority: "high",
                     defaultSound: true,
                     defaultVibrateTimings: true,
-                    icon: "@mipmap/launcher_icon",
+                    icon: "@drawable/sudan1",
                 },
             },
             apns: {
@@ -515,7 +541,7 @@ exports.onMessageCreated = onDocumentCreated(
                     priority: "high",
                     defaultSound: true,
                     defaultVibrateTimings: true,
-                    icon: "@mipmap/launcher_icon",
+                    icon: "@drawable/sudan1",
                 },
             },
             apns: {
@@ -561,23 +587,21 @@ exports.sendWhatsAppOTP = onCall(async (request) => {
         throw new HttpsError('invalid-argument', 'Valid phone number is required');
     }
 
-    // Basic phone number validation (Sudanese format)
-    const sudanesePhoneRegex = /^(\+249|249|0)?[9][0-9]{8}$/;
-    const cleanPhone = phoneNumber.replace(/\s+/g, '');
-    if (!sudanesePhoneRegex.test(cleanPhone)) {
+    const normalizedPhone = normalizeSudanesePhone(phoneNumber);
+    if (!normalizedPhone) {
         throw new HttpsError('invalid-argument', 'Invalid Sudanese phone number format');
     }
 
     try {
         // ─── PHASE 1: Rate Limiting ───────────────────────────────────────
-        await checkOTPRateLimit(phoneNumber);
+        await checkOTPRateLimit(normalizedPhone);
 
         // Generate 6-digit OTP
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
         
         // Store OTP in Firestore with expiration (5 minutes)
         const otpDoc = {
-            phoneNumber: phoneNumber,
+            phoneNumber: normalizedPhone,
             otp: otp,
             method: method,
             createdAt: FieldValue.serverTimestamp(),
@@ -597,20 +621,20 @@ exports.sendWhatsAppOTP = onCall(async (request) => {
                     message = await twilioClient.messages.create({
                         body: `Your SudanFree verification code is: ${otp}\n\nValid for 5 minutes. Do not share this code.`,
                         from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
-                        to: `whatsapp:${cleanPhone}`
+                        to: `whatsapp:${normalizedPhone}`
                     });
                 } else {
                     // SMS fallback
                     message = await twilioClient.messages.create({
                         body: `Your SudanFree verification code is: ${otp}. Valid for 5 minutes.`,
                         from: process.env.TWILIO_SMS_NUMBER,
-                        to: cleanPhone
+                        to: normalizedPhone
                     });
                 }
                 
                 deliveryStatus = 'sent';
                 deliveryMessageSid = message.sid;
-                console.log(`✓ OTP sent via ${method} to ${phoneNumber} (SID: ${message.sid})`);
+                console.log(`✓ OTP sent via ${method} to ${normalizedPhone} (SID: ${message.sid})`);
                 
             } catch (twilioError) {
                 deliveryStatus = 'failed';
@@ -713,15 +737,18 @@ exports.verifyWhatsAppOTP = onCall(async (request) => {
         throw new HttpsError('invalid-argument', 'Phone number and OTP are required');
     }
 
-    const cleanPhone = phoneNumber.replace(/\s+/g, '');
+    const normalizedPhone = normalizeSudanesePhone(phoneNumber);
+    if (!normalizedPhone) {
+        throw new HttpsError('invalid-argument', 'Invalid Sudanese phone number format');
+    }
 
     try {
         // ─── PHASE 1: Brute-Force Protection ──────────────────────────────
-        await checkOTPBruteForceLimit(cleanPhone);
+        await checkOTPBruteForceLimit(normalizedPhone);
 
         // ─── PHASE 2: Find Valid OTP ──────────────────────────────────────
         const otpQuery = await db.collection('otp_codes')
-            .where('phoneNumber', '==', phoneNumber)
+            .where('phoneNumber', '==', normalizedPhone)
             .where('used', '==', false)
             .where('expiresAt', '>', new Date())
             .orderBy('expiresAt', 'desc')
@@ -737,7 +764,7 @@ exports.verifyWhatsAppOTP = onCall(async (request) => {
             });
 
             // Record failed attempt for brute-force tracking
-            await recordFailedOTPVerification(cleanPhone);
+            await recordFailedOTPVerification(normalizedPhone);
 
             throw new HttpsError('not-found', 'OTP not found or expired. Request a new OTP.');
         }
@@ -755,7 +782,7 @@ exports.verifyWhatsAppOTP = onCall(async (request) => {
             });
 
             // Record failed attempt for brute-force tracking
-            await recordFailedOTPVerification(cleanPhone);
+            await recordFailedOTPVerification(normalizedPhone);
 
             throw new HttpsError('invalid-argument', 'Incorrect OTP code. Please try again.');
         }
@@ -770,11 +797,11 @@ exports.verifyWhatsAppOTP = onCall(async (request) => {
         // Reset failed attempts counter on successful verification
         try {
             await db.collection('_brute_force_attempts')
-                .doc(`otp_verify_${cleanPhone}`)
+                .doc(`otp_verify_${normalizedPhone}`)
                 .delete();
         } catch (err) {
             // Silently fail if doc doesn't exist
-            console.log(`No brute-force counter to clear for ${cleanPhone}`);
+            console.log(`No brute-force counter to clear for ${normalizedPhone}`);
         }
 
         // ─── PHASE 6: Audit Logging ───────────────────────────────────────

@@ -9,9 +9,10 @@ import '../../providers/user_provider.dart';
 import '../../providers/locale_provider.dart';
 import '../../models/user_model.dart';
 import '../../models/ad_model.dart';
-import '../../services/firestore_service.dart';
 import '../../services/firestore/ad_service.dart';
+import '../../services/firestore/promotion_service.dart';
 import '../../services/cloudinary_service.dart';
+import '../../services/notification_polling_service.dart';
 import '../profile/profile_screen.dart';
 import '../notifications/notifications_screen.dart';
 import '../../views/widgets/ad_widget.dart';
@@ -39,6 +40,9 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
   int _currentStripAdIndex = 0;
   bool _isLoadingAds = true;
   final AdService _adService = AdService();
+  final PromotionService _promotionService = PromotionService();
+  List<PromotedUser> _promotedUsers = [];
+  bool _isLoadingPromotions = true;
   PageController? _bannerPageController;
   Timer? _bannerAutoScrollTimer;
   Timer? _stripAutoScrollTimer;
@@ -49,6 +53,14 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     _bannerPageController = PageController();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _fetchAds();
+      _fetchPromotions();
+      
+      // Initialize notification polling service
+      final authProvider = context.read<AuthProvider>();
+      final currentUser = authProvider.user;
+      if (currentUser != null) {
+        NotificationPollingService().setUserId(currentUser.id);
+      }
     });
   }
 
@@ -58,6 +70,16 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     _stripAutoScrollTimer?.cancel();
     _bannerPageController?.dispose();
     super.dispose();
+  }
+
+  Future<void> _fetchPromotions() async {
+    setState(() => _isLoadingPromotions = true);
+    final promoted = await _promotionService.getActivePromotions();
+    if (!mounted) return;
+    setState(() {
+      _promotedUsers = promoted;
+      _isLoadingPromotions = false;
+    });
   }
 
   void _startBannerAutoScroll() {
@@ -221,11 +243,10 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                 ),
                 centerTitle: true,
                 actions: [
-                  // Notifications bell with badge
-                  StreamBuilder<int>(
-                    stream: FirestoreService().getUnreadNotificationsCount(currentUser.id),
-                    builder: (context, snapshot) {
-                      final count = snapshot.data ?? 0;
+                  // Notifications bell with badge (using polling instead of real-time stream)
+                  Consumer<NotificationPollingService>(
+                    builder: (context, pollingService, _) {
+                      final count = pollingService.unreadCount;
                       return IconButton(
                         onPressed: () => Navigator.push(
                           context,
@@ -315,22 +336,24 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                 child: _buildQuickCategories(context, locale),
               ),
 
-              // ═══════════ TRENDING SERVICES ═══════════
-              SliverToBoxAdapter(
-                child: _buildSectionHeader(
-                  context,
-                  icon: Icons.trending_up,
-                  title: locale == 'ar' ? 'الخدمات الرائجة' : 'Trending Services',
-                  iconColor: AppColors.accent,
-                  onSeeAll: () => widget.onNavigateToTab?.call(1),
-                  locale: locale,
+              // ═══════════ PROMOTED SERVICES ═══════════
+              if (_promotedUsers.isNotEmpty || _isLoadingPromotions)
+                SliverToBoxAdapter(
+                  child: _buildSectionHeader(
+                    context,
+                    icon: Icons.star,
+                    title: locale == 'ar' ? 'مُروّج لهم' : 'Featured Providers',
+                    iconColor: AppColors.sudanGold,
+                    onSeeAll: () => widget.onNavigateToTab?.call(1),
+                    locale: locale,
+                  ),
                 ),
-              ),
-              SliverToBoxAdapter(
-                child: userProvider.isLoading && featuredFreelancers.isEmpty
-                    ? _buildHorizontalCardShimmer(context)
-                    : _buildTrendingServices(context, featuredFreelancers.take(8).toList(), locale, isDark),
-              ),
+              if (_promotedUsers.isNotEmpty || _isLoadingPromotions)
+                SliverToBoxAdapter(
+                  child: _isLoadingPromotions
+                      ? _buildHorizontalCardShimmer(context)
+                      : _buildPromotedSection(context, locale, isDark),
+                ),
 
               // ═══════════ RECOMMENDED FOR YOU ═══════════
               if (currentUser.role == UserRole.client)
@@ -1301,133 +1324,207 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
   }
 
   // ────────────── Trending Services (Horizontal Scroll with Badges) ──────────────
-  Widget _buildTrendingServices(BuildContext context, List<UserModel> freelancers, String locale, bool isDark) {
-    if (freelancers.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Text(
-          locale == 'ar' ? 'لا توجد خدمات رائجة حالياً' : 'No trending services yet',
-          style: TextStyle(color: AppColors.softGrey),
-        ),
-      );
+  // ────────────── Promoted Section ──────────────
+  Widget _buildPromotedSection(BuildContext context, String locale, bool isDark) {
+    if (_promotedUsers.isEmpty) {
+      return const SizedBox.shrink();
     }
 
     return Container(
-      height: 180,
+      height: 200,
       margin: const EdgeInsets.only(bottom: 16),
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: freelancers.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        itemCount: _promotedUsers.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 14),
         itemBuilder: (context, index) {
-          final freelancer = freelancers[index];
+          final promo = _promotedUsers[index];
           return _AnimatedCardItem(
             index: index,
-            child: _buildTrendingServiceCard(context, freelancer, locale, isDark),
+            child: _buildPromotedCard(context, promo, locale, isDark),
           );
         },
       ),
     );
   }
 
-  Widget _buildTrendingServiceCard(BuildContext context, UserModel freelancer, String locale, bool isDark) {
+  Widget _buildPromotedCard(BuildContext context, PromotedUser promo, String locale, bool isDark) {
+    final user = promo.user!;
+    final jobTitle = user.jobTitle?.trim();
+    final firstSkill = user.skills.isNotEmpty ? user.skills.first.trim() : null;
+    final String roleLabel;
+    if (user.role == UserRole.shop) {
+      roleLabel = user.shopCategory != null 
+          ? '${locale == 'ar' ? 'متجر' : 'Shop'} • ${user.shopCategory!.name}'
+          : (locale == 'ar' ? 'متجر' : 'Shop');
+    } else if (jobTitle != null && jobTitle.isNotEmpty) {
+      roleLabel = jobTitle; // مبرمج، مدرس، خياط...
+    } else if (firstSkill != null && firstSkill.isNotEmpty) {
+      roleLabel = firstSkill; // أول مهارة كبديل
+    } else {
+      // بديل حسب نوع الحساب
+      switch (user.role) {
+        case UserRole.freelancer:
+          roleLabel = locale == 'ar' ? 'مقدم خدمات فنية' : 'Freelancer';
+        case UserRole.techService:
+          roleLabel = locale == 'ar' ? 'خدمات تقنية' : 'Tech Service';
+        case UserRole.privateService:
+          roleLabel = locale == 'ar' ? 'خدمات خاصة' : 'Private Service';
+        default:
+          roleLabel = locale == 'ar' ? 'مقدم خدمة' : 'Service Provider';
+      }
+    }
+
     return GestureDetector(
       onTap: () => Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => ProfileScreen(userId: freelancer.id)),
+        MaterialPageRoute(builder: (_) => ProfileScreen(userId: user.id)),
       ),
       child: Container(
-        width: 140,
+        width: 280,
         decoration: BoxDecoration(
           color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.border.withValues(alpha: 0.3)),
+          border: Border.all(color: AppColors.sudanGold.withValues(alpha: 0.3)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 12,
+              color: AppColors.sudanGold.withValues(alpha: 0.08),
+              blurRadius: 16,
               offset: const Offset(0, 4),
             ),
           ],
         ),
         child: Stack(
           children: [
-            // Trending badge
+            // Promoted badge
             Positioned(
-              top: 8,
-              right: 8,
+              top: 10,
+              left: 10,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: AppColors.accent,
+                  gradient: LinearGradient(
+                    colors: [AppColors.sudanGold, AppColors.sudanGold.withValues(alpha: 0.8)],
+                  ),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Text(
-                  '🔥',
-                  style: TextStyle(fontSize: 10),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.star, size: 11, color: Colors.white),
+                    const SizedBox(width: 3),
+                    Text(
+                      locale == 'ar' ? 'مُروّج' : 'Promoted',
+                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                    ),
+                  ],
                 ),
               ),
             ),
 
             Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              padding: const EdgeInsets.all(14),
+              child: Row(
                 children: [
-                  // Profile image
-                  CircleAvatar(
-                    radius: 24,
-                    backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                    backgroundImage: freelancer.profileImageUrl != null
-                        ? CachedNetworkImageProvider(
-                            CloudinaryService.getOptimizedUrl(freelancer.profileImageUrl!, width: 100, quality: 'auto'))
-                        : null,
-                    child: freelancer.profileImageUrl == null
-                        ? Icon(Icons.person, size: 20, color: AppColors.primary)
-                        : null,
-                  ),
-                  const SizedBox(height: 8),
-
-                  // Name
-                  Text(
-                    freelancer.name,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                      color: Theme.of(context).textTheme.bodyLarge?.color,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-
-                  // Job title
-                  Text(
-                    freelancer.jobTitle ?? '',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: AppColors.softGrey,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-
-                  const Spacer(),
-
-                  // Rating
-                  Row(
+                  // Profile image side
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.star, size: 12, color: AppColors.sudanGold),
-                      const SizedBox(width: 2),
-                      Text(
-                        freelancer.rating.toStringAsFixed(1),
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          color: AppColors.sudanGold,
+                      CircleAvatar(
+                        radius: 34,
+                        backgroundColor: AppColors.sudanGold.withValues(alpha: 0.15),
+                        backgroundImage: user.profileImageUrl != null
+                            ? CachedNetworkImageProvider(
+                                CloudinaryService.getOptimizedUrl(user.profileImageUrl!, width: 150, quality: 'auto'))
+                            : null,
+                        child: user.profileImageUrl == null
+                            ? Icon(Icons.person, size: 28, color: AppColors.sudanGold)
+                            : null,
+                      ),
+                      const SizedBox(height: 6),
+                      // Rating
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.grey[850] : Colors.grey[100],
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.star, size: 13, color: AppColors.sudanGold),
+                            const SizedBox(width: 2),
+                            Text(
+                              user.rating.toStringAsFixed(1),
+                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.sudanGold),
+                            ),
+                          ],
                         ),
                       ),
                     ],
+                  ),
+                  const SizedBox(width: 12),
+                  // Text side
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const SizedBox(height: 18),
+                        // Name
+                        Text(
+                          user.name,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                            color: Theme.of(context).textTheme.bodyLarge?.color,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2),
+                        // Role / Job title
+                        Text(
+                          roleLabel,
+                          style: TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w500),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        // Location
+                        if (user.state != null) ...[
+                          const SizedBox(height: 2),
+                          Row(
+                            children: [
+                              Icon(Icons.location_on, size: 12, color: AppColors.softGrey),
+                              const SizedBox(width: 2),
+                              Expanded(
+                                child: Text(
+                                  '${user.locality ?? ''} ${user.state ?? ''}',
+                                  style: TextStyle(fontSize: 11, color: AppColors.softGrey),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                        const SizedBox(height: 6),
+                        // Promo text
+                        Expanded(
+                          child: Text(
+                            promo.promoText,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Theme.of(context).textTheme.bodyMedium?.color?.withValues(alpha: 0.8),
+                              height: 1.3,
+                            ),
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),

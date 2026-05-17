@@ -163,4 +163,15 @@ class ChatFirestoreService {
       'typingStatus.$userId': isTyping,
     });
   }
+
+  // Get chat by ID
+  Future<ChatModel?> getChatById(String chatId) async {
+    try {
+      final doc = await _firestore.collection('chats').doc(chatId).get();
+      if (doc.exists) return ChatModel.fromFirestore(doc);
+    } catch (e) {
+      // Ignore
+    }
+    return null;
+  }
 }

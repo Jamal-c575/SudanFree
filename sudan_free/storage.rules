@@ -34,6 +34,14 @@ service firebase.storage {
         isImageFile();
     }
 
+    // User cover images
+    match /users/{userId}/cover/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(userId) && 
+        request.resource.size < 5 * 1024 * 1024 && // Max 5MB
+        isImageFile();
+    }
+
     // User portfolio images — now validates content type (was missing)
     match /users/portfolio/{userId}/{allPaths=**} {
       allow read: if isAuthenticated();

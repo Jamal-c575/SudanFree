@@ -2,15 +2,50 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/ad_model.dart';
+import '../../models/post_model.dart';
 import '../../models/user_model.dart';
 
+/// Singleton AdService to manage ad fetching, caching, and analytics
+/// Uses singleton pattern to share cache across the entire app
 class AdService {
+  static final AdService _instance = AdService._internal();
+
+  factory AdService() {
+    return _instance;
+  }
+
+  AdService._internal();
+
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  
+
   // Cache for ads by category to reduce Firestore reads
   final Map<String, List<AdModel>> _categoryAdCache = {};
   final Map<String, DateTime> _cacheTimestamps = {};
   static const Duration _cacheDuration = Duration(minutes: 10);
+
+  /// Validate if a category string is valid
+  /// Accepts 'all' or 'PostCategoryGroup.{name}' format
+  static bool isValidCategory(String category) {
+    if (category == 'all') return true;
+
+    // Try to match against PostCategoryGroup names
+    for (final group in PostCategoryGroup.values) {
+      if ('PostCategoryGroup.${group.name}' == category) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /// Sanitize category string - returns 'all' if invalid
+  /// Prevents data corruption from invalid category names
+  static String sanitizeCategory(String? category) {
+    if (category == null || category.isEmpty) return 'all';
+    if (isValidCategory(category)) return category;
+
+    debugPrint('⚠️ Invalid ad category: $category - falling back to "all"');
+    return 'all';
+  }
 
   /// Fetches the most relevant ad for a specific placement based on user's region/profession
   Future<AdModel?> getTargetedAd(UserModel currentUser, {
@@ -18,11 +53,14 @@ class AdService {
     String? targetCategory,
   }) async {
     try {
+      // VALIDATE AND SANITIZE TARGET CATEGORY
+      final validatedCategory = sanitizeCategory(targetCategory);
+
       final now = Timestamp.now();
       
       // Check cache first for category-specific ads
-      if (targetCategory != null && targetCategory != 'all') {
-        final cacheKey = '${placement.name}_$targetCategory';
+      if (validatedCategory != 'all') {
+        final cacheKey = '${placement.name}_$validatedCategory';
         if (_isCacheValid(cacheKey)) {
           final cachedAds = _categoryAdCache[cacheKey];
           if (cachedAds != null && cachedAds.isNotEmpty) {
@@ -41,7 +79,7 @@ class AdService {
           .where('isActive', isEqualTo: true)
           .where('placement', isEqualTo: placement.name)
           .where('targetRegion', isEqualTo: currentUser.state ?? 'all')
-          .where('targetProfession', isEqualTo: currentUser.role)
+          .where('targetProfession', isEqualTo: currentUser.role.name)
           .where('expiryDate', isGreaterThan: now)
           .orderBy('expiryDate')
           .limit(10);

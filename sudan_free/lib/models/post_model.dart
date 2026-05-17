@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class PostReaction {
@@ -13,40 +14,55 @@ class PostReaction {
 
 /// Main category groups for display in UI
 enum PostCategoryGroup {
-  general,
-  shops,
-  services,
-  tech,
-  education,
-  health,
-  automotive,
-  realEstate,
-  food;
+  general,        // عام
+  clothing,       // ملبوسات وأزياء
+  beauty,         // صحة وجمال
+  electronics,    // إلكترونيات وموبايلات
+  building,       // مواد بناء
+  grocery,        // مأكولات وبقالة
+  homeFurniture,  // أثاث ومنزليات
+  automotive,     // سوق العربات
+  realEstate,     // عقارات وسمسرة
+  craftsmen,      // صنايعية وحرفيين
+  specialServices,// خدمات خاصة
+  techCommunity,  // مبرمجين ومصممين
+  education,      // تعليم وتدريب
+  jobs;           // وظائف وفرص عمل
 
   String getName(String locale) {
     if (locale == 'ar') {
       switch (this) {
         case PostCategoryGroup.general: return 'عام';
-        case PostCategoryGroup.shops: return 'المتاجر';
-        case PostCategoryGroup.services: return 'الخدمات';
-        case PostCategoryGroup.tech: return 'التقنية';
-        case PostCategoryGroup.education: return 'التعليم';
-        case PostCategoryGroup.health: return 'الصحة';
-        case PostCategoryGroup.automotive: return 'السيارات';
-        case PostCategoryGroup.realEstate: return 'العقارات';
-        case PostCategoryGroup.food: return 'الطعام';
+        case PostCategoryGroup.clothing: return 'ملبوسات وأزياء';
+        case PostCategoryGroup.beauty: return 'صحة وجمال';
+        case PostCategoryGroup.electronics: return 'إلكترونيات';
+        case PostCategoryGroup.building: return 'مواد بناء';
+        case PostCategoryGroup.grocery: return 'مأكولات وبقالة';
+        case PostCategoryGroup.homeFurniture: return 'أثاث ومنزليات';
+        case PostCategoryGroup.automotive: return 'سوق العربات';
+        case PostCategoryGroup.realEstate: return 'عقارات وسمسرة';
+        case PostCategoryGroup.craftsmen: return 'صنايعية وحرفيين';
+        case PostCategoryGroup.specialServices: return 'خدمات خاصة';
+        case PostCategoryGroup.techCommunity: return 'مبرمجين ومصممين';
+        case PostCategoryGroup.education: return 'تعليم وتدريب';
+        case PostCategoryGroup.jobs: return 'وظائف وفرص';
       }
     } else {
       switch (this) {
         case PostCategoryGroup.general: return 'General';
-        case PostCategoryGroup.shops: return 'Shops';
-        case PostCategoryGroup.services: return 'Services';
-        case PostCategoryGroup.tech: return 'Technology';
-        case PostCategoryGroup.education: return 'Education';
-        case PostCategoryGroup.health: return 'Health';
-        case PostCategoryGroup.automotive: return 'Automotive';
+        case PostCategoryGroup.clothing: return 'Fashion & Clothing';
+        case PostCategoryGroup.beauty: return 'Health & Beauty';
+        case PostCategoryGroup.electronics: return 'Electronics';
+        case PostCategoryGroup.building: return 'Building Materials';
+        case PostCategoryGroup.grocery: return 'Food & Grocery';
+        case PostCategoryGroup.homeFurniture: return 'Home & Furniture';
+        case PostCategoryGroup.automotive: return 'Car Market';
         case PostCategoryGroup.realEstate: return 'Real Estate';
-        case PostCategoryGroup.food: return 'Food';
+        case PostCategoryGroup.craftsmen: return 'Craftsmen';
+        case PostCategoryGroup.specialServices: return 'Special Services';
+        case PostCategoryGroup.techCommunity: return 'Tech Community';
+        case PostCategoryGroup.education: return 'Education';
+        case PostCategoryGroup.jobs: return 'Jobs & Opportunities';
       }
     }
   }
@@ -54,28 +70,38 @@ enum PostCategoryGroup {
   IconData get icon {
     switch (this) {
       case PostCategoryGroup.general: return Icons.public;
-      case PostCategoryGroup.shops: return Icons.storefront;
-      case PostCategoryGroup.services: return Icons.build;
-      case PostCategoryGroup.tech: return Icons.code;
-      case PostCategoryGroup.education: return Icons.school;
-      case PostCategoryGroup.health: return Icons.local_hospital;
+      case PostCategoryGroup.clothing: return Icons.checkroom;
+      case PostCategoryGroup.beauty: return Icons.spa;
+      case PostCategoryGroup.electronics: return Icons.devices;
+      case PostCategoryGroup.building: return Icons.construction;
+      case PostCategoryGroup.grocery: return Icons.restaurant;
+      case PostCategoryGroup.homeFurniture: return Icons.chair;
       case PostCategoryGroup.automotive: return Icons.directions_car;
       case PostCategoryGroup.realEstate: return Icons.apartment;
-      case PostCategoryGroup.food: return Icons.restaurant;
+      case PostCategoryGroup.craftsmen: return Icons.build;
+      case PostCategoryGroup.specialServices: return Icons.miscellaneous_services;
+      case PostCategoryGroup.techCommunity: return Icons.code;
+      case PostCategoryGroup.education: return Icons.school;
+      case PostCategoryGroup.jobs: return Icons.work;
     }
   }
 
   Color get color {
     switch (this) {
       case PostCategoryGroup.general: return const Color(0xFF6c5ce7);
-      case PostCategoryGroup.shops: return const Color(0xFFe17055);
-      case PostCategoryGroup.services: return const Color(0xFF00b894);
-      case PostCategoryGroup.tech: return const Color(0xFF0984e3);
-      case PostCategoryGroup.education: return const Color(0xFF6c5ce7);
-      case PostCategoryGroup.health: return const Color(0xFFe84393);
+      case PostCategoryGroup.clothing: return const Color(0xFFe84393);
+      case PostCategoryGroup.beauty: return const Color(0xFFfd79a8);
+      case PostCategoryGroup.electronics: return const Color(0xFF0984e3);
+      case PostCategoryGroup.building: return const Color(0xFFe17055);
+      case PostCategoryGroup.grocery: return const Color(0xFF00b894);
+      case PostCategoryGroup.homeFurniture: return const Color(0xFF6c5ce7);
       case PostCategoryGroup.automotive: return const Color(0xFF636e72);
       case PostCategoryGroup.realEstate: return const Color(0xFFfdcb6e);
-      case PostCategoryGroup.food: return const Color(0xFFe17055);
+      case PostCategoryGroup.craftsmen: return const Color(0xFF00cec9);
+      case PostCategoryGroup.specialServices: return const Color(0xFF74b9ff);
+      case PostCategoryGroup.techCommunity: return const Color(0xFF0984e3);
+      case PostCategoryGroup.education: return const Color(0xFF6c5ce7);
+      case PostCategoryGroup.jobs: return const Color(0xFF00b894);
     }
   }
 }
@@ -88,80 +114,113 @@ enum PostCategory {
   announcement,
   discussion,
 
-  // ── المتاجر ──
-  shopClothing,
-  shopElectronics,
-  shopHome,
-  shopBeauty,
-  shopFurniture,
-  shopBuilding,
-  shopMobile,
-  shopJewelry,
-  shopSports,
-  shopToys,
-  shopBookstore,
-  shopOther,
+  // ── ملبوسات وأزياء ──
+  clothingMen,
+  clothingWomen,
+  clothingKids,
+  clothingShoes,
+  clothingAccessories,
+  clothingTraditional,
+  clothingOther,
 
-  // ── الخدمات ──
-  servicePlumbing,
-  serviceElectricity,
-  serviceCarpentry,
-  servicePainting,
-  serviceWelding,
-  serviceCleaning,
-  serviceTransport,
-  serviceDelivery,
-  serviceAirCondition,
-  serviceSatellite,
-  serviceGardening,
-  serviceOther,
+  // ── صحة وجمال ──
+  beautyMakeup,
+  beautySkinCare,
+  beautyHair,
+  beautyPerfume,
+  beautyClinic,
+  beautyOther,
 
-  // ── التقنية (البرمجة والتصميم) ──
+  // ── إلكترونيات وموبايلات ──
+  elecMobiles,
+  elecLaptops,
+  elecTV,
+  elecAccessories,
+  elecRepair,
+  elecOther,
+
+  // ── مواد بناء ──
+  buildCement,
+  buildIron,
+  buildPlumbing,
+  buildElectrical,
+  buildPaint,
+  buildTiles,
+  buildOther,
+
+  // ── مأكولات وبقالة ──
+  foodRestaurant,
+  foodCatering,
+  foodHomemade,
+  foodBakery,
+  foodGrocery,
+  foodOther,
+
+  // ── أثاث ومنزليات ──
+  homeFurniture,
+  homeAppliances,
+  homeDecor,
+  homeKitchen,
+  homeOther,
+
+  // ── سوق العربات ──
+  autoBuySell,
+  autoParts,
+  autoRepair,
+  autoRental,
+  autoAccessories,
+  autoOther,
+
+  // ── عقارات وسمسرة ──
+  realEstateSale,
+  realEstateRent,
+  realEstateLand,
+  realEstateOffice,
+  realEstateOther,
+
+  // ── صنايعية وحرفيين ──
+  craftPlumbing,
+  craftElectricity,
+  craftCarpentry,
+  craftPainting,
+  craftWelding,
+  craftAC,
+  craftCleaning,
+  craftTransport,
+  craftOther,
+
+  // ── خدمات خاصة ──
+  svcLegal,
+  svcAccounting,
+  svcPhotography,
+  svcEvents,
+  svcTranslation,
+  svcDelivery,
+  svcOther,
+
+  // ── مبرمجين ومصممين ──
   techWebDev,
   techMobileDev,
   techDesign,
   techUIUX,
-  techSEO,
   techMarketing,
-  techDataEntry,
   techVideoEditing,
   techNetworking,
   techOther,
 
-  // ── التعليم ──
+  // ── تعليم وتدريب ──
   eduTutoring,
   eduLanguages,
   eduTraining,
   eduOnlineCourses,
   eduOther,
 
-  // ── الصحة ──
-  healthMedical,
-  healthPharmacy,
-  healthFitness,
-  healthNutrition,
-  healthOther,
-
-  // ── السيارات ──
-  autoParts,
-  autoRepair,
-  autoShowroom,
-  autoRental,
-  autoOther,
-
-  // ── العقارات ──
-  realEstateSale,
-  realEstateRent,
-  realEstateOffice,
-  realEstateLand,
-  realEstateOther,
-
-  // ── الطعام ──
-  foodRestaurant,
-  foodCatering,
-  foodHomemade,
-  foodBakery,
-  foodOther,
+  // ── وظائف وفرص ──
+  jobsFullTime,
+  jobsPartTime,
+  jobsFreelance,
+  jobsInternship,
+  jobsOther,
 
   // Legacy / backward-compat
   buySell;
@@ -177,45 +236,99 @@ enum PostCategory {
       case PostCategory.buySell:
         return PostCategoryGroup.general;
 
-      case PostCategory.shopClothing:
-      case PostCategory.shopElectronics:
-      case PostCategory.shopHome:
-      case PostCategory.shopBeauty:
-      case PostCategory.shopFurniture:
-      case PostCategory.shopBuilding:
-      case PostCategory.shopMobile:
-      case PostCategory.shopJewelry:
-      case PostCategory.shopSports:
-      case PostCategory.shopToys:
-      case PostCategory.shopBookstore:
-      case PostCategory.shopOther:
-        return PostCategoryGroup.shops;
+      case PostCategory.clothingMen:
+      case PostCategory.clothingWomen:
+      case PostCategory.clothingKids:
+      case PostCategory.clothingShoes:
+      case PostCategory.clothingAccessories:
+      case PostCategory.clothingTraditional:
+      case PostCategory.clothingOther:
+        return PostCategoryGroup.clothing;
 
-      case PostCategory.servicePlumbing:
-      case PostCategory.serviceElectricity:
-      case PostCategory.serviceCarpentry:
-      case PostCategory.servicePainting:
-      case PostCategory.serviceWelding:
-      case PostCategory.serviceCleaning:
-      case PostCategory.serviceTransport:
-      case PostCategory.serviceDelivery:
-      case PostCategory.serviceAirCondition:
-      case PostCategory.serviceSatellite:
-      case PostCategory.serviceGardening:
-      case PostCategory.serviceOther:
-        return PostCategoryGroup.services;
+      case PostCategory.beautyMakeup:
+      case PostCategory.beautySkinCare:
+      case PostCategory.beautyHair:
+      case PostCategory.beautyPerfume:
+      case PostCategory.beautyClinic:
+      case PostCategory.beautyOther:
+        return PostCategoryGroup.beauty;
+
+      case PostCategory.elecMobiles:
+      case PostCategory.elecLaptops:
+      case PostCategory.elecTV:
+      case PostCategory.elecAccessories:
+      case PostCategory.elecRepair:
+      case PostCategory.elecOther:
+        return PostCategoryGroup.electronics;
+
+      case PostCategory.buildCement:
+      case PostCategory.buildIron:
+      case PostCategory.buildPlumbing:
+      case PostCategory.buildElectrical:
+      case PostCategory.buildPaint:
+      case PostCategory.buildTiles:
+      case PostCategory.buildOther:
+        return PostCategoryGroup.building;
+
+      case PostCategory.foodRestaurant:
+      case PostCategory.foodCatering:
+      case PostCategory.foodHomemade:
+      case PostCategory.foodBakery:
+      case PostCategory.foodGrocery:
+      case PostCategory.foodOther:
+        return PostCategoryGroup.grocery;
+
+      case PostCategory.homeFurniture:
+      case PostCategory.homeAppliances:
+      case PostCategory.homeDecor:
+      case PostCategory.homeKitchen:
+      case PostCategory.homeOther:
+        return PostCategoryGroup.homeFurniture;
+
+      case PostCategory.autoBuySell:
+      case PostCategory.autoParts:
+      case PostCategory.autoRepair:
+      case PostCategory.autoRental:
+      case PostCategory.autoAccessories:
+      case PostCategory.autoOther:
+        return PostCategoryGroup.automotive;
+
+      case PostCategory.realEstateSale:
+      case PostCategory.realEstateRent:
+      case PostCategory.realEstateLand:
+      case PostCategory.realEstateOffice:
+      case PostCategory.realEstateOther:
+        return PostCategoryGroup.realEstate;
+
+      case PostCategory.craftPlumbing:
+      case PostCategory.craftElectricity:
+      case PostCategory.craftCarpentry:
+      case PostCategory.craftPainting:
+      case PostCategory.craftWelding:
+      case PostCategory.craftAC:
+      case PostCategory.craftCleaning:
+      case PostCategory.craftTransport:
+      case PostCategory.craftOther:
+        return PostCategoryGroup.craftsmen;
+
+      case PostCategory.svcLegal:
+      case PostCategory.svcAccounting:
+      case PostCategory.svcPhotography:
+      case PostCategory.svcEvents:
+      case PostCategory.svcTranslation:
+      case PostCategory.svcDelivery:
+      case PostCategory.svcOther:
+        return PostCategoryGroup.specialServices;
 
       case PostCategory.techWebDev:
       case PostCategory.techMobileDev:
       case PostCategory.techDesign:
       case PostCategory.techUIUX:
-      case PostCategory.techSEO:
       case PostCategory.techMarketing:
-      case PostCategory.techDataEntry:
       case PostCategory.techVideoEditing:
       case PostCategory.techNetworking:
       case PostCategory.techOther:
-        return PostCategoryGroup.tech;
+        return PostCategoryGroup.techCommunity;
 
       case PostCategory.eduTutoring:
       case PostCategory.eduLanguages:
@@ -224,33 +337,12 @@ enum PostCategory {
       case PostCategory.eduOther:
         return PostCategoryGroup.education;
 
-      case PostCategory.healthMedical:
-      case PostCategory.healthPharmacy:
-      case PostCategory.healthFitness:
-      case PostCategory.healthNutrition:
-      case PostCategory.healthOther:
-        return PostCategoryGroup.health;
-
-      case PostCategory.autoParts:
-      case PostCategory.autoRepair:
-      case PostCategory.autoShowroom:
-      case PostCategory.autoRental:
-      case PostCategory.autoOther:
-        return PostCategoryGroup.automotive;
-
-      case PostCategory.realEstateSale:
-      case PostCategory.realEstateRent:
-      case PostCategory.realEstateOffice:
-      case PostCategory.realEstateLand:
-      case PostCategory.realEstateOther:
-        return PostCategoryGroup.realEstate;
-
-      case PostCategory.foodRestaurant:
-      case PostCategory.foodCatering:
-      case PostCategory.foodHomemade:
-      case PostCategory.foodBakery:
-      case PostCategory.foodOther:
-        return PostCategoryGroup.food;
+      case PostCategory.jobsFullTime:
+      case PostCategory.jobsPartTime:
+      case PostCategory.jobsFreelance:
+      case PostCategory.jobsInternship:
+      case PostCategory.jobsOther:
+        return PostCategoryGroup.jobs;
     }
   }
 
@@ -265,80 +357,113 @@ enum PostCategory {
         case PostCategory.discussion: return 'نقاش';
         case PostCategory.buySell: return 'بيع/شراء';
 
-        // المتاجر
-        case PostCategory.shopClothing: return 'ملابس';
-        case PostCategory.shopElectronics: return 'إلكترونيات';
-        case PostCategory.shopHome: return 'أدوات منزلية';
-        case PostCategory.shopBeauty: return 'تجميل ومستحضرات';
-        case PostCategory.shopFurniture: return 'أثاث';
-        case PostCategory.shopBuilding: return 'مواد بناء';
-        case PostCategory.shopMobile: return 'جوالات وإكسسوارات';
-        case PostCategory.shopJewelry: return 'مجوهرات وإكسسوارات';
-        case PostCategory.shopSports: return 'رياضة';
-        case PostCategory.shopToys: return 'ألعاب أطفال';
-        case PostCategory.shopBookstore: return 'مكتبة وقرطاسية';
-        case PostCategory.shopOther: return 'متجر أخرى';
+        // ملبوسات وأزياء
+        case PostCategory.clothingMen: return 'ملابس رجالي';
+        case PostCategory.clothingWomen: return 'ملابس حريمي';
+        case PostCategory.clothingKids: return 'ملابس أطفال';
+        case PostCategory.clothingShoes: return 'أحذية وشنط';
+        case PostCategory.clothingAccessories: return 'إكسسوارات';
+        case PostCategory.clothingTraditional: return 'ثياب وتوب وجلابية';
+        case PostCategory.clothingOther: return 'ملبوسات أخرى';
 
-        // الخدمات
-        case PostCategory.servicePlumbing: return 'سباكة';
-        case PostCategory.serviceElectricity: return 'كهرباء';
-        case PostCategory.serviceCarpentry: return 'نجارة';
-        case PostCategory.servicePainting: return 'دهان وطلاء';
-        case PostCategory.serviceWelding: return 'لحام وحدادة';
-        case PostCategory.serviceCleaning: return 'تنظيف';
-        case PostCategory.serviceTransport: return 'نقل وترحيل';
-        case PostCategory.serviceDelivery: return 'توصيل';
-        case PostCategory.serviceAirCondition: return 'تكييف وتبريد';
-        case PostCategory.serviceSatellite: return 'ستلايت وشاشات';
-        case PostCategory.serviceGardening: return 'حدائق وزراعة';
-        case PostCategory.serviceOther: return 'خدمة أخرى';
+        // صحة وجمال
+        case PostCategory.beautyMakeup: return 'مكياج وتجميل';
+        case PostCategory.beautySkinCare: return 'عناية بالبشرة';
+        case PostCategory.beautyHair: return 'شعر وكوافير';
+        case PostCategory.beautyPerfume: return 'عطور وبخور';
+        case PostCategory.beautyClinic: return 'عيادات تجميل';
+        case PostCategory.beautyOther: return 'جمال وصحة أخرى';
 
-        // التقنية
+        // إلكترونيات
+        case PostCategory.elecMobiles: return 'موبايلات وجوالات';
+        case PostCategory.elecLaptops: return 'لابتوبات وكمبيوتر';
+        case PostCategory.elecTV: return 'شاشات وتلفزيونات';
+        case PostCategory.elecAccessories: return 'إكسسوارات إلكترونية';
+        case PostCategory.elecRepair: return 'صيانة أجهزة';
+        case PostCategory.elecOther: return 'إلكترونيات أخرى';
+
+        // مواد بناء
+        case PostCategory.buildCement: return 'أسمنت وطوب';
+        case PostCategory.buildIron: return 'حديد ومعادن';
+        case PostCategory.buildPlumbing: return 'أدوات صحية';
+        case PostCategory.buildElectrical: return 'أدوات كهربائية';
+        case PostCategory.buildPaint: return 'دهانات وبوية';
+        case PostCategory.buildTiles: return 'بلاط وسيراميك';
+        case PostCategory.buildOther: return 'مواد بناء أخرى';
+
+        // مأكولات وبقالة
+        case PostCategory.foodRestaurant: return 'مطاعم';
+        case PostCategory.foodCatering: return 'تموين وبوفيه';
+        case PostCategory.foodHomemade: return 'أكل بيتي';
+        case PostCategory.foodBakery: return 'مخبوزات وحلويات';
+        case PostCategory.foodGrocery: return 'بقالة ومواد غذائية';
+        case PostCategory.foodOther: return 'مأكولات أخرى';
+
+        // أثاث ومنزليات
+        case PostCategory.homeFurniture: return 'أثاث وموبيليا';
+        case PostCategory.homeAppliances: return 'أجهزة منزلية';
+        case PostCategory.homeDecor: return 'ديكور ومفروشات';
+        case PostCategory.homeKitchen: return 'أدوات مطبخ';
+        case PostCategory.homeOther: return 'منزليات أخرى';
+
+        // سوق العربات
+        case PostCategory.autoBuySell: return 'بيع وشراء عربات';
+        case PostCategory.autoParts: return 'قطع غيار';
+        case PostCategory.autoRepair: return 'ورش وصيانة';
+        case PostCategory.autoRental: return 'تأجير عربات';
+        case PostCategory.autoAccessories: return 'إكسسوارات عربات';
+        case PostCategory.autoOther: return 'عربات أخرى';
+
+        // عقارات وسمسرة
+        case PostCategory.realEstateSale: return 'بيع عقار';
+        case PostCategory.realEstateRent: return 'إيجار';
+        case PostCategory.realEstateLand: return 'أراضي وقطع';
+        case PostCategory.realEstateOffice: return 'مكاتب ومحلات';
+        case PostCategory.realEstateOther: return 'عقارات أخرى';
+
+        // صنايعية وحرفيين
+        case PostCategory.craftPlumbing: return 'سباكة';
+        case PostCategory.craftElectricity: return 'كهرباء';
+        case PostCategory.craftCarpentry: return 'نجارة';
+        case PostCategory.craftPainting: return 'دهان وطلاء';
+        case PostCategory.craftWelding: return 'لحام وحدادة';
+        case PostCategory.craftAC: return 'تكييف وتبريد';
+        case PostCategory.craftCleaning: return 'تنظيف ونظافة';
+        case PostCategory.craftTransport: return 'نقل وترحيل';
+        case PostCategory.craftOther: return 'حرف أخرى';
+
+        // خدمات خاصة
+        case PostCategory.svcLegal: return 'محاماة وقانون';
+        case PostCategory.svcAccounting: return 'محاسبة ومالية';
+        case PostCategory.svcPhotography: return 'تصوير فوتوغرافي';
+        case PostCategory.svcEvents: return 'تنظيم مناسبات';
+        case PostCategory.svcTranslation: return 'ترجمة';
+        case PostCategory.svcDelivery: return 'توصيل ومشاوير';
+        case PostCategory.svcOther: return 'خدمات أخرى';
+
+        // مبرمجين ومصممين
         case PostCategory.techWebDev: return 'تطوير مواقع';
         case PostCategory.techMobileDev: return 'تطوير تطبيقات';
         case PostCategory.techDesign: return 'تصميم جرافيك';
         case PostCategory.techUIUX: return 'تصميم واجهات';
-        case PostCategory.techSEO: return 'تحسين محركات البحث';
         case PostCategory.techMarketing: return 'تسويق رقمي';
-        case PostCategory.techDataEntry: return 'إدخال بيانات';
         case PostCategory.techVideoEditing: return 'مونتاج وتصوير';
         case PostCategory.techNetworking: return 'شبكات وصيانة';
         case PostCategory.techOther: return 'تقنية أخرى';
 
-        // التعليم
+        // تعليم وتدريب
         case PostCategory.eduTutoring: return 'دروس خصوصية';
         case PostCategory.eduLanguages: return 'لغات';
         case PostCategory.eduTraining: return 'تدريب مهني';
         case PostCategory.eduOnlineCourses: return 'دورات أونلاين';
         case PostCategory.eduOther: return 'تعليم أخرى';
 
-        // الصحة
-        case PostCategory.healthMedical: return 'طب وعلاج';
-        case PostCategory.healthPharmacy: return 'صيدلية';
-        case PostCategory.healthFitness: return 'لياقة وتمارين';
-        case PostCategory.healthNutrition: return 'تغذية';
-        case PostCategory.healthOther: return 'صحة أخرى';
-
-        // السيارات
-        case PostCategory.autoParts: return 'قطع غيار';
-        case PostCategory.autoRepair: return 'ورشة وصيانة';
-        case PostCategory.autoShowroom: return 'معرض سيارات';
-        case PostCategory.autoRental: return 'تأجير سيارات';
-        case PostCategory.autoOther: return 'سيارات أخرى';
-
-        // العقارات
-        case PostCategory.realEstateSale: return 'بيع عقار';
-        case PostCategory.realEstateRent: return 'إيجار';
-        case PostCategory.realEstateOffice: return 'مكاتب';
-        case PostCategory.realEstateLand: return 'أراضي';
-        case PostCategory.realEstateOther: return 'عقارات أخرى';
-
-        // الطعام
-        case PostCategory.foodRestaurant: return 'مطعم';
-        case PostCategory.foodCatering: return 'تموين وبوفيه';
-        case PostCategory.foodHomemade: return 'أكل بيتي';
-        case PostCategory.foodBakery: return 'مخبوزات وحلويات';
-        case PostCategory.foodOther: return 'طعام أخرى';
+        // وظائف وفرص
+        case PostCategory.jobsFullTime: return 'وظيفة دوام كامل';
+        case PostCategory.jobsPartTime: return 'وظيفة دوام جزئي';
+        case PostCategory.jobsFreelance: return 'عمل حر';
+        case PostCategory.jobsInternship: return 'تدريب وتأهيل';
+        case PostCategory.jobsOther: return 'فرص أخرى';
       }
     } else {
       switch (this) {
@@ -350,42 +475,96 @@ enum PostCategory {
         case PostCategory.discussion: return 'Discussion';
         case PostCategory.buySell: return 'Buy/Sell';
 
-        // Shops
-        case PostCategory.shopClothing: return 'Clothing';
-        case PostCategory.shopElectronics: return 'Electronics';
-        case PostCategory.shopHome: return 'Home Appliances';
-        case PostCategory.shopBeauty: return 'Beauty & Cosmetics';
-        case PostCategory.shopFurniture: return 'Furniture';
-        case PostCategory.shopBuilding: return 'Building Materials';
-        case PostCategory.shopMobile: return 'Phones & Accessories';
-        case PostCategory.shopJewelry: return 'Jewelry & Accessories';
-        case PostCategory.shopSports: return 'Sports';
-        case PostCategory.shopToys: return 'Kids & Toys';
-        case PostCategory.shopBookstore: return 'Books & Stationery';
-        case PostCategory.shopOther: return 'Other Shop';
+        // Clothing
+        case PostCategory.clothingMen: return 'Men\'s Clothing';
+        case PostCategory.clothingWomen: return 'Women\'s Clothing';
+        case PostCategory.clothingKids: return 'Kids\' Clothing';
+        case PostCategory.clothingShoes: return 'Shoes & Bags';
+        case PostCategory.clothingAccessories: return 'Accessories';
+        case PostCategory.clothingTraditional: return 'Traditional Wear';
+        case PostCategory.clothingOther: return 'Other Clothing';
 
-        // Services
-        case PostCategory.servicePlumbing: return 'Plumbing';
-        case PostCategory.serviceElectricity: return 'Electrical';
-        case PostCategory.serviceCarpentry: return 'Carpentry';
-        case PostCategory.servicePainting: return 'Painting';
-        case PostCategory.serviceWelding: return 'Welding';
-        case PostCategory.serviceCleaning: return 'Cleaning';
-        case PostCategory.serviceTransport: return 'Transport';
-        case PostCategory.serviceDelivery: return 'Delivery';
-        case PostCategory.serviceAirCondition: return 'AC & Cooling';
-        case PostCategory.serviceSatellite: return 'Satellite & TV';
-        case PostCategory.serviceGardening: return 'Gardening';
-        case PostCategory.serviceOther: return 'Other Service';
+        // Beauty
+        case PostCategory.beautyMakeup: return 'Makeup';
+        case PostCategory.beautySkinCare: return 'Skin Care';
+        case PostCategory.beautyHair: return 'Hair & Salon';
+        case PostCategory.beautyPerfume: return 'Perfume & Incense';
+        case PostCategory.beautyClinic: return 'Beauty Clinic';
+        case PostCategory.beautyOther: return 'Other Beauty';
+
+        // Electronics
+        case PostCategory.elecMobiles: return 'Phones & Mobiles';
+        case PostCategory.elecLaptops: return 'Laptops & Computers';
+        case PostCategory.elecTV: return 'TVs & Screens';
+        case PostCategory.elecAccessories: return 'Electronic Accessories';
+        case PostCategory.elecRepair: return 'Device Repair';
+        case PostCategory.elecOther: return 'Other Electronics';
+
+        // Building
+        case PostCategory.buildCement: return 'Cement & Bricks';
+        case PostCategory.buildIron: return 'Iron & Metals';
+        case PostCategory.buildPlumbing: return 'Plumbing Supplies';
+        case PostCategory.buildElectrical: return 'Electrical Supplies';
+        case PostCategory.buildPaint: return 'Paint & Coating';
+        case PostCategory.buildTiles: return 'Tiles & Ceramics';
+        case PostCategory.buildOther: return 'Other Building';
+
+        // Food
+        case PostCategory.foodRestaurant: return 'Restaurants';
+        case PostCategory.foodCatering: return 'Catering';
+        case PostCategory.foodHomemade: return 'Homemade Food';
+        case PostCategory.foodBakery: return 'Bakery & Sweets';
+        case PostCategory.foodGrocery: return 'Grocery';
+        case PostCategory.foodOther: return 'Other Food';
+
+        // Home
+        case PostCategory.homeFurniture: return 'Furniture';
+        case PostCategory.homeAppliances: return 'Home Appliances';
+        case PostCategory.homeDecor: return 'Decor & Furnishings';
+        case PostCategory.homeKitchen: return 'Kitchen Tools';
+        case PostCategory.homeOther: return 'Other Home';
+
+        // Automotive
+        case PostCategory.autoBuySell: return 'Buy & Sell Cars';
+        case PostCategory.autoParts: return 'Auto Parts';
+        case PostCategory.autoRepair: return 'Auto Repair';
+        case PostCategory.autoRental: return 'Car Rental';
+        case PostCategory.autoAccessories: return 'Car Accessories';
+        case PostCategory.autoOther: return 'Other Auto';
+
+        // Real Estate
+        case PostCategory.realEstateSale: return 'Property Sale';
+        case PostCategory.realEstateRent: return 'Property Rent';
+        case PostCategory.realEstateLand: return 'Land';
+        case PostCategory.realEstateOffice: return 'Offices & Shops';
+        case PostCategory.realEstateOther: return 'Other Real Estate';
+
+        // Craftsmen
+        case PostCategory.craftPlumbing: return 'Plumbing';
+        case PostCategory.craftElectricity: return 'Electrical';
+        case PostCategory.craftCarpentry: return 'Carpentry';
+        case PostCategory.craftPainting: return 'Painting';
+        case PostCategory.craftWelding: return 'Welding';
+        case PostCategory.craftAC: return 'AC & Cooling';
+        case PostCategory.craftCleaning: return 'Cleaning';
+        case PostCategory.craftTransport: return 'Transport';
+        case PostCategory.craftOther: return 'Other Craft';
+
+        // Special Services
+        case PostCategory.svcLegal: return 'Legal';
+        case PostCategory.svcAccounting: return 'Accounting';
+        case PostCategory.svcPhotography: return 'Photography';
+        case PostCategory.svcEvents: return 'Events';
+        case PostCategory.svcTranslation: return 'Translation';
+        case PostCategory.svcDelivery: return 'Delivery';
+        case PostCategory.svcOther: return 'Other Service';
 
         // Tech
         case PostCategory.techWebDev: return 'Web Development';
         case PostCategory.techMobileDev: return 'App Development';
         case PostCategory.techDesign: return 'Graphic Design';
         case PostCategory.techUIUX: return 'UI/UX Design';
-        case PostCategory.techSEO: return 'SEO';
         case PostCategory.techMarketing: return 'Digital Marketing';
-        case PostCategory.techDataEntry: return 'Data Entry';
         case PostCategory.techVideoEditing: return 'Video Editing';
         case PostCategory.techNetworking: return 'Networking & IT';
         case PostCategory.techOther: return 'Other Tech';
@@ -397,33 +576,12 @@ enum PostCategory {
         case PostCategory.eduOnlineCourses: return 'Online Courses';
         case PostCategory.eduOther: return 'Other Education';
 
-        // Health
-        case PostCategory.healthMedical: return 'Medical';
-        case PostCategory.healthPharmacy: return 'Pharmacy';
-        case PostCategory.healthFitness: return 'Fitness';
-        case PostCategory.healthNutrition: return 'Nutrition';
-        case PostCategory.healthOther: return 'Other Health';
-
-        // Automotive
-        case PostCategory.autoParts: return 'Auto Parts';
-        case PostCategory.autoRepair: return 'Auto Repair';
-        case PostCategory.autoShowroom: return 'Car Showroom';
-        case PostCategory.autoRental: return 'Car Rental';
-        case PostCategory.autoOther: return 'Other Auto';
-
-        // Real Estate
-        case PostCategory.realEstateSale: return 'Property Sale';
-        case PostCategory.realEstateRent: return 'Property Rent';
-        case PostCategory.realEstateOffice: return 'Offices';
-        case PostCategory.realEstateLand: return 'Land';
-        case PostCategory.realEstateOther: return 'Other Real Estate';
-
-        // Food
-        case PostCategory.foodRestaurant: return 'Restaurant';
-        case PostCategory.foodCatering: return 'Catering';
-        case PostCategory.foodHomemade: return 'Homemade Food';
-        case PostCategory.foodBakery: return 'Bakery & Sweets';
-        case PostCategory.foodOther: return 'Other Food';
+        // Jobs
+        case PostCategory.jobsFullTime: return 'Full-time Job';
+        case PostCategory.jobsPartTime: return 'Part-time Job';
+        case PostCategory.jobsFreelance: return 'Freelance';
+        case PostCategory.jobsInternship: return 'Internship';
+        case PostCategory.jobsOther: return 'Other Opportunity';
       }
     }
   }
@@ -433,6 +591,7 @@ enum PostCategory {
     return PostCategory.values.where((c) => c.group == group).toList();
   }
 } // End PostCategory Enum
+
 
 
 class PostModel {

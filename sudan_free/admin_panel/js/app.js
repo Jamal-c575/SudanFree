@@ -10,24 +10,8 @@ const AdminApp = {
     const errEl = document.getElementById('login-error');
     errEl.style.display = 'none';
 
-    // Auto-create primary admin if requested and doesn't exist
-    if (email === 'ja5009006@gmail.com' && pass === 'Jamal@www20') {
-      try {
-        const methods = await auth.fetchSignInMethodsForEmail(email);
-        if (methods.length === 0) {
-          const cred = await auth.createUserWithEmailAndPassword(email, pass);
-          await db.collection('users').doc(cred.user.uid).set({
-            email: email,
-            name: 'جمال (المدير العام)',
-            role: 'admin',
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-          });
-        }
-      } catch (e) {
-        console.log('Setup error or already exists:', e);
-      }
-    }
-
+    // Primary admin accounts must be provisioned securely through a trusted backend or Firebase Console.
+    // Removing hard-coded credentials from the client improves security.
     try {
       const cred = await auth.signInWithEmailAndPassword(email, pass);
       const doc = await db.collection('users').doc(cred.user.uid).get();
@@ -696,34 +680,51 @@ const AdminApp = {
         container.innerHTML = '<p class="empty-state">لا توجد ترويجات حالياً</p>';
         return;
       }
-      container.innerHTML = snap.docs.map(doc => {
-        const d = doc.data();
-        const endDate = d.endDate?.toDate ? d.endDate.toDate() : new Date(d.endDate);
+      const promos = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const htmls = [];
+      for (const p of promos) {
+        let user = {};
+        try {
+          if (p.userId) {
+            const userDoc = await db.collection('users').doc(p.userId).get();
+            if (userDoc.exists) user = userDoc.data();
+          }
+        } catch (err) {}
+        
+        const endDate = p.expiryDate?.toDate ? p.expiryDate.toDate() : new Date(p.expiryDate || p.createdAt);
         const isActive = endDate > now;
         const statusClass = isActive ? 'active' : 'dismissed';
         const statusText = isActive ? 'نشط' : 'منتهي';
         const endStr = endDate.toLocaleDateString('ar-EG');
-        return `<div class="promo-card">
+        
+        const userName = user.name || user.username || p.userName || 'مستخدم';
+        const userImage = user.profileImageUrl || p.userImage || '';
+        const userProf = user.jobTitle || user.role || p.userProfession || '';
+        const userLoc = user.state || p.userLocation || '';
+        const rating = typeof user.rating === 'number' ? user.rating : (p.userRating || 0);
+        
+        htmls.push(`<div class="promo-card">
           <div class="promo-card-header">
-            <img src="${d.userImage || ''}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%236c5ce7%22 width=%22100%22 height=%22100%22/><text x=%2250%22 y=%2255%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2240%22>${(d.userName||'?')[0]}</text></svg>'">
+            <img src="${userImage}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%236c5ce7%22 width=%22100%22 height=%22100%22/><text x=%2250%22 y=%2255%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2240%22>${userName.charAt(0)}</text></svg>'">
             <div class="promo-card-info">
-              <h4>${d.userName || 'مستخدم'}</h4>
-              <p>${d.userProfession || d.userRole || ''} — ${d.userLocation || ''}</p>
+              <h4>${userName}</h4>
+              <p>${userProf} — ${userLoc}</p>
             </div>
             <span class="report-status ${statusClass}" style="margin-right:auto;">${statusText}</span>
           </div>
           <div class="promo-card-body">
-            <div class="promo-text">"${d.promotionText || ''}"</div>
+            <div class="promo-text">"${p.promoText || p.promotionText || ''}"</div>
             <div class="promo-meta">
               <span><span class="material-icons-outlined" style="font-size:14px;">calendar_today</span> ينتهي: ${endStr}</span>
-              <span><span class="material-icons-outlined" style="font-size:14px;">star</span> التقييم: ${d.userRating ? d.userRating.toFixed(1) : 'N/A'}</span>
+              <span><span class="material-icons-outlined" style="font-size:14px;">star</span> التقييم: ${rating.toFixed(1)}</span>
             </div>
           </div>
           <div class="promo-card-actions">
-            <button class="btn btn-sm btn-danger" onclick="AdminApp.deletePromotion('${doc.id}')"><span class="material-icons-outlined">delete</span> حذف</button>
+            <button class="btn btn-sm btn-danger" onclick="AdminApp.deletePromotion('${p.id}')"><span class="material-icons-outlined">delete</span> حذف</button>
           </div>
-        </div>`;
-      }).join('');
+        </div>`);
+      }
+      container.innerHTML = htmls.join('');
     } catch (e) {
       container.innerHTML = '<p class="empty-state">خطأ في تحميل الترويجات: ' + e.message + '</p>';
     }
@@ -745,7 +746,7 @@ const AdminApp = {
     const container = document.getElementById('contracts-list');
     container.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
     try {
-      const snap = await db.collectionGroup('contracts').orderBy('createdAt', 'desc').limit(50).get();
+      const snap = await db.collectionGroup('messages').where('type', '==', 'contract').orderBy('createdAt', 'desc').limit(50).get();
       if (snap.empty) {
         container.innerHTML = '<p class="empty-state">لا توجد عقود حتى الآن</p>';
         return;
@@ -753,20 +754,23 @@ const AdminApp = {
       const STATUS_NAMES = { pending: 'معلق', accepted: 'مقبول', active: 'نشط', completed: 'مكتمل', cancelled: 'ملغي', rejected: 'مرفوض' };
       container.innerHTML = snap.docs.map(doc => {
         const d = doc.data();
-        const status = d.status || 'pending';
+        const status = d.contractStatus || d.status || 'pending';
         const statusClass = ['active','accepted'].includes(status) ? 'active' : status === 'completed' ? 'completed' : 'cancelled';
         const date = d.createdAt?.toDate ? d.createdAt.toDate().toLocaleDateString('ar-EG') : '';
+        const details = d.contractDetails || d.title || d.serviceType || 'عقد خدمة';
+        const displayTitle = details.length > 50 ? details.substring(0, 50) + '...' : details;
+        const price = d.contractPrice || d.agreedPrice || d.price || 'غير محدد';
         return `<div class="contract-item">
           <div class="contract-header">
             <div style="display:flex;align-items:center;gap:8px;">
               <span class="material-icons-outlined" style="color:var(--primary-light)">description</span>
-              <strong>${d.title || d.serviceType || 'عقد خدمة'}</strong>
+              <strong title="${details.replace(/"/g, '&quot;')}">${displayTitle}</strong>
             </div>
             <span class="contract-status ${statusClass}">${STATUS_NAMES[status] || status}</span>
           </div>
           <div style="display:flex;justify-content:space-between;align-items:center;">
             <div style="color:var(--text-secondary);font-size:13px;">
-              <span>💰 ${d.agreedPrice || d.price || 'غير محدد'}</span>
+              <span>💰 ${price} SDG</span>
               <span style="margin-right:16px;">📅 ${date}</span>
             </div>
           </div>

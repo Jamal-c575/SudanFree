@@ -56,14 +56,12 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
               // Main Hero Image - Now properly positioned below status bar
               if (_images.isNotEmpty)
                 Container(
-                  height: 350,
                   width: double.infinity,
                   margin: const EdgeInsets.only(top: 48), // Account for app bar height
                   child: CachedNetworkImage(
                     imageUrl: _images[_selectedImageIndex],
-                    height: 350,
                     width: double.infinity,
-                    fit: BoxFit.cover,
+                    fit: BoxFit.fitWidth,
                     placeholder: (context, url) => Container(
                       height: 350,
                       color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
@@ -230,30 +228,7 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
                           height: 1.6,
                           color: isDark ? Colors.grey.shade300 : Colors.grey.shade700,
                         ),
-                        maxLines: _showFullDescription ? null : 4,
-                        overflow: _showFullDescription ? null : TextOverflow.ellipsis,
                       ),
-                      if (widget.ad.description.length > 200)
-                        TextButton(
-                          onPressed: () {
-                            setState(() {
-                              _showFullDescription = !_showFullDescription;
-                            });
-                          },
-                          style: TextButton.styleFrom(
-                            padding: EdgeInsets.zero,
-                            minimumSize: Size.zero,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                          child: Text(
-                            _showFullDescription ? 'عرض أقل' : 'قراءة المزيد',
-                            style: TextStyle(
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ),
                     ],
                   ),
                   const SizedBox(height: 32),

@@ -34,6 +34,7 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
   PostCategoryGroup? _selectedGroup;
   bool _showSearch = false;
   Timer? _heartbeatTimer;
+  Timer? _scrollDebounceTimer;
   AdModel? _currentAd;
   bool _isLoadingAd = true;
   final AdService _adService = AdService();
@@ -54,10 +55,14 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
       _heartbeatTimer = Timer.periodic(const Duration(minutes: 15), (_) => _sendHeartbeat());
     });
     
-    // Infinite Scroll Listener
+    // Infinite Scroll Listener with debounce to prevent duplicate fetches
     _scrollController.addListener(() {
       if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 300) {
-        context.read<PostsProvider>().fetchMorePosts();
+        // Debounce: only trigger once per 500ms to avoid multiple rapid requests
+        _scrollDebounceTimer?.cancel();
+        _scrollDebounceTimer = Timer(const Duration(milliseconds: 500), () {
+          context.read<PostsProvider>().fetchMorePosts();
+        });
       }
     });
   }
@@ -93,6 +98,7 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
   @override
   void dispose() {
     _heartbeatTimer?.cancel();
+    _scrollDebounceTimer?.cancel();
     _scrollController.dispose();
     _searchController.dispose();
     super.dispose();
@@ -261,7 +267,7 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
                             return AdWidget(
                               ad: _currentAd!,
                               onTap: () {
-                                _adService.recordClick(_currentAd!.id);
+                              // Don't record click here - will be recorded in ad details
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(builder: (_) => AdDetailsScreen(ad: _currentAd!)),

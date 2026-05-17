@@ -12,9 +12,10 @@ class AddReviewDialog extends StatefulWidget {
   final String? jobId;
   final String? jobTitle;
   final bool isShop;
-  final Function(double rating, String comment, bool isNegative, bool isJobCompleted, bool? wouldWorkAgain) onSubmit;
+  final Future<void> Function(double rating, String comment, bool isNegative, bool isJobCompleted, bool? wouldWorkAgain) onSubmit;
 
   const AddReviewDialog({
+    super.key,
     required this.freelancerId,
     required this.targetName,
     this.targetImageUrl,
@@ -34,6 +35,7 @@ class _AddReviewDialogState extends State<AddReviewDialog> {
   bool _isJobCompleted = false;
   bool? _wouldWorkAgain; // سؤال الضمان الاجتماعي
   final _commentController = TextEditingController();
+  bool _isSubmitting = false; // Prevent double-submit and rapid taps
 
   @override
   Widget build(BuildContext context) {
@@ -206,10 +208,17 @@ class _AddReviewDialogState extends State<AddReviewDialog> {
           child: Text(locale == 'ar' ? 'إلغاء' : 'Cancel'),
         ),
         ElevatedButton(
-          onPressed: _rating > 0
-              ? () {
-                  widget.onSubmit(_rating, _commentController.text.trim(), _isNegative, _isJobCompleted, _wouldWorkAgain);
-                  Navigator.pop(context);
+          onPressed: (_rating > 0 && !_isSubmitting)
+              ? () async {
+                  final navigator = Navigator.of(context);
+                  setState(() => _isSubmitting = true);
+                  try {
+                    await widget.onSubmit(_rating, _commentController.text.trim(), _isNegative, _isJobCompleted, _wouldWorkAgain);
+                    if (!mounted) return;
+                    navigator.pop();
+                  } catch (e) {
+                    if (mounted) setState(() => _isSubmitting = false);
+                  }
                 }
               : null,
           style: ElevatedButton.styleFrom(
@@ -217,7 +226,16 @@ class _AddReviewDialogState extends State<AddReviewDialog> {
             foregroundColor: Colors.white,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
-          child: Text(locale == 'ar' ? 'إرسال' : 'Submit'),
+          child: _isSubmitting
+              ? SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: const AlwaysStoppedAnimation(Colors.white),
+                  ),
+                )
+              : Text(locale == 'ar' ? 'إرسال' : 'Submit'),
         ),
       ],
     );

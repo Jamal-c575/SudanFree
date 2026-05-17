@@ -11,6 +11,7 @@ import 'providers/location_provider.dart';
 import 'providers/posts_provider.dart';
 import 'providers/job_provider.dart';
 import 'providers/chat_provider.dart';
+import 'services/notification_polling_service.dart';
 
 import 'providers/search_provider.dart';
 
@@ -27,6 +28,8 @@ import 'views/onboarding/onboarding_screen.dart';
 class SudanFreeApp extends StatelessWidget {
   const SudanFreeApp({super.key});
 
+  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
@@ -40,10 +43,12 @@ class SudanFreeApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => JobProvider()..fetchJobs()),
         ChangeNotifierProvider(create: (_) => ChatProvider()),
         ChangeNotifierProvider(create: (_) => SearchProvider()),
+        ChangeNotifierProvider(create: (_) => NotificationPollingService()),
       ],
       child: Consumer2<LocaleProvider, ThemeProvider>(
         builder: (context, localeProvider, themeProvider, _) {
           return MaterialApp(
+            navigatorKey: SudanFreeApp.navigatorKey,
             title: 'SudanFree',
             debugShowCheckedModeBanner: false,
             theme: AppTheme.lightTheme,

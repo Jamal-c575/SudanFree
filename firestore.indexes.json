@@ -1,204 +1,257 @@
 {
-    "indexes": [
-        {
-            "collectionGroup": "contactLogs",
-            "queryScope": "COLLECTION",
-            "fields": [
-                { "fieldPath": "contacterId", "order": "ASCENDING" },
-                { "fieldPath": "hasReviewed", "order": "ASCENDING" },
-                { "fieldPath": "createdAt", "order": "DESCENDING" }
-            ]
-        },
-        {
-            "collectionGroup": "contactLogs",
-            "queryScope": "COLLECTION",
-            "fields": [
-                { "fieldPath": "contacterId", "order": "ASCENDING" },
-                { "fieldPath": "freelancerId", "order": "ASCENDING" },
-                { "fieldPath": "createdAt", "order": "DESCENDING" }
-            ]
-        },
-        {
-            "collectionGroup": "posts",
-            "queryScope": "COLLECTION",
-            "fields": [
-                { "fieldPath": "showInCommunity", "order": "ASCENDING" },
-                { "fieldPath": "createdAt", "order": "DESCENDING" }
-            ]
-        },
-        {
-            "collectionGroup": "posts",
-            "queryScope": "COLLECTION",
-            "fields": [
-                { "fieldPath": "userId", "order": "ASCENDING" },
-                { "fieldPath": "createdAt", "order": "DESCENDING" }
-            ]
-        },
-        {
-            "collectionGroup": "users",
-            "queryScope": "COLLECTION",
-            "fields": [
-                { "fieldPath": "role", "order": "ASCENDING" },
-                { "fieldPath": "createdAt", "order": "DESCENDING" }
-            ]
-        },
-        {
-            "collectionGroup": "ads",
-            "queryScope": "COLLECTION",
-            "fields": [
-                { "fieldPath": "isActive", "order": "ASCENDING" },
-                { "fieldPath": "targetRegion", "order": "ASCENDING" },
-                { "fieldPath": "targetProfession", "order": "ASCENDING" },
-                { "fieldPath": "expiryDate", "order": "ASCENDING" }
-            ]
-        },
-        {
-            "collectionGroup": "notifications",
-            "queryScope": "COLLECTION",
-            "fields": [
-                { "fieldPath": "userId", "order": "ASCENDING" },
-                { "fieldPath": "createdAt", "order": "DESCENDING" }
-            ]
-        },
-        {
-            "collectionGroup": "notifications",
-            "queryScope": "COLLECTION",
-            "fields": [
-                { "fieldPath": "userId", "order": "ASCENDING" },
-                { "fieldPath": "isRead", "order": "ASCENDING" },
-                { "fieldPath": "createdAt", "order": "DESCENDING" }
-            ]
-        },
-        {
-            "collectionGroup": "notifications",
-            "queryScope": "COLLECTION",
-            "fields": [
-                { "fieldPath": "userId", "order": "ASCENDING" },
-                { "fieldPath": "type", "order": "ASCENDING" },
-                { "fieldPath": "createdAt", "order": "DESCENDING" }
-            ]
-        },
-        {
-            "collectionGroup": "reviews",
-            "queryScope": "COLLECTION",
-            "fields": [
-                { "fieldPath": "freelancerId", "order": "ASCENDING" },
-                { "fieldPath": "createdAt", "order": "DESCENDING" }
-            ]
-        },
-        {
-            "collectionGroup": "reviews",
-            "queryScope": "COLLECTION",
-            "fields": [
-                { "fieldPath": "freelancerId", "order": "ASCENDING" },
-                { "fieldPath": "reviewerId", "order": "ASCENDING" }
-            ]
-        },
-        {
-            "collectionGroup": "requests",
-            "queryScope": "COLLECTION",
-            "fields": [
-                { "fieldPath": "clientId", "order": "ASCENDING" },
-                { "fieldPath": "createdAt", "order": "DESCENDING" }
-            ]
-        },
-        {
-            "collectionGroup": "chats",
-            "queryScope": "COLLECTION",
-            "fields": [
-                { "fieldPath": "participants", "arrayConfig": "CONTAINS" },
-                { "fieldPath": "lastMessageTime", "order": "DESCENDING" }
-            ]
-        },
-        {
-            "collectionGroup": "jobs",
-            "queryScope": "COLLECTION",
-            "fields": [
-                { "fieldPath": "clientId", "order": "ASCENDING" },
-                { "fieldPath": "createdAt", "order": "DESCENDING" }
-            ]
-        },
-        {
-            "collectionGroup": "jobs",
-            "queryScope": "COLLECTION",
-            "fields": [
-                { "fieldPath": "category", "order": "ASCENDING" },
-                { "fieldPath": "createdAt", "order": "DESCENDING" }
-            ]
-        },
-        {
-            "collectionGroup": "jobs",
-            "queryScope": "COLLECTION",
-            "fields": [
-                { "fieldPath": "status", "order": "ASCENDING" },
-                { "fieldPath": "createdAt", "order": "DESCENDING" }
-            ]
-        },
-        {
-            "collectionGroup": "jobs",
-            "queryScope": "COLLECTION",
-            "fields": [
-                { "fieldPath": "assignedFreelancerId", "order": "ASCENDING" },
-                { "fieldPath": "createdAt", "order": "DESCENDING" }
-            ]
-        },
-        {
-            "collectionGroup": "deletion_requests",
-            "queryScope": "COLLECTION",
-            "fields": [
-                { "fieldPath": "status", "order": "ASCENDING" },
-                { "fieldPath": "createdAt", "order": "DESCENDING" }
-            ]
-        },
-        {
-            "collectionGroup": "comments",
-            "queryScope": "COLLECTION",
-            "fields": [
-                { "fieldPath": "postId", "order": "ASCENDING" },
-                { "fieldPath": "createdAt", "order": "DESCENDING" }
-            ]
-        },
-        {
-            "collectionGroup": "messages",
-            "queryScope": "COLLECTION",
-            "fields": [
-                { "fieldPath": "type", "order": "ASCENDING" },
-                { "fieldPath": "createdAt", "order": "DESCENDING" }
-            ]
-        },
-        {
-            "collectionGroup": "otp_codes",
-            "queryScope": "COLLECTION",
-            "fields": [
-                { "fieldPath": "phoneNumber", "order": "ASCENDING" },
-                { "fieldPath": "used", "order": "ASCENDING" },
-                { "fieldPath": "expiresAt", "order": "DESCENDING" }
-            ]
-        },
-        {
-            "collectionGroup": "_rate_limits",
-            "queryScope": "COLLECTION",
-            "fields": [
-                { "fieldPath": "resetAt", "order": "DESCENDING" },
-                { "fieldPath": "count", "order": "ASCENDING" }
-            ]
-        },
-        {
-            "collectionGroup": "audit_logs",
-            "queryScope": "COLLECTION",
-            "fields": [
-                { "fieldPath": "action", "order": "ASCENDING" },
-                { "fieldPath": "timestamp", "order": "DESCENDING" }
-            ]
-        },
-        {
-            "collectionGroup": "audit_logs",
-            "queryScope": "COLLECTION",
-            "fields": [
-                { "fieldPath": "userId", "order": "ASCENDING" },
-                { "fieldPath": "timestamp", "order": "DESCENDING" }
-            ]
-        }
-    ],
-    "fieldOverrides": []
+  "indexes": [
+    {
+      "collectionGroup": "notifications",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "notifications",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "isRead", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "notifications",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "type", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "posts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "posts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "showInCommunity", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "comments",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "postId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "jobs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "clientId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "jobs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "assignedFreelancerId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "jobs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "category", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "jobs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "messages",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "type", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "deletion_requests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "reviews",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "freelancerId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "chats",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "participants", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "lastMessageTime", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "reviews",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "freelancerId", "order": "ASCENDING" },
+        { "fieldPath": "reviewerId", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "ads",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "isActive", "order": "ASCENDING" },
+        { "fieldPath": "targetRegion", "order": "ASCENDING" },
+        { "fieldPath": "targetProfession", "order": "ASCENDING" },
+        { "fieldPath": "expiryDate", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "ads",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "isActive", "order": "ASCENDING" },
+        { "fieldPath": "placement", "order": "ASCENDING" },
+        { "fieldPath": "targetRegion", "order": "ASCENDING" },
+        { "fieldPath": "targetProfession", "order": "ASCENDING" },
+        { "fieldPath": "expiryDate", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "ads",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "isActive", "order": "ASCENDING" },
+        { "fieldPath": "placement", "order": "ASCENDING" },
+        { "fieldPath": "expiryDate", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "requests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "clientId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "role", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "role", "order": "ASCENDING" },
+        { "fieldPath": "rating", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "state", "order": "ASCENDING" },
+        { "fieldPath": "role", "order": "ASCENDING" },
+        { "fieldPath": "rating", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "state", "order": "ASCENDING" },
+        { "fieldPath": "role", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "proposals",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "freelancerId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "contactLogs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "contacterId", "order": "ASCENDING" },
+        { "fieldPath": "freelancerId", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "contact_logs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "contacterId", "order": "ASCENDING" },
+        { "fieldPath": "freelancerId", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "contactLogs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "contacterId", "order": "ASCENDING" },
+        { "fieldPath": "freelancerId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "contactLogs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "contacterId", "order": "ASCENDING" },
+        { "fieldPath": "hasReviewed", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "messages",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "type", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "promotions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "isActive", "order": "ASCENDING" },
+        { "fieldPath": "expiryDate", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
 }

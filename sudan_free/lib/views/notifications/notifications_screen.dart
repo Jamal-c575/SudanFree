@@ -12,6 +12,7 @@ import '../posts/post_details_screen.dart';
 import '../posts/comments_sheet.dart';
 import '../profile/freelancer_profile_screen.dart';
 import '../profile/shop_profile_screen.dart';
+import '../chat/chat_screen.dart';
 import '../profile/profile_screen.dart';
 import '../../widgets/common/empty_state_widget.dart';
 import '../safety/safety_tips_screen.dart';
@@ -463,10 +464,24 @@ class _SimpleNotificationTileState extends State<_SimpleNotificationTile> {
           }
           break;
         case NotificationType.partnerRequest:
-          // Handled by the pending requests section already
+          if (notification.relatedId != null) {
+            await _navigateToProfile(context, notification.relatedId!);
+          } else {
+            showModalBottomSheet(
+              context: context,
+              isScrollControlled: true,
+              backgroundColor: Colors.transparent,
+              builder: (_) => _PendingRequestsSheet(locale: locale),
+            );
+          }
           break;
         case NotificationType.message:
-          // Navigate to chat list screen (tab 3 of home)
+          if (notification.relatedId != null) {
+            final chat = await firestore.getChatById(notification.relatedId!);
+            if (chat != null && context.mounted) {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => ChatScreen(chat: chat)));
+            }
+          }
           break;
         case NotificationType.follow:
           // Navigate to the shop/freelancer profile

@@ -348,5 +348,11 @@ service cloud.firestore {
       allow update: if isAdmin() || 
         (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['impressions', 'clicks']));
     }
+
+    // ═══════════════════ الترويجات (Promotions) ═══════════════════
+    match /promotions/{promoId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
   }
 }

@@ -10,16 +10,16 @@ class ReviewFirestoreService {
   Future<String> createReview(ReviewModel review, {bool isJobCompleted = false}) async {
     final batch = _firestore.batch();
     
-    // Check if first review
-    final existingReviews = await _firestore
-        .collection('reviews')
-        .where('freelancerId', isEqualTo: review.freelancerId)
-        .where('reviewerId', isEqualTo: review.reviewerId)
-        .limit(1)
-        .get();
-        
-    final isFirstReview = existingReviews.docs.isEmpty;
-    final reviewRef = _firestore.collection('reviews').doc();
+    // CRITICAL: Use unique document ID to prevent duplicates
+    // One rating per user per target: reviewerId_freelancerId
+    final uniqueDocId = '${review.reviewerId}_${review.freelancerId}';
+    final reviewRef = _firestore.collection('reviews').doc(uniqueDocId);
+    
+    // Check if first review (by checking if document exists)
+    final reviewSnapshot = await reviewRef.get();
+    final isFirstReview = !reviewSnapshot.exists;
+    
+    // Always use set (will overwrite if exists, preventing duplicates)
     batch.set(reviewRef, review.toFirestore());
     
     if (isFirstReview) {
