@@ -217,7 +217,12 @@ class _AddReviewDialogState extends State<AddReviewDialog> {
                     if (!mounted) return;
                     navigator.pop();
                   } catch (e) {
-                    if (mounted) setState(() => _isSubmitting = false);
+                    // Fall through — we'll re-enable the button after a short cooldown below
+                  } finally {
+                    // Keep button disabled briefly to prevent rapid double-taps
+                    Future.delayed(const Duration(seconds: 2), () {
+                      if (mounted) setState(() => _isSubmitting = false);
+                    });
                   }
                 }
               : null,

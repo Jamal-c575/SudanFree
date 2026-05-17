@@ -6,68 +6,85 @@ import '../../models/notification_model.dart';
 class ReviewFirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Create review
+  // Create review (uses transaction to prevent race conditions and duplicates)
   Future<String> createReview(ReviewModel review, {bool isJobCompleted = false}) async {
-    final batch = _firestore.batch();
-    
-    // CRITICAL: Use unique document ID to prevent duplicates
-    // One rating per user per target: reviewerId_freelancerId
+    // Unique ID per reviewer -> target to prevent duplicates
     final uniqueDocId = '${review.reviewerId}_${review.freelancerId}';
+    final ratingRef = _firestore.collection('ratings').doc(uniqueDocId);
     final reviewRef = _firestore.collection('reviews').doc(uniqueDocId);
-    
-    // Check if first review (by checking if document exists)
-    final reviewSnapshot = await reviewRef.get();
-    final isFirstReview = !reviewSnapshot.exists;
-    
-    // Always use set (will overwrite if exists, preventing duplicates)
-    batch.set(reviewRef, review.toFirestore());
-    
-    if (isFirstReview) {
-      final freelancerDoc = await _firestore.collection('users').doc(review.freelancerId).get();
-      final currentRating = (freelancerDoc.data()?['rating'] as num?)?.toDouble() ?? 0.0;
-      final currentCount = (freelancerDoc.data()?['reviewsCount'] as num?)?.toInt() ?? 0;
-      
+    final freelancerRef = _firestore.collection('users').doc(review.freelancerId);
+
+    String resultId = uniqueDocId;
+
+    print('DEBUG: Starting createReview transaction for $uniqueDocId, rating=${review.rating}');
+
+    await _firestore.runTransaction((tx) async {
+      final ratingSnap = await tx.get(ratingRef);
+      if (ratingSnap.exists) {
+        // User already rated this target — abort and return existing id
+        print('DEBUG: Rating already exists for $uniqueDocId — aborting transaction');
+        resultId = ratingRef.id;
+        return;
+      }
+
+      // Create rating document in `ratings/{reviewer}_{target}`
+      tx.set(ratingRef, {
+        'reviewerId': review.reviewerId,
+        'freelancerId': review.freelancerId,
+        'rating': review.rating,
+        'comment': review.comment,
+        'wouldWorkAgain': review.wouldWorkAgain,
+        'isNegative': review.isNegative,
+        'jobId': review.jobId,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      // Also write the full review record (keeps existing reviews stream intact)
+      tx.set(reviewRef, review.toFirestore());
+
+      // Read freelancer current stats
+      final freelancerSnap = await tx.get(freelancerRef);
+      final currentRating = (freelancerSnap.data()?['rating'] as num?)?.toDouble() ?? 0.0;
+      final currentCount = (freelancerSnap.data()?['reviewsCount'] as num?)?.toInt() ?? 0;
+
       final newCount = currentCount + 1;
       final newRating = ((currentRating * currentCount) + review.rating) / newCount;
-      
+
       final Map<String, dynamic> updateData = {
         'rating': newRating,
         'reviewsCount': newCount,
-        'updatedAt': Timestamp.now(),
+        'updatedAt': FieldValue.serverTimestamp(),
       };
 
       final int roundedRating = review.rating.round();
       if (roundedRating >= 1 && roundedRating <= 5) {
         updateData['ratingCounts.$roundedRating'] = FieldValue.increment(1);
       }
-      
-      if (review.isNegative) {
-        updateData['negativeReports'] = FieldValue.increment(1);
-      }
+      if (review.isNegative) updateData['negativeReports'] = FieldValue.increment(1);
+      if (isJobCompleted) updateData['completedJobs'] = FieldValue.increment(1);
 
-      if (isJobCompleted) {
-        updateData['completedJobs'] = FieldValue.increment(1);
-      }
-      
-      batch.update(_firestore.collection('users').doc(review.freelancerId), updateData);
-    }
-    
-    final notifRef = _firestore.collection('notifications').doc();
-    final notification = NotificationModel(
-      id: notifRef.id,
-      userId: review.freelancerId,
-      type: review.isNegative ? NotificationType.fraudWarning : NotificationType.rating,
-      title: review.isNegative ? 'تحذير احتيال' : 'تقييم جديد',
-      message: review.isNegative 
-          ? 'تم الإبلاغ عن حسابك كاحتيال/سلبي بواسطة ${review.reviewerName}'
-          : 'قام ${review.reviewerName} ${isFirstReview ? 'بتقييمك بـ ${review.rating} نجوم' : 'بالتعليق على ملفك الشخصي'}',
-      createdAt: Timestamp.now(),
-      relatedId: reviewRef.id,
-    );
-    batch.set(notifRef, notification.toFirestore());
-    
-    await batch.commit();
-    return reviewRef.id;
+      tx.update(freelancerRef, updateData);
+
+      // Create a notification for the freelancer
+      final notifRef = _firestore.collection('notifications').doc();
+      final Map<String, dynamic> notifData = {
+        'id': notifRef.id,
+        'userId': review.freelancerId,
+        'type': review.isNegative ? NotificationType.fraudWarning.name : NotificationType.rating.name,
+        'title': review.isNegative ? 'تحذير احتيال' : 'تقييم جديد',
+        'message': review.isNegative
+            ? 'تم الإبلاغ عن حسابك كاحتيال/سلبي بواسطة ${review.reviewerName}'
+            : 'قام ${review.reviewerName} بتقييمك بـ ${review.rating} نجوم',
+        'createdAt': FieldValue.serverTimestamp(),
+        'relatedId': reviewRef.id,
+      };
+      tx.set(notifRef, notifData);
+
+      print('DEBUG: Prepared transaction writes for $uniqueDocId (newRating=$newRating, newCount=$newCount)');
+    });
+
+    print('DEBUG: Completed createReview for $uniqueDocId');
+    return resultId;
   }
 
   // Stream reviews

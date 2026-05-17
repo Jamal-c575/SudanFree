@@ -60,10 +60,12 @@ class AdModel {
   factory AdModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
     final mediaUrl = data['mediaUrl'] ?? data['imageUrl'] ?? '';
+    final typeString = (data['mediaType'] ?? data['type'] ?? '') as String?;
     
     AdMediaType parseMediaType(String? typeStr) {
-      if (typeStr == 'video') return AdMediaType.video;
-      if (typeStr == 'gif') return AdMediaType.gif;
+      final normalized = typeStr?.toLowerCase();
+      if (normalized == 'video') return AdMediaType.video;
+      if (normalized == 'gif') return AdMediaType.gif;
       return AdMediaType.image;
     }
 
@@ -73,7 +75,7 @@ class AdModel {
       description: data['description'] ?? '',
       mediaUrl: mediaUrl,
       mediaUrls: data['mediaUrls'] != null ? List<String>.from(data['mediaUrls']) : (mediaUrl.isNotEmpty ? [mediaUrl] : []),
-      mediaType: parseMediaType(data['mediaType'] as String?),
+      mediaType: parseMediaType(typeString),
       actionUrl: data['actionUrl'],
       targetRegion: data['targetRegion'] ?? 'all',
       targetProfession: data['targetProfession'] ?? 'all',
@@ -99,6 +101,7 @@ class AdModel {
       'mediaUrl': mediaUrl,
       'mediaUrls': mediaUrls,
       'mediaType': mediaType.name,
+      'type': mediaType.name,
       'actionUrl': actionUrl,
       'targetRegion': targetRegion,
       'targetProfession': targetProfession,

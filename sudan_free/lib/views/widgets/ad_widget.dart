@@ -3,6 +3,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../models/ad_model.dart';
 import '../../core/constants/app_colors.dart';
 import '../../widgets/common/image_carousel.dart';
+import 'video_ad_widget.dart';
 
 class AdWidget extends StatelessWidget {
   final AdModel ad;
@@ -112,6 +113,10 @@ class AdWidget extends StatelessWidget {
   }
 
   Widget _buildMediaBackground(bool isDark) {
+    if (ad.mediaType == AdMediaType.video && ad.mediaUrl.isNotEmpty) {
+      return VideoAdWidget(videoUrl: ad.mediaUrl);
+    }
+
     if (ad.mediaUrls.isNotEmpty) {
       return ad.mediaUrls.length == 1
           ? CachedNetworkImage(

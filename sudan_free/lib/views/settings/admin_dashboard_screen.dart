@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'dart:io';
+
 import 'package:provider/provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:file_picker/file_picker.dart';
 import '../../models/user_model.dart';
 import '../../models/ad_model.dart';
 import '../../widgets/common/loading_widget.dart';
 import '../../core/constants/app_colors.dart';
 import '../../providers/auth_provider.dart';
 import '../auth/login_screen.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -566,7 +570,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     if (ad.mediaUrl.isNotEmpty)
                       ClipRRect(
                         borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                        child: CachedNetworkImage(imageUrl: ad.mediaUrl, height: 150, width: double.infinity, fit: BoxFit.cover),
+                        child: ad.mediaType == AdMediaType.video 
+                          ? Container(
+                              height: 150, 
+                              width: double.infinity, 
+                              color: Colors.black87, 
+                              child: const Icon(Icons.play_circle_fill, color: Colors.white, size: 48)
+                            )
+                          : CachedNetworkImage(imageUrl: ad.mediaUrl, height: 150, width: double.infinity, fit: BoxFit.cover),
                       ),
                     ListTile(
                       title: Text(ad.title, style: const TextStyle(fontWeight: FontWeight.bold)),
@@ -613,53 +624,158 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     final mediaUrlCtrl = TextEditingController();
     String targetRegion = 'all';
     String targetProfession = 'all';
+    AdMediaType selectedMediaType = AdMediaType.image;
+    PlatformFile? selectedVideoFile;
+    bool isUploadingVideo = false;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom, left: 24, right: 24, top: 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text('إضافة إعلان جديد', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            TextField(controller: titleCtrl, decoration: const InputDecoration(labelText: 'عنوان الإعلان', border: OutlineInputBorder())),
-            const SizedBox(height: 12),
-            TextField(controller: descCtrl, decoration: const InputDecoration(labelText: 'الوصف', border: OutlineInputBorder())),
-            const SizedBox(height: 12),
-            TextField(controller: mediaUrlCtrl, decoration: const InputDecoration(labelText: 'رابط الصورة (URL)', border: OutlineInputBorder())),
-            const SizedBox(height: 12),
-            TextField(decoration: const InputDecoration(labelText: 'المنطقة (اتركه فارغاً للكل)', border: OutlineInputBorder()), onChanged: (val) => targetRegion = val.isEmpty ? 'all' : val),
-            const SizedBox(height: 12),
-            TextField(decoration: const InputDecoration(labelText: 'المهنة (اتركه فارغاً للكل)', border: OutlineInputBorder()), onChanged: (val) => targetProfession = val.isEmpty ? 'all' : val),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 16)),
-              onPressed: () async {
-                if (titleCtrl.text.isEmpty || mediaUrlCtrl.text.isEmpty) return;
-                
-                final nav = Navigator.of(ctx);
-                
-                await FirebaseFirestore.instance.collection('ads').add({
-                  'title': titleCtrl.text,
-                  'description': descCtrl.text,
-                  'mediaUrl': mediaUrlCtrl.text,
-                  'targetRegion': targetRegion,
-                  'targetProfession': targetProfession,
-                  'expiryDate': Timestamp.fromDate(DateTime.now().add(const Duration(days: 7))),
-                  'createdAt': FieldValue.serverTimestamp(),
-                  'isActive': true,
-                });
-                if (mounted) nav.pop();
-              },
-              child: const Text('نشر الإعلان', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setState) {
+          return Padding(
+            padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom, left: 24, right: 24, top: 24),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text('إضافة إعلان جديد', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 16),
+                  TextField(controller: titleCtrl, decoration: const InputDecoration(labelText: 'عنوان الإعلان', border: OutlineInputBorder())),
+                  const SizedBox(height: 12),
+                  TextField(controller: descCtrl, decoration: const InputDecoration(labelText: 'الوصف', border: OutlineInputBorder())),
+                  const SizedBox(height: 12),
+                  // Media Type Selector
+                  DropdownButtonFormField<AdMediaType>(
+                    initialValue: selectedMediaType,
+                    decoration: const InputDecoration(labelText: 'نوع الإعلان', border: OutlineInputBorder()),
+                    items: const [
+                      DropdownMenuItem(value: AdMediaType.image, child: Text('صورة')),
+                      DropdownMenuItem(value: AdMediaType.video, child: Text('فيديو (mp4)')),
+                    ],
+                    onChanged: (val) {
+                      if (val != null) {
+                        setState(() {
+                          selectedMediaType = val;
+                          if (selectedMediaType != AdMediaType.video) {
+                            selectedVideoFile = null;
+                          }
+                        });
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  if (selectedMediaType == AdMediaType.video) ...[
+                    OutlinedButton.icon(
+                      icon: const Icon(Icons.upload_file),
+                      label: Text(
+                        selectedVideoFile != null ? 'تم اختيار الفيديو: ${selectedVideoFile!.name}' : 'اختر فيديو (mp4)',
+                      ),
+                      onPressed: isUploadingVideo
+                          ? null
+                          : () async {
+                              final result = await FilePicker.pickFiles(
+                                type: FileType.video,
+                                allowedExtensions: ['mp4'],
+                              );
+                              if (result == null || result.files.isEmpty) return;
+                              setState(() {
+                                selectedVideoFile = result.files.first;
+                              });
+                            },
+                    ),
+                    const SizedBox(height: 12),
+                    if (selectedVideoFile != null)
+                      Text('ملف الفيديو المحدد: ${selectedVideoFile!.name}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                    if (selectedVideoFile == null)
+                      const Text('يمكنك رفع فيديو mp4 من جهازك أو لصق رابط الفيديو مباشرة.', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    const SizedBox(height: 12),
+                  ],
+                  TextField(controller: mediaUrlCtrl, decoration: const InputDecoration(labelText: 'رابط الميديا (URL)', border: OutlineInputBorder())),
+                  const SizedBox(height: 12),
+                  TextField(decoration: const InputDecoration(labelText: 'المنطقة (اتركه فارغاً للكل)', border: OutlineInputBorder()), onChanged: (val) => targetRegion = val.isEmpty ? 'all' : val),
+                  const SizedBox(height: 12),
+                  TextField(decoration: const InputDecoration(labelText: 'المهنة (اتركه فارغاً للكل)', border: OutlineInputBorder()), onChanged: (val) => targetProfession = val.isEmpty ? 'all' : val),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 16)),
+                    onPressed: isUploadingVideo
+                        ? null
+                        : () async {
+                            if (titleCtrl.text.isEmpty) return;
+                            if (selectedMediaType == AdMediaType.video && selectedVideoFile == null && mediaUrlCtrl.text.isEmpty) return;
+                            if (selectedMediaType == AdMediaType.image && mediaUrlCtrl.text.isEmpty) return;
+
+                            final nav = Navigator.of(ctx);
+                            String finalMediaUrl = mediaUrlCtrl.text.trim();
+
+                            if (selectedMediaType == AdMediaType.video && selectedVideoFile != null) {
+                              final messenger = ScaffoldMessenger.of(context);
+                              setState(() => isUploadingVideo = true);
+                              try {
+                                final storagePath = 'ads/videos/${DateTime.now().millisecondsSinceEpoch}_${selectedVideoFile!.name}';
+                                final ref = FirebaseStorage.instance.ref().child(storagePath);
+                                UploadTask uploadTask;
+                                if (selectedVideoFile!.path != null) {
+                                  uploadTask = ref.putFile(
+                                    File(selectedVideoFile!.path!),
+                                    SettableMetadata(contentType: 'video/mp4'),
+                                  );
+                                } else if (selectedVideoFile!.bytes != null) {
+                                  uploadTask = ref.putData(
+                                    selectedVideoFile!.bytes!,
+                                    SettableMetadata(contentType: 'video/mp4'),
+                                  );
+                                } else {
+                                  throw Exception('Unable to read selected video file');
+                                }
+                                final snapshot = await uploadTask;
+                                finalMediaUrl = await snapshot.ref.getDownloadURL();
+                                mediaUrlCtrl.text = finalMediaUrl;
+                              } catch (e) {
+                                if (mounted) {
+                                  messenger.showSnackBar(
+                                    SnackBar(content: Text('فشل رفع الفيديو: $e')),
+                                  );
+                                }
+                                return;
+                              } finally {
+                                if (mounted) setState(() => isUploadingVideo = false);
+                              }
+                            }
+
+                            final mediaUrls = finalMediaUrl.isNotEmpty ? [finalMediaUrl] : [];
+                            await FirebaseFirestore.instance.collection('ads').add({
+                              'title': titleCtrl.text,
+                              'description': descCtrl.text,
+                              'mediaUrl': finalMediaUrl,
+                              'mediaUrls': mediaUrls,
+                              'mediaType': selectedMediaType.name,
+                              'type': selectedMediaType.name,
+                              'targetRegion': targetRegion,
+                              'targetProfession': targetProfession,
+                              'expiryDate': Timestamp.fromDate(DateTime.now().add(const Duration(days: 7))),
+                              'createdAt': FieldValue.serverTimestamp(),
+                              'isActive': true,
+                            });
+                            if (mounted) nav.pop();
+                          },
+                    child: isUploadingVideo
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Text('نشر الإعلان', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  ),
+                  const SizedBox(height: 24),
+                ],
+              ),
             ),
-            const SizedBox(height: 24),
-          ],
-        ),
+          );
+        }
       ),
     );
   }
