@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:video_player/video_player.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import '../../models/ad_model.dart';
 import '../../core/constants/app_colors.dart';
 import '../../services/firestore/ad_service.dart';
@@ -17,19 +19,45 @@ class AdDetailsScreen extends StatefulWidget {
 class _AdDetailsScreenState extends State<AdDetailsScreen> {
   int _selectedImageIndex = 0;
   List<String> _images = [];
-  bool _showFullDescription = false;
+
+  // Video player state
+  VideoPlayerController? _videoController;
+  bool _videoInitialized = false;
+  bool _isMuted = false;
 
   @override
   void initState() {
     super.initState();
-    _images = widget.ad.mediaUrls.isNotEmpty 
-        ? widget.ad.mediaUrls 
-        : (widget.ad.mediaUrl.isNotEmpty ? [widget.ad.mediaUrl] : []);
-        
-    // Limit to maximum 5 images as requested
-    if (_images.length > 5) {
-      _images = _images.sublist(0, 5);
+
+    if (widget.ad.mediaType == AdMediaType.video && widget.ad.mediaUrl.isNotEmpty) {
+      _initVideoController();
+    } else {
+      _images = widget.ad.mediaUrls.isNotEmpty
+          ? widget.ad.mediaUrls
+          : (widget.ad.mediaUrl.isNotEmpty ? [widget.ad.mediaUrl] : []);
+      if (_images.length > 5) _images = _images.sublist(0, 5);
     }
+  }
+
+  Future<void> _initVideoController() async {
+    try {
+      final file = await DefaultCacheManager().getSingleFile(widget.ad.mediaUrl);
+      _videoController = VideoPlayerController.file(file);
+      await _videoController!.initialize();
+      _videoController!.setLooping(false);
+      _videoController!.setVolume(1.0); // في شاشة التفاصيل يبدأ بالصوت
+      _videoController!.play();
+      if (mounted) setState(() => _videoInitialized = true);
+    } catch (e) {
+      debugPrint('Error loading video in details: $e');
+    }
+  }
+
+  @override
+  void dispose() {
+    _videoController?.pause();
+    _videoController?.dispose();
+    super.dispose();
   }
 
   @override
@@ -53,8 +81,96 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Main Hero Image - Now properly positioned below status bar
-              if (_images.isNotEmpty)
+              // ─── Video Ad Media ───
+              if (widget.ad.mediaType == AdMediaType.video)
+                Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(top: 48),
+                  color: Colors.black,
+                  child: _videoInitialized && _videoController != null
+                      ? Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Video Player
+                            AspectRatio(
+                              aspectRatio: _videoController!.value.aspectRatio,
+                              child: VideoPlayer(_videoController!),
+                            ),
+                            // Controls Bar
+                            Container(
+                              color: Colors.black,
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              child: Row(
+                                children: [
+                                  // Play/Pause
+                                  ValueListenableBuilder<VideoPlayerValue>(
+                                    valueListenable: _videoController!,
+                                    builder: (_, value, __) {
+                                      final isPlaying = value.isPlaying;
+                                      final isEnded = value.position >= value.duration && value.duration > Duration.zero;
+                                      return IconButton(
+                                        icon: Icon(
+                                          isEnded ? Icons.replay : (isPlaying ? Icons.pause : Icons.play_arrow),
+                                          color: Colors.white,
+                                        ),
+                                        onPressed: () {
+                                          if (isEnded) {
+                                            _videoController!.seekTo(Duration.zero);
+                                            _videoController!.play();
+                                          } else if (isPlaying) {
+                                            _videoController!.pause();
+                                          } else {
+                                            _videoController!.play();
+                                          }
+                                        },
+                                      );
+                                    },
+                                  ),
+                                  // Seek Bar
+                                  Expanded(
+                                    child: ValueListenableBuilder<VideoPlayerValue>(
+                                      valueListenable: _videoController!,
+                                      builder: (_, value, __) {
+                                        final duration = value.duration.inMilliseconds.toDouble();
+                                        final position = value.position.inMilliseconds.toDouble().clamp(0.0, duration);
+                                        return Slider(
+                                          value: duration > 0 ? position / duration : 0,
+                                          activeColor: AppColors.primary,
+                                          inactiveColor: Colors.white24,
+                                          onChanged: duration > 0
+                                              ? (v) => _videoController!.seekTo(
+                                                    Duration(milliseconds: (v * duration).toInt()),
+                                                  )
+                                              : null,
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                  // Mute Button
+                                  IconButton(
+                                    icon: Icon(
+                                      _isMuted ? Icons.volume_off : Icons.volume_up,
+                                      color: Colors.white,
+                                    ),
+                                    onPressed: () {
+                                      setState(() {
+                                        _isMuted = !_isMuted;
+                                        _videoController!.setVolume(_isMuted ? 0.0 : 1.0);
+                                      });
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        )
+                      : const SizedBox(
+                          height: 250,
+                          child: Center(child: CircularProgressIndicator(color: Colors.white)),
+                        ),
+                )
+              // ─── Image Ad Media ───
+              else if (_images.isNotEmpty)
                 Container(
                   width: double.infinity,
                   margin: const EdgeInsets.only(top: 48), // Account for app bar height

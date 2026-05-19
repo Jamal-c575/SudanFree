@@ -168,27 +168,8 @@ class PostsProvider extends ChangeNotifier {
     }
   }
 
-  void _listenForNewPosts() {
-    _newPostsSubscription?.cancel();
-    // Lightweight stream: listens only to the single most recent post
-    _newPostsSubscription = FirebaseFirestore.instance
-        .collection('posts')
-        .where('showInCommunity', isEqualTo: true)
-        .orderBy('createdAt', descending: true)
-        .limit(1)
-        .snapshots()
-        .listen((snapshot) {
-      if (snapshot.docs.isNotEmpty) {
-        final newestPostDate = (snapshot.docs.first.data()['createdAt'] as Timestamp).toDate();
-        if (_latestPostDate != null && newestPostDate.isAfter(_latestPostDate!)) {
-          if (!_hasNewPosts) {
-            _hasNewPosts = true;
-            notifyListeners();
-          }
-        }
-      }
-    });
-  }
+
+
 
   Future<String?> uploadPostImage(File imageFile) async {
     return await CloudinaryService().uploadImage(imageFile, folder: 'posts');

@@ -13,6 +13,7 @@ import '../services/cache_service.dart';
 import 'user_provider.dart';
 import 'posts_provider.dart';
 import '../services/notification_service.dart';
+import '../services/notification_polling_service.dart';
 
 enum AuthStatus { initial, loading, authenticated, unauthenticated, error }
 
@@ -765,6 +766,9 @@ class AuthProvider extends ChangeNotifier {
     } catch (e) {
       debugPrint('AuthProvider: Error clearing providers: $e');
     }
+
+    // Reset notification streams to prevent stale data
+    NotificationPollingService().reset();
 
     await _authService.signOut();
     OneSignal.logout();

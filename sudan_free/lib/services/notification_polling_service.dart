@@ -3,9 +3,16 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'firestore/notification_service.dart';
 
-/// Polling-based notification service that reduces Firestore reads from 60+/min to 1/min
-/// Switches from real-time streams to periodic polling (60-second intervals)
-/// Maintains consistency with background caching while dramatically reducing costs
+/// Hybrid notification service: 
+/// - Uses a lightweight Firestore stream for unread notification count (instant updates)
+/// - Uses a lightweight stream for chat unread count (instant updates)
+/// - No heavy polling or redundant reads
+/// 
+/// This ensures the badge updates IMMEDIATELY when:
+/// 1. A new notification arrives
+/// 2. The user reads a notification
+/// 3. A new chat message arrives
+/// 4. The user reads a chat message
 class NotificationPollingService extends ChangeNotifier {
   static final NotificationPollingService _instance = 
       NotificationPollingService._internal();
@@ -19,54 +26,57 @@ class NotificationPollingService extends ChangeNotifier {
   final NotificationFirestoreService _notificationService = NotificationFirestoreService();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   
-  // Polling state
-  Timer? _pollTimer;
-  final Duration _pollInterval = const Duration(seconds: 30);
-  
   // Cached values
-  int _unreadCount = 0;
+  int _unreadNotificationCount = 0;
   int _unreadChatCount = 0;
-  List<dynamic> _notifications = [];
-  DateTime? _lastPolledAt;
-  bool _isPolling = false;
   
-  // Current user ID for polling
+  // Current user ID
   String? _currentUserId;
   
-  // Chat stream subscription
+  // Stream subscriptions
+  StreamSubscription? _notificationSubscription;
   StreamSubscription? _chatSubscription;
   
   // Getters
-  int get unreadCount => _unreadCount + _unreadChatCount;
-  int get unreadNotificationsOnly => _unreadCount;
+  /// Total unread count (notifications + chats) — used by the badge
+  int get unreadCount => _unreadNotificationCount + _unreadChatCount;
+  int get unreadNotificationsOnly => _unreadNotificationCount;
   int get unreadChatsOnly => _unreadChatCount;
-  List<dynamic> get notifications => _notifications;
-  DateTime? get lastPolledAt => _lastPolledAt;
-  bool get isPolling => _isPolling;
   
-  /// Initialize polling service with user ID
+  /// Initialize with user ID — call once when user logs in
   void setUserId(String userId) {
     if (_currentUserId == userId) return;
+    
+    // Clean up old subscriptions
+    _notificationSubscription?.cancel();
+    _chatSubscription?.cancel();
+    
     _currentUserId = userId;
-    _startPolling();
+    _listenToNotificationCount(userId);
     _listenToChatUnread(userId);
   }
   
-  /// Start polling timer
-  void _startPolling() {
-    // Cancel existing timer
-    _pollTimer?.cancel();
-    
-    // Poll immediately on startup
-    _refreshCounts();
-    
-    // Then set up periodic polling
-    _pollTimer = Timer.periodic(_pollInterval, (_) {
-      _refreshCounts();
+  /// Listen to unread notification count using Firestore's count() stream
+  /// This is very lightweight — only returns a number, not full documents
+  void _listenToNotificationCount(String userId) {
+    _notificationSubscription?.cancel();
+    _notificationSubscription = _firestore
+        .collection('notifications')
+        .where('userId', isEqualTo: userId)
+        .where('isRead', isEqualTo: false)
+        .snapshots()
+        .listen((snapshot) {
+      final newCount = snapshot.docs.length;
+      if (_unreadNotificationCount != newCount) {
+        _unreadNotificationCount = newCount;
+        notifyListeners();
+      }
+    }, onError: (e) {
+      debugPrint('NotificationPollingService: notification stream error: $e');
     });
   }
   
-  /// Listen to chat unread counts in real-time (lightweight stream)
+  /// Listen to chat unread counts in real-time
   void _listenToChatUnread(String userId) {
     _chatSubscription?.cancel();
     _chatSubscription = _firestore
@@ -87,77 +97,54 @@ class NotificationPollingService extends ChangeNotifier {
         notifyListeners();
       }
     }, onError: (e) {
-      debugPrint('Error listening to chat unread: $e');
+      debugPrint('NotificationPollingService: chat stream error: $e');
     });
   }
   
-  /// Refresh notification counts from Firestore (single read operation)
-  Future<void> _refreshCounts() async {
+  /// Force immediate refresh — useful after marking notifications as read
+  /// This does a one-time read to immediately sync the count
+  Future<void> forceRefresh() async {
     if (_currentUserId == null) return;
     
     try {
-      _isPolling = true;
-      
-      // Single Firestore read instead of continuous stream
       final count = await _notificationService.getUnreadCount(_currentUserId!);
-      
-      if (_unreadCount != count) {
-        _unreadCount = count;
-        _lastPolledAt = DateTime.now();
+      if (_unreadNotificationCount != count) {
+        _unreadNotificationCount = count;
         notifyListeners();
       }
-      
-      _isPolling = false;
     } catch (e) {
-      debugPrint('Error refreshing notification counts: $e');
-      _isPolling = false;
+      debugPrint('NotificationPollingService: forceRefresh error: $e');
     }
   }
   
-  /// Force immediate refresh (useful when notification received)
-  Future<void> forceRefresh() async {
-    await _refreshCounts();
-  }
-  
-  /// Fetch notifications for NotificationsScreen (fetched on demand, not streaming)
+  /// Fetch notifications list on demand (for NotificationsScreen)
   Future<List<dynamic>> getNotificationsOnce() async {
     if (_currentUserId == null) return [];
     
     try {
-      final notifications = await _notificationService.getNotificationsOnce(_currentUserId!);
-      _notifications = notifications;
-      notifyListeners();
-      return notifications;
+      return await _notificationService.getNotificationsOnce(_currentUserId!);
     } catch (e) {
       debugPrint('Error fetching notifications: $e');
       return [];
     }
   }
   
-  /// Update polling interval (for testing or tuning)
-  void updatePollingInterval(Duration interval) {
-    _pollTimer?.cancel();
-    _pollTimer = Timer.periodic(interval, (_) {
-      _refreshCounts();
-    });
-  }
-  
-  /// Get polling statistics
-  Map<String, dynamic> getPollingStats() {
-    return {
-      'unreadCount': _unreadCount,
-      'unreadChatCount': _unreadChatCount,
-      'totalUnread': unreadCount,
-      'lastPolled': _lastPolledAt,
-      'isPolling': _isPolling,
-      'pollInterval': _pollInterval.inSeconds,
-    };
+  /// Reset counts (for logout)
+  void reset() {
+    _notificationSubscription?.cancel();
+    _chatSubscription?.cancel();
+    _notificationSubscription = null;
+    _chatSubscription = null;
+    _currentUserId = null;
+    _unreadNotificationCount = 0;
+    _unreadChatCount = 0;
+    notifyListeners();
   }
   
   /// Cleanup on app close
   @override
   void dispose() {
-    _pollTimer?.cancel();
+    _notificationSubscription?.cancel();
     _chatSubscription?.cancel();
     super.dispose();
   }

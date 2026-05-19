@@ -157,15 +157,6 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
       ...allPartners.where((u) => !u.isOnline),
     ];
 
-    // Featured freelancers (prioritize nearby, then top rated)
-    final featuredFreelancers = List<UserModel>.from(userProvider.freelancers)
-      ..sort((a, b) {
-        final aNearby = currentUser.state != null && a.state == currentUser.state;
-        final bNearby = currentUser.state != null && b.state == currentUser.state;
-        if (aNearby && !bNearby) return -1;
-        if (!aNearby && bNearby) return 1;
-        return b.rating.compareTo(a.rating);
-      });
 
     // Shops from user's region
     final nearbyShops = userProvider.shops.where((s) {

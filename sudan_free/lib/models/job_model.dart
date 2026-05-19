@@ -249,7 +249,7 @@ class JobModel {
       requiredSkills: requiredSkills ?? this.requiredSkills,
       attachments: attachments ?? this.attachments,
       milestones: milestones ?? this.milestones,
-      contractUrl: contractUrl ?? this.contractUrl,
+      contractUrl: contractUrl,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

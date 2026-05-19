@@ -383,17 +383,13 @@ class UserProvider extends ChangeNotifier {
       
       final url = await StorageService().uploadProfileImage(userId, compressedFile);
       
-      if (url != null) {
-        await _firestoreService.updateUserProfile(userId, {'profileImageUrl': url});
-        await _firestoreService.updateUserProfileImages(userId, url, null);
+      await _firestoreService.updateUserProfile(userId, {'profileImageUrl': url});
+      await _firestoreService.updateUserProfileImages(userId, url, null);
 
-        if (_viewedUser?.id == userId) {
-          _viewedUser = _viewedUser?.copyWith(profileImageUrl: url);
-        }
-        _uploadStatus = 'تم بنجاح ✓';
-      } else {
-        _uploadStatus = 'فشل الرفع';
+      if (_viewedUser?.id == userId) {
+        _viewedUser = _viewedUser?.copyWith(profileImageUrl: url);
       }
+      _uploadStatus = 'تم بنجاح ✓';
       
       _isLoading = false;
       notifyListeners();

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
@@ -35,8 +36,11 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
   bool _showSearch = false;
   Timer? _heartbeatTimer;
   Timer? _scrollDebounceTimer;
-  AdModel? _currentAd;
-  bool _isLoadingAd = true;
+
+  // ── Smart Ad System ──
+  List<AdModel> _ads = [];           // جميع الإعلانات النشطة
+  bool _isFirstLoad = true;          // تحديد موضع الإعلان عند التحميل الأول
+  final _random = Random();
   final AdService _adService = AdService();
 
   @override
@@ -48,10 +52,8 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<PostsProvider>().fetchPosts();
       context.read<AuthProvider>().fetchPartners();
-      _fetchAd();
-      // First heartbeat
+      _fetchAds();
       _sendHeartbeat();
-      // Periodic heartbeat every 15 minutes to keep user online (saving Firestore writes)
       _heartbeatTimer = Timer.periodic(const Duration(minutes: 15), (_) => _sendHeartbeat());
     });
     
@@ -67,25 +69,65 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
     });
   }
 
-  Future<void> _fetchAd() async {
+  Future<void> _fetchAds() async {
     final currentUser = context.read<AuthProvider>().user;
-    if (currentUser != null) {
-      final categoryTarget = _selectedGroup != null ? 'PostCategoryGroup.${_selectedGroup!.name}' : null;
-      final ad = await _adService.getTargetedAd(
-        currentUser, 
-        placement: AdPlacement.communityFeed,
-        targetCategory: categoryTarget,
+    if (currentUser == null) return;
+
+    try {
+      final ads = await _adService.getAdsForPlacement(
+        currentUser,
+        AdPlacement.communityFeed,
+        limit: 8, // جلب حتى 8 إعلانات لتوزيعها في التغذية
       );
       if (mounted) {
         setState(() {
-          _currentAd = ad;
-          _isLoadingAd = false;
+          _ads = ads;
         });
-        if (ad != null) _adService.recordImpression(ad.id);
+        // تسجيل الظهور لكل إعلان
+        for (final ad in ads) {
+          _adService.recordImpression(ad.id);
+        }
       }
-    } else {
-      if (mounted) setState(() => _isLoadingAd = false);
+    } catch (e) {
+      debugPrint('PostsFeed: Error fetching ads: $e');
     }
+  }
+
+  /// يبني قائمة مدمجة من المنشورات والإعلانات بشكل ذكي
+  /// ─ الإعلان الأول يظهر في الأعلى فقط عند التحميل الأول
+  /// ─ بعد ذلك تظهر بعد 4–8 منشورات بشكل عشوائي
+  List<dynamic> _buildMixedFeed(List<PostModel> posts) {
+    if (_ads.isEmpty || _searchQuery.isNotEmpty) return posts;
+
+    final List<dynamic> mixed = [];
+    int adIndex = 0;
+
+    // ─ التحميل الأول: الإعلان في الأعلى مباشرة (index 0)
+    if (_isFirstLoad && adIndex < _ads.length) {
+      mixed.add(_ads[adIndex++]);
+    }
+
+    // ─ باقي المنشورات مع توزيع الإعلانات بشكل عشوائي (4–8 منشورات)
+    int nextAdAfter = _isFirstLoad ? (4 + _random.nextInt(5)) : (2 + _random.nextInt(3)); // 4-8 أولاً، 2-4 بعد التحديث
+    int postsSinceLastAd = 0;
+
+    for (final post in posts) {
+      mixed.add(post);
+      postsSinceLastAd++;
+
+      if (adIndex < _ads.length && postsSinceLastAd >= nextAdAfter) {
+        mixed.add(_ads[adIndex++]);
+        postsSinceLastAd = 0;
+        nextAdAfter = 4 + _random.nextInt(5); // 4-8 للإعلانات التالية
+      }
+    }
+
+    // تأكد من ظهور إعلان واحد على الأقل إذا كانت المنشورات قليلة جداً
+    if (adIndex == 0 && _ads.isNotEmpty && posts.isNotEmpty) {
+       mixed.add(_ads[adIndex++]);
+    }
+
+    return mixed;
   }
 
   void _sendHeartbeat() {
@@ -220,7 +262,7 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
                               _selectedGroup == null,
                               () {
                                 setState(() => _selectedGroup = null);
-                                _fetchAd();
+                                _fetchAds();
                               },
                             ),
                             ...PostCategoryGroup.values.map((group) => _buildCategoryChip(
@@ -228,7 +270,7 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
                               _selectedGroup == group,
                               () {
                                 setState(() => _selectedGroup = group);
-                                _fetchAd();
+                                _fetchAds();
                               },
                             )),
                           ],
@@ -255,52 +297,65 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
                       ? const Column(children: [LinearProgressIndicator(), SizedBox(height: 10)])
                       : RefreshIndicator(
                       onRefresh: () async {
-                        _fetchAd();
+                        setState(() => _isFirstLoad = false); // بعد التحديث اليدوي لا يثبت الإعلان في الأعلى
+                        _fetchAds();
                         return postsProvider.fetchPosts(forceRefresh: true);
                       },
-                      child: ListView.builder(
-                        padding: const EdgeInsets.only(bottom: 96),
-                        cacheExtent: 250, // Reduced cache extent to save memory
-                        itemCount: posts.length + (_currentAd != null && _searchQuery.isEmpty ? 1 : 0),
-                        itemBuilder: (context, index) {
-                          if (index == 0 && _currentAd != null && _searchQuery.isEmpty) {
-                            return AdWidget(
-                              ad: _currentAd!,
-                              onTap: () {
-                              // Don't record click here - will be recorded in ad details
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(builder: (_) => AdDetailsScreen(ad: _currentAd!)),
-                                );
-                              },
-                            );
-                          }
-                          
-                          final postIndex = (_currentAd != null && _searchQuery.isEmpty) ? index - 1 : index;
-                          final post = posts[postIndex];
+                      child: Builder(builder: (context) {
+                        final mixedFeed = _buildMixedFeed(posts);
+                        return ListView.builder(
+                          padding: const EdgeInsets.only(bottom: 96),
+                          // cacheExtent كبير لمنع إعادة تهيئة VideoPlayerController عند التمرير
+                          cacheExtent: 800,
+                          itemCount: mixedFeed.length,
+                          itemBuilder: (context, index) {
+                            final item = mixedFeed[index];
 
-                          return Column(
-                            children: [
-                              StaggeredAnimatedWidget(
-                                index: postIndex,
-                                listId: 'posts_feed',
-                                child: PostCard(
-                                  post: post,
-                                  currentUserId: currentUser?.id ?? '',
-                                  locale: locale,
+                            // ─ عرض إعلان ─ محاط بـ ClipRect لمنع تداخل أنيميشن المنشورات المجاورة
+                            if (item is AdModel) {
+                              return ClipRect(
+                                child: AdWidget(
+                                  ad: item,
+                                  onTap: () {
+                                    _adService.recordClick(item.id);
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(builder: (_) => AdDetailsScreen(ad: item)),
+                                    );
+                                  },
                                 ),
-                              ),
-                              if (postIndex < posts.length - 1)
+                              );
+                            }
+
+                            // ─ عرض منشور ─
+                            final post = item as PostModel;
+                            final postIndex = mixedFeed
+                                .sublist(0, index)
+                                .whereType<PostModel>()
+                                .length;
+
+                            return Column(
+                              children: [
+                                StaggeredAnimatedWidget(
+                                  index: postIndex,
+                                  listId: 'posts_feed',
+                                  child: PostCard(
+                                    post: post,
+                                    currentUserId: currentUser?.id ?? '',
+                                    locale: locale,
+                                  ),
+                                ),
                                 const SizedBox(height: 8),
-                              if (postIndex == posts.length - 1 && postsProvider.isLoadingMore)
-                                const Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 20),
-                                  child: Center(child: CircularProgressIndicator()),
-                                ),
-                            ],
-                          );
-                        },
-                      ),
+                                if (postIndex == posts.length - 1 && postsProvider.isLoadingMore)
+                                  const Padding(
+                                    padding: EdgeInsets.symmetric(vertical: 20),
+                                    child: Center(child: CircularProgressIndicator()),
+                                  ),
+                              ],
+                            );
+                          },
+                        );
+                      }),
                     ),
         ),
       ),

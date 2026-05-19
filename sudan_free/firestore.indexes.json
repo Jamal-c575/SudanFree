@@ -123,6 +123,14 @@
       ]
     },
     {
+      "collectionGroup": "ratings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "reviewerId", "order": "ASCENDING" },
+        { "fieldPath": "freelancerId", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "ads",
       "queryScope": "COLLECTION",
       "fields": [

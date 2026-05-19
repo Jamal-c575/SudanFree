@@ -1149,14 +1149,6 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
     );
   }
 
-  void _showAddProjectDialog() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const CreatePortfolioProjectScreen(),
-      ),
-    );
-  }
 
   void _confirmDeleteProject(PortfolioProjectModel project) {
     showDialog(

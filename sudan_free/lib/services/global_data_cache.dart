@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'cache_service.dart';
 
 /// Global in-memory cache layer for expensive Firestore operations
 /// Reduces redundant reads across the app by maintaining singleton instances

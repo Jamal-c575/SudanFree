@@ -68,6 +68,7 @@ dependencies:
   connectivity_plus: ^7.1.1
   video_player: ^2.11.1
   visibility_detector: ^0.4.0+2
+  flutter_cache_manager: ^3.4.1
 
 dev_dependencies:
   flutter_test:

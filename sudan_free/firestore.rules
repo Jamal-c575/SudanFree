@@ -126,10 +126,17 @@ service cloud.firestore {
         request.resource.data.reviewerId == request.auth.uid &&
         request.resource.data.reviewerId != request.resource.data.freelancerId &&
         request.resource.data.rating >= 1 && request.resource.data.rating <= 5 &&
-        isValidString(request.resource.data.comment, 1000);
+        (!('comment' in request.resource.data) || isValidString(request.resource.data.comment, 1000));
       allow update: if isOwner(resource.data.reviewerId);
       allow delete: if isOwner(resource.data.reviewerId) || isAdmin();
     }
+
+    match /ratings/{ratingId} {
+      allow read: if true;
+      allow create, update: if isAuthenticated() && 
+        request.resource.data.reviewerId == request.auth.uid;
+    }
+
 
     // ═══════════════════ الوظائف (Jobs) ═══════════════════
     match /jobs/{jobId} {

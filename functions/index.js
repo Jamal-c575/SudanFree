@@ -403,8 +403,19 @@ exports.onReviewCreated = onDocumentCreated(
         const review = event.data?.data();
         if (!review) return null;
 
-        const { freelancerId, rating, isNegative } = review;
-        if (!freelancerId) return null;
+        const { freelancerId, reviewerId, rating, isNegative } = review;
+        if (!freelancerId || !reviewerId) return null;
+
+        // ✅ Guard: check if the ratings doc has already been processed by the CF
+        // This prevents double-counting if the CF runs more than once (CF retries)
+        const ratingsDocId = `${reviewerId}_${freelancerId}`;
+        const ratingsRef = db.collection("ratings").doc(ratingsDocId);
+        const ratingsSnap = await ratingsRef.get();
+
+        if (ratingsSnap.exists && ratingsSnap.data()?.cfProcessed === true) {
+            console.log(`CF: Already processed rating for ${ratingsDocId} — skipping`);
+            return null;
+        }
 
         const userRef = db.collection("users").doc(freelancerId);
 
@@ -435,10 +446,15 @@ exports.onReviewCreated = onDocumentCreated(
                 }
 
                 transaction.update(userRef, updates);
+
+                // ✅ Mark as processed to prevent CF retries from double-counting
+                if (ratingsSnap.exists) {
+                    transaction.update(ratingsRef, { cfProcessed: true });
+                }
             });
-            console.log(`Successfully updated ratings for freelancer ${freelancerId}`);
+            console.log(`CF: Successfully updated ratings for freelancer ${freelancerId} (avg=${((((userRef._path || '') + '') || ''))}, count+1)`);
         } catch (error) {
-            console.error(`Error updating ratings for freelancer ${freelancerId}:`, error);
+            console.error(`CF: Error updating ratings for freelancer ${freelancerId}:`, error);
         }
         return null;
     }

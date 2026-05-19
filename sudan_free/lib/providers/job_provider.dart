@@ -25,8 +25,6 @@ class JobProvider extends ChangeNotifier {
   String? _errorMessage;
   
   JobCategory? _filterCategory;
-  double? _filterMinBudget;
-  double? _filterMaxBudget;
   
   StreamSubscription? _jobsSubscription;
   StreamSubscription? _clientJobsSubscription;
@@ -272,20 +270,14 @@ class JobProvider extends ChangeNotifier {
   // Apply filter
   void setFilter({
     JobCategory? category,
-    double? minBudget,
-    double? maxBudget,
   }) {
     _filterCategory = category;
-    _filterMinBudget = minBudget;
-    _filterMaxBudget = maxBudget;
     fetchJobs();
   }
 
   // Clear filter
   void clearFilter() {
     _filterCategory = null;
-    _filterMinBudget = null;
-    _filterMaxBudget = null;
     fetchJobs();
   }
 
@@ -436,8 +428,6 @@ class JobProvider extends ChangeNotifier {
     _isLoading = false;
     _errorMessage = null;
     _filterCategory = null;
-    _filterMinBudget = null;
-    _filterMaxBudget = null;
     _jobsSubscription?.cancel();
     _clientJobsSubscription?.cancel();
     _freelancerJobsSubscription?.cancel();
