@@ -40,8 +40,13 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int _currentIndex = 0; // Dashboard is home now
   final List<int> _history = [0];
-  Key _freelancersKey = UniqueKey();
   final BottomBarVisibilityProvider _visibilityProvider = BottomBarVisibilityProvider();
+  
+  // Keys for refreshing tabs
+  Key _dashboardKey = UniqueKey();
+  Key _freelancersKey = UniqueKey();
+  Key _shopsKey = UniqueKey();
+  Key _requestsKey = UniqueKey();
 
   @override
   void initState() {
@@ -177,11 +182,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final locale = context.watch<LocaleProvider>().locale.languageCode;
 
     final screens = [
-      DashboardScreen(onNavigateToTab: _navigateToTab),    // 0 - الرئيسية
+      DashboardScreen(key: _dashboardKey, onNavigateToTab: _navigateToTab),    // 0 - الرئيسية
       BrowseFreelancersScreen(key: _freelancersKey),        // 1 - الخدمات
-      const BrowseShopsScreen(),                            // 2 - المتاجر
-      const PostsFeedScreen(),                              // 3 - المجتمع
-      const RequestsScreen(),                               // 4 - الطلبات
+      BrowseShopsScreen(key: _shopsKey),                            // 2 - المتاجر
+      const PostsFeedScreen(),                              // 3 - المجتمع (يحدث عبر الـ Provider)
+      RequestsScreen(key: _requestsKey),                               // 4 - الطلبات
     ];
 
     return PopScope(
@@ -337,21 +342,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     bool hasBadge = false,
     int badgeCount = 0,
   }) {
-    final isActive = _currentIndex == index;
-    final color = isActive 
-        ? AppColors.primary 
-        : isDark 
-            ? const Color(0xFF94A3B8) 
-            : const Color(0xFF94A3B8);
-
-    return GestureDetector(
+    return _NavItemWidget(
+      index: index,
+      icon: icon,
+      activeIcon: activeIcon,
+      label: label,
+      isDark: isDark,
+      isActive: _currentIndex == index,
+      hasBadge: hasBadge,
+      badgeCount: badgeCount,
       onTap: () {
-        if (_currentIndex == index) {
-          setState(() {
-            if (index == 1) _freelancersKey = UniqueKey();
-            if (index == 3) context.read<PostsProvider>().fetchPosts(forceRefresh: true);
-          });
-        } else {
+        if (_currentIndex != index) {
           setState(() {
             _currentIndex = index;
             _history.remove(index);
@@ -359,60 +360,150 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           });
         }
       },
+      onRefresh: () {
+        setState(() {
+          if (index == 0) _dashboardKey = UniqueKey();
+          if (index == 1) _freelancersKey = UniqueKey();
+          if (index == 2) _shopsKey = UniqueKey();
+          if (index == 3) context.read<PostsProvider>().fetchPosts(forceRefresh: true);
+          if (index == 4) _requestsKey = UniqueKey();
+        });
+      },
+    );
+  }
+}
+
+class _NavItemWidget extends StatefulWidget {
+  final int index;
+  final IconData icon;
+  final IconData activeIcon;
+  final String label;
+  final bool isDark;
+  final bool isActive;
+  final bool hasBadge;
+  final int badgeCount;
+  final VoidCallback onTap;
+  final VoidCallback onRefresh;
+
+  const _NavItemWidget({
+    required this.index,
+    required this.icon,
+    required this.activeIcon,
+    required this.label,
+    required this.isDark,
+    required this.isActive,
+    required this.hasBadge,
+    required this.badgeCount,
+    required this.onTap,
+    required this.onRefresh,
+  });
+
+  @override
+  State<_NavItemWidget> createState() => _NavItemWidgetState();
+}
+
+class _NavItemWidgetState extends State<_NavItemWidget> with SingleTickerProviderStateMixin {
+  late AnimationController _scaleController;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _scaleController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 150),
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.15).animate(
+      CurvedAnimation(parent: _scaleController, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _scaleController.dispose();
+    super.dispose();
+  }
+
+  void _triggerRefresh() {
+    widget.onRefresh();
+    _scaleController.forward().then((_) {
+      _scaleController.reverse();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = widget.isActive 
+        ? AppColors.primary 
+        : widget.isDark 
+            ? const Color(0xFF94A3B8) 
+            : const Color(0xFF94A3B8);
+
+    return GestureDetector(
+      onTap: widget.onTap,
+      onDoubleTap: widget.isActive ? _triggerRefresh : null,
+      onLongPress: widget.isActive ? _triggerRefresh : null,
       behavior: HitTestBehavior.opaque,
-      child: SizedBox(
-        width: 52,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // أيقونة مع Badge
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeOutCubic,
-              padding: EdgeInsets.symmetric(
-                horizontal: isActive ? 12 : 6,
-                vertical: isActive ? 5 : 3,
-              ),
-              decoration: BoxDecoration(
-                color: isActive 
-                    ? AppColors.primary.withValues(alpha: 0.12)
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Badge(
-                isLabelVisible: hasBadge || badgeCount > 0,
-                label: badgeCount > 0 
-                    ? Text(
-                        badgeCount > 99 ? '99+' : badgeCount.toString(),
-                        style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold),
-                      )
-                    : null,
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 250),
-                  transitionBuilder: (child, animation) {
-                    return ScaleTransition(scale: animation, child: child);
-                  },
-                  child: Icon(
-                    isActive ? activeIcon : icon,
-                    key: ValueKey(isActive),
-                    size: isActive ? 22 : 20,
-                    color: color,
+      child: AnimatedBuilder(
+        animation: _scaleAnimation,
+        builder: (context, child) {
+          return Transform.scale(
+            scale: _scaleAnimation.value,
+            child: child,
+          );
+        },
+        child: SizedBox(
+          width: 52,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeOutCubic,
+                padding: EdgeInsets.symmetric(
+                  horizontal: widget.isActive ? 12 : 6,
+                  vertical: widget.isActive ? 5 : 3,
+                ),
+                decoration: BoxDecoration(
+                  color: widget.isActive 
+                      ? AppColors.primary.withValues(alpha: 0.12)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Badge(
+                  isLabelVisible: widget.hasBadge || widget.badgeCount > 0,
+                  label: widget.badgeCount > 0 
+                      ? Text(
+                          widget.badgeCount > 99 ? '99+' : widget.badgeCount.toString(),
+                          style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold),
+                        )
+                      : null,
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 250),
+                    transitionBuilder: (child, animation) {
+                      return ScaleTransition(scale: animation, child: child);
+                    },
+                    child: Icon(
+                      widget.isActive ? widget.activeIcon : widget.icon,
+                      key: ValueKey(widget.isActive),
+                      size: widget.isActive ? 22 : 20,
+                      color: color,
+                    ),
                   ),
                 ),
               ),
-            ),
-            // Label
-            AnimatedDefaultTextStyle(
-              duration: const Duration(milliseconds: 200),
-              style: TextStyle(
-                fontSize: isActive ? 10 : 9,
-                fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-                color: color,
-                fontFamily: 'Cairo',
+              AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 200),
+                style: TextStyle(
+                  fontSize: widget.isActive ? 10 : 9,
+                  fontWeight: widget.isActive ? FontWeight.w700 : FontWeight.w500,
+                  color: color,
+                  fontFamily: 'Cairo',
+                ),
+                child: Text(widget.label, maxLines: 1, overflow: TextOverflow.ellipsis),
               ),
-              child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
