@@ -276,19 +276,25 @@ class _BrowseFreelancersScreenState extends State<BrowseFreelancersScreen>
   }
 
   Widget _buildEmptyState(BuildContext context, String locale) {
-    return EmptyStateWidget(
-      icon: Icons.person_search_rounded,
-      title: locale == 'ar' ? 'لا يوجد حرفيين' : 'No workers found',
-      subtitle: locale == 'ar' 
-          ? 'لم نتمكن من العثور على أي حرفي يطابق معايير البحث. جرب تغيير الفلاتر أو ابحث بكلمات مختلفة.'
-          : 'We couldn\'t find any workers matching your criteria. Try changing filters or search terms.',
-      actionLabel: locale == 'ar' ? 'مسح الفلاتر' : 'Clear Filters',
-      onAction: () {
-        setState(() {
-          _selectedState = null;
-          _selectedCategory = null;
-        });
-      },
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.search_off, size: 64, color: Colors.grey[300]),
+          const SizedBox(height: 16),
+          Text(
+            locale == 'ar' 
+                ? (_searchQuery.isNotEmpty ? 'لا توجد نتائج لـ "$_searchQuery"' : 'لا توجد نتائج')
+                : (_searchQuery.isNotEmpty ? 'No results for "$_searchQuery"' : 'No results found'),
+            style: TextStyle(color: Colors.grey[600], fontSize: 16),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            locale == 'ar' ? 'جرّب كلمات أخرى أو تحقق من الإملاء' : 'Try different keywords or check spelling',
+            style: TextStyle(color: Colors.grey[400], fontSize: 13),
+          ),
+        ],
+      ),
     );
   }
 

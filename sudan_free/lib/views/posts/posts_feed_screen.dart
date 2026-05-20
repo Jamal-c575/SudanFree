@@ -425,18 +425,25 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
   }
 
   Widget _buildNoSearchResults(BuildContext context, String locale) {
-    return EmptyStateWidget(
-      icon: Icons.search_off_rounded,
-      title: locale == 'ar' ? 'لا توجد نتائج' : 'No results found',
-      subtitle: locale == 'ar' ? 'جرب كلمات بحث مختلفة' : 'Try different search terms',
-      actionLabel: locale == 'ar' ? 'مسح البحث' : 'Clear Search',
-      onAction: () {
-        setState(() {
-          _searchController.clear();
-          _searchQuery = '';
-          _selectedGroup = null;
-        });
-      },
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.search_off, size: 64, color: Colors.grey[300]),
+          const SizedBox(height: 16),
+          Text(
+            locale == 'ar' 
+                ? (_searchQuery.isNotEmpty ? 'لا توجد نتائج لـ "$_searchQuery"' : 'لا توجد نتائج')
+                : (_searchQuery.isNotEmpty ? 'No results for "$_searchQuery"' : 'No results found'),
+            style: TextStyle(color: Colors.grey[600], fontSize: 16),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            locale == 'ar' ? 'جرّب كلمات أخرى أو تحقق من الإملاء' : 'Try different keywords or check spelling',
+            style: TextStyle(color: Colors.grey[400], fontSize: 13),
+          ),
+        ],
+      ),
     );
   }
 
