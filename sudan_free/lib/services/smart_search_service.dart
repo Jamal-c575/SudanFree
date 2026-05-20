@@ -122,6 +122,13 @@ class SmartSearchService {
       }
     }
     
+    // إضافة المواقع والأحياء
+    for (final neighborhood in _knownNeighborhoods) {
+      if (_normalizeArabic(neighborhood).contains(normalizedQuery)) {
+        results.add(neighborhood);
+      }
+    }
+    
     return results.take(8).toList();
   }
 
