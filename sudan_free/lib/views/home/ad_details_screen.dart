@@ -67,16 +67,14 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
     return Scaffold(
       appBar: AppBar(
         toolbarHeight: 48,
-        title: const Text('تفاصيل الإعلان', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.black.withValues(alpha: 0.45),
-        elevation: 0,
+        title: Text('تفاصيل الإعلان', style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 16, fontWeight: FontWeight.bold)),
+        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        elevation: 1,
+        shadowColor: Colors.black.withValues(alpha: 0.1),
         centerTitle: true,
-        iconTheme: const IconThemeData(color: Colors.white),
-        titleTextStyle: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+        iconTheme: IconThemeData(color: isDark ? Colors.white : Colors.black87),
       ),
-      extendBodyBehindAppBar: true,
       body: SafeArea(
-        top: false, // Allow app bar to extend behind, but protect content below
         child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -85,7 +83,6 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
               if (widget.ad.mediaType == AdMediaType.video)
                 Container(
                   width: double.infinity,
-                  margin: const EdgeInsets.only(top: 48),
                   color: Colors.black,
                   child: _videoInitialized && _videoController != null
                       ? Column(
@@ -173,7 +170,6 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
               else if (_images.isNotEmpty)
                 Container(
                   width: double.infinity,
-                  margin: const EdgeInsets.only(top: 48), // Account for app bar height
                   child: CachedNetworkImage(
                     imageUrl: _images[_selectedImageIndex],
                     width: double.infinity,
@@ -193,7 +189,6 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
               else
                 Container(
                   height: 350,
-                  margin: const EdgeInsets.only(top: 48), // Account for app bar height
                   color: isDark ? Colors.grey.shade900 : Colors.grey.shade300,
                   child: const Center(
                     child: Icon(Icons.campaign, size: 80, color: Colors.grey),
