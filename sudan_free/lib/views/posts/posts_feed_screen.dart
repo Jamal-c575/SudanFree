@@ -225,10 +225,10 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
               backgroundColor: Theme.of(context).scaffoldBackgroundColor,
               title: Text(
                 locale == 'ar' ? 'المجتمع' : 'Community',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.primary,
+                  color: Theme.of(context).brightness == Brightness.dark ? Colors.white : AppColors.primary,
                 ),
               ),
               actions: [
@@ -414,7 +414,9 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
           child: Text(
             label,
             style: TextStyle(
-              color: isSelected ? Colors.white : AppColors.textSecondary,
+              color: isSelected 
+                  ? Colors.white 
+                  : (Theme.of(context).brightness == Brightness.dark ? Colors.white70 : AppColors.textSecondary),
               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               fontSize: 12,
             ),

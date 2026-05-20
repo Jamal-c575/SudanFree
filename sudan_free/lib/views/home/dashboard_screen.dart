@@ -228,7 +228,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w800,
-                    color: AppColors.primary,
+                    color: isDark ? Colors.white : AppColors.primary,
                     letterSpacing: -0.5,
                   ),
                 ),

@@ -103,10 +103,8 @@ class _SmartSearchFieldState extends State<SmartSearchField> {
     }
     
     // 3. اقتراحات مركبة (مهنة + موقع)
-    if (widget.searchContext == SearchContext.freelancers || 
-        widget.searchContext == SearchContext.shops) {
-      _addCompositeSuggestions(query, results);
-    }
+    // الآن نطبقها على جميع السياقات بما فيها المجتمع
+    _addCompositeSuggestions(query, results);
     
     return results.take(8).toList();
   }
@@ -155,6 +153,13 @@ class _SmartSearchFieldState extends State<SmartSearchField> {
           'عمل', 'وظيفة', 'فرصة', 'خدمة', 'عرض', 'طلب',
           'تدريب', 'دورة', 'نصيحة', 'سؤال', 'مساعدة',
           'مشروع', 'تعاون', 'شراكة',
+          // حرف وخدمات
+          'كهربائي', 'سباك', 'نجار', 'حداد', 'دهان', 'بناء', 'تكييف',
+          'ميكانيكي', 'مبرمج', 'مصمم', 'مدرس', 'معلم', 'سائق', 'نقل',
+          'طباخ', 'خياط', 'تنظيف', 'صيانة', 'تصوير', 'مونتاج',
+          // مواقع
+          'الخرطوم', 'أم درمان', 'بحري', 'ود مدني', 'بورتسودان',
+          'كسلا', 'القضارف', 'نيالا', 'الفاشر', 'الأبيض',
         ];
     }
   }
