@@ -20,6 +20,7 @@ import '../../models/ad_model.dart';
 import '../../views/widgets/ad_widget.dart';
 import '../../views/home/ad_details_screen.dart';
 import '../../widgets/inputs/smart_search_field.dart';
+import '../home/home_screen.dart';
 
 class PostsFeedScreen extends StatefulWidget {
   const PostsFeedScreen({super.key});
@@ -360,8 +361,12 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
         ),
       ),
       floatingActionButton: canPost
-          ? Padding(
-              padding: const EdgeInsets.only(bottom: 72),
+          ? AnimatedPadding(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOutCubic,
+              padding: EdgeInsets.only(
+                bottom: context.watch<BottomBarVisibilityProvider>().isVisible ? 72 : 16,
+              ),
               child: FloatingActionButton(
                 heroTag: 'create_post_fab',
                 onPressed: () {

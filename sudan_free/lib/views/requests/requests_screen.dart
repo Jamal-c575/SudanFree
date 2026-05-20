@@ -9,6 +9,7 @@ import '../../core/constants/app_colors.dart';
 import '../../widgets/common/loading_widget.dart';
 import 'add_request_screen.dart';
 import 'request_details_screen.dart';
+import '../home/home_screen.dart';
 
 class RequestsScreen extends StatefulWidget {
   const RequestsScreen({super.key});
@@ -121,25 +122,29 @@ class _RequestsScreenState extends State<RequestsScreen> {
         },
       ),
       floatingActionButton: currentUser != null
-          ? Padding(
-              padding: const EdgeInsets.only(bottom: 80),
-              child: FloatingActionButton.extended(
-              onPressed: () {
-                showModalBottomSheet(
-                  context: context,
-                  isScrollControlled: true,
-                  backgroundColor: Colors.transparent,
-                  builder: (_) => AddRequestBottomSheet(user: currentUser),
-                );
-              },
-              icon: const Icon(Icons.add, color: Colors.white),
-              label: Text(
-                locale == 'ar' ? 'أضف طلبك' : 'Add Request',
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          ? AnimatedPadding(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOutCubic,
+              padding: EdgeInsets.only(
+                bottom: context.watch<BottomBarVisibilityProvider>().isVisible ? 80 : 16,
               ),
-              backgroundColor: AppColors.primary,
-            ),
-          )
+              child: FloatingActionButton.extended(
+                onPressed: () {
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (_) => AddRequestBottomSheet(user: currentUser),
+                  );
+                },
+                icon: const Icon(Icons.add, color: Colors.white),
+                label: Text(
+                  locale == 'ar' ? 'أضف طلبك' : 'Add Request',
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                ),
+                backgroundColor: AppColors.primary,
+              ),
+            )
           : null,
     );
   }

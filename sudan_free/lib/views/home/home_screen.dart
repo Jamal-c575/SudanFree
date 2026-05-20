@@ -18,6 +18,18 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../services/firestore_service.dart';
 import 'dashboard_screen.dart';
 
+class BottomBarVisibilityProvider extends ChangeNotifier {
+  bool _isVisible = true;
+  bool get isVisible => _isVisible;
+
+  void setVisible(bool value) {
+    if (_isVisible != value) {
+      _isVisible = value;
+      notifyListeners();
+    }
+  }
+}
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -29,6 +41,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int _currentIndex = 0; // Dashboard is home now
   final List<int> _history = [0];
   Key _freelancersKey = UniqueKey();
+  final BottomBarVisibilityProvider _visibilityProvider = BottomBarVisibilityProvider();
 
   @override
   void initState() {
@@ -189,22 +202,45 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           });
         }
       },
-      child: Scaffold(
-        extendBody: true, // المحتوى يمتد تحت الشريط العائم
-        body: Stack(
-          children: [
-            // Use Offstage instead of IndexedStack to reduce memory usage
-            // Offstage still keeps widgets in tree but doesn't render them
-            for (int i = 0; i < screens.length; i++)
-              Offstage(
-                offstage: _currentIndex != i,
-                child: screens[i],
-              ),
-          ],
-        ),
-        bottomNavigationBar: Builder(
-          builder: (context) {
-            final isDark = Theme.of(context).brightness == Brightness.dark;
+      child: ChangeNotifierProvider.value(
+        value: _visibilityProvider,
+        child: Scaffold(
+          extendBody: true, // المحتوى يمتد تحت الشريط العائم
+          body: NotificationListener<UserScrollNotification>(
+            onNotification: (notification) {
+              if (notification.metrics.axis == Axis.vertical) {
+                if (notification.direction == ScrollDirection.reverse) {
+                  _visibilityProvider.setVisible(false);
+                } else if (notification.direction == ScrollDirection.forward) {
+                  _visibilityProvider.setVisible(true);
+                }
+              }
+              return false;
+            },
+            child: Stack(
+              children: [
+                // Use Offstage instead of IndexedStack to reduce memory usage
+                // Offstage still keeps widgets in tree but doesn't render them
+                for (int i = 0; i < screens.length; i++)
+                  Offstage(
+                    offstage: _currentIndex != i,
+                    child: screens[i],
+                  ),
+              ],
+            ),
+          ),
+          bottomNavigationBar: Consumer<BottomBarVisibilityProvider>(
+            builder: (context, visibility, child) {
+              return AnimatedSlide(
+                offset: visibility.isVisible ? Offset.zero : const Offset(0, 1.2),
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeOutCubic,
+                child: child,
+              );
+            },
+            child: Builder(
+              builder: (context) {
+                final isDark = Theme.of(context).brightness == Brightness.dark;
             
             return Container(
               margin: const EdgeInsets.fromLTRB(20, 0, 20, 20),
@@ -288,8 +324,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           },
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildNavItem({
     required int index,
