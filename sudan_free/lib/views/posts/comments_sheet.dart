@@ -41,7 +41,7 @@ class _CommentsSheetState extends State<CommentsSheet> {
   String? _parentId;
   String? _replyingToName;
   String? _parentUserId;
-  final Set<String> _expandedComments = {}; // Track expanded reply sections
+  final Map<String, int> _visibleRepliesCount = {}; // Track how many replies are visible
   
   // Mentions State
   bool _showMentions = false;
@@ -443,11 +443,11 @@ class _CommentsSheetState extends State<CommentsSheet> {
 
                       if (replies.isEmpty) return widgets;
 
-                      // Collapsible: show only 2 replies unless expanded
-                      final isExpanded = _expandedComments.contains(parent.id);
-                      final visibleReplies = isExpanded ? replies : replies.take(2).toList();
+                      // Collapsible: show 0 replies initially, then 4 by 4
+                      final visibleCount = _visibleRepliesCount[parent.id] ?? 0;
+                      final visibleReplies = replies.take(visibleCount).toList();
                       final hiddenCount = replies.length - visibleReplies.length;
-                      final nextDepth = currentDepth < 4 ? currentDepth + 1 : 4;
+                      final nextDepth = currentDepth < 3 ? currentDepth + 1 : 3;
 
                       for (var reply in visibleReplies) {
                         widgets.addAll(buildCommentTree(reply, nextDepth));
@@ -459,7 +459,7 @@ class _CommentsSheetState extends State<CommentsSheet> {
                           Padding(
                             padding: EdgeInsetsDirectional.only(start: nextDepth * 24.0 + 12),
                             child: GestureDetector(
-                              onTap: () => setState(() => _expandedComments.add(parent.id)),
+                              onTap: () => setState(() => _visibleRepliesCount[parent.id] = visibleCount + 4),
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(vertical: 6),
                                 child: Row(
@@ -468,7 +468,9 @@ class _CommentsSheetState extends State<CommentsSheet> {
                                     Icon(Icons.subdirectory_arrow_right, size: 14, color: depthColor(nextDepth)),
                                     const SizedBox(width: 4),
                                     Text(
-                                      locale == 'ar' ? 'عرض $hiddenCount ردود أخرى' : 'Show $hiddenCount more replies',
+                                      locale == 'ar' 
+                                          ? (visibleCount == 0 ? 'عرض الردود ($hiddenCount)' : 'عرض ردود أخرى ($hiddenCount)')
+                                          : (visibleCount == 0 ? 'Show replies ($hiddenCount)' : 'Show more replies ($hiddenCount)'),
                                       style: TextStyle(
                                         color: depthColor(nextDepth),
                                         fontSize: 12,
