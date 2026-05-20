@@ -54,6 +54,8 @@ class SudanFreeApp extends StatelessWidget {
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,
             themeMode: themeProvider.themeMode,
+            themeAnimationDuration: const Duration(milliseconds: 500),
+            themeAnimationCurve: Curves.easeInOutCubic,
             locale: localeProvider.locale,
             supportedLocales: const [
               Locale('ar'),
