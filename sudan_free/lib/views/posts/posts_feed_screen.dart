@@ -20,6 +20,7 @@ import '../../models/ad_model.dart';
 import '../../views/widgets/ad_widget.dart';
 import '../../views/home/ad_details_screen.dart';
 import '../../widgets/inputs/smart_search_field.dart';
+import '../../services/smart_search_service.dart';
 import '../home/home_screen.dart';
 
 class PostsFeedScreen extends StatefulWidget {
@@ -162,9 +163,16 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
     
     final filtered = posts.where((post) {
       if (_searchQuery.isNotEmpty) {
-        final query = _searchQuery.toLowerCase();
-        final matchesCaption = post.caption?.toLowerCase().contains(query) ?? false;
-        final matchesUser = post.userName.toLowerCase().contains(query);
+        final query = SmartSearchService.normalizeArabic(_searchQuery.toLowerCase());
+        
+        final postCaption = post.caption != null 
+            ? SmartSearchService.normalizeArabic(post.caption!.toLowerCase()) 
+            : '';
+        final postUser = SmartSearchService.normalizeArabic(post.userName.toLowerCase());
+
+        final matchesCaption = postCaption.contains(query);
+        final matchesUser = postUser.contains(query);
+        
         if (!matchesCaption && !matchesUser) return false;
       }
       if (_selectedGroup != null) {

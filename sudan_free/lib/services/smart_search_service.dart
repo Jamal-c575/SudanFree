@@ -528,6 +528,11 @@ class SmartSearchService {
     return false;
   }
 
+  /// تطبيع النص العربي (إزالة التشكيل والهمزات) للوصول العام
+  static String normalizeArabic(String text) {
+    return _normalizeArabic(text);
+  }
+
   /// تطبيع النص العربي (إزالة التشكيل والهمزات)
   static String _normalizeArabic(String text) {
     return text
