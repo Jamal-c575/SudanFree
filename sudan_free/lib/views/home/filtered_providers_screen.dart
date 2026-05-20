@@ -212,7 +212,25 @@ class _FilteredProvidersScreenState extends State<FilteredProvidersScreen> {
                                     ),
                                   ],
                                 ),
-                                const Spacer(),
+                                const SizedBox(height: 4),
+                                if (user.bio.isNotEmpty)
+                                  Expanded(
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(top: 4.0),
+                                      child: Text(
+                                        user.bio,
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          color: AppColors.softGrey.withOpacity(0.8),
+                                          height: 1.3,
+                                        ),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  )
+                                else
+                                  const Spacer(),
                                 Row(
                                   children: [
                                     Icon(Icons.star_rounded, size: 16, color: AppColors.sudanGold),
