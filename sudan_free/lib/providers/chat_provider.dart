@@ -31,7 +31,7 @@ class ChatProvider extends ChangeNotifier {
 
   // Get total unread count
   int getTotalUnreadCount(String userId) {
-    return _chats.fold(0, (sum, chat) => sum + chat.getUnreadCount(userId));
+    return _chats.fold(0, (total, chat) => total + chat.getUnreadCount(userId));
   }
 
   // Fetch user's chats
@@ -155,11 +155,25 @@ class ChatProvider extends ChangeNotifier {
   }) async {
     if (_currentChat == null) return false;
 
-    _isSending = true;
+    // ── 1. ظهور فوري (Optimistic) ──
+    final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
+    final optimisticMsg = MessageModel(
+      id: tempId,
+      chatId: _currentChat!.id,
+      senderId: senderId,
+      senderName: senderName,
+      receiverId: receiverId,
+      content: '📷 صورة',
+      type: MessageType.image,
+      createdAt: DateTime.now(),
+      isUploading: true,
+      localFilePath: imageFile.path,
+    );
+    _messages = [optimisticMsg, ..._messages];
     notifyListeners();
 
     try {
-      // Upload image
+      // ── 2. رفع للسيرفر في الخلفية ──
       final imageUrl = await _storageService.uploadChatAttachment(
         _currentChat!.id,
         imageFile,
@@ -179,11 +193,14 @@ class ChatProvider extends ChangeNotifier {
       );
 
       await _firestoreService.sendMessage(message);
-      _isSending = false;
+
+      // ── 3. حذف الرسالة المؤقتة (Firestore stream سيُظهر الحقيقية) ──
+      _messages = _messages.where((m) => m.id != tempId).toList();
       notifyListeners();
       return true;
     } catch (e) {
-      _isSending = false;
+      // ── فشل: إزالة الرسالة المؤقتة وإظهار خطأ ──
+      _messages = _messages.where((m) => m.id != tempId).toList();
       _errorMessage = e.toString();
       notifyListeners();
       return false;
@@ -200,11 +217,26 @@ class ChatProvider extends ChangeNotifier {
   }) async {
     if (_currentChat == null) return false;
 
-    _isSending = true;
+    // ── 1. ظهور فوري (Optimistic) ──
+    final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
+    final optimisticMsg = MessageModel(
+      id: tempId,
+      chatId: _currentChat!.id,
+      senderId: senderId,
+      senderName: senderName,
+      receiverId: receiverId,
+      content: '📎 $fileName',
+      type: MessageType.file,
+      attachmentName: fileName,
+      createdAt: DateTime.now(),
+      isUploading: true,
+      localFilePath: file.path,
+    );
+    _messages = [optimisticMsg, ..._messages];
     notifyListeners();
 
     try {
-      // Upload file
+      // ── 2. رفع في الخلفية ──
       final fileUrl = await _storageService.uploadChatAttachment(
         _currentChat!.id,
         file,
@@ -225,11 +257,13 @@ class ChatProvider extends ChangeNotifier {
       );
 
       await _firestoreService.sendMessage(message);
-      _isSending = false;
+
+      // ── 3. حذف المؤقتة ──
+      _messages = _messages.where((m) => m.id != tempId).toList();
       notifyListeners();
       return true;
     } catch (e) {
-      _isSending = false;
+      _messages = _messages.where((m) => m.id != tempId).toList();
       _errorMessage = e.toString();
       notifyListeners();
       return false;
@@ -246,11 +280,26 @@ class ChatProvider extends ChangeNotifier {
   }) async {
     if (_currentChat == null) return false;
 
-    _isSending = true;
+    // ── 1. ظهور فوري (Optimistic) ──
+    final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
+    final optimisticMsg = MessageModel(
+      id: tempId,
+      chatId: _currentChat!.id,
+      senderId: senderId,
+      senderName: senderName,
+      receiverId: receiverId,
+      content: '🎤 رسالة صوتية',
+      type: MessageType.audio,
+      duration: duration,
+      createdAt: DateTime.now(),
+      isUploading: true,
+      localFilePath: audioFile.path,
+    );
+    _messages = [optimisticMsg, ..._messages];
     notifyListeners();
 
     try {
-      // Upload audio
+      // ── 2. رفع في الخلفية ──
       final audioUrl = await _storageService.uploadChatAttachment(
         _currentChat!.id,
         audioFile,
@@ -271,11 +320,13 @@ class ChatProvider extends ChangeNotifier {
       );
 
       await _firestoreService.sendMessage(message);
-      _isSending = false;
+
+      // ── 3. حذف المؤقتة ──
+      _messages = _messages.where((m) => m.id != tempId).toList();
       notifyListeners();
       return true;
     } catch (e) {
-      _isSending = false;
+      _messages = _messages.where((m) => m.id != tempId).toList();
       _errorMessage = e.toString();
       notifyListeners();
       return false;

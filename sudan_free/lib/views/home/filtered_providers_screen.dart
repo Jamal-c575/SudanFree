@@ -213,15 +213,15 @@ class _FilteredProvidersScreenState extends State<FilteredProvidersScreen> {
                                   ],
                                 ),
                                 const SizedBox(height: 4),
-                                if (user.bio.isNotEmpty)
+                                if (user.bio?.isNotEmpty == true)
                                   Expanded(
                                     child: Padding(
                                       padding: const EdgeInsets.only(top: 4.0),
                                       child: Text(
-                                        user.bio,
+                                        user.bio!,
                                         style: TextStyle(
                                           fontSize: 10,
-                                          color: AppColors.softGrey.withOpacity(0.8),
+                                          color: AppColors.softGrey.withValues(alpha: 0.8),
                                           height: 1.3,
                                         ),
                                         maxLines: 2,

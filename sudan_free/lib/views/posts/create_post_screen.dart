@@ -19,12 +19,14 @@ class CreatePostScreen extends StatefulWidget {
   final PostModel? post;
   final bool showInCommunity;
   final bool showInProfile;
+  final PostModel? linkedProduct; // منتج مرتبط (من شاشة تفاصيل المنتج)
 
   const CreatePostScreen({
-    super.key, 
-    this.post, 
+    super.key,
+    this.post,
     this.showInCommunity = true,  // Default: show in community
     this.showInProfile = true,    // Default: show in profile
+    this.linkedProduct,           // منتج مرتبط اختياري
   });
 
   @override
@@ -274,6 +276,11 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
           showInCommunity: _showInCommunity,
           showInProfile: _showInProfile,
           price: double.tryParse(_priceController.text.trim()),
+          // إرفاق بيانات المنتج المرتبط إن وجد
+          linkedProductId: widget.linkedProduct?.id,
+          linkedProductName: widget.linkedProduct?.caption?.split('\n').first,
+          linkedProductImage: widget.linkedProduct?.allImageUrls.firstOrNull,
+          linkedProductPrice: widget.linkedProduct?.price,
         );
       }
     } catch (e, stack) {
@@ -350,7 +357,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                       CircleAvatar(
                         radius: 20,
                         backgroundImage: user?.profileImageUrl != null
-                            ? NetworkImage(user!.profileImageUrl!)
+                            ? CachedNetworkImageProvider(user!.profileImageUrl!)
                             : null,
                         child: user?.profileImageUrl == null
                             ? const Icon(Icons.person)
@@ -540,7 +547,16 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                       ),
                     ),
                   
+                  // ─── بطاقة المنتج المرتبط ────────────────────────────
+                  // تظهر عندما يأتي صاحب المتجر من شاشة تفاصيل المنتج
+                  if (widget.linkedProduct != null)
+                    _LinkedProductCard(
+                      product: widget.linkedProduct!,
+                      isArabic: context.read<LocaleProvider>().isArabic,
+                    ),
+
                   const SizedBox(height: 24),
+
 
                   // Images Preview (Mosaic Grid)
                   if (_selectedImages.isNotEmpty)
@@ -905,6 +921,127 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
           ),
         );
       },
+    );
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+/// بطاقة المنتج المرتبط — تظهر في شاشة إنشاء المنشور
+// ════════════════════════════════════════════════════════════════════════════
+class _LinkedProductCard extends StatelessWidget {
+  final PostModel product;
+  final bool isArabic;
+
+  const _LinkedProductCard({required this.product, required this.isArabic});
+
+  @override
+  Widget build(BuildContext context) {
+    final productName = product.caption?.split('\n').first ??
+        (isArabic ? 'منتج' : 'Product');
+    final imageUrl = product.allImageUrls.firstOrNull;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 4),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppColors.primary.withValues(alpha: 0.08),
+            AppColors.secondary.withValues(alpha: 0.05),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            // صورة المنتج المصغرة
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: imageUrl != null
+                  ? CachedNetworkImage(
+                      imageUrl: imageUrl,
+                      width: 64,
+                      height: 64,
+                      fit: BoxFit.cover,
+                      placeholder: (_, __) => Container(
+                        width: 64,
+                        height: 64,
+                        color: Colors.grey[200],
+                      ),
+                      errorWidget: (_, __, ___) => Container(
+                        width: 64,
+                        height: 64,
+                        color: Colors.grey[200],
+                        child: const Icon(Icons.image, color: Colors.grey),
+                      ),
+                    )
+                  : Container(
+                      width: 64,
+                      height: 64,
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.shopping_bag_outlined,
+                          color: AppColors.primary, size: 28),
+                    ),
+            ),
+            const SizedBox(width: 12),
+
+            // تفاصيل المنتج
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 7, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          isArabic ? '🛍️ منتج مرتبط' : '🛍️ Linked Product',
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    productName,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 14),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (product.price != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      '${product.price!.toStringAsFixed(0)} SDG',
+                      style: const TextStyle(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+
+            // أيقونة الربط
+            const Icon(Icons.link_rounded,
+                color: AppColors.primary, size: 22),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -996,3 +996,73 @@ exports.onVerificationRequestUpdated = onDocumentUpdated(
         return null;
     }
 );
+
+// ═══ Admin: Delete User Account (Auth + Firestore + Storage) ═══
+exports.deleteUserAccount = onCall(async (request) => {
+    // 1. Only admins can call this function
+    const callerUid = request.auth?.uid;
+    if (!callerUid) {
+        throw new HttpsError('unauthenticated', 'يجب تسجيل الدخول أولاً');
+    }
+    const isAdmin = await isAdminUser(callerUid);
+    if (!isAdmin) {
+        throw new HttpsError('permission-denied', 'هذه العملية متاحة للمشرفين فقط');
+    }
+
+    const { userId, requestId } = request.data || {};
+    if (!userId || typeof userId !== 'string') {
+        throw new HttpsError('invalid-argument', 'معرف المستخدم مطلوب');
+    }
+
+    try {
+        console.log(`Admin ${callerUid} deleting user ${userId}...`);
+
+        // 2. Delete from Firebase Auth
+        try {
+            await authAdmin.deleteUser(userId);
+            console.log(`✓ Deleted user ${userId} from Firebase Auth`);
+        } catch (authError) {
+            // If user not found in Auth, continue with Firestore deletion
+            if (authError.code !== 'auth/user-not-found') {
+                throw authError;
+            }
+            console.warn(`User ${userId} not found in Firebase Auth, continuing with data deletion`);
+        }
+
+        // 3. Delete all Firestore data
+        await deleteUserFirestoreData(userId);
+        console.log(`✓ Deleted Firestore data for user ${userId}`);
+
+        // 4. Delete Storage files
+        await deleteUserStorageData(userId);
+        console.log(`✓ Deleted Storage files for user ${userId}`);
+
+        // 5. Mark deletion request as approved
+        if (requestId) {
+            await db.collection('deletion_requests').doc(requestId).update({
+                status: 'approved',
+                approvedAt: FieldValue.serverTimestamp(),
+                approvedBy: callerUid,
+            });
+        }
+
+        // 6. Audit log
+        await logAudit('USER_DELETED', userId, {
+            adminId: callerUid,
+            status: 'success',
+            metadata: { requestId: requestId || null }
+        });
+
+        console.log(`✅ User ${userId} fully deleted by admin ${callerUid}`);
+        return { success: true, message: 'تم حذف الحساب بنجاح' };
+
+    } catch (error) {
+        console.error(`Error deleting user ${userId}:`, error);
+        await logAudit('USER_DELETE_ERROR', userId, {
+            adminId: callerUid,
+            status: 'error',
+            errorMessage: error.message
+        });
+        throw new HttpsError('internal', `فشل الحذف: ${error.message}`);
+    }
+});

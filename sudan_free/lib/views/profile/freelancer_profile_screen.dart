@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 import 'create_portfolio_project_screen.dart';
+import 'portfolio_project_detail_screen.dart';
 import '../../core/constants/app_colors.dart';
 import '../../models/user_model.dart';
 import '../../models/contact_log_model.dart';
@@ -18,7 +20,6 @@ import '../auth/profile_setup_screen.dart';
 import '../../widgets/common/loading_widget.dart';
 import '../../widgets/cards/post_card.dart';
 import '../../widgets/common/linkable_text.dart';
-import '../../widgets/common/image_carousel.dart';
 
 import '../../widgets/reviews/review_widgets.dart';
 import '../../l10n/generated/app_localizations.dart';
@@ -112,6 +113,17 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
                   systemOverlayStyle: Theme.of(context).appBarTheme.systemOverlayStyle,
                   leading: const BackButton(),
                   actions: [
+                    IconButton(
+                      icon: const Icon(Icons.share, color: Colors.white),
+                      tooltip: l10n.localeName == 'ar' ? 'مشاركة الملف الشخصي' : 'Share Profile',
+                      onPressed: () {
+                        final url = 'https://jamall123.github.io/HOME_WEB/sudan-free.html?profileId=${user.id}';
+                        final text = l10n.localeName == 'ar' 
+                            ? 'شاهد الملف الشخصي لـ ${user.name} على تطبيق سودان فري:\n$url' 
+                            : 'Check out ${user.name}\'s profile on SudanFree:\n$url';
+                        Share.share(text);
+                      },
+                    ),
                     if (widget.isMe) ...[
                       IconButton(
                         icon: const Icon(Icons.edit, color: Colors.white),
@@ -597,7 +609,7 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
                   } catch (e, stack) {
                     navigator.pop();
                     if (ctx.mounted) Navigator.pop(ctx);
-                    if (mounted) AppErrorHandler.show(context, e, stack, logContext: 'FreelancerProfile.createChat');
+                    if (context.mounted) AppErrorHandler.show(context, e, stack, logContext: 'FreelancerProfile.createChat');
                   }
                 },
               ),
@@ -1086,64 +1098,187 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
   }
 
   Widget _buildProjectCard(PortfolioProjectModel project, String locale) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 24),
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      elevation: 2,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (project.imageUrls.isNotEmpty)
-            ImageCarousel(
-              imageUrls: project.imageUrls,
-              height: MediaQuery.of(context).size.width, // Square size like community posts
-              fit: BoxFit.cover,
-              enableZoom: true,
-            ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        project.title,
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    if (widget.isMe)
-                      IconButton(
-                        icon: const Icon(Icons.delete_outline, color: Colors.red),
-                        onPressed: () => _confirmDeleteProject(project),
-                      ),
-                  ],
-                ),
-                if (project.category != null) ...[
-                  const SizedBox(height: 4),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      project.category!,
-                      style: const TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 12),
-                LinkableText(
-                  text: project.description,
-                  style: TextStyle(color: Colors.grey[700], height: 1.5),
-                ),
-              ],
+    final isAr = locale == 'ar';
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => PortfolioProjectDetailScreen(
+              project: project,
+              providerName: widget.user.name,
+              providerImageUrl: widget.user.profileImageUrl,
             ),
           ),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 24),
+        decoration: BoxDecoration(
+          color: theme.cardColor,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
+              blurRadius: 15,
+              offset: const Offset(0, 5),
+            ),
+          ],
+          border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ─── Image Area ───
+            if (project.imageUrls.isNotEmpty)
+              Stack(
+                children: [
+                  SizedBox(
+                    height: 220,
+                    width: double.infinity,
+                    child: CachedNetworkImage(
+                      imageUrl: project.imageUrls.first,
+                      fit: BoxFit.cover,
+                      placeholder: (_, __) => Container(color: Colors.grey.withValues(alpha: 0.1), child: const Center(child: CircularProgressIndicator())),
+                      errorWidget: (_, __, ___) => Container(color: Colors.grey.withValues(alpha: 0.1), child: const Icon(Icons.broken_image, color: Colors.grey)),
+                    ),
+                  ),
+                  if (project.imageUrls.length > 1)
+                    Positioned(
+                      top: 12,
+                      right: 12,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.7),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.photo_library, size: 14, color: Colors.white),
+                            const SizedBox(width: 4),
+                            Text('${project.imageUrls.length}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            
+            // ─── Details Area ───
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Title & Delete Button
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          project.title,
+                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, height: 1.3),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (widget.isMe) ...[
+                        const SizedBox(width: 8),
+                        GestureDetector(
+                          onTap: () => _confirmDeleteProject(project),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.red.withValues(alpha: 0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Tags Row
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      if (project.category != null)
+                        _buildTag(project.category!, AppColors.primary, Icons.category),
+                      if (project.status != null)
+                        _buildTag(
+                          project.status == 'completed' ? (isAr ? 'مكتمل' : 'Completed') : (isAr ? 'قيد التنفيذ' : 'Ongoing'),
+                          project.status == 'completed' ? Colors.green : Colors.orange,
+                          Icons.task_alt,
+                        ),
+                      if (project.projectType != null)
+                        _buildTag(
+                          _getLocalizedType(project.projectType!, isAr),
+                          Colors.blue,
+                          Icons.work_outline,
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Description Snippet
+                  Text(
+                    project.description,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: Colors.grey[600], fontSize: 14, height: 1.5),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // View Details Button
+                  Row(
+                    children: [
+                      Text(
+                        isAr ? 'عرض تفاصيل المشروع' : 'View Project Details',
+                        style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 14),
+                      ),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.arrow_forward_rounded, size: 16, color: AppColors.primary),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _getLocalizedType(String type, bool isAr) {
+    if (type == 'personal') return isAr ? 'شخصي' : 'Personal';
+    if (type == 'client') return isAr ? 'لعميل' : 'Client';
+    if (type == 'startup') return isAr ? 'شركة ناشئة' : 'Startup';
+    return isAr ? 'أخرى' : 'Other';
+  }
+
+  Widget _buildTag(String text, Color color, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 4),
+          Text(text, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold)),
         ],
       ),
     );

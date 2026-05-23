@@ -44,6 +44,7 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
   bool _isFirstLoad = true;          // تحديد موضع الإعلان عند التحميل الأول
   final _random = Random();
   final AdService _adService = AdService();
+  final _fs = FirestoreService();    // singleton — لا تُنشئ في كل build
 
   @override
   bool get wantKeepAlive => true;
@@ -134,10 +135,13 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
 
   void _sendHeartbeat() {
     final uid = context.read<AuthProvider>().user?.id;
-    if (uid != null) {
-      FirestoreService().updateLastActive(uid);
-    }
+    if (uid != null) _fs.updateLastActive(uid);
   }
+
+  /// Freshness + Engagement score: كل تفاعل يضيف ساعتين افتراضيتين
+  static int _sortScore(PostModel p) =>
+      p.createdAt.millisecondsSinceEpoch +
+      ((p.totalReactions + p.commentsCount) * 7200000);
 
   @override
   void dispose() {
@@ -150,30 +154,17 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
 
   List<PostModel> _filterPosts(List<PostModel> posts) {
     if (_searchQuery.isEmpty && _selectedGroup == null) {
-       final sorted = List<PostModel>.from(posts);
-       // Combined sorting: Latest + Interactive Auto-sort
-       // Every interaction adds virtual 2 hours to the post's "newness"
-       sorted.sort((a, b) {
-         final scoreA = a.createdAt.millisecondsSinceEpoch + ((a.totalReactions + a.commentsCount) * 7200000);
-         final scoreB = b.createdAt.millisecondsSinceEpoch + ((b.totalReactions + b.commentsCount) * 7200000);
-         return scoreB.compareTo(scoreA);
-       });
-       return sorted;
+      return List<PostModel>.from(posts)
+        ..sort((a, b) => _sortScore(b).compareTo(_sortScore(a)));
     }
-    
     final filtered = posts.where((post) {
       if (_searchQuery.isNotEmpty) {
         final query = SmartSearchService.normalizeArabic(_searchQuery.toLowerCase());
-        
-        final postCaption = post.caption != null 
-            ? SmartSearchService.normalizeArabic(post.caption!.toLowerCase()) 
+        final postCaption = post.caption != null
+            ? SmartSearchService.normalizeArabic(post.caption!.toLowerCase())
             : '';
         final postUser = SmartSearchService.normalizeArabic(post.userName.toLowerCase());
-
-        final matchesCaption = postCaption.contains(query);
-        final matchesUser = postUser.contains(query);
-        
-        if (!matchesCaption && !matchesUser) return false;
+        if (!postCaption.contains(query) && !postUser.contains(query)) return false;
       }
       if (_selectedGroup != null) {
         if (post.category == null) return false;
@@ -185,15 +176,8 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
         }
       }
       return true;
-    }).toList();
-
-    // Apply the same combined sorting to filtered results
-    filtered.sort((a, b) {
-       final scoreA = a.createdAt.millisecondsSinceEpoch + ((a.totalReactions + a.commentsCount) * 7200000);
-       final scoreB = b.createdAt.millisecondsSinceEpoch + ((b.totalReactions + b.commentsCount) * 7200000);
-       return scoreB.compareTo(scoreA);
-    });
-
+    }).toList()
+      ..sort((a, b) => _sortScore(b).compareTo(_sortScore(a)));
     return filtered;
   }
 
@@ -313,8 +297,7 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
                       child: Builder(builder: (context) {
                         final mixedFeed = _buildMixedFeed(posts);
                         return ListView.builder(
-                          padding: const EdgeInsets.only(bottom: 96),
-                          // cacheExtent كبير لمنع إعادة تهيئة VideoPlayerController عند التمرير
+                          padding: const EdgeInsets.only(top: 6, bottom: 96),
                           cacheExtent: 800,
                           itemCount: mixedFeed.length,
                           itemBuilder: (context, index) {
@@ -369,28 +352,29 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
         ),
       ),
       floatingActionButton: canPost
-          ? AnimatedPadding(
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeOutCubic,
-              padding: EdgeInsets.only(
-                bottom: context.watch<BottomBarVisibilityProvider>().isVisible ? 72 : 16,
-              ),
-              child: FloatingActionButton(
-                heroTag: 'create_post_fab',
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const CreatePostScreen(
-                        showInCommunity: true,
-                        showInProfile: false,
+          ? Selector<BottomBarVisibilityProvider, bool>(
+              selector: (_, p) => p.isVisible,
+              builder: (_, isVisible, __) => AnimatedPadding(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOut,
+                padding: EdgeInsets.only(bottom: isVisible ? 68 : 0),
+                child: FloatingActionButton(
+                  heroTag: 'create_post_fab',
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const CreatePostScreen(
+                          showInCommunity: true,
+                          showInProfile: false,
+                        ),
                       ),
-                    ),
-                  );
-                },
-                backgroundColor: AppColors.primary,
-                mini: true,
-                child: const Icon(Icons.add_photo_alternate_outlined, color: Colors.white, size: 22),
+                    );
+                  },
+                  backgroundColor: AppColors.primary,
+                  mini: true,
+                  child: const Icon(Icons.add_photo_alternate_outlined, color: Colors.white, size: 22),
+                ),
               ),
             )
           : null,

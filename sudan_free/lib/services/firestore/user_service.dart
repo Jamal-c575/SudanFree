@@ -300,7 +300,9 @@ class UserFirestoreService {
     for (var i = 0; i < allRefs.length; i += 400) {
       final batch = _firestore.batch();
       final end = (i + 400 < allRefs.length) ? i + 400 : allRefs.length;
-      for (var j = i; j < end; j++) batch.delete(allRefs[j]);
+      for (var j = i; j < end; j++) {
+        batch.delete(allRefs[j]);
+      }
       await batch.commit();
     }
   }

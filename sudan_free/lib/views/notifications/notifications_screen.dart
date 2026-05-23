@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
@@ -152,9 +153,7 @@ class NotificationsScreen extends StatelessWidget {
           }
 
           return RefreshIndicator(
-            onRefresh: () async {
-              await Future.delayed(const Duration(seconds: 1));
-            },
+            onRefresh: () async {},
             child: ListView.builder(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.symmetric(vertical: 8),
@@ -686,11 +685,12 @@ class _PendingRequestsSheetState extends State<_PendingRequestsSheet> {
     try {
       final users =
           await FirestoreService().getUsersByIds(user.pendingPartnerIds);
-      if (mounted)
+      if (mounted) {
         setState(() {
           _requesters = users;
           _isLoading = false;
         });
+      }
     } catch (e) {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -934,7 +934,7 @@ class _PendingRequestsSheetState extends State<_PendingRequestsSheet> {
                                         .withValues(alpha: 0.1),
                                     backgroundImage:
                                         requester.profileImageUrl != null
-                                            ? NetworkImage(
+                                            ? CachedNetworkImageProvider(
                                                 requester.profileImageUrl!)
                                             : null,
                                     child: requester.profileImageUrl == null

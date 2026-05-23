@@ -10,6 +10,9 @@ import '../../models/user_model.dart';
 import '../../widgets/mentions/mention_overlay.dart';
 import '../../services/cloudinary_service.dart';
 import '../../widgets/common/full_screen_image_viewer.dart';
+import '../../services/firestore_service.dart';
+import '../../core/constants/app_colors.dart';
+import '../profile/product_detail_screen.dart';
 /// شاشة تفاصيل المنشور/المنتج مع إمكانية التعليق والتفاعل
 class PostDetailsScreen extends StatefulWidget {
   final PostModel post;
@@ -285,6 +288,12 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
     
                       const SizedBox(height: 20),
                       // Comments section has been temporarily frozen/removed for display-only mode
+
+                      // ── بطاقة المنتج المرتبط ──────────────────────────────────
+                      if (widget.post.linkedProductId != null)
+                        _LinkedProductBanner(post: widget.post),
+
+                      const SizedBox(height: 16),
                     ],
                   ),
                 ),
@@ -312,3 +321,207 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
 
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+/// بانر المنتج المرتبط — يظهر في أسفل تفاصيل المنشور المجتمعي
+/// يتيح الانتقال المباشر لصفحة تفاصيل المنتج
+// ════════════════════════════════════════════════════════════════════════════
+class _LinkedProductBanner extends StatefulWidget {
+  final PostModel post;
+  const _LinkedProductBanner({required this.post});
+
+  @override
+  State<_LinkedProductBanner> createState() => _LinkedProductBannerState();
+}
+
+class _LinkedProductBannerState extends State<_LinkedProductBanner> {
+  PostModel? _product;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchProduct();
+  }
+
+  Future<void> _fetchProduct() async {
+    try {
+      final doc = await FirestoreService()
+          .getPost(widget.post.linkedProductId!);
+      if (mounted) {
+        setState(() {
+          _product = doc;
+          _loading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isArabic =
+        context.read<LocaleProvider>().locale.languageCode == 'ar';
+
+    if (_loading) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Container(
+          height: 80,
+          decoration: BoxDecoration(
+            color: Colors.grey[100],
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+        ),
+      );
+    }
+
+    // Use snapshot data from the post itself if Firestore fetch failed
+    final productName = _product?.caption?.split('\n').first ??
+        widget.post.linkedProductName ??
+        (isArabic ? 'منتج' : 'Product');
+    final imageUrl = _product?.allImageUrls.firstOrNull ??
+        widget.post.linkedProductImage;
+    final price = _product?.price ?? widget.post.linkedProductPrice;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: GestureDetector(
+        onTap: () {
+          if (_product != null) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ProductDetailScreen(product: _product!),
+              ),
+            );
+          }
+        },
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                AppColors.primary.withValues(alpha: 0.1),
+                AppColors.secondary.withValues(alpha: 0.06),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+                color: AppColors.primary.withValues(alpha: 0.3), width: 1.5),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withValues(alpha: 0.08),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              children: [
+                // صورة المنتج
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: imageUrl != null
+                      ? CachedNetworkImage(
+                          imageUrl: imageUrl,
+                          width: 70,
+                          height: 70,
+                          fit: BoxFit.cover,
+                          placeholder: (_, __) => Container(
+                            width: 70,
+                            height: 70,
+                            color: Colors.grey[200],
+                          ),
+                          errorWidget: (_, __, ___) => Container(
+                            width: 70,
+                            height: 70,
+                            color: Colors.grey[200],
+                            child: const Icon(Icons.image, color: Colors.grey),
+                          ),
+                        )
+                      : Container(
+                          width: 70,
+                          height: 70,
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.shopping_bag_outlined,
+                              color: AppColors.primary, size: 30),
+                        ),
+                ),
+                const SizedBox(width: 14),
+
+                // تفاصيل المنتج
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // تسمية "المنتج المرتبط"
+                      Row(children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            isArabic ? '🛍️ منتج مرتبط' : '🛍️ Linked Product',
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ]),
+                      const SizedBox(height: 5),
+                      Text(
+                        productName,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 15),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (price != null) ...[
+                        const SizedBox(height: 3),
+                        Text(
+                          '${price.toStringAsFixed(0)} SDG',
+                          style: const TextStyle(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+
+                // سهم الانتقال
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    isArabic
+                        ? Icons.arrow_back_ios_new_rounded
+                        : Icons.arrow_forward_ios_rounded,
+                    color: Colors.white,
+                    size: 16,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

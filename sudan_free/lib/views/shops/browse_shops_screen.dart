@@ -12,7 +12,6 @@ import '../../services/cloudinary_service.dart';
 import '../profile/profile_screen.dart';
 import '../../services/smart_search_service.dart';
 import '../../widgets/inputs/smart_search_field.dart';
-import '../../widgets/common/empty_state_widget.dart';
 class BrowseShopsScreen extends StatefulWidget {
   const BrowseShopsScreen({super.key});
 

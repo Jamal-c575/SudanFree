@@ -434,7 +434,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                 title: Text(isAr ? '🚚 يوجد توصيل' : '🚚 Shipping Available', style: const TextStyle(fontWeight: FontWeight.bold)),
                 subtitle: Text(isAr ? 'تفعيل إذا كنت تقدم خدمة التوصيل' : 'Enable if you offer delivery service',
                     style: const TextStyle(fontSize: 12)),
-                activeColor: Colors.teal,
+                activeThumbColor: Colors.teal,
               ),
             ),
 

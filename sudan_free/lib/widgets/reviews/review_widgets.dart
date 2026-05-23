@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
@@ -48,7 +49,7 @@ class _AddReviewDialogState extends State<AddReviewDialog> {
           CircleAvatar(
             radius: 20,
             backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-            backgroundImage: widget.targetImageUrl != null ? NetworkImage(widget.targetImageUrl!) : null,
+            backgroundImage: widget.targetImageUrl != null ? CachedNetworkImageProvider(widget.targetImageUrl!) : null,
             child: widget.targetImageUrl == null 
                 ? Text(
                     widget.targetName.isNotEmpty ? widget.targetName[0].toUpperCase() : '?',
@@ -296,7 +297,7 @@ class ReviewCard extends StatelessWidget {
                     radius: 20,
                     backgroundColor: AppColors.primary.withValues(alpha: 0.1),
                     backgroundImage: review.reviewerImageUrl != null
-                        ? NetworkImage(review.reviewerImageUrl!)
+                        ? CachedNetworkImageProvider(review.reviewerImageUrl!)
                         : null,
                     child: review.reviewerImageUrl == null
                         ? Text(review.reviewerName[0].toUpperCase())

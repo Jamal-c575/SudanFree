@@ -36,8 +36,8 @@ class LocaleProvider extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
     
-    // Artificial delay to show the "Changing Language" screen for better UX
-    await Future.delayed(const Duration(milliseconds: 500));
+    // Short delay to show loading state
+    await Future.delayed(const Duration(milliseconds: 150));
     
     _locale = locale;
     await _cacheService.saveLanguage(locale.languageCode);

@@ -184,7 +184,7 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
         _showSuccessDialog();
       }
     } catch (e, stack) {
-      AppErrorHandler.show(context, e, stack, logContext: 'IdentityVerification.submit');
+      if (context.mounted) AppErrorHandler.show(context, e, stack, logContext: 'IdentityVerification.submit');
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
@@ -432,7 +432,9 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
                                 title: Text(isArabic ? 'رسالة نصية (SMS)' : 'SMS Message'),
                                 subtitle: Text(isArabic ? 'تلقي الرمز عبر SMS' : 'Receive code via SMS'),
                                 value: false,
+                                // ignore: deprecated_member_use
                                 groupValue: _useWhatsAppOTP,
+                                // ignore: deprecated_member_use
                                 onChanged: (value) => setState(() => _useWhatsAppOTP = value ?? false),
                                 dense: true,
                               ),

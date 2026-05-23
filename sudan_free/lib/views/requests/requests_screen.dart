@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/request_model.dart';
@@ -107,42 +108,48 @@ class _RequestsScreenState extends State<RequestsScreen> {
           }
 
           return ListView.separated(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+            physics: const ClampingScrollPhysics(),
+            addRepaintBoundaries: true,
+            addAutomaticKeepAlives: false,
             itemCount: requests.length,
-            separatorBuilder: (context, index) => const SizedBox(height: 12),
+            separatorBuilder: (_, __) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
               final request = requests[index];
-              return _RequestCard(
-                request: request, 
-                locale: locale, 
-                currentUserId: currentUser?.id,
+              return RepaintBoundary(
+                child: _RequestCard(
+                  request: request,
+                  locale: locale,
+                  currentUserId: currentUser?.id,
+                ),
               );
             },
           );
         },
       ),
       floatingActionButton: currentUser != null
-          ? AnimatedPadding(
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeOutCubic,
-              padding: EdgeInsets.only(
-                bottom: context.watch<BottomBarVisibilityProvider>().isVisible ? 80 : 16,
-              ),
-              child: FloatingActionButton.extended(
-                onPressed: () {
-                  showModalBottomSheet(
-                    context: context,
-                    isScrollControlled: true,
-                    backgroundColor: Colors.transparent,
-                    builder: (_) => AddRequestBottomSheet(user: currentUser),
-                  );
-                },
-                icon: const Icon(Icons.add, color: Colors.white),
-                label: Text(
-                  locale == 'ar' ? 'أضف طلبك' : 'Add Request',
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          ? Selector<BottomBarVisibilityProvider, bool>(
+              selector: (_, p) => p.isVisible,
+              builder: (_, isVisible, __) => AnimatedPadding(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOut,
+                padding: EdgeInsets.only(bottom: isVisible ? 70 : 0),
+                child: FloatingActionButton.extended(
+                  onPressed: () {
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (_) => AddRequestBottomSheet(user: currentUser),
+                    );
+                  },
+                  icon: const Icon(Icons.add, color: Colors.white),
+                  label: Text(
+                    locale == 'ar' ? 'أضف طلبك' : 'Add Request',
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
+                  backgroundColor: AppColors.primary,
                 ),
-                backgroundColor: AppColors.primary,
               ),
             )
           : null,
@@ -237,7 +244,7 @@ class _RequestCard extends StatelessWidget {
                 CircleAvatar(
                   radius: 20,
                   backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                  backgroundImage: request.clientImageUrl != null ? NetworkImage(request.clientImageUrl!) : null,
+                  backgroundImage: request.clientImageUrl != null ? CachedNetworkImageProvider(request.clientImageUrl!) : null,
                   child: request.clientImageUrl == null ? const Icon(Icons.person, color: AppColors.primary) : null,
                 ),
                 const SizedBox(width: 12),

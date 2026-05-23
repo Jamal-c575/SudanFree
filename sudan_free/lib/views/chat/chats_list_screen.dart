@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../providers/auth_provider.dart';
@@ -103,7 +104,7 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                                 radius: 26,
                                 backgroundColor: AppColors.primary.withValues(alpha: 0.1),
                                 backgroundImage: otherImage != null && otherImage.isNotEmpty
-                                    ? NetworkImage(otherImage)
+                                    ? CachedNetworkImageProvider(otherImage)
                                     : null,
                                 child: otherImage == null || otherImage.isEmpty
                                     ? Text(

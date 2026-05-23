@@ -23,6 +23,9 @@ class MessageModel {
   final String? contractStatus; // pending, accepted, rejected, cancel_requested, cancelled
   final String? cancelRequesterId; // ID of the user who requested cancellation
   final String? jobId; // Associated job ID when contract is accepted
+  // ── Optimistic UI fields (local only, not stored in Firestore) ──
+  final bool isUploading;
+  final String? localFilePath; // local path to show preview while uploading
 
   MessageModel({
     required this.id,
@@ -43,6 +46,8 @@ class MessageModel {
     this.contractStatus,
     this.cancelRequesterId,
     this.jobId,
+    this.isUploading = false,
+    this.localFilePath,
   });
 
   factory MessageModel.fromFirestore(DocumentSnapshot doc) {
@@ -113,6 +118,8 @@ class MessageModel {
     String? contractStatus,
     String? cancelRequesterId,
     String? jobId,
+    bool? isUploading,
+    String? localFilePath,
   }) {
     return MessageModel(
       id: id ?? this.id,
@@ -133,6 +140,8 @@ class MessageModel {
       contractStatus: contractStatus ?? this.contractStatus,
       cancelRequesterId: cancelRequesterId ?? this.cancelRequesterId,
       jobId: jobId ?? this.jobId,
+      isUploading: isUploading ?? this.isUploading,
+      localFilePath: localFilePath ?? this.localFilePath,
     );
   }
 

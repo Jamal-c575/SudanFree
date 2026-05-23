@@ -146,40 +146,10 @@ class UserProvider extends ChangeNotifier {
     _freelancerError = null;
     
     try {
-      List<UserModel> combined = [];
-
-      if (_currentUserState != null && _currentUserState!.isNotEmpty) {
-        // 75% from user's region
-        final localResult = await _firestoreService.getFreelancersPaginated(
-          limit: 12,
-          state: _currentUserState,
-        );
-        final localUsers = localResult['users'] as List<UserModel>;
-        combined.addAll(localUsers);
-
-        // 25% from all regions (discovery), or more if local is insufficient
-        int globalLimit = 5;
-        if (localUsers.length < 12) {
-          globalLimit = 17 - localUsers.length;
-        }
-
-        final globalResult = await _firestoreService.getFreelancersPaginated(
-          limit: globalLimit,
-        );
-        final globalUsers = globalResult['users'] as List<UserModel>;
-        // Deduplicate: add only users not already in local
-        final localIds = combined.map((u) => u.id).toSet();
-        combined.addAll(globalUsers.where((u) => !localIds.contains(u.id)));
-
-        _lastFreelancerDoc = localResult['lastDoc'] as DocumentSnapshot?;
-        _hasMoreFreelancers = (localResult['hasMore'] as bool) || (globalResult['hasMore'] as bool);
-      } else {
-        // No region info — fetch normally
-        final result = await _firestoreService.getFreelancersPaginated(limit: 15);
-        combined = result['users'] as List<UserModel>;
-        _lastFreelancerDoc = result['lastDoc'] as DocumentSnapshot?;
-        _hasMoreFreelancers = result['hasMore'] as bool;
-      }
+      final result = await _firestoreService.getFreelancersPaginated(limit: 100);
+      List<UserModel> combined = result['users'] as List<UserModel>;
+      _lastFreelancerDoc = result['lastDoc'] as DocumentSnapshot?;
+      _hasMoreFreelancers = result['hasMore'] as bool;
 
       _freelancers = combined;
       _isLoading = false;
@@ -190,7 +160,7 @@ class UserProvider extends ChangeNotifier {
         _cacheService.cacheFreelancers(_freelancers.map((e) => e.toJsonMap()).toList());
       } catch (e) { debugPrint('UserProvider: Cache freelancers error: $e'); }
       
-      _shuffleWithRatingPriority(_freelancers);
+      _shuffleWithPriority(_freelancers);
       notifyListeners();
     } catch (e) {
       debugPrint('UserProvider: Firestore Error (Freelancers): $e');
@@ -262,40 +232,10 @@ class UserProvider extends ChangeNotifier {
     _shopError = null;
     
     try {
-      List<UserModel> combined = [];
-
-      if (_currentUserState != null && _currentUserState!.isNotEmpty) {
-        // 75% from user's region
-        final localResult = await _firestoreService.getShopsPaginated(
-          limit: 12,
-          state: _currentUserState,
-        );
-        final localShops = localResult['users'] as List<UserModel>;
-        combined.addAll(localShops);
-
-        // 25% from all regions (discovery), or more if local is insufficient
-        int globalLimit = 5;
-        if (localShops.length < 12) {
-          globalLimit = 17 - localShops.length;
-        }
-
-        final globalResult = await _firestoreService.getShopsPaginated(
-          limit: globalLimit,
-        );
-        final globalShops = globalResult['users'] as List<UserModel>;
-        // Deduplicate
-        final localIds = combined.map((u) => u.id).toSet();
-        combined.addAll(globalShops.where((u) => !localIds.contains(u.id)));
-
-        _lastShopDoc = localResult['lastDoc'] as DocumentSnapshot?;
-        _hasMoreShops = (localResult['hasMore'] as bool) || (globalResult['hasMore'] as bool);
-      } else {
-        // No region info — fetch normally
-        final result = await _firestoreService.getShopsPaginated(limit: 15);
-        combined = result['users'] as List<UserModel>;
-        _lastShopDoc = result['lastDoc'] as DocumentSnapshot?;
-        _hasMoreShops = result['hasMore'] as bool;
-      }
+      final result = await _firestoreService.getShopsPaginated(limit: 100);
+      List<UserModel> combined = result['users'] as List<UserModel>;
+      _lastShopDoc = result['lastDoc'] as DocumentSnapshot?;
+      _hasMoreShops = result['hasMore'] as bool;
 
       _shops = combined;
       _isLoading = false;
@@ -306,7 +246,7 @@ class UserProvider extends ChangeNotifier {
         _cacheService.cacheShops(_shops.map((e) => e.toJsonMap()).toList());
       } catch (e) { debugPrint('UserProvider: Cache shops error: $e'); }
       
-      _shuffleWithRatingPriority(_shops);
+      _shuffleWithPriority(_shops);
       notifyListeners();
     } catch (e) {
       debugPrint('UserProvider: Firestore Error (Shops): $e');
@@ -348,25 +288,31 @@ class UserProvider extends ChangeNotifier {
     }
   }
 
-  // Shuffle list while keeping high-rated users somewhat prioritized
-  void _shuffleWithRatingPriority(List<UserModel> list) {
+  // Shuffle list prioritizing local state, high-rated, and randomness
+  void _shuffleWithPriority(List<UserModel> list) {
     if (list.isEmpty) return;
     
-    // تقسيم القائمة إلى مجموعات حسب التقييم
-    final highRated = list.where((u) => u.rating >= 4.0).toList();
-    final midRated = list.where((u) => u.rating >= 2.0 && u.rating < 4.0).toList();
-    final lowRated = list.where((u) => u.rating < 2.0 || u.reviewsCount == 0).toList();
+    // تقسيم القائمة إلى: محليين وغير محليين (الخدمات التقنية دائماً تعتبر محلية لأنها عن بعد)
+    final localList = list.where((u) => u.state == _currentUserState || u.role == UserRole.techService).toList();
+    final otherList = list.where((u) => u.state != _currentUserState && u.role != UserRole.techService).toList();
+
+    void sortAndShuffle(List<UserModel> sublist) {
+      final highRated = sublist.where((u) => u.rating >= 4.0).toList()..shuffle();
+      final midRated = sublist.where((u) => u.rating >= 2.0 && u.rating < 4.0).toList()..shuffle();
+      final lowRated = sublist.where((u) => u.rating < 2.0 || u.reviewsCount == 0).toList()..shuffle();
+      sublist.clear();
+      sublist.addAll(highRated);
+      sublist.addAll(midRated);
+      sublist.addAll(lowRated);
+    }
+
+    sortAndShuffle(localList);
+    sortAndShuffle(otherList);
     
-    // خلط كل مجموعة
-    highRated.shuffle();
-    midRated.shuffle();
-    lowRated.shuffle();
-    
-    // إعادة تجميع القائمة
     list.clear();
-    list.addAll(highRated);
-    list.addAll(midRated);
-    list.addAll(lowRated);
+    // ضع أبناء المنطقة أولاً، ثم البقية من المناطق الأخرى
+    list.addAll(localList);
+    list.addAll(otherList);
   }
 
   // Upload profile image with compression

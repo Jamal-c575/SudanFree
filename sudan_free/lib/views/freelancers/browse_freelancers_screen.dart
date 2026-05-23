@@ -11,7 +11,6 @@ import '../../widgets/cards/freelancer_card.dart';
 import '../../widgets/common/shimmer_placeholders.dart';
 import '../profile/profile_screen.dart';
 import '../../widgets/common/staggered_animated_widget.dart';
-import '../../widgets/common/empty_state_widget.dart';
 import '../../services/smart_search_service.dart';
 import '../../widgets/inputs/smart_search_field.dart';
 
@@ -73,8 +72,12 @@ class _BrowseFreelancersScreenState extends State<BrowseFreelancersScreen>
         );
         if (!matches) return false;
       }
-      // Location filter
-      if (_selectedState != null && f.state != _selectedState) return false;
+      // Location filter (Tech Services are remote and should appear anywhere)
+      if (_selectedState != null) {
+        if (f.role != UserRole.techService && f.state != _selectedState) {
+          return false;
+        }
+      }
       // Category filter
       if (_selectedCategory != null && !f.skills.contains(_selectedCategory!.name)) return false;
       return true;

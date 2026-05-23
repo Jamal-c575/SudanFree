@@ -395,15 +395,16 @@ class _CommentsSheetState extends State<CommentsSheet> {
                         } : null,
                         onDelete: (currentUser?.id == comment.userId) ? () async {
                           try {
+                            final postsProvider = context.read<PostsProvider>();
                             await _firestoreService.deleteComment(widget.postId, comment.id);
-                            if (mounted) {
-                              context.read<PostsProvider>().decrementCommentCount(widget.postId);
+                            if (context.mounted) {
+                              postsProvider.decrementCommentCount(widget.postId);
                             }
                           } catch (e) {
-                            if (mounted) {
-                              final locale = context.read<LocaleProvider>().locale.languageCode;
+                            if (context.mounted) {
+                              final localeStr = context.read<LocaleProvider>().locale.languageCode;
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text(locale == 'ar' ? 'حدث خطأ أثناء حذف التعليق' : 'Error deleting comment')),
+                                SnackBar(content: Text(localeStr == 'ar' ? 'حدث خطأ أثناء حذف التعليق' : 'Error deleting comment')),
                               );
                             }
                           }

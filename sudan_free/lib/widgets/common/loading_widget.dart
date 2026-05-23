@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../core/constants/app_colors.dart';
@@ -277,7 +278,7 @@ class AvatarWidget extends StatelessWidget {
       child: CircleAvatar(
         radius: radius,
         backgroundColor: backgroundColor ?? AppColors.primary.withValues(alpha: 0.1),
-        backgroundImage: imageUrl != null ? NetworkImage(imageUrl!) : null,
+        backgroundImage: imageUrl != null ? CachedNetworkImageProvider(imageUrl!) : null,
         child: imageUrl == null
             ? Text(
                 name?.isNotEmpty == true ? name![0].toUpperCase() : '?',

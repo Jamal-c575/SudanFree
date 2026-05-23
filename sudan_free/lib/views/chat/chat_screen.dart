@@ -1,8 +1,10 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'package:timeago/timeago.dart' as timeago;
@@ -19,6 +21,8 @@ import '../../providers/job_provider.dart';
 import '../../views/jobs/active_job_tracking_screen.dart';
 import '../../widgets/common/loading_widget.dart';
 import '../../widgets/common/linkable_text.dart';
+import '../../widgets/common/full_screen_image_viewer.dart';
+import '../../services/file_download_service.dart';
 
 
 class ChatScreen extends StatefulWidget {
@@ -115,7 +119,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
       final otherId = widget.chat.getOtherParticipantId(user.id);
 
-      await chatProv.sendImageMessage(
+      // fire & forget — لا ننتظر، الرسالة تظهر فوراً
+      chatProv.sendImageMessage(
         senderId: user.id,
         senderName: user.name,
         receiverId: otherId,
@@ -125,28 +130,62 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _pickFile() async {
-    // Temporarily disabled due to file_picker compilation issues
-    /*
-    final result = await fp.FilePicker.platform.pickFiles();
-    // In some older or mismatched versions it might be fp.FilePicker.pickFiles();
-    // wait I will replace it with the instance method if it's there? No, file_picker always has platform.
-    // Wait, let's change it back to FilePicker.platform.pickFiles() without fp. but import it normally.
-    
-    if (result != null && result.files.single.path != null) {
-      final auth = context.read<AuthProvider>();
-      final user = auth.user;
-      if (user == null) return;
-
-      final otherId = widget.chat.getOtherParticipantId(user.id);
-
-      await context.read<ChatProvider>().sendImageMessage(
-        senderId: user.id,
-        senderName: user.name,
-        receiverId: otherId,
-        imageFile: File(result.files.single.path!),
+    try {
+      final result = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: [
+          'pdf', 'doc', 'docx', 'txt', 'rtf',
+          'xls', 'xlsx', 'csv',
+          'ppt', 'pptx',
+          'odt', 'ods', 'odp',
+        ],
       );
+
+      if (result != null && result.files.single.path != null && mounted) {
+        final file = File(result.files.single.path!);
+        final fileName = result.files.single.name;
+        final fileSize = result.files.single.size;
+
+        // Max 10 MB
+        if (fileSize > 10 * 1024 * 1024) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('حجم الملف كبير جداً، الحد الأقصى 10 ميجابايت'),
+                backgroundColor: Colors.orange,
+              ),
+            );
+          }
+          return;
+        }
+
+        final auth = context.read<AuthProvider>();
+        final chatProv = context.read<ChatProvider>();
+        final user = auth.user;
+        if (user == null) return;
+
+        final otherId = widget.chat.getOtherParticipantId(user.id);
+
+        // fire & forget — لا ننتظر، الرسالة تظهر فوراً
+        chatProv.sendFileMessage(
+          senderId: user.id,
+          senderName: user.name,
+          receiverId: otherId,
+          file: file,
+          fileName: fileName,
+        );
+      }
+    } catch (e) {
+      debugPrint('Error picking file: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('حدث خطأ أثناء اختيار الملف: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
-    */
   }
 
   Future<void> _startRecording() async {
@@ -183,7 +222,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
         final otherId = widget.chat.getOtherParticipantId(user.id);
 
-        await chatProv.sendAudioMessage(
+        // fire & forget — لا ننتظر، الرسالة تظهر فوراً
+        chatProv.sendAudioMessage(
           senderId: user.id,
           senderName: user.name,
           receiverId: otherId,
@@ -222,7 +262,7 @@ class _ChatScreenState extends State<ChatScreen> {
             children: [
               CircleAvatar(
                 radius: 18,
-                backgroundImage: otherImage != null ? NetworkImage(otherImage) : null,
+                backgroundImage: otherImage != null ? CachedNetworkImageProvider(otherImage) : null,
                 child: otherImage == null ? Text(otherName.isNotEmpty ? otherName[0].toUpperCase() : '?') : null,
               ),
               const SizedBox(width: 10),
@@ -284,6 +324,8 @@ class _ChatScreenState extends State<ChatScreen> {
                     },
                   ),
           ),
+          if (chatProvider.isSending)
+            const LinearProgressIndicator(minHeight: 2),
           _buildInputArea(),
         ],
       ),
@@ -336,12 +378,24 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
             const SizedBox(width: 8),
             GestureDetector(
-              onLongPressStart: (_) => _startRecording(),
-              onLongPressEnd: (_) => _stopRecording(),
+              onLongPressStart: (_) {
+                if (_messageController.text.trim().isEmpty && !_isRecording) {
+                  _startRecording();
+                }
+              },
+              onLongPressEnd: (_) {
+                if (_isRecording) {
+                  _stopRecording();
+                }
+              },
               child: FloatingActionButton(
                 onPressed: () {
-                  if (_messageController.text.trim().isNotEmpty) {
+                  if (_isRecording) {
+                    _stopRecording();
+                  } else if (_messageController.text.trim().isNotEmpty) {
                     _sendMessage();
+                  } else {
+                    _startRecording();
                   }
                 },
                 mini: true,
@@ -349,7 +403,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 backgroundColor: _isRecording ? Colors.red : AppColors.primary,
                 child: Icon(
                   _isRecording 
-                      ? Icons.mic 
+                      ? Icons.send
                       : (_messageController.text.trim().isEmpty ? Icons.mic : Icons.send),
                   color: Colors.white,
                 ),
@@ -364,15 +418,34 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget _buildRecordingIndicator() {
     return Row(
       children: [
-        const Icon(Icons.fiber_manual_record, color: Colors.red, size: 16),
+        // Cancel recording button
+        GestureDetector(
+          onTap: () async {
+            await _audioRecorder.stop();
+            setState(() => _isRecording = false);
+          },
+          child: Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: Colors.red.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+          ),
+        ),
         const SizedBox(width: 8),
-        const Text('جاري التسجيل...', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+        const Icon(Icons.fiber_manual_record, color: Colors.red, size: 12),
+        const SizedBox(width: 6),
+        const Text('جاري التسجيل...', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 13)),
         const Spacer(),
         StreamBuilder<Duration>(
-          stream: Stream.periodic(const Duration(seconds: 1), (count) => Duration(seconds: count)),
+          stream: Stream.periodic(const Duration(seconds: 1), (tick) => Duration(seconds: tick + 1)),
           builder: (context, snapshot) {
             final seconds = snapshot.data?.inSeconds ?? 0;
-            return Text('${seconds ~/ 60}:${(seconds % 60).toString().padLeft(2, '0')}');
+            return Text(
+              '${seconds ~/ 60}:${(seconds % 60).toString().padLeft(2, '0')}',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+            );
           },
         ),
         const SizedBox(width: 8),
@@ -625,7 +698,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 }
 
-class MessageBubble extends StatelessWidget {
+class MessageBubble extends StatefulWidget {
   final MessageModel message;
   final bool isMe;
   final ChatModel chat;
@@ -633,7 +706,21 @@ class MessageBubble extends StatelessWidget {
   const MessageBubble({super.key, required this.message, required this.isMe, required this.chat});
 
   @override
+  State<MessageBubble> createState() => _MessageBubbleState();
+}
+
+class _MessageBubbleState extends State<MessageBubble> {
+  bool _isHidden = false;
+
+  MessageModel get message => widget.message;
+  bool get isMe => widget.isMe;
+  ChatModel get chat => widget.chat;
+
+  @override
   Widget build(BuildContext context) {
+    final message = widget.message;
+    final isMe = widget.isMe;
+    final chat = widget.chat;
     final color = isMe ? AppColors.primary : (Theme.of(context).brightness == Brightness.dark ? Colors.grey[800] : Colors.grey[200]);
     final textColor = isMe ? Colors.white : (Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black87);
     final alignment = isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start;
@@ -645,9 +732,47 @@ class MessageBubble extends StatelessWidget {
       bottomRight: Radius.circular(isMe ? (isRtl ? 16 : 0) : (isRtl ? 0 : 16)),
     );
 
+    if (_isHidden) {
+      return GestureDetector(
+        onLongPress: () {
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: Text(isRtl ? 'خيارات الرسالة' : 'Message Options'),
+              content: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  setState(() => _isHidden = false);
+                },
+                icon: const Icon(Icons.visibility, color: Colors.white),
+                label: Text(isRtl ? 'إظهار الرسالة' : 'Show Message'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ),
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Align(
+            alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey.withValues(alpha: 0.2),
+                borderRadius: borderRadius,
+              ),
+              child: Icon(Icons.chat_bubble_outline, color: Colors.grey[600], size: 24),
+            ),
+          ),
+        ),
+      );
+    }
+
     return GestureDetector(
       onLongPress: () {
-        if (!isMe) return;
         showDialog(
           context: context,
           builder: (ctx) => AlertDialog(
@@ -656,7 +781,7 @@ class MessageBubble extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (message.type == MessageType.text)
+                if (isMe && message.type == MessageType.text)
                   ElevatedButton.icon(
                     onPressed: () {
                       Navigator.pop(ctx);
@@ -668,21 +793,65 @@ class MessageBubble extends StatelessWidget {
                       alignment: isRtl ? Alignment.centerRight : Alignment.centerLeft,
                     ),
                   ),
-                if (message.type == MessageType.text)
+                if (isMe && message.type == MessageType.text)
+                  const SizedBox(height: 8),
+                if (isMe)
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      FirebaseFirestore.instance.collection('chats').doc(chat.id).collection('messages').doc(message.id).delete();
+                    },
+                    icon: const Icon(Icons.delete, color: Colors.white),
+                    label: Text(isRtl ? 'حذف الرسالة' : 'Delete Message'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      foregroundColor: Colors.white,
+                      alignment: isRtl ? Alignment.centerRight : Alignment.centerLeft,
+                    ),
+                  ),
+                if (isMe)
                   const SizedBox(height: 8),
                 ElevatedButton.icon(
                   onPressed: () {
                     Navigator.pop(ctx);
-                    FirebaseFirestore.instance.collection('chats').doc(chat.id).collection('messages').doc(message.id).delete();
+                    setState(() => _isHidden = true);
                   },
-                  icon: const Icon(Icons.delete, color: Colors.white),
-                  label: Text(isRtl ? 'حذف الرسالة' : 'Delete Message'),
+                  icon: const Icon(Icons.visibility_off, color: Colors.white),
+                  label: Text(isRtl ? 'إخفاء الرسالة' : 'Hide Message'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
+                    backgroundColor: Colors.grey[700],
                     foregroundColor: Colors.white,
                     alignment: isRtl ? Alignment.centerRight : Alignment.centerLeft,
                   ),
                 ),
+                if (message.type == MessageType.file || message.type == MessageType.image) ...[
+                  const SizedBox(height: 8),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      if (message.type == MessageType.file && message.attachmentUrl != null) {
+                        FileDownloadService.downloadAndOpen(
+                          context: context,
+                          url: message.attachmentUrl!,
+                          fileName: message.attachmentName ?? 'ملف',
+                        );
+                      } else if (message.type == MessageType.image && message.attachmentUrl != null) {
+                        FileDownloadService.downloadAndOpen(
+                          context: context,
+                          url: message.attachmentUrl!,
+                          fileName: 'image_${message.id}.jpg',
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.download, color: Colors.white),
+                    label: Text(isRtl ? 'إعادة التنزيل' : 'Redownload'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      alignment: isRtl ? Alignment.centerRight : Alignment.centerLeft,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -700,7 +869,32 @@ class MessageBubble extends StatelessWidget {
                 color: color,
                 borderRadius: borderRadius,
               ),
-              child: _buildMessageContent(context, textColor),
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  _buildMessageContent(context, textColor),
+                  if (message.isUploading)
+                    Positioned(
+                      bottom: -4,
+                      right: -4,
+                      child: Container(
+                        padding: const EdgeInsets.all(3),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.5),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const SizedBox(
+                          width: 10,
+                          height: 10,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 1.5,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
             Padding(
               padding: const EdgeInsets.only(top: 2, left: 4, right: 4),
@@ -711,7 +905,13 @@ class MessageBubble extends StatelessWidget {
                     timeago.format(message.createdAt, locale: 'ar'),
                     style: const TextStyle(fontSize: 10, color: Colors.grey),
                   ),
-                  if (message.isEdited) ...[
+                  if (message.isUploading) ...[
+                    const SizedBox(width: 4),
+                    const Text(
+                      'جاري الإرسال...',
+                      style: TextStyle(fontSize: 10, color: Colors.grey),
+                    ),
+                  ] else if (message.isEdited) ...[
                     const SizedBox(width: 4),
                     Text(
                       isRtl ? '(معدلة)' : '(edited)',
@@ -771,15 +971,49 @@ class MessageBubble extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.network(
-                message.attachmentUrl ?? '',
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
-                  return const SizedBox(height: 150, child: Center(child: CircularProgressIndicator()));
-                },
-              ),
+            Stack(
+              children: [
+                GestureDetector(
+                  onTap: () {
+                    if (message.attachmentUrl != null) {
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => FullScreenImageViewer(imageUrls: [message.attachmentUrl!], initialIndex: 0)));
+                    }
+                  },
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.network(
+                      message.attachmentUrl ?? '',
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return const SizedBox(height: 150, child: Center(child: CircularProgressIndicator()));
+                      },
+                    ),
+                  ),
+                ),
+                if (message.attachmentUrl != null)
+                  Positioned(
+                    bottom: 8,
+                    right: 8,
+                    child: GestureDetector(
+                      onTap: () {
+                        final fileName = 'image_${message.id}.jpg';
+                        FileDownloadService.downloadAndOpen(
+                          context: context,
+                          url: message.attachmentUrl!,
+                          fileName: fileName,
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.6),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.download, color: Colors.white, size: 20),
+                      ),
+                    ),
+                  ),
+              ],
             ),
             if (message.content.isNotEmpty && message.content != '📷 صورة')
               Padding(
@@ -791,19 +1025,10 @@ class MessageBubble extends StatelessWidget {
       case MessageType.audio:
         return VoiceMessageWidget(url: message.attachmentUrl ?? '', duration: message.duration ?? 0, isMe: isMe);
       case MessageType.file:
-        return Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.insert_drive_file, color: Colors.white70),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Text(
-                message.attachmentName ?? 'ملف',
-                style: TextStyle(color: textColor, decoration: TextDecoration.underline),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
+        return _FileMessageWidget(
+          message: message,
+          isMe: isMe,
+          textColor: textColor,
         );
       case MessageType.contract:
         return _buildContractContent(context, textColor);
@@ -906,7 +1131,8 @@ class MessageBubble extends StatelessWidget {
 
                       if (jobId != null) {
                         // 2. Update the contract status with the new job ID
-                        await context.read<ChatProvider>().updateContractStatus(message.id, 'accepted', jobId: jobId);
+                        final chatProvider = context.read<ChatProvider>();
+                        await chatProvider.updateContractStatus(message.id, 'accepted', jobId: jobId);
                         if (context.mounted) {
                           Navigator.pop(context); // Close loading dialog
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -1355,3 +1581,176 @@ class _WaveformPainter extends CustomPainter {
   }
 }
 
+// ── File Message Widget (تيليغرام أسلوب) ──────────────────────────────────
+class _FileMessageWidget extends StatefulWidget {
+  final MessageModel message;
+  final bool isMe;
+  final Color textColor;
+
+  const _FileMessageWidget({
+    required this.message,
+    required this.isMe,
+    required this.textColor,
+  });
+
+  @override
+  State<_FileMessageWidget> createState() => _FileMessageWidgetState();
+}
+
+class _FileMessageWidgetState extends State<_FileMessageWidget> {
+  bool _isDownloading = false;
+  bool _fileExists = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkFileExists();
+  }
+
+  Future<void> _checkFileExists() async {
+    final fileName = widget.message.attachmentName;
+    if (fileName == null) return;
+    final exists = await FileDownloadService.fileExists(fileName);
+    if (mounted && exists) {
+      setState(() => _fileExists = true);
+    }
+  }
+
+  String _getFileIcon(String? fileName) {
+    if (fileName == null) return '📎';
+    final ext = fileName.split('.').last.toLowerCase();
+    if (['pdf'].contains(ext)) return '📄';
+    if (['doc', 'docx'].contains(ext)) return '📝';
+    if (['xls', 'xlsx'].contains(ext)) return '📊';
+    if (['zip', 'rar', '7z'].contains(ext)) return '🗜️';
+    if (['mp4', 'avi', 'mov'].contains(ext)) return '🎬';
+    if (['mp3', 'wav', 'aac'].contains(ext)) return '🎵';
+    if (['jpg', 'jpeg', 'png', 'webp'].contains(ext)) return '🖼️';
+    return '📎';
+  }
+
+  Color _getFileColor(String? fileName) {
+    if (fileName == null) return Colors.blue;
+    final ext = fileName.split('.').last.toLowerCase();
+    if (['pdf'].contains(ext)) return Colors.red;
+    if (['doc', 'docx'].contains(ext)) return Colors.blue;
+    if (['xls', 'xlsx'].contains(ext)) return Colors.green;
+    if (['zip', 'rar', '7z'].contains(ext)) return Colors.orange;
+    if (['mp4', 'avi', 'mov'].contains(ext)) return Colors.purple;
+    return Colors.blue;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final fileName = widget.message.attachmentName ?? 'ملف';
+    final fileColor = _getFileColor(fileName);
+    final fileIcon = _getFileIcon(fileName);
+
+    return GestureDetector(
+      onTap: _isDownloading
+          ? null
+          : () async {
+              if (widget.message.attachmentUrl == null) return;
+              if (_fileExists) {
+                await FileDownloadService.openFile(fileName);
+                return;
+              }
+              setState(() => _isDownloading = true);
+              await FileDownloadService.downloadAndOpen(
+                context: context,
+                url: widget.message.attachmentUrl!,
+                fileName: fileName,
+              );
+              if (mounted) {
+                setState(() {
+                  _isDownloading = false;
+                  _fileExists = true;
+                });
+              }
+            },
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 220),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: widget.isMe
+              ? Colors.white.withValues(alpha: 0.15)
+              : fileColor.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: widget.isMe
+                ? Colors.white.withValues(alpha: 0.3)
+                : fileColor.withValues(alpha: 0.25),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: fileColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Center(
+                child: _isDownloading
+                    ? SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: widget.isMe ? Colors.white : fileColor,
+                        ),
+                      )
+                    : Text(fileIcon, style: const TextStyle(fontSize: 22)),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Flexible(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    fileName,
+                    style: TextStyle(
+                      color: widget.textColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 2,
+                  ),
+                  if (!_fileExists) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(
+                          _isDownloading ? Icons.downloading : Icons.download_rounded,
+                          size: 14,
+                          color: widget.isMe
+                              ? Colors.white.withValues(alpha: 0.7)
+                              : fileColor,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          _isDownloading ? 'جاري التحميل...' : 'اضغط للتحميل',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: widget.isMe
+                                ? Colors.white.withValues(alpha: 0.7)
+                                : fileColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

@@ -8,6 +8,11 @@ class PortfolioProjectModel {
   final List<String> imageUrls;
   final List<String> videoUrls;
   final String? category;
+  final String? status;
+  final String? projectType;
+  final String? purpose;
+  final String? externalLink;
+  final List<dynamic>? collaborators;
   final DateTime createdAt;
 
   PortfolioProjectModel({
@@ -18,6 +23,11 @@ class PortfolioProjectModel {
     this.imageUrls = const [],
     this.videoUrls = const [],
     this.category,
+    this.status,
+    this.projectType,
+    this.purpose,
+    this.externalLink,
+    this.collaborators,
     required this.createdAt,
   });
 
@@ -29,6 +39,11 @@ class PortfolioProjectModel {
       'imageUrls': imageUrls,
       'videoUrls': videoUrls,
       'category': category,
+      'status': status,
+      'projectType': projectType,
+      'purpose': purpose,
+      'externalLink': externalLink,
+      'collaborators': collaborators,
       'createdAt': Timestamp.fromDate(createdAt),
     };
   }
@@ -43,6 +58,11 @@ class PortfolioProjectModel {
       imageUrls: List<String>.from(data['imageUrls'] ?? []),
       videoUrls: List<String>.from(data['videoUrls'] ?? []),
       category: data['category'],
+      status: data['status'],
+      projectType: data['projectType'],
+      purpose: data['purpose'],
+      externalLink: data['externalLink'],
+      collaborators: data['collaborators'] != null ? List<dynamic>.from(data['collaborators']) : null,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }

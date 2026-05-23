@@ -246,7 +246,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 leading: CircleAvatar(
                   radius: 28,
                   backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                  backgroundImage: user.profileImageUrl != null ? NetworkImage(user.profileImageUrl!) : null,
+                  backgroundImage: user.profileImageUrl != null ? CachedNetworkImageProvider(user.profileImageUrl!) : null,
                   child: user.profileImageUrl == null ? const Icon(Icons.person, color: AppColors.primary) : null,
                 ),
                 title: Text(user.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
@@ -452,19 +452,27 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               final nav = Navigator.of(context);
               
               try {
-                await FirebaseFirestore.instance.collection('users').doc(userId).delete();
-                await FirebaseFirestore.instance.collection('deletion_requests').doc(requestId).update({
-                  'status': 'approved',
-                  'approvedAt': FieldValue.serverTimestamp(),
+                // Call Cloud Function to fully delete from Auth + Firestore + Storage
+                final callable = FirebaseFunctions.instance.httpsCallable('deleteUserAccount');
+                final result = await callable.call({
+                  'userId': userId,
+                  'requestId': requestId,
                 });
+                final data = result.data as Map<String, dynamic>;
                 if (mounted) {
                   nav.pop();
-                  messenger.showSnackBar(const SnackBar(content: Text('تم حذف الحساب نهائياً'), backgroundColor: Colors.green));
+                  messenger.showSnackBar(SnackBar(
+                    content: Text(data['message'] ?? 'تم حذف الحساب نهائياً'),
+                    backgroundColor: Colors.green,
+                  ));
                 }
               } catch (e) {
                 if (mounted) {
                   nav.pop();
-                  messenger.showSnackBar(SnackBar(content: Text('حدث خطأ: $e'), backgroundColor: Colors.red));
+                  messenger.showSnackBar(SnackBar(
+                    content: Text('حدث خطأ: $e'),
+                    backgroundColor: Colors.red,
+                  ));
                 }
               }
             },

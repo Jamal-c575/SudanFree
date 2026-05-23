@@ -31,6 +31,7 @@ import '../../providers/locale_provider.dart';
 import '../../models/review_model.dart';
 import '../../widgets/reviews/review_widgets.dart';
 import '../../core/utils/app_error_handler.dart';
+import 'package:share_plus/share_plus.dart';
 import 'dart:io';
 
 class ShopProfileScreen extends StatefulWidget {
@@ -242,6 +243,17 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
                       ),
                     ),
                     actions: [
+                      IconButton(
+                        icon: const Icon(Icons.share, color: Colors.white),
+                        tooltip: l10n.localeName == 'ar' ? 'مشاركة الملف الشخصي' : 'Share Profile',
+                        onPressed: () {
+                          final url = 'https://jamall123.github.io/HOME_WEB/sudan-free.html?profileId=${user.id}';
+                          final text = l10n.localeName == 'ar' 
+                              ? 'تفضل بزيارة متجر ${user.name} على تطبيق سودان فري:\n$url' 
+                              : 'Check out ${user.name}\'s shop on SudanFree:\n$url';
+                          Share.share(text);
+                        },
+                      ),
                       // OWNER ACTIONS: Edit & Settings
                       if (widget.isMe) ...[
                         IconButton(
@@ -277,72 +289,167 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
                       padding: const EdgeInsets.symmetric(
                           vertical: 12, horizontal: 16),
                       child: widget.isMe
-                          ? // Owner View: Add Product Button & Followers
-                            Column(
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    // Followers
-                                    Column(
-                                      children: [
-                                        Text(
-                                          '${widget.user.followers.length}',
-                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                                        ),
-                                        Text(
-                                          l10n.localeName == 'ar' ? 'متابِع' : 'Followers',
-                                          style: const TextStyle(color: Colors.grey, fontSize: 13),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(width: 24),
-                                    // Rating (clickable → reviews tab)
-                                    GestureDetector(
-                                      onTap: () => _tabController.animateTo(1),
-                                      child: Column(
-                                        children: [
-                                          Row(mainAxisSize: MainAxisSize.min, children: [
-                                            const Icon(Icons.star_rounded, color: Colors.amber, size: 20),
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              widget.user.rating > 0 ? widget.user.rating.toStringAsFixed(1) : '--',
-                                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                                            ),
-                                          ]),
-                                          Text(
-                                            l10n.localeName == 'ar' ? 'التقييم' : 'Rating',
-                                            style: const TextStyle(color: Colors.grey, fontSize: 13),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    const SizedBox(width: 24),
-                                    _buildContactButton(
-                                        Icons.info_outline,
-                                        l10n.details,
-                                        Colors.grey,
-                                        () => _showShopDetailsDialog(context)),
-                                  ],
-                                ),
-                                const SizedBox(height: 16),
-                                ElevatedButton.icon(
-                                    onPressed: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const CreateProductScreen(),
-                                ),
-                              ),
-                              icon: const Icon(Icons.add_box_outlined),
-                              label: Text(l10n.addProduct),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.secondary,
-                                foregroundColor: Colors.white,
-                                minimumSize: const Size(double.infinity, 45),
-                              ),
-                            )
-                          ]
-                        )
+                           ? // Owner View: Stats Cards + Add Product Button
+                             Column(
+                               crossAxisAlignment: CrossAxisAlignment.start,
+                               children: [
+                                 // ─── Stats Row ───────────────────────────────
+                                 Row(
+                                   children: [
+                                     // Followers Card
+                                     Expanded(
+                                       child: Container(
+                                         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                                         decoration: BoxDecoration(
+                                           color: AppColors.primary.withValues(alpha: 0.07),
+                                           borderRadius: BorderRadius.circular(14),
+                                           border: Border.all(
+                                             color: AppColors.primary.withValues(alpha: 0.15),
+                                             width: 1,
+                                           ),
+                                         ),
+                                         child: Column(
+                                           children: [
+                                             Row(
+                                               mainAxisAlignment: MainAxisAlignment.center,
+                                               children: [
+                                                 Icon(Icons.people_alt_rounded,
+                                                     size: 16,
+                                                     color: AppColors.primary.withValues(alpha: 0.8)),
+                                                 const SizedBox(width: 5),
+                                                 Text(
+                                                   '${widget.user.followers.length}',
+                                                   style: const TextStyle(
+                                                     fontWeight: FontWeight.bold,
+                                                     fontSize: 18,
+                                                     color: AppColors.primary,
+                                                   ),
+                                                 ),
+                                               ],
+                                             ),
+                                             const SizedBox(height: 4),
+                                             Text(
+                                               l10n.localeName == 'ar' ? 'متابِع' : 'Followers',
+                                               style: TextStyle(
+                                                 color: AppColors.primary.withValues(alpha: 0.7),
+                                                 fontSize: 12,
+                                                 fontWeight: FontWeight.w600,
+                                               ),
+                                             ),
+                                           ],
+                                         ),
+                                       ),
+                                     ),
+                                     const SizedBox(width: 10),
+                                     // Rating Card
+                                     Expanded(
+                                       child: GestureDetector(
+                                         onTap: () => _tabController.animateTo(1),
+                                         child: Container(
+                                           padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                                           decoration: BoxDecoration(
+                                             color: Colors.amber.withValues(alpha: 0.08),
+                                             borderRadius: BorderRadius.circular(14),
+                                             border: Border.all(
+                                               color: Colors.amber.withValues(alpha: 0.3),
+                                               width: 1,
+                                             ),
+                                           ),
+                                           child: Column(
+                                             children: [
+                                               Row(
+                                                 mainAxisAlignment: MainAxisAlignment.center,
+                                                 children: [
+                                                   const Icon(Icons.star_rounded,
+                                                       color: Colors.amber, size: 18),
+                                                   const SizedBox(width: 4),
+                                                   Text(
+                                                     widget.user.rating > 0
+                                                         ? widget.user.rating.toStringAsFixed(1)
+                                                         : '--',
+                                                     style: TextStyle(
+                                                       fontWeight: FontWeight.bold,
+                                                       fontSize: 18,
+                                                       color: Colors.amber.shade800,
+                                                     ),
+                                                   ),
+                                                 ],
+                                               ),
+                                               const SizedBox(height: 4),
+                                               Text(
+                                                 l10n.localeName == 'ar' ? 'التقييم' : 'Rating',
+                                                 style: TextStyle(
+                                                   color: Colors.amber.shade700,
+                                                   fontSize: 12,
+                                                   fontWeight: FontWeight.w600,
+                                                 ),
+                                               ),
+                                             ],
+                                           ),
+                                         ),
+                                       ),
+                                     ),
+                                     const SizedBox(width: 10),
+                                     // Details Button Card
+                                     GestureDetector(
+                                       onTap: () => _showShopDetailsDialog(context),
+                                       child: Container(
+                                         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 14),
+                                         decoration: BoxDecoration(
+                                           color: Colors.grey.withValues(alpha: 0.08),
+                                           borderRadius: BorderRadius.circular(14),
+                                           border: Border.all(
+                                             color: Colors.grey.withValues(alpha: 0.2),
+                                             width: 1,
+                                           ),
+                                         ),
+                                         child: Column(
+                                           children: [
+                                             Icon(Icons.info_outline_rounded,
+                                                 size: 22, color: Colors.grey[600]),
+                                             const SizedBox(height: 4),
+                                             Text(
+                                               l10n.details,
+                                               style: TextStyle(
+                                                 color: Colors.grey[600],
+                                                 fontSize: 12,
+                                                 fontWeight: FontWeight.w600,
+                                               ),
+                                             ),
+                                           ],
+                                         ),
+                                       ),
+                                     ),
+                                   ],
+                                 ),
+                                 const SizedBox(height: 14),
+                                 // ─── Add Product Button ──────────────────────
+                                 SizedBox(
+                                   width: double.infinity,
+                                   height: 46,
+                                   child: ElevatedButton.icon(
+                                     onPressed: () => Navigator.push(
+                                       context,
+                                       MaterialPageRoute(
+                                         builder: (_) => const CreateProductScreen(),
+                                       ),
+                                     ),
+                                     icon: const Icon(Icons.add_circle_outline_rounded, size: 20),
+                                     label: Text(
+                                       l10n.addProduct,
+                                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                                     ),
+                                     style: ElevatedButton.styleFrom(
+                                       backgroundColor: AppColors.secondary,
+                                       foregroundColor: Colors.white,
+                                       shape: RoundedRectangleBorder(
+                                         borderRadius: BorderRadius.circular(12),
+                                       ),
+                                     ),
+                                   ),
+                                 ),
+                               ],
+                             )
                           : // Visitor View: Contact Buttons
                               Column(
                                 children: [
@@ -415,7 +522,7 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
                                                   }
                                                 });
                                               } catch (e, stack) {
-                                                if (mounted) AppErrorHandler.show(context, e, stack, logContext: 'ShopProfile.toggleFollow');
+                                                if (context.mounted) AppErrorHandler.show(context, e, stack, logContext: 'ShopProfile.toggleFollow');
                                               }
                                             },
                                           );
@@ -555,7 +662,7 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
                   } catch (e, stack) {
                     navigator.pop();
                     if (ctx.mounted) Navigator.pop(ctx);
-                    if (mounted) AppErrorHandler.show(context, e, stack, logContext: 'ShopProfile.createChat');
+                    if (context.mounted) AppErrorHandler.show(context, e, stack, logContext: 'ShopProfile.createChat');
                   }
                 },
               ),
@@ -822,7 +929,7 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
                 content: Text(l10n.reviewAddedSuccessfully),
                 backgroundColor: AppColors.success));
           } catch (e, stack) {
-            if (mounted) AppErrorHandler.show(context, e, stack, logContext: 'ShopProfile.addReview');
+            if (context.mounted) AppErrorHandler.show(context, e, stack, logContext: 'ShopProfile.addReview');
           }
         },
       ),

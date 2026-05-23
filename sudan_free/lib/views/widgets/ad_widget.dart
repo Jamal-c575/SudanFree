@@ -7,19 +7,34 @@ import 'video_ad_widget.dart';
 class AdWidget extends StatelessWidget {
   final AdModel ad;
   final VoidCallback? onTap;
+  final BorderRadiusGeometry? borderRadius;
+  final EdgeInsetsGeometry? margin;
   
-  const AdWidget({super.key, required this.ad, this.onTap});
+  const AdWidget({
+    super.key, 
+    required this.ad, 
+    this.onTap,
+    this.borderRadius,
+    this.margin,
+  });
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isVideo = ad.mediaType == AdMediaType.video && ad.mediaUrl.isNotEmpty;
+    
+    final appliedMargin = margin ?? const EdgeInsets.only(bottom: 8);
+    final appliedBorderRadius = borderRadius ?? BorderRadius.zero;
 
     // ── Video Ad: clean fullscreen player, no badge/gradient overlay ──
     if (isVideo) {
       return Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        color: Colors.black,
+        margin: appliedMargin,
+        decoration: BoxDecoration(
+          color: Colors.black,
+          borderRadius: appliedBorderRadius,
+        ),
+        clipBehavior: Clip.hardEdge,
         child: SizedBox(
           height: 400,
           child: VideoAdWidget(
@@ -34,8 +49,12 @@ class AdWidget extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        color: Theme.of(context).cardColor,
+        margin: appliedMargin,
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: appliedBorderRadius,
+        ),
+        clipBehavior: Clip.hardEdge,
         child: SizedBox(
           height: 400,
           child: Stack(

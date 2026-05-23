@@ -25,10 +25,123 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'views/common/splash_screen.dart';
 import 'views/onboarding/onboarding_screen.dart';
 
-class SudanFreeApp extends StatelessWidget {
+import 'dart:async';
+import 'package:app_links/app_links.dart';
+import 'views/profile/profile_screen.dart';
+import 'views/posts/post_details_screen.dart';
+import 'views/profile/product_detail_screen.dart';
+import 'services/firestore_service.dart';
+
+class SudanFreeApp extends StatefulWidget {
   const SudanFreeApp({super.key});
 
   static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+  @override
+  State<SudanFreeApp> createState() => _SudanFreeAppState();
+}
+
+class _SudanFreeAppState extends State<SudanFreeApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _updateLastActive();
+    _initDeepLinks();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _updateLastActive();
+    }
+  }
+
+  void _updateLastActive() {
+    Future.microtask(() {
+      final auth = Provider.of<AuthProvider>(SudanFreeApp.navigatorKey.currentContext ?? context, listen: false);
+      if (auth.status == AuthStatus.authenticated && auth.user != null) {
+        FirestoreService().updateLastActive(auth.user!.id);
+      }
+    });
+  }
+
+  late AppLinks _appLinks;
+
+  void _initDeepLinks() {
+    _appLinks = AppLinks();
+    
+    // Handle link when app is in warm state (already running)
+    _appLinks.uriLinkStream.listen((uri) {
+      _handleDeepLink(uri);
+    });
+
+    // Handle link when app is in cold state (killed)
+    _appLinks.getInitialLink().then((uri) {
+      if (uri != null) {
+        // Wait a bit for the app to initialize before navigating
+        Future.delayed(const Duration(seconds: 2), () {
+          _handleDeepLink(uri);
+        });
+      }
+    });
+  }
+
+  Uri? _lastHandledUri;
+
+  void _handleDeepLink(Uri uri) {
+    if (_lastHandledUri == uri) return;
+    _lastHandledUri = uri;
+    // Reset after 2 seconds so the same link can be clicked again later if needed
+    Future.delayed(const Duration(seconds: 2), () {
+      if (_lastHandledUri == uri) _lastHandledUri = null;
+    });
+
+    debugPrint('Received Deep Link: $uri');
+    final profileId = uri.queryParameters['profileId'];
+    final postId = uri.queryParameters['postId'];
+    final productId = uri.queryParameters['productId'];
+    final context = SudanFreeApp.navigatorKey.currentContext;
+    
+    if (context != null && context.mounted) {
+      if (profileId != null && profileId.isNotEmpty) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ProfileScreen(userId: profileId),
+          ),
+        );
+      } else if (productId != null && productId.isNotEmpty) {
+        FirestoreService().getPost(productId).then((post) {
+          if (post != null && context.mounted) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ProductDetailScreen(product: post),
+              ),
+            );
+          }
+        });
+      } else if (postId != null && postId.isNotEmpty) {
+        FirestoreService().getPost(postId).then((post) {
+          if (post != null && context.mounted) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => PostDetailsScreen(post: post),
+              ),
+            );
+          }
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

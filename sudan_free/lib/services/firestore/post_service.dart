@@ -150,7 +150,7 @@ class PostsFirestoreService {
         userId: postOwnerId,
         type: NotificationType.comment,
         title: 'تعليق جديد',
-        message: 'علق ${comment.userName} على منشورك: "${comment.content.length > 40 ? comment.content.substring(0, 40) + '...' : comment.content}"',
+        message: 'علق ${comment.userName} على منشورك: "${comment.content.length > 40 ? '${comment.content.substring(0, 40)}...' : comment.content}"',
         createdAt: Timestamp.now(),
         relatedId: comment.postId,
       );
@@ -165,7 +165,7 @@ class PostsFirestoreService {
         userId: parentUserId,
         type: NotificationType.comment, // Can be comment type for replies
         title: 'رد جديد',
-        message: 'رد ${comment.userName} على تعليقك: "${comment.content.length > 40 ? comment.content.substring(0, 40) + '...' : comment.content}"',
+        message: 'رد ${comment.userName} على تعليقك: "${comment.content.length > 40 ? '${comment.content.substring(0, 40)}...' : comment.content}"',
         createdAt: Timestamp.now(),
         relatedId: comment.postId,
       );

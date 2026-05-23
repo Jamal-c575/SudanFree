@@ -168,7 +168,7 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
                 )
               // ─── Image Ad Media ───
               else if (_images.isNotEmpty)
-                Container(
+                SizedBox(
                   width: double.infinity,
                   child: CachedNetworkImage(
                     imageUrl: _images[_selectedImageIndex],

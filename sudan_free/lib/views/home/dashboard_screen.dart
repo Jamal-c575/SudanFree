@@ -346,24 +346,6 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                       : _buildPromotedSection(context, locale, isDark),
                 ),
 
-              // ═══════════ RECOMMENDED FOR YOU ═══════════
-              if (currentUser.role == UserRole.client)
-                SliverToBoxAdapter(
-                  child: _buildSectionHeader(
-                    context,
-                    icon: Icons.recommend,
-                    title: locale == 'ar' ? 'موصى به لك' : 'Recommended for You',
-                    iconColor: AppColors.secondary,
-                    onSeeAll: () => widget.onNavigateToTab?.call(1),
-                    locale: locale,
-                  ),
-                ),
-              if (currentUser.role == UserRole.client)
-                SliverToBoxAdapter(
-                  child: userProvider.isLoading && nearbyFreelancers.isEmpty
-                      ? _buildHorizontalCardShimmer(context)
-                      : _buildRecommendedSection(context, nearbyFreelancers.take(6).toList(), locale, isDark),
-                ),
 
               // ═══════════ NEARBY FREELANCERS (ESSENTIALS) ═══════════
               if (nearbyFreelancers.isNotEmpty || userProvider.isLoading)
@@ -645,7 +627,10 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
               final ad = _homeBannerAds[index];
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                child: GestureDetector(
+                child: AdWidget(
+                  ad: ad,
+                  borderRadius: BorderRadius.circular(24),
+                  margin: EdgeInsets.zero,
                   onTap: () {
                     _adService.recordImpression(ad.id);
                     Navigator.push(
@@ -653,16 +638,6 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                       MaterialPageRoute(builder: (_) => AdDetailsScreen(ad: ad)),
                     );
                   },
-                  child: AdWidget(
-                    ad: ad,
-                    onTap: () {
-                      _adService.recordImpression(ad.id);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => AdDetailsScreen(ad: ad)),
-                      );
-                    },
-                  ),
                 ),
               );
             },
@@ -1527,6 +1502,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
   }
 
   // ────────────── Recommended Section (Personalized) ──────────────
+  // ignore: unused_element
   Widget _buildRecommendedSection(BuildContext context, List<UserModel> freelancers, String locale, bool isDark) {
     if (freelancers.isEmpty) {
       return Padding(

@@ -69,6 +69,9 @@ dependencies:
   video_player: ^2.11.1
   visibility_detector: ^0.4.0+2
   flutter_cache_manager: ^3.4.1
+  app_links: ^7.0.0
+  open_file: ^3.5.10
+  permission_handler: ^11.4.0
 
 dev_dependencies:
   flutter_test:

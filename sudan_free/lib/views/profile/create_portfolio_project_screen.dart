@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -8,6 +9,7 @@ import '../../providers/auth_provider.dart';
 import '../../services/firestore_service.dart';
 import '../../services/storage_service.dart';
 import '../../providers/locale_provider.dart';
+import '../../models/user_model.dart';
 
 class CreatePortfolioProjectScreen extends StatefulWidget {
   const CreatePortfolioProjectScreen({super.key});
@@ -20,10 +22,15 @@ class _CreatePortfolioProjectScreenState extends State<CreatePortfolioProjectScr
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
+  final _purposeController = TextEditingController();
+  final _linkController = TextEditingController();
   String? _selectedCategory;
+  String? _selectedStatus;
+  String? _selectedType;
   final List<File> _selectedImages = [];
   bool _isLoading = false;
   String _loadingStatus = '';
+  final List<Map<String, dynamic>> _selectedCollaborators = [];
 
   static const int _maxImages = 5;
 
@@ -44,6 +51,8 @@ class _CreatePortfolioProjectScreenState extends State<CreatePortfolioProjectScr
   void dispose() {
     _titleController.dispose();
     _descriptionController.dispose();
+    _purposeController.dispose();
+    _linkController.dispose();
     super.dispose();
   }
 
@@ -118,11 +127,11 @@ class _CreatePortfolioProjectScreenState extends State<CreatePortfolioProjectScr
         setState(() => _loadingStatus = _isAr(context)
             ? 'رفع صورة ${i + 1} من ${_selectedImages.length}...'
             : 'Uploading image ${i + 1} of ${_selectedImages.length}...');
-        final url = await StorageService().uploadImage(
+        final url = await StorageService().uploadPortfolioImage(
+          user.id,
           _selectedImages[i],
-          folder: 'portfolio/${user.id}/${DateTime.now().millisecondsSinceEpoch}',
         );
-        if (url != null) uploadedUrls.add(url);
+        uploadedUrls.add(url);
       }
 
       setState(() => _loadingStatus = _isAr(context) ? 'جاري حفظ المشروع...' : 'Saving project...');
@@ -133,6 +142,11 @@ class _CreatePortfolioProjectScreenState extends State<CreatePortfolioProjectScr
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim(),
         category: _selectedCategory,
+        status: _selectedStatus,
+        projectType: _selectedType,
+        purpose: _purposeController.text.trim().isNotEmpty ? _purposeController.text.trim() : null,
+        externalLink: _linkController.text.trim().isNotEmpty ? _linkController.text.trim() : null,
+        collaborators: _selectedCollaborators.isNotEmpty ? _selectedCollaborators : null,
         imageUrls: uploadedUrls,
         createdAt: DateTime.now(),
       );
@@ -156,6 +170,88 @@ class _CreatePortfolioProjectScreenState extends State<CreatePortfolioProjectScr
     } finally {
       if (mounted) setState(() { _isLoading = false; _loadingStatus = ''; });
     }
+  }
+
+  void _showCollaboratorsPicker() {
+    final user = context.read<AuthProvider>().user;
+    if (user == null || user.partnerIds.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(_isAr(context) ? 'ليس لديك زملاء مضافين حالياً' : 'You have no colleagues added currently'),
+        backgroundColor: Colors.orange,
+      ));
+      return;
+    }
+
+    final partnersFuture = FirestoreService().getUsersByIds(user.partnerIds);
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return Container(
+              padding: const EdgeInsets.all(16),
+              height: MediaQuery.of(context).size.height * 0.6,
+              child: Column(
+                children: [
+                  Text(_isAr(context) ? 'اختر الشركاء في المشروع' : 'Select Project Partners', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: FutureBuilder<List<UserModel>>(
+                      future: partnersFuture,
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+                        if (!snapshot.hasData || snapshot.data!.isEmpty) return const Center(child: Text('لا يوجد شركاء'));
+                        
+                        final partners = snapshot.data!;
+                        return ListView.builder(
+                          itemCount: partners.length,
+                          itemBuilder: (context, index) {
+                            final p = partners[index];
+                            final isSelected = _selectedCollaborators.any((c) => c['id'] == p.id);
+                            return ListTile(
+                              leading: CircleAvatar(
+                                backgroundImage: p.profileImageUrl != null ? CachedNetworkImageProvider(p.profileImageUrl!) : null,
+                                child: p.profileImageUrl == null ? const Icon(Icons.person) : null,
+                              ),
+                              title: Text(p.name),
+                              subtitle: Text(p.jobTitle ?? ''),
+                              trailing: Checkbox(
+                                value: isSelected,
+                                onChanged: (val) {
+                                  if (val == true) {
+                                    _selectedCollaborators.add({'id': p.id, 'name': p.name, 'imageUrl': p.profileImageUrl});
+                                    setSheetState(() {});
+                                  } else {
+                                    _selectedCollaborators.removeWhere((c) => c['id'] == p.id);
+                                    setSheetState(() {});
+                                  }
+                                },
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 50)),
+                    child: Text(_isAr(context) ? 'تأكيد' : 'Confirm'),
+                  )
+                ],
+              ),
+            );
+          }
+        );
+      }
+    ).then((_) {
+      if (mounted) {
+        setState(() {});
+      }
+    });
   }
 
   @override
@@ -245,6 +341,58 @@ class _CreatePortfolioProjectScreenState extends State<CreatePortfolioProjectScr
 
                     const SizedBox(height: 20),
 
+                    const SizedBox(height: 20),
+
+                    // ─── Status & Type ───
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildSectionLabel(isArabic ? 'حالة المشروع' : 'Project Status', Icons.task_alt),
+                              const SizedBox(height: 8),
+                              DropdownButtonFormField<String>(
+                                // ignore: deprecated_member_use
+                                value: _selectedStatus,
+                                decoration: _inputDecoration(hint: isArabic ? 'اختر الحالة' : 'Select Status', isDark: isDark),
+                                items: [
+                                  DropdownMenuItem(value: 'completed', child: Text(isArabic ? 'مكتمل' : 'Completed')),
+                                  DropdownMenuItem(value: 'ongoing', child: Text(isArabic ? 'قيد التنفيذ' : 'Ongoing')),
+                                ],
+                                onChanged: (val) => setState(() => _selectedStatus = val),
+                                validator: (v) => v == null ? (isArabic ? 'مطلوب' : 'Required') : null,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildSectionLabel(isArabic ? 'نوع المشروع' : 'Project Type', Icons.work_outline),
+                              const SizedBox(height: 8),
+                              DropdownButtonFormField<String>(
+                                // ignore: deprecated_member_use
+                                value: _selectedType,
+                                decoration: _inputDecoration(hint: isArabic ? 'اختر النوع' : 'Select Type', isDark: isDark),
+                                items: [
+                                  DropdownMenuItem(value: 'personal', child: Text(isArabic ? 'شخصي' : 'Personal')),
+                                  DropdownMenuItem(value: 'client', child: Text(isArabic ? 'لعميل' : 'Client')),
+                                  DropdownMenuItem(value: 'startup', child: Text(isArabic ? 'شركة ناشئة' : 'Startup')),
+                                  DropdownMenuItem(value: 'other', child: Text(isArabic ? 'أخرى' : 'Other')),
+                                ],
+                                onChanged: (val) => setState(() => _selectedType = val),
+                                validator: (v) => v == null ? (isArabic ? 'مطلوب' : 'Required') : null,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+
                     // ─── Description ───
                     _buildSectionLabel(isArabic ? 'وصف المشروع' : 'Project Description', Icons.description),
                     const SizedBox(height: 8),
@@ -257,6 +405,88 @@ class _CreatePortfolioProjectScreenState extends State<CreatePortfolioProjectScr
                       ),
                       validator: (v) => v == null || v.isEmpty ? (isArabic ? 'مطلوب' : 'Required') : null,
                     ),
+
+                    const SizedBox(height: 20),
+                    
+                    // ─── Purpose ───
+                    _buildSectionLabel(isArabic ? 'أهداف المشروع / ما يهدف إليه' : 'Project Purpose', Icons.flag_outlined),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: _purposeController,
+                      maxLines: 2,
+                      decoration: _inputDecoration(
+                        hint: isArabic ? 'ما المشكلة التي يحلها هذا المشروع؟' : 'What problem does this project solve?',
+                        isDark: isDark,
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // ─── External Link ───
+                    _buildSectionLabel(isArabic ? 'رابط المشروع (اختياري)' : 'Project Link (Optional)', Icons.link),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: _linkController,
+                      decoration: _inputDecoration(
+                        hint: isArabic ? 'https://...' : 'https://...',
+                        icon: Icons.link,
+                        isDark: isDark,
+                      ),
+                      keyboardType: TextInputType.url,
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // ─── Collaborators ───
+                    _buildSectionLabel(isArabic ? 'شركاء أو منفذي المشروع' : 'Project Partners', Icons.group),
+                    const SizedBox(height: 8),
+                    InkWell(
+                      onTap: _showCollaboratorsPicker,
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.grey[800] : Colors.grey[100],
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.person_add_alt_1, color: AppColors.primary),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                _selectedCollaborators.isEmpty 
+                                    ? (isArabic ? 'أضف زملاء شاركوا في التنفيذ' : 'Add colleagues who worked on this')
+                                    : (isArabic ? 'تم اختيار ${_selectedCollaborators.length} شركاء' : '${_selectedCollaborators.length} partners selected'),
+                                style: TextStyle(color: _selectedCollaborators.isEmpty ? Colors.grey : AppColors.textPrimary, fontSize: 14),
+                              ),
+                            ),
+                            const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+                          ],
+                        ),
+                      ),
+                    ),
+                    if (_selectedCollaborators.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 12),
+                        child: Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: _selectedCollaborators.map((c) => Chip(
+                            avatar: CircleAvatar(
+                              backgroundImage: c['imageUrl'] != null ? CachedNetworkImageProvider(c['imageUrl']) : null,
+                              child: c['imageUrl'] == null ? const Icon(Icons.person, size: 16) : null,
+                            ),
+                            label: Text(c['name']),
+                            onDeleted: () {
+                              setState(() {
+                                _selectedCollaborators.remove(c);
+                              });
+                            },
+                          )).toList(),
+                        ),
+                      ),
 
                     const SizedBox(height: 20),
 

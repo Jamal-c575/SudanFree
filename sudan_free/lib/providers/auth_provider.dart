@@ -52,7 +52,9 @@ class AuthProvider extends ChangeNotifier {
 
     // Prevent if already partner or already pending
     if (_user!.partnerIds.contains(targetId) ||
-        _user!.pendingPartnerIds.contains(targetId)) return;
+        _user!.pendingPartnerIds.contains(targetId)) {
+      return;
+    }
 
     try {
       await _firestoreService.sendPartnerRequest(

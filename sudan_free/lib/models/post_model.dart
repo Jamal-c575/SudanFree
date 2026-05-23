@@ -622,6 +622,11 @@ class PostModel {
   final List<String> productColors;    // ['أحمر','أزرق'] etc.
   final int? quantity;                 // كمية متاحة
   final bool hasShipping;              // هل يوجد توصيل
+  // ── Product Link (for community posts) ──────────────────────
+  final String? linkedProductId;       // رابط المنشور المنتج المرتبط
+  final String? linkedProductName;     // اسم المنتج للعرض السريع
+  final String? linkedProductImage;    // صورة المنتج المصغرة
+  final double? linkedProductPrice;    // سعر المنتج
 
   PostModel({
     required this.id,
@@ -650,6 +655,10 @@ class PostModel {
     this.productColors = const [],
     this.quantity,
     this.hasShipping = false,
+    this.linkedProductId,
+    this.linkedProductName,
+    this.linkedProductImage,
+    this.linkedProductPrice,
   });
 
   factory PostModel.fromFirestore(DocumentSnapshot doc) {
@@ -691,6 +700,10 @@ class PostModel {
       productColors: List<String>.from(data['productColors'] ?? []),
       quantity: data['quantity'] as int?,
       hasShipping: data['hasShipping'] ?? false,
+      linkedProductId: data['linkedProductId'],
+      linkedProductName: data['linkedProductName'],
+      linkedProductImage: data['linkedProductImage'],
+      linkedProductPrice: (data['linkedProductPrice'] as num?)?.toDouble(),
     );
   }
 
@@ -720,6 +733,10 @@ class PostModel {
       if (productColors.isNotEmpty) 'productColors': productColors,
       if (quantity != null) 'quantity': quantity,
       if (hasShipping) 'hasShipping': hasShipping,
+      if (linkedProductId != null) 'linkedProductId': linkedProductId,
+      if (linkedProductName != null) 'linkedProductName': linkedProductName,
+      if (linkedProductImage != null) 'linkedProductImage': linkedProductImage,
+      if (linkedProductPrice != null) 'linkedProductPrice': linkedProductPrice,
     };
     if (category != null) {
       map['category'] = category;
@@ -776,6 +793,10 @@ class PostModel {
     List<String>? productColors,
     int? quantity,
     bool? hasShipping,
+    String? linkedProductId,
+    String? linkedProductName,
+    String? linkedProductImage,
+    double? linkedProductPrice,
   }) {
     return PostModel(
       id: id ?? this.id,
@@ -804,6 +825,10 @@ class PostModel {
       productColors: productColors ?? this.productColors,
       quantity: quantity ?? this.quantity,
       hasShipping: hasShipping ?? this.hasShipping,
+      linkedProductId: linkedProductId ?? this.linkedProductId,
+      linkedProductName: linkedProductName ?? this.linkedProductName,
+      linkedProductImage: linkedProductImage ?? this.linkedProductImage,
+      linkedProductPrice: linkedProductPrice ?? this.linkedProductPrice,
     );
   }
 }

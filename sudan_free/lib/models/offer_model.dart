@@ -11,6 +11,7 @@ class OfferModel {
   final String title;
   final String text;
   final double? price; // Optional price input
+  final String? estimatedTime; // e.g. "3 days", "1 week"
   final DateTime createdAt;
 
   OfferModel({
@@ -24,6 +25,7 @@ class OfferModel {
     required this.title,
     required this.text,
     this.price,
+    this.estimatedTime,
     required this.createdAt,
   });
 
@@ -39,6 +41,7 @@ class OfferModel {
       'title': title,
       'text': text,
       'price': price,
+      'estimatedTime': estimatedTime,
       'createdAt': Timestamp.fromDate(createdAt),
     };
   }
@@ -55,6 +58,7 @@ class OfferModel {
       title: map['title'] ?? '',
       text: map['text'] ?? '',
       price: map['price']?.toDouble(),
+      estimatedTime: map['estimatedTime'],
       createdAt: (map['createdAt'] as Timestamp).toDate(),
     );
   }

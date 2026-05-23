@@ -28,7 +28,7 @@ class PostsProvider extends ChangeNotifier {
   bool _isLoadingMore = false;
   bool _hasNewPosts = false;
   StreamSubscription? _newPostsSubscription;
-  DateTime? _latestPostDate;
+
   
   // Caching
   bool _postsLoaded = false;
@@ -65,7 +65,9 @@ class PostsProvider extends ChangeNotifier {
       if (cached != null && cached.isNotEmpty) {
          _posts = cached.map((e) => PostModel.fromMap(e)).toList();
          _postsLoaded = true;
-         if (_posts.isNotEmpty) _latestPostDate = _posts.first.createdAt;
+         if (_posts.isNotEmpty) {
+           // Intentionally left blank, used to set _latestPostDate
+         }
          notifyListeners(); 
       }
     }
@@ -103,7 +105,7 @@ class PostsProvider extends ChangeNotifier {
       _postsLoaded = true;
       
       if (_posts.isNotEmpty) {
-        _latestPostDate = _posts.first.createdAt;
+        // Intentionally left blank, used to set _latestPostDate
       }
       
       // _listenForNewPosts(); // Temporarily disabled for efficiency
@@ -195,6 +197,10 @@ class PostsProvider extends ChangeNotifier {
     List<String>? productColors,
     int? quantity,
     bool hasShipping = false,
+    String? linkedProductId,
+    String? linkedProductName,
+    String? linkedProductImage,
+    double? linkedProductPrice,
   }) async {
     try {
       _isCreating = true;
@@ -247,6 +253,10 @@ class PostsProvider extends ChangeNotifier {
         productColors: productColors ?? [],
         quantity: quantity,
         hasShipping: hasShipping,
+        linkedProductId: linkedProductId,
+        linkedProductName: linkedProductName,
+        linkedProductImage: linkedProductImage,
+        linkedProductPrice: linkedProductPrice,
         createdAt: DateTime.now(),
       );
 
@@ -573,7 +583,7 @@ class PostsProvider extends ChangeNotifier {
     _lastDoc = null;
     _hasMore = true;
     _hasNewPosts = false;
-    _latestPostDate = null;
+
     notifyListeners();
   }
 
