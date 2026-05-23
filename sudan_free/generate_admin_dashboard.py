@@ -1,4 +1,6 @@
+import os
 
+code = """
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
@@ -587,8 +589,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     margin: const EdgeInsets.only(bottom: 8),
                     child: ListTile(
                       title: Text(log['title'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold)),
-                      subtitle: Text('${log['message']}
-تم الإرسال لـ ${log['fcmSent'] ?? 0} مستخدم'),
+                      subtitle: Text('${log['message']}\nتم الإرسال لـ ${log['fcmSent'] ?? 0} مستخدم'),
                       isThreeLine: true,
                       trailing: IconButton(
                         icon: const Icon(Icons.delete, color: Colors.red),
@@ -912,8 +913,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               child: ListTile(
                 leading: CircleAvatar(backgroundImage: user.profileImageUrl != null ? CachedNetworkImageProvider(user.profileImageUrl!) : null),
                 title: Text(user.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: Text('${user.phoneNumber ?? ''}
-${user.jobTitle ?? ''}'),
+                subtitle: Text('${user.phoneNumber ?? ''}\n${user.jobTitle ?? ''}'),
                 isThreeLine: true,
                 trailing: ElevatedButton(
                   style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
@@ -1068,3 +1068,9 @@ ${user.jobTitle ?? ''}'),
     return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(icon, size: 64, color: Colors.grey), const SizedBox(height: 16), Text(msg, style: const TextStyle(color: Colors.grey, fontSize: 16))]));
   }
 }
+"""
+
+with open("lib/views/settings/admin_dashboard_screen.dart", "w", encoding="utf-8") as f:
+    f.write(code)
+
+print("Dashboard with history rewritten successfully!")

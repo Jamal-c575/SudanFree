@@ -27,6 +27,9 @@ class AdModel {
   final String targetRegion; // 'all' for everyone
   final String targetProfession; // 'all' for everyone
   final String targetCategory; // 'all' for everyone, or 'PostCategoryGroup.name'
+  final String targetRole; // 'all', 'freelancer', 'shop', etc.
+  final String targetState; // 'all' or specific state name
+  final String targetLocality; // 'all' or specific locality name
   final int priority; // Higher number = higher priority
   final DateTime expiryDate;
   final DateTime createdAt;
@@ -47,6 +50,9 @@ class AdModel {
     this.targetRegion = 'all',
     this.targetProfession = 'all',
     this.targetCategory = 'all',
+    this.targetRole = 'all',
+    this.targetState = 'all',
+    this.targetLocality = 'all',
     this.priority = 0,
     required this.expiryDate,
     required this.createdAt,
@@ -80,6 +86,9 @@ class AdModel {
       targetRegion: data['targetRegion'] ?? 'all',
       targetProfession: data['targetProfession'] ?? 'all',
       targetCategory: data['targetCategory'] ?? 'all',
+      targetRole: data['targetRole'] ?? 'all',
+      targetState: data['targetState'] ?? data['targetRegion'] ?? 'all',
+      targetLocality: data['targetLocality'] ?? 'all',
       priority: data['priority'] ?? 0,
       expiryDate: (data['expiryDate'] as Timestamp?)?.toDate() ?? DateTime.now().add(const Duration(days: 1)),
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
@@ -105,6 +114,9 @@ class AdModel {
       'actionUrl': actionUrl,
       'targetRegion': targetRegion,
       'targetProfession': targetProfession,
+      'targetRole': targetRole,
+      'targetState': targetState,
+      'targetLocality': targetLocality,
       'priority': priority,
       'expiryDate': Timestamp.fromDate(expiryDate),
       'createdAt': Timestamp.fromDate(createdAt),

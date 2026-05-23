@@ -78,8 +78,8 @@ class AdService {
       var targetedQuery = _firestore.collection('ads')
           .where('isActive', isEqualTo: true)
           .where('placement', isEqualTo: placement.name)
-          .where('targetRegion', isEqualTo: currentUser.state ?? 'all')
-          .where('targetProfession', isEqualTo: currentUser.role.name)
+          .where('targetState', isEqualTo: currentUser.state ?? 'all')
+          .where('targetRole', isEqualTo: currentUser.role.name)
           .where('expiryDate', isGreaterThan: now)
           .orderBy('expiryDate')
           .limit(10);
@@ -91,8 +91,8 @@ class AdService {
         var regionQuery = _firestore.collection('ads')
             .where('isActive', isEqualTo: true)
             .where('placement', isEqualTo: placement.name)
-            .where('targetRegion', isEqualTo: currentUser.state ?? 'all')
-            .where('targetProfession', isEqualTo: 'all')
+            .where('targetState', isEqualTo: currentUser.state ?? 'all')
+            .where('targetRole', isEqualTo: 'all')
             .where('expiryDate', isGreaterThan: now)
             .orderBy('expiryDate')
             .limit(10);
@@ -104,8 +104,8 @@ class AdService {
         var globalQuery = _firestore.collection('ads')
             .where('isActive', isEqualTo: true)
             .where('placement', isEqualTo: placement.name)
-            .where('targetRegion', isEqualTo: 'all')
-            .where('targetProfession', isEqualTo: 'all')
+            .where('targetState', isEqualTo: 'all')
+            .where('targetRole', isEqualTo: 'all')
             .where('expiryDate', isGreaterThan: now)
             .orderBy('expiryDate')
             .limit(10);

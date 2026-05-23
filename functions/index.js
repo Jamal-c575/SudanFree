@@ -1066,3 +1066,191 @@ exports.deleteUserAccount = onCall(async (request) => {
         throw new HttpsError('internal', `فشل الحذف: ${error.message}`);
     }
 });
+
+/**
+ * Callable Cloud Function: sendBulkNotification
+ * 
+ * Sends a targeted push notification and creates in-app notifications
+ * to a filtered segment of users.
+ */
+exports.sendBulkNotification = onCall(async (request) => {
+    // 1. Check if caller is admin
+    const callerUid = request.auth?.uid;
+    if (!callerUid) {
+        throw new HttpsError('unauthenticated', 'Must be logged in');
+    }
+
+    const isAdmin = await isAdminUser(callerUid);
+    if (!isAdmin) {
+        throw new HttpsError('permission-denied', 'Must be an admin to send bulk notifications');
+    }
+
+    const { 
+        title, 
+        message, 
+        targetRole, 
+        targetJobTitle, 
+        targetState, 
+        targetLocality 
+    } = request.data || {};
+
+    if (!title || !message) {
+        throw new HttpsError('invalid-argument', 'Title and message are required');
+    }
+
+    try {
+        // 2. Build the query based on targeting filters
+        let usersQuery = db.collection('users');
+
+        if (targetRole && targetRole !== 'all') {
+            usersQuery = usersQuery.where('role', '==', targetRole);
+        }
+        if (targetJobTitle && targetJobTitle !== 'all') {
+            usersQuery = usersQuery.where('jobTitle', '==', targetJobTitle);
+        }
+        if (targetState && targetState !== 'all') {
+            usersQuery = usersQuery.where('state', '==', targetState);
+        }
+        if (targetLocality && targetLocality !== 'all') {
+            usersQuery = usersQuery.where('locality', '==', targetLocality);
+        }
+
+        // 3. Fetch matching users
+        const querySnapshot = await usersQuery.get();
+        if (querySnapshot.empty) {
+            return { success: true, count: 0, message: 'No users matched the targeting criteria' };
+        }
+
+        const users = querySnapshot.docs;
+        const tokens = [];
+        const batchArray = [];
+        let currentBatch = db.batch();
+        let batchOperationCount = 0;
+
+        // 4. Prepare tokens and Firestore notifications
+        users.forEach((doc) => {
+            const userData = doc.data();
+            const fcmToken = userData.fcmToken;
+
+            // Add FCM token if valid
+            if (fcmToken && typeof fcmToken === 'string' && fcmToken.length > 10) {
+                tokens.push(fcmToken);
+            }
+
+            // Prepare in-app notification doc
+            const notifRef = db.collection('notifications').doc();
+            currentBatch.set(notifRef, {
+                userId: doc.id,
+                type: 'system',
+                title: title,
+                message: message,
+                isRead: false,
+                createdAt: FieldValue.serverTimestamp(),
+                relatedId: 'bulk_notification'
+            });
+
+            batchOperationCount++;
+            
+            // Commit batch if it reaches the limit of 500
+            if (batchOperationCount === 490) {
+                batchArray.push(currentBatch.commit());
+                currentBatch = db.batch();
+                batchOperationCount = 0;
+            }
+        });
+
+        // Commit remaining batch
+        if (batchOperationCount > 0) {
+            batchArray.push(currentBatch.commit());
+        }
+
+        // Execute all batches
+        await Promise.all(batchArray);
+
+        // 5. Send FCM Multicast
+        let successCount = 0;
+        let failureCount = 0;
+
+        if (tokens.length > 0) {
+            // FCM multicast limits to 500 tokens per request
+            const maxTokensPerRequest = 500;
+            for (let i = 0; i < tokens.length; i += maxTokensPerRequest) {
+                const tokenBatch = tokens.slice(i, i + maxTokensPerRequest);
+                
+                const fcmMessage = {
+                    tokens: tokenBatch,
+                    notification: {
+                        title: title,
+                        body: message,
+                    },
+                    data: {
+                        type: 'system',
+                        click_action: 'FLUTTER_NOTIFICATION_CLICK',
+                    },
+                    android: {
+                        priority: 'high',
+                        notification: {
+                            channelId: 'sudan_free_channel',
+                            defaultSound: true,
+                            defaultVibrateTimings: true,
+                            icon: '@drawable/sudan1',
+                        },
+                    },
+                    apns: {
+                        payload: {
+                            aps: {
+                                alert: { title, body: message },
+                                sound: 'default',
+                            },
+                        },
+                    },
+                };
+
+                const response = await messaging.sendEachForMulticast(fcmMessage);
+                successCount += response.successCount;
+                failureCount += response.failureCount;
+                
+                // Cleanup invalid tokens could be done here as well based on response.responses
+            }
+        }
+
+        // 6. Log Audit
+        const logData = {
+            title,
+            message,
+            targetRole,
+            targetJobTitle,
+            targetState,
+            targetLocality,
+            matchedUsers: users.length,
+            fcmSent: successCount,
+            fcmFailed: failureCount,
+            createdAt: FieldValue.serverTimestamp(),
+            adminId: callerUid
+        };
+        
+        await db.collection('bulk_notifications').add(logData);
+
+        await logAudit('BULK_NOTIFICATION_SENT', null, {
+            adminId: callerUid,
+            status: 'success',
+            metadata: logData
+        });
+
+        return { 
+            success: true, 
+            matchedUsers: users.length,
+            fcmSent: successCount,
+            message: `Successfully notified ${users.length} users (${successCount} push notifications sent)` 
+        };
+
+    } catch (error) {
+        console.error('Error sending bulk notification:', error);
+        await logAudit('BULK_NOTIFICATION_ERROR', null, {
+            adminId: callerUid,
+            status: 'error',
+            errorMessage: error.message
+        });
+        throw new HttpsError('internal', `Failed to send notifications: ${error.message}`);
+    }
+});

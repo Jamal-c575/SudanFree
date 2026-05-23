@@ -66,6 +66,7 @@ class UserModel {
   final String? fcmToken;
   final String preferredLanguage;
   final bool isAvailable;
+  final bool isBanned; // To block user from platform
   final double walletBalance;
   final List<String> partnerIds; // Accepted colleagues
   final List<String> pendingPartnerIds; // Pending colleague requests
@@ -112,6 +113,7 @@ class UserModel {
     this.fcmToken,
     this.preferredLanguage = 'ar',
     this.isAvailable = true,
+    this.isBanned = false,
     this.walletBalance = 0.0,
     this.partnerIds = const [],
     this.pendingPartnerIds = const [],
@@ -192,6 +194,7 @@ class UserModel {
       fcmToken: data['fcmToken'],
       preferredLanguage: data['preferredLanguage'] ?? 'ar',
       isAvailable: data['isAvailable'] ?? true,
+      isBanned: data['isBanned'] ?? false,
       walletBalance: (data['walletBalance'] as num?)?.toDouble() ?? 0.0,
       partnerIds: List<String>.from(data['partnerIds'] ?? []),
       pendingPartnerIds: List<String>.from(data['pendingPartnerIds'] ?? []),
@@ -255,6 +258,7 @@ class UserModel {
       'fcmToken': fcmToken,
       'preferredLanguage': preferredLanguage,
       'isAvailable': isAvailable,
+      'isBanned': isBanned,
       'walletBalance': walletBalance,
       'negativeReports': negativeReports,
       'partnerIds': partnerIds,
