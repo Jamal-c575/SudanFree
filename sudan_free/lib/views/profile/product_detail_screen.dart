@@ -70,8 +70,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         ? widget.product.caption!.split('\n').skip(1).join('\n').trim()
         : '';
 
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F6FA),
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -183,7 +186,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             text: productDesc,
                             style: TextStyle(
                               fontSize: 15,
-                              color: Colors.grey[800],
+                              color: theme.textTheme.bodyLarge?.color,
                               height: 1.6,
                             ),
                           ),
@@ -297,12 +300,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   // ── معرض الصور ──────────────────────────────────────────────────────────
   Widget _buildImageGallery(BuildContext context, List<String> allMedia) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final placeholderColor = isDark ? Colors.grey[800] : Colors.grey[200];
+
     if (allMedia.isEmpty) {
       return Container(
         height: MediaQuery.of(context).size.height * 0.4,
         width: double.infinity,
         decoration: BoxDecoration(
-          color: Colors.grey[200],
+          color: placeholderColor,
           borderRadius: const BorderRadius.only(
             bottomLeft: Radius.circular(24),
             bottomRight: Radius.circular(24),
@@ -340,11 +346,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   imageUrl: allMedia[index],
                   fit: BoxFit.cover,
                   placeholder: (_, __) => Container(
-                    color: Colors.grey[200],
+                    color: placeholderColor,
                     child: const Center(child: CircularProgressIndicator()),
                   ),
                   errorWidget: (_, __, ___) => Container(
-                    color: Colors.grey[200],
+                    color: placeholderColor,
                     child: const Icon(Icons.broken_image,
                         color: Colors.grey, size: 50),
                   ),
@@ -438,7 +444,7 @@ class _InfoCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -500,7 +506,7 @@ class _DetailRow extends StatelessWidget {
         '$label:',
         style: TextStyle(
             fontSize: 14,
-            color: Colors.grey[600],
+            color: Theme.of(context).textTheme.bodyMedium?.color?.withValues(alpha: 0.7),
             fontWeight: FontWeight.w600),
       ),
       const SizedBox(width: 6),
