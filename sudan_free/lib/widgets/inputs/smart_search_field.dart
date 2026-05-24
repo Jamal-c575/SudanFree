@@ -276,14 +276,15 @@ class _SmartSearchFieldState extends State<SmartSearchField> {
                       final suggestion = _suggestions[index];
                       final isComposite = suggestion.contains('في ');
                       
-                      return InkWell(
-                        onTap: () {
+                      return GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTapDown: (_) {
                           _controller.text = suggestion;
                           _controller.selection = TextSelection.fromPosition(
                             TextPosition(offset: suggestion.length),
                           );
-                          _removeOverlay();
                           widget.onSearch(suggestion);
+                          _removeOverlay();
                           _focusNode.unfocus();
                         },
                         child: Padding(

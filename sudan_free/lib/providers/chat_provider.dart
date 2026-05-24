@@ -4,6 +4,7 @@ import '../models/notification_model.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/firestore_service.dart';
 import '../services/storage_service.dart';
+import '../utils/chat_utils.dart';
 import 'dart:io';
 import 'dart:async';
 
@@ -72,12 +73,12 @@ class ChatProvider extends ChangeNotifier {
         user1Name: currentUserName,
         user1ImageUrl: currentUserImageUrl,
         user2Id: otherUserId,
-        user2Name: otherUserName,
+      _messages = removeTemporaryMessage(_messages, tempId);
         user2ImageUrl: otherUserImageUrl,
         jobId: jobId,
         jobTitle: jobTitle,
       );
-      
+      _messages = removeTemporaryMessage(_messages, tempId);
       _currentChat = chat;
       _isLoading = false;
       notifyListeners();
@@ -136,7 +137,7 @@ class ChatProvider extends ChangeNotifier {
 
       await _firestoreService.sendMessage(message);
       _isSending = false;
-      return true;
+      _messages = removeTemporaryMessage(_messages, tempId);
     } catch (e) {
       _isSending = false;
       _errorMessage = e.toString();
@@ -195,12 +196,11 @@ class ChatProvider extends ChangeNotifier {
       await _firestoreService.sendMessage(message);
 
       // ── 3. حذف الرسالة المؤقتة (Firestore stream سيُظهر الحقيقية) ──
-      _messages = _messages.where((m) => m.id != tempId).toList();
+      _messages = removeTemporaryMessage(_messages, tempId);
       notifyListeners();
       return true;
     } catch (e) {
-      // ── فشل: إزالة الرسالة المؤقتة وإظهار خطأ ──
-      _messages = _messages.where((m) => m.id != tempId).toList();
+      _messages = removeTemporaryMessage(_messages, tempId);
       _errorMessage = e.toString();
       notifyListeners();
       return false;
@@ -259,11 +259,11 @@ class ChatProvider extends ChangeNotifier {
       await _firestoreService.sendMessage(message);
 
       // ── 3. حذف المؤقتة ──
-      _messages = _messages.where((m) => m.id != tempId).toList();
+      _messages = removeTemporaryMessage(_messages, tempId);
       notifyListeners();
       return true;
     } catch (e) {
-      _messages = _messages.where((m) => m.id != tempId).toList();
+      _messages = removeTemporaryMessage(_messages, tempId);
       _errorMessage = e.toString();
       notifyListeners();
       return false;
@@ -322,11 +322,11 @@ class ChatProvider extends ChangeNotifier {
       await _firestoreService.sendMessage(message);
 
       // ── 3. حذف المؤقتة ──
-      _messages = _messages.where((m) => m.id != tempId).toList();
+      _messages = removeTemporaryMessage(_messages, tempId);
       notifyListeners();
       return true;
     } catch (e) {
-      _messages = _messages.where((m) => m.id != tempId).toList();
+      _messages = removeTemporaryMessage(_messages, tempId);
       _errorMessage = e.toString();
       notifyListeners();
       return false;

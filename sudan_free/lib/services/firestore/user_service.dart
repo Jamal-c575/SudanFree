@@ -108,19 +108,55 @@ class UserFirestoreService {
     await batch.commit();
   }
 
-  // Increment Profile Views (only once per unique viewer)
+  // Increment Profile Views with per-viewer rate limiting
+  // Prevents a single viewer from incrementing the counter repeatedly.
+  // Uses a subcollection users/{userId}/views/{viewerId} to store lastViewed timestamp.
+  // Default window: 60 minutes. Keeps backward-compatible behavior with existing `viewers` array.
   Future<void> incrementProfileViews(String userId, [String? viewerId]) async {
     if (viewerId == null) return;
-    
-    final userDoc = await _firestore.collection('users').doc(userId).get();
+
+    final userRef = _firestore.collection('users').doc(userId);
+    final userDoc = await userRef.get();
     if (!userDoc.exists) return;
-    
-    final viewers = List<String>.from(userDoc.data()?['viewers'] ?? []);
-    if (viewers.contains(viewerId)) return; // Already viewed
-    
-    await _firestore.collection('users').doc(userId).update({
-      'profileViews': FieldValue.increment(1),
-      'viewers': FieldValue.arrayUnion([viewerId]),
+
+    final viewsRef = userRef.collection('views').doc(viewerId);
+    final viewsSnap = await viewsRef.get();
+
+    const int rateWindowMinutes = 60; // viewers can increment once per 60 minutes
+    final now = Timestamp.now();
+
+    if (viewsSnap.exists) {
+      final last = viewsSnap.data()?['lastViewed'] as Timestamp?;
+      if (last != null) {
+        final diff = now.toDate().difference(last.toDate());
+        if (diff.inMinutes < rateWindowMinutes) {
+          // Within rate window - do not increment
+          return;
+        }
+      }
+    }
+
+    // Use a transaction to safely increment and update the viewer record
+    await _firestore.runTransaction((tx) async {
+      final freshUserDoc = await tx.get(userRef);
+      if (!freshUserDoc.exists) return;
+
+      // Increment profileViews
+      tx.update(userRef, {
+        'profileViews': FieldValue.increment(1),
+      });
+
+      // Update or create the viewer timestamp
+      tx.set(viewsRef, {'lastViewed': now}, SetOptions(merge: true));
+
+      // Maintain backward-compatible `viewers` array for historical use only
+      // Only add to array if not already present to avoid unbounded growth
+      final viewers = List<String>.from(freshUserDoc.data()?['viewers'] ?? []);
+      if (!viewers.contains(viewerId)) {
+        tx.update(userRef, {
+          'viewers': FieldValue.arrayUnion([viewerId])
+        });
+      }
     });
   }
 
