@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/request_model.dart';
+import '../../models/user_model.dart';
 import '../../services/firestore_service.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/locale_provider.dart';
