@@ -29,10 +29,17 @@ class _RequestsScreenState extends State<RequestsScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      final user = context.read<AuthProvider>().user;
+      final isClient = user?.role == UserRole.client;
+      
       SmartGuideService.showMicroTip(
         context,
-        messageAr: 'هنا تجد طلبات العملاء، اضغط لتقديم عرضك 📋',
-        messageEn: 'Find client requests here and submit your offer 📋',
+        messageAr: isClient
+            ? 'أضف طلبك هنا ودع مقدمي الخدمات يقدمون عروضهم 📋'
+            : 'هنا تجد طلبات العملاء، اضغط لتقديم عرضك 📋',
+        messageEn: isClient
+            ? 'Add your request here and let service providers submit offers 📋'
+            : 'Find client requests here and submit your offer 📋',
         tipId: 'requests_first_visit',
         icon: Icons.assignment_rounded,
       );

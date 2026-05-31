@@ -78,10 +78,17 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
       _sendHeartbeat();
       _heartbeatTimer = Timer.periodic(const Duration(minutes: 15), (_) => _sendHeartbeat());
       
+      final user = context.read<AuthProvider>().user;
+      final isClient = user?.role == UserRole.client;
+      
       SmartGuideService.showMicroTip(
         context,
-        messageAr: 'شارك أعمالك وتفاعل مع المجتمع ✨',
-        messageEn: 'Share your work and interact with the community ✨',
+        messageAr: isClient 
+            ? 'تصفح أحدث الأعمال وتفاعل مع مقدمي الخدمات ✨'
+            : 'شارك أعمالك وتفاعل مع المجتمع ✨',
+        messageEn: isClient
+            ? 'Browse latest work and interact with service providers ✨'
+            : 'Share your work and interact with the community ✨',
         tipId: 'community_first_visit',
         icon: Icons.forum_rounded,
       );
