@@ -20,6 +20,7 @@ class AdService {
 
   // Cache for ads by category to reduce Firestore reads
   final Map<String, List<AdModel>> _categoryAdCache = {};
+  final Map<String, List<AdModel>> _placementAdCache = {};
   final Map<String, DateTime> _cacheTimestamps = {};
   static const Duration _cacheDuration = Duration(minutes: 10);
 
@@ -171,6 +172,14 @@ class AdService {
   /// Fetch multiple ads for a placement (e.g., carousel on home)
   Future<List<AdModel>> getAdsForPlacement(UserModel currentUser, AdPlacement placement, {int limit = 5}) async {
     try {
+      final cacheKey = 'placement_${placement.name}';
+      if (_isCacheValid(cacheKey)) {
+        final cachedAds = _placementAdCache[cacheKey];
+        if (cachedAds != null && cachedAds.isNotEmpty) {
+          return _filterByFrequency(cachedAds, currentUser.id);
+        }
+      }
+
       final now = Timestamp.now();
 
       final snap = await _firestore.collection('ads')
@@ -186,6 +195,9 @@ class AdService {
       final ads = snap.docs.map((d) => AdModel.fromFirestore(d)).toList();
       ads.sort((a, b) => b.priority.compareTo(a.priority));
       
+      _placementAdCache[cacheKey] = ads;
+      _cacheTimestamps[cacheKey] = DateTime.now();
+
       // Apply frequency control for multiple ads
       return _filterByFrequency(ads, currentUser.id);
     } catch (e) {
@@ -218,6 +230,7 @@ class AdService {
   /// Clear ad cache (call when user changes location or after long periods)
   void clearAdCache() {
     _categoryAdCache.clear();
+    _placementAdCache.clear();
     _cacheTimestamps.clear();
   }
 

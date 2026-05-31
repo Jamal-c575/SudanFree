@@ -2,9 +2,30 @@ import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../l10n/generated/app_localizations.dart';
 
+import '../../services/smart_guide_service.dart';
+
 /// شاشة نصائح السلامة - Safety Tips Screen
-class SafetyTipsScreen extends StatelessWidget {
+class SafetyTipsScreen extends StatefulWidget {
   const SafetyTipsScreen({super.key});
+
+  @override
+  State<SafetyTipsScreen> createState() => _SafetyTipsScreenState();
+}
+
+class _SafetyTipsScreenState extends State<SafetyTipsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      SmartGuideService.showMicroTip(
+        context,
+        messageAr: 'اقرأ هذه النصائح لتجربة استخدام آمنة وموثوقة 🛡️',
+        messageEn: 'Read these tips for a safe and secure experience 🛡️',
+        tipId: 'safety_tips_tip',
+        icon: Icons.security_rounded,
+      );
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -78,6 +99,15 @@ class SafetyTipsScreen extends StatelessWidget {
             iconColor: Colors.purple,
             title: l10n.safetyTipKeepProof,
             description: l10n.safetyTipKeepProofDesc,
+          ),
+          
+          _SafetyTip(
+            icon: Icons.location_off,
+            iconColor: Colors.indigo,
+            title: Localizations.localeOf(context).languageCode == 'ar' ? 'خصوصية موقعك على الخريطة' : 'Map Location Privacy',
+            description: Localizations.localeOf(context).languageCode == 'ar' 
+                ? 'يمكنك دائماً إخفاء موقعك من الخريطة بالذهاب إلى "الإعدادات -> الظهور على الخريطة" لإيقافه.' 
+                : 'You can always hide your location from the map by going to "Settings -> Show on Map".',
           ),
 
           const SizedBox(height: 24),

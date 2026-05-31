@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/constants/app_colors.dart';
@@ -21,6 +22,7 @@ class PostCard extends StatefulWidget {
   final String locale;
   final bool enableHero;
   final bool showActions;
+  final bool isPromoted;
 
   const PostCard({
     super.key,
@@ -29,17 +31,38 @@ class PostCard extends StatefulWidget {
     required this.locale,
     this.enableHero = true,
     this.showActions = true,
+    this.isPromoted = false,
   });
 
   @override
   State<PostCard> createState() => _PostCardState();
 }
 
-class _PostCardState extends State<PostCard> {
+class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin {
   bool _isSharing = false;
   int _currentImageIndex = 0;
   bool? _localIsLiked;
   int? _localTotalReactions;
+  
+  // Like animation
+  late AnimationController _likeAnimController;
+  late Animation<double> _likeScaleAnim;
+  
+  // Track precached URLs to avoid redundant calls
+  static final Set<String> _precachedUrls = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _likeAnimController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _likeScaleAnim = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.3), weight: 50),
+      TweenSequenceItem(tween: Tween(begin: 1.3, end: 1.0), weight: 50),
+    ]).animate(CurvedAnimation(parent: _likeAnimController, curve: Curves.easeInOut));
+  }
 
   @override
   void didUpdateWidget(covariant PostCard oldWidget) {
@@ -50,14 +73,27 @@ class _PostCardState extends State<PostCard> {
     }
   }
 
+  @override
+  void dispose() {
+    _likeAnimController.dispose();
+    super.dispose();
+  }
+
   String _getTimeAgo(DateTime time) {
-    final diff = DateTime.now().difference(time);
+    final now = DateTime.now();
+    final diff = now.difference(time);
+    
     if (diff.inMinutes < 60) {
-      return widget.locale == 'ar' ? '${diff.inMinutes} د' : '${diff.inMinutes}m';
+      if (diff.inMinutes <= 0) return widget.locale == 'ar' ? 'الآن' : 'Just now';
+      return widget.locale == 'ar' ? 'قبل ${diff.inMinutes} دقيقة' : '${diff.inMinutes}m ago';
     } else if (diff.inHours < 24) {
-      return widget.locale == 'ar' ? '${diff.inHours} س' : '${diff.inHours}h';
+      return widget.locale == 'ar' ? 'قبل ${diff.inHours} ساعة' : '${diff.inHours}h ago';
+    } else if (diff.inDays == 1 || (diff.inDays == 0 && now.day != time.day)) {
+      return widget.locale == 'ar' ? 'أمس' : 'Yesterday';
+    } else if (diff.inDays < 7) {
+      return widget.locale == 'ar' ? 'قبل ${diff.inDays} أيام' : '${diff.inDays}d ago';
     } else {
-      return widget.locale == 'ar' ? '${diff.inDays} ي' : '${diff.inDays}d';
+      return '${time.year}/${time.month.toString().padLeft(2, '0')}/${time.day.toString().padLeft(2, '0')}';
     }
   }
 
@@ -71,9 +107,12 @@ class _PostCardState extends State<PostCard> {
   }
 
   Widget _buildGridImage(String url, {double? height, bool isHero = false}) {
-    // Precache the high-res version in background so details/fullscreen loads instantly
+    // Precache high-res only once per URL (not on every build)
     final detailUrl = CloudinaryService.getOptimizedUrl(url, width: 1200, quality: 'auto');
-    precacheImage(CachedNetworkImageProvider(detailUrl), context);
+    if (!_precachedUrls.contains(detailUrl)) {
+      _precachedUrls.add(detailUrl);
+      precacheImage(CachedNetworkImageProvider(detailUrl), context);
+    }
 
     Widget image = CachedNetworkImage(
       imageUrl: CloudinaryService.getOptimizedUrl(url, width: 600, quality: 'auto'),
@@ -235,6 +274,11 @@ class _PostCardState extends State<PostCard> {
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
+                              if (widget.isPromoted)
+                                const Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 4.0),
+                                  child: Icon(Icons.star_rounded, color: AppColors.sudanGold, size: 16),
+                                ),
                               if (widget.post.userJobTitle != null && widget.post.userJobTitle!.isNotEmpty) ...[
                                 const SizedBox(width: 6),
                                 Container(
@@ -334,29 +378,34 @@ class _PostCardState extends State<PostCard> {
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                 child: Row(
                   children: [
-                    // Like
-                    _buildIconAction(
-                      context,
-                      icon: isLiked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                      label: totalReactions > 0 ? '$totalReactions' : '',
-                      color: isLiked ? Colors.red : Colors.grey[600]!,
-                      onTap: () {
-                        setState(() {
-                          _localIsLiked = !isLiked;
-                          _localTotalReactions = isLiked 
-                               ? (totalReactions > 0 ? totalReactions - 1 : 0)
-                               : totalReactions + 1;
-                        });
+                    // Like (with scale animation + haptic)
+                    ScaleTransition(
+                      scale: _likeScaleAnim,
+                      child: _buildIconAction(
+                        context,
+                        icon: isLiked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                        label: totalReactions > 0 ? '$totalReactions' : '',
+                        color: isLiked ? Colors.red : Colors.grey[600]!,
+                        onTap: () {
+                          HapticFeedback.lightImpact();
+                          _likeAnimController.forward(from: 0);
+                          setState(() {
+                            _localIsLiked = !isLiked;
+                            _localTotalReactions = isLiked 
+                                 ? (totalReactions > 0 ? totalReactions - 1 : 0)
+                                 : totalReactions + 1;
+                          });
 
-                        final type = isLiked ? 'unlike' : 'like';
-                        context.read<PostsProvider>().reactToPost(
-                          widget.post.id,
-                          widget.currentUserId,
-                          context.read<AuthProvider>().user?.name ?? '',
-                          widget.post.userId,
-                          type,
-                        );
-                      },
+                          final type = isLiked ? 'unlike' : 'like';
+                          context.read<PostsProvider>().reactToPost(
+                            widget.post.id,
+                            widget.currentUserId,
+                            context.read<AuthProvider>().user?.name ?? '',
+                            widget.post.userId,
+                            type,
+                          );
+                        },
+                      ),
                     ),
                     const SizedBox(width: 4),
                     // Comment
@@ -429,6 +478,7 @@ class _PostCardState extends State<PostCard> {
   void _handleExternalShare(BuildContext context) async {
     if (_isSharing) return;
     
+    HapticFeedback.lightImpact();
     setState(() => _isSharing = true);
     
     final String text = widget.post.caption ?? '';
@@ -576,29 +626,34 @@ class _ExpandableCaptionState extends State<ExpandableCaption> {
           _isExpanded = !_isExpanded;
         });
       },
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          LinkableText(
-            text: widget.caption,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              height: 1.4,
+      child: AnimatedSize(
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeInOut,
+        alignment: Alignment.topCenter,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            LinkableText(
+              text: widget.caption,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                height: 1.4,
+              ),
+              maxLines: _isExpanded ? null : _maxLines,
             ),
-            maxLines: _isExpanded ? null : _maxLines,
-          ),
-          if (!_isExpanded && (widget.caption.length > 150 || (widget.caption.split('\n').length > _maxLines)))
-            Padding(
-              padding: const EdgeInsets.only(top: 4.0),
-              child: Text(
-                widget.locale == 'ar' ? 'عرض المزيد...' : 'See more...',
-                style: const TextStyle(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
+            if (!_isExpanded && (widget.caption.length > 150 || (widget.caption.split('\n').length > _maxLines)))
+              Padding(
+                padding: const EdgeInsets.only(top: 4.0),
+                child: Text(
+                  widget.locale == 'ar' ? 'عرض المزيد...' : 'See more...',
+                  style: const TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }

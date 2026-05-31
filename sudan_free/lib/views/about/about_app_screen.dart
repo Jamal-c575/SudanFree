@@ -110,6 +110,30 @@ class AboutAppScreen extends StatelessWidget {
                 : '• Smart search for the right provider in your area.\n• Reliable review system reflecting quality.\n• Ability to post a "job request" for bids.\n• Direct communication via app, phone, or official contract.',
           ),
 
+          const SizedBox(height: 24),
+
+          // Platform Features
+          _SectionTitle(
+            icon: Icons.star,
+            title: isAr ? '✨ ميزات المنصة المميزة' : '✨ Premium Features',
+            color: Colors.amber,
+          ),
+          const SizedBox(height: 12),
+          _AboutCard(
+            icon: Icons.map,
+            iconColor: Colors.amber,
+            text: isAr
+                ? 'مستكشف الخريطة (Map Explorer): خريطة ذكية سريعة تعمل محلياً للبحث عن مقدمي الخدمات والمتاجر المحيطة بك دون استهلاك كبير للإنترنت.'
+                : 'Map Explorer: A fast, locally cached smart map to find nearby service providers and shops without consuming much data.',
+          ),
+          _AboutCard(
+            icon: Icons.favorite,
+            iconColor: Colors.redAccent,
+            text: isAr
+                ? 'المفضلة الشاملة (Favorites): مكان واحد لحفظ المنتجات الرائعة من المتاجر، بالإضافة لحفظ الحرفيين والزملاء المفضلين للعودة إليهم بسرعة لاحقاً.'
+                : 'Unified Favorites: One place to save great products, as well as favorite freelancers and peers to quickly access them later.',
+          ),
+
 
           const SizedBox(height: 24),
 

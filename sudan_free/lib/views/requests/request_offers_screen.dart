@@ -324,7 +324,7 @@ class _OfferCardDetailed extends StatelessWidget {
               ),
               ListTile(
                 leading: CircleAvatar(backgroundColor: Colors.blue.shade600, child: const Icon(Icons.handshake, color: Colors.white)),
-                title: Text(isAr ? 'قبول والاتفاق (إنشاء عقد)' : 'Accept & Agree (Create Contract)'),
+                title: Text(isAr ? 'قبول والاتفاق (إنشاء اتفاق)' : 'Accept & Agree (Create Agreement)'),
                 onTap: () async {
                   Navigator.pop(ctx);
                   if (currentUserId == null) return;

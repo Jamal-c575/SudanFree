@@ -13,6 +13,7 @@ import '../profile/profile_screen.dart';
 import '../../widgets/common/staggered_animated_widget.dart';
 import '../../services/smart_search_service.dart';
 import '../../widgets/inputs/smart_search_field.dart';
+import '../../services/smart_guide_service.dart';
 
 
 class BrowseFreelancersScreen extends StatefulWidget {
@@ -39,6 +40,13 @@ class _BrowseFreelancersScreenState extends State<BrowseFreelancersScreen>
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<UserProvider>().fetchFreelancers();
+      SmartGuideService.showMicroTip(
+        context,
+        messageAr: 'اضغط على أي مزود خدمة للتواصل معه 📱',
+        messageEn: 'Tap any provider to contact them 📱',
+        tipId: 'freelancers_first_visit',
+        icon: Icons.touch_app_rounded,
+      );
     });
     
     _scrollController.addListener(() {
@@ -260,6 +268,7 @@ class _BrowseFreelancersScreenState extends State<BrowseFreelancersScreen>
                                       locale: locale,
                                       currentUserId: currentUser?.id,
                                       currentUserName: currentUser?.name,
+                                      isPromoted: userProvider.promotedUserIds.contains(freelancer.id),
                                       onTap: () => Navigator.push(
                                         context,
                                         MaterialPageRoute(

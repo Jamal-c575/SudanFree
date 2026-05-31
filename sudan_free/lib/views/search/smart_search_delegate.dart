@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/user_model.dart';
@@ -8,6 +9,7 @@ import '../../widgets/common/loading_widget.dart';
 import '../profile/profile_screen.dart';
 import '../../providers/auth_provider.dart';
 import '../../core/constants/app_colors.dart';
+import '../../services/smart_search_service.dart';
 
 class SmartSearchDelegate extends SearchDelegate<UserModel?> {
   @override
@@ -131,105 +133,14 @@ class SmartSearchDelegate extends SearchDelegate<UserModel?> {
       return _buildEmptyState(context, isAr);
     }
 
-    // Trigger suggestions update with debounce
-    final searchProvider = context.read<SearchProvider>();
-    searchProvider.updateSuggestions(query);
-
-    return Consumer<SearchProvider>(
-      builder: (context, search, _) {
-        final suggestions = search.suggestions;
-
-        if (suggestions.isEmpty) {
-          return AnimatedOpacity(
-            opacity: 1.0,
-            duration: const Duration(milliseconds: 200),
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.search, size: 48, color: Colors.grey[300]),
-                  const SizedBox(height: 12),
-                  Text(
-                    isAr ? 'اضغط بحث للعرض الكامل' : 'Press search for full results',
-                    style: TextStyle(color: Colors.grey[500], fontSize: 14),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }
-
-        return AnimatedSwitcher(
-          duration: const Duration(milliseconds: 300),
-          child: ListView.builder(
-            key: ValueKey<String>(query), // Rebuild animation when query changes
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            itemCount: suggestions.length,
-            itemBuilder: (context, index) {
-              final suggestion = suggestions[index];
-              return _buildSuggestionTile(context, suggestion, query);
-            },
-          ),
-        );
+    return _DelayedSuggestionsWidget(
+      query: query,
+      isAr: isAr,
+      onSuggestionTap: (suggestion) {
+        query = suggestion;
+        showResults(context);
       },
-    );
-  }
-
-  Widget _buildSuggestionTile(BuildContext context, String suggestion, String query) {
-    // Highlight matched parts of the suggestion
-    final lowerSuggestion = suggestion.toLowerCase();
-    final lowerQuery = query.toLowerCase();
-    
-    List<TextSpan> spans = [];
-    int start = 0;
-    
-    while (start < suggestion.length) {
-      final index = lowerSuggestion.indexOf(lowerQuery, start);
-      if (index == -1) {
-        // No more matches, add remaining text
-        spans.add(TextSpan(text: suggestion.substring(start)));
-        break;
-      }
-      
-      // Add text before match
-      if (index > start) {
-        spans.add(TextSpan(text: suggestion.substring(start, index)));
-      }
-      
-      // Add highlighted match
-      final end = index + query.length;
-      spans.add(TextSpan(
-        text: suggestion.substring(index, end),
-        style: const TextStyle(
-          fontWeight: FontWeight.bold,
-          color: AppColors.primary,
-        ),
-      ));
-      
-      start = end;
-    }
-
-    return ListTile(
-      leading: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: AppColors.primary.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Icon(
-          _getSuggestionIcon(suggestion),
-          color: AppColors.primary,
-          size: 20,
-        ),
-      ),
-      title: RichText(
-        text: TextSpan(
-          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: Colors.black),
-          children: spans,
-        ),
-      ),
-      trailing: Icon(Icons.north_west, size: 16, color: Colors.grey[400]),
-      onTap: () {
+      onSearchSubmitted: (suggestion) {
         query = suggestion;
         showResults(context);
       },
@@ -351,5 +262,186 @@ class SmartSearchDelegate extends SearchDelegate<UserModel?> {
     if (lower.contains('مطعم') || lower.contains('restau')) return Icons.restaurant;
     if (lower.contains('متجر') || lower.contains('shop') || lower.contains('معرض')) return Icons.store;
     return Icons.search;
+  }
+}
+
+class _DelayedSuggestionsWidget extends StatefulWidget {
+  final String query;
+  final bool isAr;
+  final Function(String) onSuggestionTap;
+  final Function(String) onSearchSubmitted;
+
+  const _DelayedSuggestionsWidget({
+    Key? key,
+    required this.query,
+    required this.isAr,
+    required this.onSuggestionTap,
+    required this.onSearchSubmitted,
+  }) : super(key: key);
+
+  @override
+  _DelayedSuggestionsWidgetState createState() => _DelayedSuggestionsWidgetState();
+}
+
+class _DelayedSuggestionsWidgetState extends State<_DelayedSuggestionsWidget> {
+  List<String> _suggestions = [];
+  bool _showEmptyState = false;
+  Timer? _emptyStateTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _updateSuggestions(widget.query, instant: true);
+  }
+
+  @override
+  void didUpdateWidget(_DelayedSuggestionsWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.query != widget.query) {
+      _updateSuggestions(widget.query, instant: false);
+    }
+  }
+
+  void _updateSuggestions(String newQuery, {bool instant = false}) {
+    final newSuggestions = SmartSearchService.getPredefinedSuggestions(newQuery);
+    
+    if (newSuggestions.isNotEmpty) {
+      _emptyStateTimer?.cancel();
+      setState(() {
+        _suggestions = newSuggestions;
+        _showEmptyState = false;
+      });
+    } else {
+      if (instant) {
+        setState(() {
+          _suggestions = [];
+          _showEmptyState = true;
+        });
+      } else {
+        // تأخير اختفاء القائمة كما طلب المستخدم (Delay list disappearance)
+        _emptyStateTimer?.cancel();
+        _emptyStateTimer = Timer(const Duration(milliseconds: 800), () {
+          if (mounted) {
+            setState(() {
+              _suggestions = [];
+              _showEmptyState = true;
+            });
+          }
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _emptyStateTimer?.cancel();
+    super.dispose();
+  }
+
+  IconData _getSuggestionIcon(String suggestion) {
+    final lower = suggestion.toLowerCase();
+    if (lower.contains('سباك') || lower.contains('plumb')) return Icons.plumbing;
+    if (lower.contains('كهرب') || lower.contains('electr')) return Icons.electrical_services;
+    if (lower.contains('نجار') || lower.contains('carpen')) return Icons.carpenter;
+    if (lower.contains('دهان') || lower.contains('paint')) return Icons.format_paint;
+    if (lower.contains('ميكانيك') || lower.contains('mechan')) return Icons.build;
+    if (lower.contains('مصمم') || lower.contains('design')) return Icons.design_services;
+    if (lower.contains('مبرمج') || lower.contains('develop')) return Icons.code;
+    if (lower.contains('مطعم') || lower.contains('restau')) return Icons.restaurant;
+    if (lower.contains('متجر') || lower.contains('shop') || lower.contains('معرض')) return Icons.store;
+    return Icons.search;
+  }
+
+  Widget _buildSuggestionTile(BuildContext context, String suggestion, String query) {
+    final lowerSuggestion = suggestion.toLowerCase();
+    final lowerQuery = query.toLowerCase();
+    
+    List<TextSpan> spans = [];
+    int start = 0;
+    
+    while (start < suggestion.length) {
+      final index = lowerSuggestion.indexOf(lowerQuery, start);
+      if (index == -1) {
+        spans.add(TextSpan(text: suggestion.substring(start)));
+        break;
+      }
+      
+      if (index > start) {
+        spans.add(TextSpan(text: suggestion.substring(start, index)));
+      }
+      
+      final end = index + query.length;
+      spans.add(TextSpan(
+        text: suggestion.substring(index, end),
+        style: const TextStyle(
+          fontWeight: FontWeight.bold,
+          color: AppColors.primary,
+        ),
+      ));
+      
+      start = end;
+    }
+
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: AppColors.primary.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(
+          _getSuggestionIcon(suggestion),
+          color: AppColors.primary,
+          size: 20,
+        ),
+      ),
+      title: RichText(
+        text: TextSpan(
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: Colors.black),
+          children: spans,
+        ),
+      ),
+      trailing: IconButton(
+        icon: Icon(Icons.north_west, size: 16, color: Colors.grey[400]),
+        onPressed: () {
+          widget.onSuggestionTap(suggestion);
+        },
+      ),
+      onTap: () {
+        widget.onSuggestionTap(suggestion);
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_showEmptyState) {
+      return AnimatedOpacity(
+        opacity: 1.0,
+        duration: const Duration(milliseconds: 200),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.search, size: 48, color: Colors.grey[300]),
+              const SizedBox(height: 12),
+              Text(
+                widget.isAr ? 'اضغط بحث للعرض الكامل' : 'Press search for full results',
+                style: TextStyle(color: Colors.grey[500], fontSize: 14),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      itemCount: _suggestions.length,
+      itemBuilder: (context, index) {
+        final suggestion = _suggestions[index];
+        return _buildSuggestionTile(context, suggestion, widget.query);
+      },
+    );
   }
 }

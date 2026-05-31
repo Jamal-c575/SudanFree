@@ -23,6 +23,7 @@ import '../../widgets/common/loading_widget.dart';
 import '../../widgets/common/linkable_text.dart';
 import '../../widgets/common/full_screen_image_viewer.dart';
 import '../../services/file_download_service.dart';
+import '../../services/smart_guide_service.dart';
 
 
 class ChatScreen extends StatefulWidget {
@@ -53,6 +54,13 @@ class _ChatScreenState extends State<ChatScreen> {
       if (userId != null) {
         context.read<ChatProvider>().openChat(widget.chat, userId);
       }
+      SmartGuideService.showMicroTip(
+        context,
+        messageAr: 'يمكنك إنشاء اتفاق رسمي من أيقونة المصافحة في الأعلى 🤝',
+        messageEn: 'Create an official contract from the handshake icon above 🤝',
+        tipId: 'chat_contract_tip',
+        icon: Icons.handshake_rounded,
+      );
     });
   }
 
@@ -286,7 +294,7 @@ class _ChatScreenState extends State<ChatScreen> {
           IconButton(
             onPressed: () => _showContractBottomSheet(context),
             icon: const Icon(Icons.handshake, size: 22),
-            tooltip: 'إنشاء عقد',
+            tooltip: 'إنشاء اتفاق',
           ),
         ],
       ),
@@ -302,7 +310,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'يفضل استخدام واتساب أو الاتصال المباشر للتواصل، الدردشة هنا فقط لإنشاء وتنسيق العقود لضمان حقوقك.',
+                    'يفضل استخدام واتساب أو الاتصال المباشر للتواصل، الدردشة هنا فقط لإنشاء وتنسيق الاتفاقات لضمان حقوقك.',
                     style: TextStyle(color: Colors.amber.shade900, fontSize: 12, fontWeight: FontWeight.w600),
                   ),
                 ),
@@ -540,7 +548,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
                 const SizedBox(width: 12),
                 const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('إنشاء عقد اتفاق', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text('إنشاء اتفاق', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   Text('حدد تفاصيل العمل لحماية حقوق الطرفين', style: TextStyle(fontSize: 12, color: Colors.grey)),
                 ])),
                 IconButton(onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close)),
@@ -608,7 +616,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     Icon(Icons.info_outline, color: Colors.blue, size: 20),
                     SizedBox(width: 10),
                     Expanded(child: Text(
-                      'سيتم إرسال العقد للطرف الآخر للموافقة عليه. بعد الموافقة سيتم تتبع سير العمل تلقائياً.',
+                      'سيتم إرسال الاتفاق للطرف الآخر للموافقة عليه. بعد الموافقة سيتم تتبع سير العمل تلقائياً.',
                       style: TextStyle(fontSize: 12, color: Colors.blue, height: 1.5),
                     )),
                   ]),
@@ -660,7 +668,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                       Icon(Icons.send, color: Colors.white, size: 20),
                       SizedBox(width: 10),
-                      Text('إرسال العقد', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                      Text('إرسال الاتفاق', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
                     ]),
                   ),
                 ),
@@ -797,9 +805,35 @@ class _MessageBubbleState extends State<MessageBubble> {
                   const SizedBox(height: 8),
                 if (isMe)
                   ElevatedButton.icon(
-                    onPressed: () {
+                    onPressed: () async {
                       Navigator.pop(ctx);
-                      FirebaseFirestore.instance.collection('chats').doc(chat.id).collection('messages').doc(message.id).delete();
+                      try {
+                        await FirebaseFirestore.instance
+                            .collection('chats')
+                            .doc(chat.id)
+                            .collection('messages')
+                            .doc(message.id)
+                            .delete();
+                        
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(isRtl ? 'تم حذف الرسالة' : 'Message deleted'),
+                              duration: const Duration(seconds: 2),
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        debugPrint('Error deleting message: $e');
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(isRtl ? 'فشل حذف الرسالة' : 'Failed to delete message'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      }
                     },
                     icon: const Icon(Icons.delete, color: Colors.white),
                     label: Text(isRtl ? 'حذف الرسالة' : 'Delete Message'),
@@ -1080,7 +1114,7 @@ class _MessageBubbleState extends State<MessageBubble> {
             children: [
               Icon(Icons.handshake, color: AppColors.primary, size: 24),
               const SizedBox(width: 8),
-              const Text('عقد اتفاق', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87)),
+              const Text('إدارة الاتفاق', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87)),
             ],
           ),
           const Divider(),
@@ -1122,8 +1156,8 @@ class _MessageBubbleState extends State<MessageBubble> {
                         clientId: clientId,
                         clientName: clientName,
                         clientImageUrl: clientImageUrl,
-                        title: 'عقد عمل مع $freelancerName',
-                        description: message.contractDetails ?? 'تم إنشاء العقد عبر الدردشة',
+                        title: 'اتفاق عمل مع $freelancerName',
+                        description: message.contractDetails ?? 'تم إنشاء الاتفاق عبر الدردشة',
                         price: message.contractPrice ?? 0.0,
                         freelancerId: freelancerId,
                         freelancerName: freelancerName,
@@ -1171,7 +1205,7 @@ class _MessageBubbleState extends State<MessageBubble> {
                   padding: const EdgeInsets.symmetric(vertical: 0),
                   minimumSize: const Size(0, 30),
                 ),
-                child: const Text('طلب تعديل العقد', style: TextStyle(fontSize: 12)),
+                child: const Text('طلب تعديل الاتفاق', style: TextStyle(fontSize: 12)),
               ),
             ),
           ],
@@ -1233,7 +1267,7 @@ class _MessageBubbleState extends State<MessageBubble> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('تعديل العقد', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary)),
+        title: const Text('تعديل الاتفاق', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -1269,7 +1303,7 @@ class _MessageBubbleState extends State<MessageBubble> {
               );
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-            child: const Text('تحديث العقد', style: TextStyle(color: Colors.white)),
+            child: const Text('تحديث الاتفاق', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),

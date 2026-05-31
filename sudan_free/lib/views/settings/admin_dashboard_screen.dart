@@ -587,8 +587,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     margin: const EdgeInsets.only(bottom: 8),
                     child: ListTile(
                       title: Text(log['title'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold)),
-                      subtitle: Text('${log['message']}
-تم الإرسال لـ ${log['fcmSent'] ?? 0} مستخدم'),
+                      subtitle: Text('${log['message']}\\nتم الإرسال لـ ${log['fcmSent'] ?? 0} مستخدم'),
                       isThreeLine: true,
                       trailing: IconButton(
                         icon: const Icon(Icons.delete, color: Colors.red),
@@ -790,7 +789,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       icon: const Icon(Icons.upload_file),
                       label: Text(selectedVideoFile != null ? 'تم اختيار الفيديو' : 'اختر فيديو (mp4)'),
                       onPressed: isUploadingVideo ? null : () async {
-                        final result = await FilePicker.platform.pickFiles(type: FileType.video, allowedExtensions: ['mp4']);
+                        final result = await FilePicker.pickFiles(type: FileType.video, allowedExtensions: ['mp4']);
                         if (result != null && result.files.isNotEmpty) {
                           setState(() => selectedVideoFile = result.files.first);
                         }
@@ -912,8 +911,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               child: ListTile(
                 leading: CircleAvatar(backgroundImage: user.profileImageUrl != null ? CachedNetworkImageProvider(user.profileImageUrl!) : null),
                 title: Text(user.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: Text('${user.phoneNumber ?? ''}
-${user.jobTitle ?? ''}'),
+                subtitle: Text('${user.phoneNumber ?? ''}\\n${user.jobTitle ?? ''}'),
                 isThreeLine: true,
                 trailing: ElevatedButton(
                   style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),

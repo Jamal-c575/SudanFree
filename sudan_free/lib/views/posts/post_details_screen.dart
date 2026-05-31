@@ -11,6 +11,11 @@ import '../../widgets/mentions/mention_overlay.dart';
 import '../../services/cloudinary_service.dart';
 import '../../widgets/common/full_screen_image_viewer.dart';
 import '../../services/firestore_service.dart';
+import '../../providers/posts_provider.dart';
+import '../../views/posts/comments_sheet.dart';
+import '../profile/profile_screen.dart';
+import '../../services/cloudinary_service.dart';
+
 import '../../core/constants/app_colors.dart';
 import '../profile/product_detail_screen.dart';
 /// شاشة تفاصيل المنشور/المنتج مع إمكانية التعليق والتفاعل
@@ -159,13 +164,14 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isArabic = context.read<LocaleProvider>().locale.languageCode == 'ar';
 
     return Scaffold(
       resizeToAvoidBottomInset: false,
       appBar: AppBar(
         title: Row(
           children: [
-            const Expanded(child: Text('التفاصيل')),
+            Expanded(child: Text(isArabic ? 'التفاصيل' : 'Details')),
             Text(
               _getTimeAgo(widget.post.createdAt, context),
               style: const TextStyle(fontSize: 12, color: Colors.grey),
@@ -177,6 +183,22 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
           icon: const Icon(Icons.close),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          Consumer<AuthProvider>(
+            builder: (context, auth, _) {
+              if (auth.user == null) return const SizedBox.shrink();
+              final isFavorite = auth.user!.favoriteProductIds.contains(widget.post.id);
+              return IconButton(
+                icon: Icon(
+                  isFavorite ? Icons.favorite : Icons.favorite_border,
+                  color: isFavorite ? Colors.red : null,
+                ),
+                tooltip: isArabic ? 'حفظ للمفضلة' : 'Save to Favorites',
+                onPressed: () => auth.toggleFavoriteProduct(widget.post.id),
+              );
+            },
+          ),
+        ],
       ),
       body: Stack(
         children: [
@@ -270,21 +292,144 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
                           ),
                         ),
     
-                      // Stats Row (Reactions & Comments Count)
+                      
+                      // --- Owner Header ---
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Row(
-                          children: [
-                            Icon(Icons.favorite, color: Colors.red[300], size: 18),
-                            const SizedBox(width: 4),
-                            Text('${widget.post.reactions.length}'),
-                            const SizedBox(width: 16),
-                            Icon(Icons.comment, color: Colors.grey[600], size: 18),
-                            const SizedBox(width: 4),
-                            Text('${widget.post.commentsCount}'),
-                          ],
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        child: GestureDetector(
+                          onTap: () {
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => ProfileScreen(userId: widget.post.userId)));
+                          },
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 20,
+                                backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                                backgroundImage: widget.post.userImageUrl != null
+                                    ? CachedNetworkImageProvider(CloudinaryService.getOptimizedUrl(widget.post.userImageUrl!, width: 100, quality: 'auto'))
+                                    : null,
+                                child: widget.post.userImageUrl == null
+                                    ? Text(
+                                        widget.post.userName.isNotEmpty ? widget.post.userName[0].toUpperCase() : '?',
+                                        style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
+                                      )
+                                    : null,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      widget.post.userName,
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                    ),
+                                    if (widget.post.userJobTitle != null && widget.post.userJobTitle!.isNotEmpty)
+                                      Text(
+                                        widget.post.userJobTitle!,
+                                        style: const TextStyle(color: AppColors.primary, fontSize: 13),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                              Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey[400]),
+                            ],
+                          ),
                         ),
                       ),
+                      const Divider(height: 1),
+
+                      // --- Interactive Actions Bar ---
+                      Consumer<AuthProvider>(
+                        builder: (context, auth, _) {
+                          final currentUserId = auth.user?.id ?? '';
+                          return Consumer<PostsProvider>(
+                            builder: (context, postsProvider, _) {
+                              // Get latest post data if available in provider, else use widget.post
+                              final latestPost = postsProvider.posts.firstWhere((p) => p.id == widget.post.id, orElse: () => widget.post);
+                              final isLiked = latestPost.reactions.containsKey(currentUserId);
+                              final totalReactions = latestPost.totalReactions;
+
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                child: Row(
+                                  children: [
+                                    // Like Button
+                                    InkWell(
+                                      onTap: () {
+                                        if (currentUserId.isEmpty) return;
+                                        final type = isLiked ? 'unlike' : 'like';
+                                        postsProvider.reactToPost(
+                                          latestPost.id,
+                                          currentUserId,
+                                          auth.user?.name ?? '',
+                                          latestPost.userId,
+                                          type,
+                                        );
+                                      },
+                                      borderRadius: BorderRadius.circular(20),
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              isLiked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                                              color: isLiked ? Colors.red : Colors.grey[600],
+                                              size: 22,
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              totalReactions > 0 ? '$totalReactions' : '',
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.bold,
+                                                color: isLiked ? Colors.red : Colors.grey[600],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    
+                                    // Comment Button
+                                    InkWell(
+                                      onTap: () {
+                                        showModalBottomSheet(
+                                          context: context,
+                                          isScrollControlled: true,
+                                          backgroundColor: Colors.transparent,
+                                          builder: (_) => CommentsSheet(postId: latestPost.id, postOwnerId: latestPost.userId),
+                                        );
+                                      },
+                                      borderRadius: BorderRadius.circular(20),
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                        child: Row(
+                                          children: [
+                                            Icon(Icons.chat_bubble_outline_rounded, color: Colors.grey[600], size: 22),
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              latestPost.commentsCount > 0 ? '${latestPost.commentsCount}' : '',
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.grey[600],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      ),
+
+
     
                       const SizedBox(height: 20),
                       // Comments section has been temporarily frozen/removed for display-only mode

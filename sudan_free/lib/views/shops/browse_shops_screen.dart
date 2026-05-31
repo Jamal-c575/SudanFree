@@ -12,6 +12,8 @@ import '../../services/cloudinary_service.dart';
 import '../profile/profile_screen.dart';
 import '../../services/smart_search_service.dart';
 import '../../widgets/inputs/smart_search_field.dart';
+import '../../services/smart_guide_service.dart';
+
 class BrowseShopsScreen extends StatefulWidget {
   const BrowseShopsScreen({super.key});
 
@@ -37,6 +39,13 @@ class _BrowseShopsScreenState extends State<BrowseShopsScreen>
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<UserProvider>().fetchShops();
+      SmartGuideService.showMicroTip(
+        context,
+        messageAr: 'تصفح المتاجر واضغط على أي متجر لمشاهدة منتجاته 🛍️',
+        messageEn: 'Browse shops and tap any to see products 🛍️',
+        tipId: 'shops_first_visit',
+        icon: Icons.storefront_rounded,
+      );
     });
     
     _scrollController.addListener(() {
@@ -259,6 +268,7 @@ class _BrowseShopsScreenState extends State<BrowseShopsScreen>
                                   return ShopCard(
                                     shop: shop,
                                     locale: locale,
+                                    isPromoted: userProvider.promotedUserIds.contains(shop.id),
                                     onTap: () => Navigator.push(
                                       context,
                                       MaterialPageRoute(
@@ -379,12 +389,14 @@ class ShopCard extends StatelessWidget {
   final UserModel shop;
   final String locale;
   final VoidCallback onTap;
+  final bool isPromoted;
 
   const ShopCard({
     super.key,
     required this.shop,
     required this.locale,
     required this.onTap,
+    this.isPromoted = false,
   });
 
   @override
@@ -395,9 +407,10 @@ class ShopCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(16),
+          border: isPromoted ? Border.all(color: AppColors.sudanGold.withValues(alpha: 0.8), width: 2) : null,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.12),
+              color: isPromoted ? AppColors.sudanGold.withValues(alpha: 0.2) : Colors.black.withValues(alpha: 0.12),
               blurRadius: 16,
               offset: const Offset(0, 4),
               spreadRadius: 1,
@@ -517,6 +530,11 @@ class ShopCard extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
+                        if (isPromoted)
+                          const Padding(
+                            padding: EdgeInsets.only(left: 4.0),
+                            child: Icon(Icons.star_rounded, color: AppColors.sudanGold, size: 16),
+                          ),
                       ],
                     ),
                     

@@ -19,6 +19,7 @@ class CustomTextField extends StatelessWidget {
   final TextInputAction? textInputAction;
   final FocusNode? focusNode;
   final bool autofocus;
+  final bool isRequired;
   final TextDirection? textDirection;
 
   const CustomTextField({
@@ -40,6 +41,7 @@ class CustomTextField extends StatelessWidget {
     this.textInputAction,
     this.focusNode,
     this.autofocus = false,
+    this.isRequired = false,
     this.textDirection,
   });
 
@@ -50,9 +52,18 @@ class CustomTextField extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (label != null) ...[
-          Text(
-            label!,
-            style: Theme.of(context).textTheme.titleMedium,
+          Row(
+            children: [
+              Text(
+                label!,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              if (isRequired)
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 4.0),
+                  child: Text('*', style: TextStyle(color: Colors.red, fontSize: 16)),
+                ),
+            ],
           ),
           const SizedBox(height: 8),
         ],

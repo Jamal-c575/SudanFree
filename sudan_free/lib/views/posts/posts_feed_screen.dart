@@ -1,12 +1,14 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../providers/posts_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/locale_provider.dart';
 import '../../models/user_model.dart';
+import '../../providers/user_provider.dart';
 import '../../models/post_model.dart';
 import '../../widgets/common/shimmer_placeholders.dart';
 import '../../widgets/cards/post_card.dart';
@@ -22,6 +24,12 @@ import '../../views/home/ad_details_screen.dart';
 import '../../widgets/inputs/smart_search_field.dart';
 import '../../services/smart_search_service.dart';
 import '../home/home_screen.dart';
+import '../../widgets/common/adaptive_fab_padding.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'post_details_screen.dart';
+import '../../services/smart_guide_service.dart';
+import '../../widgets/buttons/smart_draggable_fab.dart';
 
 class PostsFeedScreen extends StatefulWidget {
   const PostsFeedScreen({super.key});
@@ -35,6 +43,7 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   PostCategoryGroup? _selectedGroup;
+  PostCategoryGroup? _pinnedGroup;
   bool _showSearch = false;
   Timer? _heartbeatTimer;
   Timer? _scrollDebounceTimer;
@@ -46,18 +55,36 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
   final AdService _adService = AdService();
   final _fs = FirestoreService();    // singleton — لا تُنشئ في كل build
 
+  // ── Cached Mixed Feed (avoid recalculating on every build) ──
+  List<dynamic>? _cachedMixedFeed;
+  int _lastPostsHashCode = 0;
+  int _lastAdsHashCode = 0;
+
+  // ── Category Lookup Map (avoid O(n) firstWhere in filter) ──
+  static final Map<String, PostCategory> _categoryLookup = {
+    for (final cat in PostCategory.values) cat.name: cat,
+  };
+
   @override
   bool get wantKeepAlive => true;
 
   @override
   void initState() {
     super.initState();
+    _loadPinnedCategory();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<PostsProvider>().fetchPosts();
       context.read<AuthProvider>().fetchPartners();
       _fetchAds();
       _sendHeartbeat();
       _heartbeatTimer = Timer.periodic(const Duration(minutes: 15), (_) => _sendHeartbeat());
+      
+      SmartGuideService.showMicroTip(
+        context,
+        messageAr: 'شارك أعمالك وتفاعل مع المجتمع ✨',
+        messageEn: 'Share your work and interact with the community ✨',
+        tipId: 'community_first_visit',
+        icon: Icons.forum_rounded,
+      );
     });
     
     // Infinite Scroll Listener with debounce to prevent duplicate fetches
@@ -70,6 +97,49 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
         });
       }
     });
+  }
+
+  Future<void> _loadPinnedCategory() async {
+    final prefs = await SharedPreferences.getInstance();
+    final pinnedGroupStr = prefs.getString('pinned_category_group');
+    if (pinnedGroupStr != null) {
+      try {
+        _selectedGroup = PostCategoryGroup.values.firstWhere((e) => e.name == pinnedGroupStr);
+        _pinnedGroup = _selectedGroup;
+      } catch (_) {}
+    }
+    if (mounted) {
+      setState(() {});
+      context.read<PostsProvider>().fetchPosts(categoryGroup: _selectedGroup);
+    }
+  }
+
+  Future<void> _pinCategory(PostCategoryGroup? group, {bool isUnpin = false}) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (group == null) {
+      await prefs.remove('pinned_category_group');
+      HapticFeedback.lightImpact();
+    } else {
+      await prefs.setString('pinned_category_group', group.name);
+      HapticFeedback.mediumImpact();
+    }
+    
+    final locale = context.read<LocaleProvider>().locale.languageCode;
+    setState(() {
+      _pinnedGroup = group;
+    });
+    
+    if (mounted) {
+      final msgAr = isUnpin ? 'تم إلغاء تثبيت الفئة' : 'تم تثبيت هذه الفئة لتكون الافتراضية 📌';
+      final msgEn = isUnpin ? 'Category unpinned' : 'Category pinned as default 📌';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(locale == 'ar' ? msgAr : msgEn),
+          backgroundColor: isUnpin ? Colors.grey[800] : AppColors.primary,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   Future<void> _fetchAds() async {
@@ -96,11 +166,34 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
     }
   }
 
-  /// يبني قائمة مدمجة من المنشورات والإعلانات بشكل ذكي
-  /// ─ الإعلان الأول يظهر في الأعلى فقط عند التحميل الأول
-  /// ─ بعد ذلك تظهر بعد 4–8 منشورات بشكل عشوائي
-  List<dynamic> _buildMixedFeed(List<PostModel> posts) {
+  /// يبني قائمة مدمجة من المنشورات والإعلانات بشكل ذكي (مع تخزين مؤقت)
+  List<dynamic> _buildMixedFeed(List<PostModel> originalPosts, List<String> promotedIds) {
+    // 1. Reorder posts: 70% promoted, 30% normal
+    final List<PostModel> posts = [];
+    final promoted = originalPosts.where((p) => promotedIds.contains(p.userId)).toList();
+    final normal = originalPosts.where((p) => !promotedIds.contains(p.userId)).toList();
+    
+    int pIdx = 0;
+    int nIdx = 0;
+    while (pIdx < promoted.length || nIdx < normal.length) {
+      // Take up to 7 promoted
+      for (int i = 0; i < 7 && pIdx < promoted.length; i++) {
+        posts.add(promoted[pIdx++]);
+      }
+      // Take up to 3 normal
+      for (int i = 0; i < 3 && nIdx < normal.length; i++) {
+        posts.add(normal[nIdx++]);
+      }
+    }
+
     if (_ads.isEmpty || _searchQuery.isNotEmpty) return posts;
+
+    // Check if we can reuse cached result
+    final postsHash = posts.length.hashCode ^ (posts.isNotEmpty ? posts.first.id.hashCode : 0);
+    final adsHash = _ads.length.hashCode;
+    if (_cachedMixedFeed != null && postsHash == _lastPostsHashCode && adsHash == _lastAdsHashCode) {
+      return _cachedMixedFeed!;
+    }
 
     final List<dynamic> mixed = [];
     int adIndex = 0;
@@ -111,7 +204,7 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
     }
 
     // ─ باقي المنشورات مع توزيع الإعلانات بشكل عشوائي (4–8 منشورات)
-    int nextAdAfter = _isFirstLoad ? (4 + _random.nextInt(5)) : (2 + _random.nextInt(3)); // 4-8 أولاً، 2-4 بعد التحديث
+    int nextAdAfter = _isFirstLoad ? (4 + _random.nextInt(5)) : (2 + _random.nextInt(3));
     int postsSinceLastAd = 0;
 
     for (final post in posts) {
@@ -121,7 +214,7 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
       if (adIndex < _ads.length && postsSinceLastAd >= nextAdAfter) {
         mixed.add(_ads[adIndex++]);
         postsSinceLastAd = 0;
-        nextAdAfter = 4 + _random.nextInt(5); // 4-8 للإعلانات التالية
+        nextAdAfter = 4 + _random.nextInt(5);
       }
     }
 
@@ -129,6 +222,11 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
     if (adIndex == 0 && _ads.isNotEmpty && posts.isNotEmpty) {
        mixed.add(_ads[adIndex++]);
     }
+
+    // Cache the result
+    _cachedMixedFeed = mixed;
+    _lastPostsHashCode = postsHash;
+    _lastAdsHashCode = adsHash;
 
     return mixed;
   }
@@ -168,11 +266,13 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
       }
       if (_selectedGroup != null) {
         if (post.category == null) return false;
-        try {
-          final postCat = PostCategory.values.firstWhere((e) => e.name == post.category);
+        // O(1) lookup instead of O(n) firstWhere
+        final postCat = _categoryLookup[post.category];
+        if (postCat != null) {
           if (postCat.group != _selectedGroup) return false;
-        } catch (_) {
-          return false;
+        } else {
+          // Fallback: Check if the raw string matches the group name directly
+          if (post.category != _selectedGroup!.name) return false;
         }
       }
       return true;
@@ -195,198 +295,238 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
     final bool canPost = currentUser != null && currentUser.role != UserRole.client;
 
     return Scaffold(
-      body: SafeArea(
-        bottom: false,
-        child: NestedScrollView(
-          controller: _scrollController,
-          headerSliverBuilder: (context, innerBoxIsScrolled) => [
-            // App Bar (Match reference image exactly for RTL)
-            SliverAppBar(
-              floating: true,
-              snap: true,
-              elevation: 0,
-              centerTitle: false,
-              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-              title: Text(
-                locale == 'ar' ? 'المجتمع' : 'Community',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).brightness == Brightness.dark ? Colors.white : AppColors.primary,
-                ),
-              ),
-              actions: [
-                IconButton(
-                  icon: Icon(Icons.search, color: Theme.of(context).iconTheme.color),
-                  onPressed: () {
-                    setState(() {
-                      _showSearch = !_showSearch;
-                    });
-                  },
-                ),
-                const SizedBox(width: 8),
-              ],
-            ),
-            
-            // Search Bar (expandable)
-            if (_showSearch)
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Column(
-                    children: [
-                      // Smart Search Input with autocomplete
-                      SmartSearchField(
-                        controller: _searchController,
-                        hintText: locale == 'ar' ? 'ابحث في المنشورات...' : 'Search posts...',
-                        searchContext: SearchContext.community,
-                        accentColor: AppColors.primary,
-                        onSearch: (val) => setState(() => _searchQuery = val),
+      body: Stack(
+        children: [
+          // 1. المحتوى الرئيسي
+          Positioned.fill(
+            child: SafeArea(
+              bottom: false,
+              child: NestedScrollView(
+                controller: _scrollController,
+                headerSliverBuilder: (context, innerBoxIsScrolled) => [
+                  // App Bar (Match reference image exactly for RTL)
+                  SliverAppBar(
+                    floating: true,
+                    snap: true,
+                    elevation: 0,
+                    centerTitle: false,
+                    backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+                    title: Text(
+                      locale == 'ar' ? 'المجتمع' : 'Community',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).brightness == Brightness.dark ? Colors.white : AppColors.primary,
                       ),
-                      const SizedBox(height: 6),
-                      // Category Group Chips
-                      SizedBox(
-                        height: 36,
-                        child: ListView(
-                          scrollDirection: Axis.horizontal,
+                    ),
+                    actions: [
+                      IconButton(
+                        icon: Icon(Icons.search, color: Theme.of(context).iconTheme.color),
+                        onPressed: () {
+                          setState(() {
+                            _showSearch = !_showSearch;
+                          });
+                        },
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                  ),
+                  
+                  // Search Bar (expandable)
+                  if (_showSearch)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        child: Column(
                           children: [
-                            _buildCategoryChip(
-                              locale == 'ar' ? 'الكل' : 'All',
-                              _selectedGroup == null,
-                              () {
-                                setState(() => _selectedGroup = null);
-                                _fetchAds();
-                              },
+                            // Smart Search Input with autocomplete
+                            SmartSearchField(
+                              controller: _searchController,
+                              hintText: locale == 'ar' ? 'ابحث في المنشورات...' : 'Search posts...',
+                              searchContext: SearchContext.community,
+                              accentColor: AppColors.primary,
+                              onSearch: (val) => setState(() => _searchQuery = val),
                             ),
-                            ...PostCategoryGroup.values.map((group) => _buildCategoryChip(
-                              group.getName(locale),
-                              _selectedGroup == group,
-                              () {
-                                setState(() => _selectedGroup = group);
-                                _fetchAds();
-                              },
-                            )),
+                            const SizedBox(height: 6),
+                            // Category Group Chips
+                            SizedBox(
+                              height: 36,
+                              child: ListView(
+                                scrollDirection: Axis.horizontal,
+                                children: [
+                                  _buildCategoryChip(
+                                    locale == 'ar' ? 'الكل' : 'All',
+                                    _selectedGroup == null,
+                                    () {
+                                      setState(() => _selectedGroup = null);
+                                      _fetchAds();
+                                      context.read<PostsProvider>().fetchPosts(categoryGroup: null);
+                                    },
+                                    onLongPress: () {
+                                      if (_pinnedGroup == null) return;
+                                      _pinCategory(null, isUnpin: true);
+                                      setState(() => _selectedGroup = null);
+                                      context.read<PostsProvider>().fetchPosts(categoryGroup: null);
+                                    },
+                                    isPinned: _pinnedGroup == null,
+                                  ),
+                                  ...PostCategoryGroup.values.map((group) {
+                                    return _buildCategoryChip(
+                                      group.getName(locale),
+                                      _selectedGroup == group,
+                                      () {
+                                        setState(() => _selectedGroup = group);
+                                        _fetchAds();
+                                        context.read<PostsProvider>().fetchPosts(categoryGroup: group);
+                                      },
+                                      onLongPress: () {
+                                        if (_pinnedGroup == group) {
+                                          _pinCategory(null, isUnpin: true);
+                                          setState(() => _selectedGroup = null);
+                                          context.read<PostsProvider>().fetchPosts(categoryGroup: null);
+                                        } else {
+                                          _pinCategory(group);
+                                          setState(() => _selectedGroup = group);
+                                          context.read<PostsProvider>().fetchPosts(categoryGroup: group);
+                                        }
+                                      },
+                                      isPinned: _pinnedGroup == group,
+                                    );
+                                  }),
+                                ],
+                              ),
+                            ),
                           ],
                         ),
                       ),
-                    ],
-                  ),
-                ),
-              ),
-
-
-          ],
-          body: (postsProvider.isLoading && !postsProvider.hasPosts)
-              ? ListView.builder(
-                  itemCount: 4,
-                  padding: const EdgeInsets.all(12),
-                  itemBuilder: (_, __) => const PostCardShimmer(),
-                )
-              : posts.isEmpty && !postsProvider.isLoading
-                  ? _searchQuery.isNotEmpty || _selectedGroup != null
-                      ? _buildNoSearchResults(context, locale)
-                      : _buildEmptyState(context, locale, canPost)
-                  : postsProvider.isLoading && posts.isNotEmpty 
-                      ? const Column(children: [LinearProgressIndicator(), SizedBox(height: 10)])
-                      : RefreshIndicator(
-                      onRefresh: () async {
-                        setState(() => _isFirstLoad = false); // بعد التحديث اليدوي لا يثبت الإعلان في الأعلى
-                        _fetchAds();
-                        return postsProvider.fetchPosts(forceRefresh: true);
-                      },
-                      child: Builder(builder: (context) {
-                        final mixedFeed = _buildMixedFeed(posts);
-                        return ListView.builder(
-                          padding: const EdgeInsets.only(top: 6, bottom: 96),
-                          cacheExtent: 800,
-                          itemCount: mixedFeed.length,
-                          itemBuilder: (context, index) {
-                            final item = mixedFeed[index];
-
-                            // ─ عرض إعلان ─ محاط بـ ClipRect لمنع تداخل أنيميشن المنشورات المجاورة
-                            if (item is AdModel) {
-                              return ClipRect(
-                                child: AdWidget(
-                                  ad: item,
-                                  onTap: () {
-                                    _adService.recordClick(item.id);
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(builder: (_) => AdDetailsScreen(ad: item)),
-                                    );
-                                  },
-                                ),
-                              );
-                            }
-
-                            // ─ عرض منشور ─
-                            final post = item as PostModel;
-                            final postIndex = mixedFeed
-                                .sublist(0, index)
-                                .whereType<PostModel>()
-                                .length;
-
-                            return Column(
-                              children: [
-                                StaggeredAnimatedWidget(
-                                  index: postIndex,
-                                  listId: 'posts_feed',
-                                  child: PostCard(
-                                    post: post,
-                                    currentUserId: currentUser?.id ?? '',
-                                    locale: locale,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                if (postIndex == posts.length - 1 && postsProvider.isLoadingMore)
-                                  const Padding(
-                                    padding: EdgeInsets.symmetric(vertical: 20),
-                                    child: Center(child: CircularProgressIndicator()),
-                                  ),
-                              ],
-                            );
-                          },
-                        );
-                      }),
                     ),
-        ),
-      ),
-      floatingActionButton: canPost
-          ? Selector<BottomBarVisibilityProvider, bool>(
-              selector: (_, p) => p.isVisible,
-              builder: (_, isVisible, __) => AnimatedPadding(
-                duration: const Duration(milliseconds: 200),
-                curve: Curves.easeOut,
-                padding: EdgeInsets.only(bottom: isVisible ? 68 : 0),
-                child: FloatingActionButton(
-                  heroTag: 'create_post_fab',
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const CreatePostScreen(
-                          showInCommunity: true,
-                          showInProfile: false,
-                        ),
-                      ),
-                    );
-                  },
-                  backgroundColor: AppColors.primary,
-                  mini: true,
-                  child: const Icon(Icons.add_photo_alternate_outlined, color: Colors.white, size: 22),
-                ),
+
+                  // Trending Posts Section
+                  if (postsProvider.trendingPosts.isNotEmpty && _selectedGroup == null && _searchQuery.isEmpty)
+                    SliverToBoxAdapter(
+                      child: _buildTrendingSection(context, postsProvider.trendingPosts, locale),
+                    ),
+
+
+                ],
+                body: (postsProvider.isLoading && !postsProvider.hasPosts)
+                    ? ListView.builder(
+                        itemCount: 4,
+                        padding: const EdgeInsets.all(12),
+                        itemBuilder: (_, __) => const PostCardShimmer(),
+                      )
+                    : posts.isEmpty && !postsProvider.isLoading
+                        ? _searchQuery.isNotEmpty || _selectedGroup != null
+                            ? _buildNoSearchResults(context, locale)
+                            : _buildEmptyState(context, locale, canPost)
+                        : postsProvider.isLoading && posts.isNotEmpty 
+                            ? const Column(children: [LinearProgressIndicator(), SizedBox(height: 10)])
+                            : RefreshIndicator(
+                            onRefresh: () async {
+                              setState(() => _isFirstLoad = false); // بعد التحديث اليدوي لا يثبت الإعلان في الأعلى
+                              _fetchAds();
+                              return postsProvider.fetchPosts(forceRefresh: true);
+                            },
+                            child: Builder(builder: (context) {
+                              final promotedIds = context.read<UserProvider>().promotedUserIds;
+                              final mixedFeed = _buildMixedFeed(posts, promotedIds);
+                              // 3. منع تداخل المحتوى مع شريط التنقل (padding سفلي للمحتوى الرئيسي)
+                              final bottomInset = MediaQuery.of(context).padding.bottom;
+                              final navBarMargin = bottomInset > 30 ? bottomInset + 8 : bottomInset + 14;
+                              final navBarHeight = 62.0;
+                              final navBarTop = navBarMargin + navBarHeight;
+                              
+                              return ListView.builder(
+                                padding: EdgeInsets.only(top: 6, bottom: navBarTop + 80),
+                                cacheExtent: 800,
+                                itemCount: mixedFeed.length,
+                                itemBuilder: (context, index) {
+                                  final item = mixedFeed[index];
+
+                                  // ─ عرض إعلان ─ محاط بـ ClipRect لمنع تداخل أنيميشن المنشورات المجاورة
+                                  if (item is AdModel) {
+                                    return ClipRect(
+                                      child: AdWidget(
+                                        ad: item,
+                                        onTap: () {
+                                          _adService.recordClick(item.id);
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(builder: (_) => AdDetailsScreen(ad: item)),
+                                          );
+                                        },
+                                      ),
+                                    );
+                                  }
+
+                                  // ─ عرض منشور ─
+                                  final post = item as PostModel;
+                                  final postIndex = mixedFeed
+                                      .sublist(0, index)
+                                      .whereType<PostModel>()
+                                      .length;
+
+                                  return Column(
+                                    children: [
+                                      StaggeredAnimatedWidget(
+                                        index: postIndex,
+                                        listId: 'posts_feed',
+                                        child: PostCard(
+                                          post: post,
+                                          currentUserId: currentUser?.id ?? '',
+                                          locale: locale,
+                                          isPromoted: promotedIds.contains(post.userId),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      if (postIndex == posts.length - 1 && postsProvider.isLoadingMore)
+                                        const Padding(
+                                          padding: EdgeInsets.symmetric(vertical: 20),
+                                          child: Center(child: CircularProgressIndicator()),
+                                        ),
+                                    ],
+                                  );
+                                },
+                              );
+                            }),
+                          ),
               ),
-            )
-          : null,
+            ),
+          ),
+          
+          // 2. زر النشر الذكي والمتحرك
+          if (canPost)
+            SmartDraggableFab(
+              heroTag: 'create_post_fab',
+              icon: Icons.add_photo_alternate_outlined,
+              locale: locale,
+              initialBottom: MediaQuery.of(context).padding.bottom + 82.0, // navBar + safe area
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const CreatePostScreen(
+                      showInCommunity: true,
+                      showInProfile: false,
+                    ),
+                  ),
+                );
+              },
+            ),
+        ],
+      ),
     );
   }
 
-  Widget _buildCategoryChip(String label, bool isSelected, VoidCallback onTap) {
+  Widget _buildCategoryChip(String label, bool isSelected, VoidCallback onTap, {VoidCallback? onLongPress, bool isPinned = false}) {
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: GestureDetector(
         onTap: onTap,
-        child: Container(
+        onLongPress: onLongPress,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOutBack,
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
           decoration: BoxDecoration(
             color: isSelected ? AppColors.primary : Colors.transparent,
@@ -394,16 +534,46 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
             border: Border.all(
               color: isSelected ? AppColors.primary : AppColors.border,
             ),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    )
+                  ]
+                : [],
           ),
-          child: Text(
-            label,
-            style: TextStyle(
-              color: isSelected 
-                  ? Colors.white 
-                  : (Theme.of(context).brightness == Brightness.dark ? Colors.white70 : AppColors.textSecondary),
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-              fontSize: 12,
-            ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AnimatedSize(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOutBack,
+                child: isPinned
+                    ? Padding(
+                        padding: const EdgeInsets.only(left: 4),
+                        child: Icon(
+                          Icons.push_pin, 
+                          size: 14, 
+                          color: isSelected ? Colors.white : AppColors.primary,
+                        ),
+                      )
+                    : const SizedBox(width: 0),
+              ),
+              AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+                style: TextStyle(
+                  color: isSelected 
+                      ? Colors.white 
+                      : (Theme.of(context).brightness == Brightness.dark ? Colors.white70 : AppColors.textSecondary),
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  fontSize: 12,
+                ),
+                child: Text(label),
+              ),
+            ],
           ),
         ),
       ),
@@ -446,6 +616,103 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
           MaterialPageRoute(builder: (_) => const CreatePostScreen()),
         );
       } : null,
+    );
+  }
+
+  Widget _buildTrendingSection(BuildContext context, List<PostModel> trendingPosts, String locale) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 8),
+        SizedBox(
+          height: 140,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            itemCount: trendingPosts.length,
+            itemBuilder: (context, index) {
+              final post = trendingPosts[index];
+              return Container(
+                width: 240,
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  image: post.allImageUrls.isNotEmpty
+                      ? DecorationImage(
+                          image: CachedNetworkImageProvider(post.allImageUrls.first),
+                          fit: BoxFit.cover,
+                        )
+                      : null,
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                  child: InkWell(
+                    onTap: () {
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => PostDetailsScreen(post: post)));
+                    },
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.black.withValues(alpha: 0.05),
+                            Colors.black.withValues(alpha: 0.7),
+                            Colors.black.withValues(alpha: 0.9),
+                          ],
+                        ),
+                      ),
+                      padding: const EdgeInsets.all(8.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: AppColors.primary, width: 1.5),
+                            ),
+                            child: CircleAvatar(
+                              radius: 14,
+                              backgroundColor: Colors.grey[300],
+                              backgroundImage: post.userImageUrl != null ? CachedNetworkImageProvider(post.userImageUrl!) : null,
+                              child: post.userImageUrl == null ? const Icon(Icons.person, size: 14, color: Colors.grey) : null,
+                            ),
+                          ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (post.caption != null && post.caption!.isNotEmpty)
+                                Text(
+                                  post.caption!,
+                                  style: const TextStyle(color: Colors.white, fontSize: 10, height: 1.2),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              const SizedBox(height: 4),
+                              Text(
+                                post.userName,
+                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        const Divider(),
+      ],
     );
   }
 }

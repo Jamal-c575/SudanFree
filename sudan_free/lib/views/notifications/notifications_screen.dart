@@ -20,9 +20,29 @@ import '../safety/safety_tips_screen.dart';
 import '../requests/request_details_screen.dart';
 import '../chat/chats_list_screen.dart';
 import '../../providers/chat_provider.dart';
+import '../../services/smart_guide_service.dart';
 
-class NotificationsScreen extends StatelessWidget {
+class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
+
+  @override
+  State<NotificationsScreen> createState() => _NotificationsScreenState();
+}
+
+class _NotificationsScreenState extends State<NotificationsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      SmartGuideService.showMicroTip(
+        context,
+        messageAr: 'تابع تحديثات طلباتك ورسائلك من هنا 🔔',
+        messageEn: 'Track your requests and messages updates here 🔔',
+        tipId: 'notifications_tip',
+        icon: Icons.notifications_active_rounded,
+      );
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

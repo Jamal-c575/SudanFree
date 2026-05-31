@@ -41,6 +41,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   ShopCategory? _selectedShopCategory;
   String? _selectedState;
   String? _selectedLocality;
+  double? _latitude;
+  double? _longitude;
   final List<JobCategory> _selectedCategories = [];
   final List<String> _customJobTitles = [];
   // Client interests
@@ -88,6 +90,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       _selectedShopCategory = user.shopCategory;
       _selectedState = user.state;
       _selectedLocality = user.locality;
+      _latitude = user.latitude;
+      _longitude = user.longitude;
       
       for (var skill in user.skills) {
         try {
@@ -109,6 +113,12 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       if (_customJobTitles.isNotEmpty && !_selectedCategories.contains(JobCategory.other)) {
         _selectedCategories.add(JobCategory.other);
       }
+      
+      // Load custom shop category if applicable
+      if (user.role == UserRole.shop && user.shopCategory == ShopCategory.other && user.jobTitle != null && user.jobTitle!.isNotEmpty) {
+        _customJobTitles.add(user.jobTitle!);
+      }
+
       // Load client interests
       if (user.role == UserRole.client) {
         for (final s in user.shopInterests) {
@@ -194,6 +204,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         final place = placemarks.first;
         if (mounted) {
            setState(() {
+              _latitude = position.latitude;
+              _longitude = position.longitude;
               _selectedState = _matchState(place.administrativeArea ?? '');
               if (_selectedState != null) {
                 _selectedLocality = _matchLocality(place.locality ?? place.subAdministrativeArea ?? '', _selectedState!);
@@ -332,29 +344,44 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   }
 
   void _showAddCustomJobTitleDialog(String locale) {
-    final totalSelected = _selectedCategories.where((c) => c != JobCategory.other).length + _customJobTitles.length;
-    if (totalSelected >= 2) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(locale == 'ar' ? 'عذراً، يمكنك اختيار مسميين وظيفيين كحد أقصى' : 'Sorry, you can select up to 2 categories'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
+    if (_selectedRole != UserRole.shop) {
+      final totalSelected = _selectedCategories.where((c) => c != JobCategory.other).length + _customJobTitles.length;
+      if (totalSelected >= 2) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(locale == 'ar' ? 'عذراً، يمكنك اختيار مسميين وظيفيين كحد أقصى' : 'Sorry, you can select up to 2 categories'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+    } else {
+      if (_customJobTitles.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(locale == 'ar' ? 'عذراً، يمكنك إضافة نوع متجر مخصص واحد فقط' : 'Sorry, you can only add one custom shop type'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
     }
 
     _customSkillController.clear();
     showDialog(
       context: context,
       builder: (ctx) {
+        final isShop = _selectedRole == UserRole.shop;
         return AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: Row(
             children: [
-              const Icon(Icons.work_outline, color: AppColors.primary),
+              Icon(isShop ? Icons.store_outlined : Icons.work_outline, color: AppColors.primary),
               const SizedBox(width: 8),
               Text(
-                locale == 'ar' ? 'مسمى وظيفي مخصص' : 'Custom Job Title',
+                isShop 
+                    ? (locale == 'ar' ? 'نوع متجر مخصص' : 'Custom Shop Type')
+                    : (locale == 'ar' ? 'مسمى وظيفي مخصص' : 'Custom Job Title'),
                 style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
             ],
@@ -364,7 +391,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                locale == 'ar' ? 'اكتب اسم مهنتك إذا لم تجدها في القائمة' : 'Type your profession if not listed',
+                isShop
+                    ? (locale == 'ar' ? 'اكتب نوع متجرك إذا لم تجده في القائمة' : 'Type your shop category if not listed')
+                    : (locale == 'ar' ? 'اكتب اسم مهنتك إذا لم تجدها في القائمة' : 'Type your profession if not listed'),
                 style: TextStyle(fontSize: 13, color: Colors.grey[600]),
               ),
               const SizedBox(height: 12),
@@ -373,7 +402,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                 autofocus: true,
                 textInputAction: TextInputAction.done,
                 decoration: InputDecoration(
-                  hintText: locale == 'ar' ? 'مثال: نجار، حداد، ميكانيكي...' : 'e.g. Carpenter, Blacksmith...',
+                  hintText: isShop 
+                      ? (locale == 'ar' ? 'مثال: محل هدايا، عطور...' : 'e.g. Gift Shop, Perfumes...')
+                      : (locale == 'ar' ? 'مثال: نجار، حداد، ميكانيكي...' : 'e.g. Carpenter, Blacksmith...'),
                   hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
                   prefixIcon: const Icon(Icons.edit, color: AppColors.primary, size: 20),
                   filled: true,
@@ -418,7 +449,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     if (title.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(locale == 'ar' ? 'اكتب اسم المهنة أولاً' : 'Enter the job title first'),
+          content: Text(locale == 'ar' ? 'الرجاء الكتابة أولاً' : 'Please type first'),
           backgroundColor: Colors.orange,
         ),
       );
@@ -436,8 +467,12 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     setState(() {
       _customJobTitles.add(title);
       _customSkillController.clear();
-      if (!_selectedCategories.contains(JobCategory.other)) {
-        _selectedCategories.add(JobCategory.other);
+      if (_selectedRole == UserRole.shop) {
+        _selectedShopCategory = ShopCategory.other;
+      } else {
+        if (!_selectedCategories.contains(JobCategory.other)) {
+          _selectedCategories.add(JobCategory.other);
+        }
       }
     });
   }
@@ -518,10 +553,14 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         'whatsappNumber': _phoneController.text.trim().isNotEmpty ? _phoneController.text.trim() : null,
         'state': _selectedState,
         'locality': _selectedLocality,
+        if (_latitude != null) 'latitude': _latitude,
+        if (_longitude != null) 'longitude': _longitude,
         'updatedAt': DateTime.now(),
         'searchKeywords': UserModel.generateSearchKeywords(
           name: _nameController.text.trim(),
-          jobTitle: widget.existingUser?.jobTitle,
+          jobTitle: (_selectedRole == UserRole.shop && _selectedShopCategory == ShopCategory.other && _customJobTitles.isNotEmpty)
+              ? _customJobTitles.first
+              : widget.existingUser?.jobTitle,
           skills: _selectedCategories
               .where((c) => c != JobCategory.other)
               .map((c) => c.name)
@@ -598,12 +637,17 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
               ? double.tryParse(_hourlyRateController.text)
               : null,
           shopCategory: _selectedShopCategory,
+          jobTitle: (_selectedRole == UserRole.shop && _selectedShopCategory == ShopCategory.other && _customJobTitles.isNotEmpty)
+              ? _customJobTitles.first
+              : null,
           openingHours: _openingHoursController.text.trim().isNotEmpty 
               ? _openingHoursController.text.trim() 
               : null,
           closingHours: _closingHoursController.text.trim().isNotEmpty 
               ? _closingHoursController.text.trim() 
               : null,
+          latitude: _latitude,
+          longitude: _longitude,
           // ── اهتمامات العميل ──
           shopInterests: _selectedRole == UserRole.client
               ? _selectedShopInterests.map((e) => e.name).toList()
@@ -694,7 +738,14 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                  if (_isLoadingRegion || _isVerifyingGPS) return;
                  if (_selectedRole == null) return;
                }
-               if (_currentStep == 1 && _nameController.text.trim().isEmpty) return;
+               if (_currentStep == 1) {
+                 final nameText = _nameController.text.trim();
+                 final nameRegExp = RegExp(r'[a-zA-Z\u0600-\u06FF]');
+                 final phoneText = _phoneController.text.trim();
+                 final phoneRegExp = RegExp(r'^\+?[0-9]{9,15}$');
+                 if (nameText.length < 2 || !nameRegExp.hasMatch(nameText)) return;
+                 if (phoneText.isEmpty || !phoneRegExp.hasMatch(phoneText)) return;
+               }
             }
             setState(() => _currentStep = step);
           },
@@ -719,21 +770,25 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
               return;
             }
           }
-          if (_currentStep == 1 && _nameController.text.trim().isEmpty) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(locale == 'ar' ? 'الاسم مطلوب' : 'Name is required'),
-                backgroundColor: AppColors.warning,
-              ),
-            );
-            return;
-          }
-          // التحقق من رقم الهاتف لمقدمي الخدمات والمتاجر
-          if (_currentStep == 1 && (_selectedRole == UserRole.freelancer || _selectedRole == UserRole.techService || _selectedRole == UserRole.privateService || _selectedRole == UserRole.shop)) {
-            if (_phoneController.text.trim().isEmpty) {
+          if (_currentStep == 1) {
+            final nameText = _nameController.text.trim();
+            final nameRegExp = RegExp(r'[a-zA-Z\u0600-\u06FF]'); // يحتوي على أحرف حقيقية (عربية أو إنجليزية) ولا يقبل مسافات فقط أو رموز
+            if (nameText.length < 2 || !nameRegExp.hasMatch(nameText)) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text(locale == 'ar' ? 'رقم الهاتف مطلوب لمقدمي الخدمات والمتاجر' : 'Phone number is required for service providers and shops'),
+                  content: Text(locale == 'ar' ? 'يرجى كتابة اسم حقيقي (أحرف فقط)' : 'Please enter a valid real name (letters only)'),
+                  backgroundColor: AppColors.warning,
+                ),
+              );
+              return;
+            }
+
+            final phoneText = _phoneController.text.trim();
+            final phoneRegExp = RegExp(r'^\+?[0-9]{9,15}$'); // أرقام فقط وقد يبدأ بـ + وطوله منطقي
+            if (phoneText.isEmpty || !phoneRegExp.hasMatch(phoneText)) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(locale == 'ar' ? 'رقم الهاتف إجباري ويجب أن يكون صحيحاً' : 'A valid phone number is required'),
                   backgroundColor: AppColors.warning,
                 ),
               );
@@ -1014,13 +1069,15 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                     ? (locale == 'ar' ? 'أدخل اسم المتجر' : 'Enter shop name')
                     : (locale == 'ar' ? 'أدخل اسمك الكامل' : 'Enter your full name'),
                 controller: _nameController,
+                isRequired: true,
                 prefixIcon: _selectedRole == UserRole.shop ? Icons.store : Icons.person_outline,
               ),
               const SizedBox(height: 16),
               CustomTextField(
-                label: locale == 'ar' ? 'رقم واتساب' : 'WhatsApp Number',
+                label: locale == 'ar' ? 'رقم واتساب / الهاتف' : 'WhatsApp / Phone',
                 hint: '+249123456789',
                 controller: _phoneController,
+                isRequired: true,
                 keyboardType: TextInputType.phone,
                 prefixIcon: Icons.phone,
               ),
@@ -1361,6 +1418,59 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                     checkmarkColor: AppColors.secondary,
                   );
                 }).toList(),
+              ),
+              
+              // ── Custom shop types display ──
+              if (_customJobTitles.isNotEmpty && _selectedRole == UserRole.shop) ...[
+                const SizedBox(height: 16),
+                Text(
+                  locale == 'ar' ? 'النوع المخصص:' : 'Custom type:',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.primary),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _customJobTitles.map((title) {
+                    return Chip(
+                      label: Text(title),
+                      deleteIcon: const Icon(Icons.close, size: 16),
+                      onDeleted: () {
+                        setState(() {
+                          _customJobTitles.remove(title);
+                          if (_customJobTitles.isEmpty) {
+                            _selectedShopCategory = null;
+                          }
+                        });
+                      },
+                      backgroundColor: AppColors.primary.withValues(alpha: 0.15),
+                      labelStyle: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 13),
+                      deleteIconColor: AppColors.primary,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      visualDensity: VisualDensity.compact,
+                    );
+                  }).toList(),
+                ),
+              ],
+
+              // ── Add custom type button ──
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => _showAddCustomJobTitleDialog(locale),
+                  icon: const Icon(Icons.add_circle_outline, size: 20),
+                  label: Text(
+                    locale == 'ar' ? 'أضف نوع متجر مخصص' : 'Add custom shop type',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    side: BorderSide(color: AppColors.primary.withValues(alpha: 0.4), width: 1.5),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                ),
               ),
             ],
           ),

@@ -22,6 +22,9 @@ import '../settings/settings_screen.dart';
 import '../../core/utils/job_titles_utils.dart';
 import 'ad_details_screen.dart';
 import 'filtered_providers_screen.dart';
+import '../map/map_explorer_screen.dart';
+import '../../widgets/guide/guide_controller.dart';
+import '../../services/smart_guide_service.dart';
 
 class DashboardScreen extends StatefulWidget {
   /// Callback to switch to a specific tab in the parent HomeScreen
@@ -47,6 +50,11 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
   Timer? _bannerAutoScrollTimer;
   Timer? _stripAutoScrollTimer;
 
+  // Smart Guide Keys
+  final GlobalKey _searchBarKey = GlobalKey();
+  final GlobalKey _mapButtonKey = GlobalKey();
+  GuideController? _guideController;
+
   @override
   void initState() {
     super.initState();
@@ -60,8 +68,33 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
       final currentUser = authProvider.user;
       if (currentUser != null) {
         NotificationPollingService().setUserId(currentUser.id);
+        authProvider.fetchPartners();
       }
+
+      // Smart Guide — إرشاد أول دخول
+      _startFirstTimeGuide();
     });
+  }
+
+  void _startFirstTimeGuide() {
+    final isArabic = context.read<LocaleProvider>().isArabic;
+    _guideController = GuideController(
+      context: context,
+      isArabic: isArabic,
+      steps: [
+        GuideStep(
+          targetKey: _searchBarKey,
+          messageAr: 'ابحث هنا عن أي خدمة أو متجر تحتاجه 🔍',
+          messageEn: 'Search for any service or shop you need 🔍',
+        ),
+        GuideStep(
+          targetKey: _mapButtonKey,
+          messageAr: 'شاهد مقدمي الخدمات القريبين منك على الخريطة 📍',
+          messageEn: 'See nearby service providers on the map 📍',
+        ),
+      ],
+    );
+    _guideController!.start();
   }
 
   @override
@@ -69,6 +102,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     _bannerAutoScrollTimer?.cancel();
     _stripAutoScrollTimer?.cancel();
     _bannerPageController?.dispose();
+    _guideController?.dispose();
     super.dispose();
   }
 
@@ -191,7 +225,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
             _fetchAds();
             userProvider.fetchFreelancers(forceRefresh: true);
             userProvider.fetchShops(forceRefresh: true);
-            authProvider.fetchPartners();
+            authProvider.fetchPartners(forceRefresh: true);
           },
           child: CustomScrollView(
             slivers: [
@@ -258,6 +292,28 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                     },
                   ),
                   IconButton(
+                    key: _mapButtonKey,
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const MapExplorerScreen()),
+                      );
+                    },
+                    icon: Stack(
+                      alignment: Alignment.center,
+                      clipBehavior: Clip.none,
+                      children: [
+                        Icon(Icons.map_outlined, color: isDark ? Colors.white70 : AppColors.textSecondary),
+                        Positioned(
+                          top: -2,
+                          right: -2,
+                          child: Icon(Icons.location_on, size: 14, color: AppColors.primary),
+                        ),
+                      ],
+                    ),
+                    tooltip: locale == 'ar' ? 'مستكشف الخريطة' : 'Map Explorer',
+                  ),
+                  IconButton(
                     onPressed: () {
                       showModalBottomSheet(
                         context: context,
@@ -281,6 +337,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                     delegate: SmartSearchDelegate(),
                   ),
                   child: Container(
+                    key: _searchBarKey,
                     margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     decoration: BoxDecoration(
@@ -797,7 +854,11 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                 color: isDark ? AppColors.surfaceDark : Colors.white,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: isDark ? AppColors.borderDark : const Color(0xFFE8ECF0),
+                  // Gold border for promoted users, otherwise standard border
+                  color: _promotedUsers.any((p) => p.userId == user.id)
+                      ? AppColors.primary
+                      : (isDark ? AppColors.borderDark : const Color(0xFFE8ECF0)),
+                  width: _promotedUsers.any((p) => p.userId == user.id) ? 2 : 1,
                 ),
                 boxShadow: [
                   BoxShadow(
@@ -807,123 +868,161 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                   ),
                 ],
               ),
-              child: Column(
+              child: Stack(
                 children: [
-                  // Profile image
-                  ClipRRect(
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                    child: Container(
-                      height: 90,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        gradient: AppColors.primaryGradient,
+                  Column(
+                    children: [
+                      // Profile image
+                      ClipRRect(
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                        child: Container(
+                          height: 90,
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            gradient: AppColors.primaryGradient,
+                          ),
+                          child: user.profileImageUrl != null
+                              ? CachedNetworkImage(
+                                  imageUrl: CloudinaryService.getOptimizedUrl(
+                                    user.profileImageUrl!, width: 300, quality: 'auto'),
+                                  fit: BoxFit.cover,
+                                  memCacheWidth: 300,
+                                  placeholder: (_, __) => Center(
+                                    child: Icon(Icons.person, size: 36, color: Colors.white54),
+                                  ),
+                                  errorWidget: (_, __, ___) => Center(
+                                    child: Icon(Icons.person, size: 36, color: Colors.white54),
+                                  ),
+                                )
+                              : Center(
+                                  child: Icon(Icons.person, size: 36, color: Colors.white54),
+                                ),
+                        ),
                       ),
-                      child: user.profileImageUrl != null
-                          ? CachedNetworkImage(
-                              imageUrl: CloudinaryService.getOptimizedUrl(
-                                user.profileImageUrl!, width: 300, quality: 'auto'),
-                              fit: BoxFit.cover,
-                              memCacheWidth: 300,
-                              placeholder: (_, __) => Center(
-                                child: Icon(Icons.person, size: 36, color: Colors.white54),
-                              ),
-                              errorWidget: (_, __, ___) => Center(
-                                child: Icon(Icons.person, size: 36, color: Colors.white54),
-                              ),
-                            )
-                          : Center(
-                              child: Icon(Icons.person, size: 36, color: Colors.white54),
-                            ),
-                    ),
-                  ),
-                  // Info
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.all(8),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            user.name,
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                              color: Theme.of(context).textTheme.bodyLarge?.color,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            user.jobTitle?.isNotEmpty == true 
-                                ? JobTitlesUtils.getLocalizedTitle(user.jobTitle!, locale) 
-                                : (user.skills.isNotEmpty 
-                                    ? user.skills.map((s) => JobTitlesUtils.getLocalizedTitle(s, locale)).join('، ') 
-                                    : user.getRoleDisplayName(locale)),
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.w600,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 2),
-                          Row(
+                      // Info
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.all(8),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Icon(Icons.location_on, size: 10, color: AppColors.softGrey),
-                              const SizedBox(width: 2),
-                              Expanded(
-                                child: Text(
-                                  user.state ?? (locale == 'ar' ? 'غير محدد' : 'Unknown'),
-                                  style: TextStyle(
-                                    fontSize: 9,
-                                    color: AppColors.softGrey,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const Spacer(),
-                          Row(
-                            children: [
-                              Icon(Icons.star_rounded, size: 14, color: AppColors.sudanGold),
-                              const SizedBox(width: 2),
                               Text(
-                                user.rating > 0
-                                    ? user.rating.toStringAsFixed(1)
-                                    : (locale == 'ar' ? 'جديد' : 'New'),
+                                user.name,
                                 style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: Theme.of(context).textTheme.bodySmall?.color,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: Theme.of(context).textTheme.bodyLarge?.color,
                                 ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              const Spacer(),
-                              if (user.isOnline)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.success.withValues(alpha: 0.12),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    locale == 'ar' ? 'متاح' : 'Online',
-                                    style: TextStyle(
-                                      fontSize: 9,
-                                      color: AppColors.success,
-                                      fontWeight: FontWeight.w700,
+                              const SizedBox(height: 2),
+                              Text(
+                                user.jobTitle?.isNotEmpty == true 
+                                    ? JobTitlesUtils.getLocalizedTitle(user.jobTitle!, locale) 
+                                    : (user.skills.isNotEmpty 
+                                        ? user.skills.map((s) => JobTitlesUtils.getLocalizedTitle(s, locale)).join('، ') 
+                                        : user.getRoleDisplayName(locale)),
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 2),
+                              Row(
+                                children: [
+                                  Icon(Icons.location_on, size: 10, color: AppColors.softGrey),
+                                  const SizedBox(width: 2),
+                                  Expanded(
+                                    child: Text(
+                                      user.state ?? (locale == 'ar' ? 'غير محدد' : 'Unknown'),
+                                      style: TextStyle(
+                                        fontSize: 9,
+                                        color: AppColors.softGrey,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
-                                ),
+                                ],
+                              ),
+                              const Spacer(),
+                              Row(
+                                children: [
+                                  Icon(Icons.star_rounded, size: 14, color: AppColors.sudanGold),
+                                  const SizedBox(width: 2),
+                                  Text(
+                                    user.rating > 0
+                                        ? user.rating.toStringAsFixed(1)
+                                        : (locale == 'ar' ? 'جديد' : 'New'),
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: Theme.of(context).textTheme.bodySmall?.color,
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  if (user.isOnline)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.success.withValues(alpha: 0.12),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        locale == 'ar' ? 'متاح' : 'Online',
+                                        style: TextStyle(
+                                          fontSize: 9,
+                                          color: AppColors.success,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
                             ],
                           ),
-                        ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  // Promoted badge
+                  if (_promotedUsers.any((p) => p.userId == user.id))
+                    Positioned(
+                      top: 4,
+                      right: 4,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          borderRadius: BorderRadius.circular(8),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.primary.withValues(alpha: 0.3),
+                              blurRadius: 4,
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.star, size: 12, color: Colors.white),
+                            const SizedBox(width: 2),
+                            Text(
+                              locale == 'ar' ? 'متميز' : 'Featured',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -1094,20 +1193,19 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
   Widget _buildStripAd(BuildContext context, AdModel ad, bool isDark) {
     return GestureDetector(
       onTap: () async {
-        _adService.recordClick(ad.id);
+        // Only navigate to ad details - click will be recorded in ad_details_screen
+        // This prevents double-counting ad clicks
         if (ad.actionUrl != null && ad.actionUrl!.isNotEmpty) {
           // Handle different action types
           if (ad.actionUrl!.startsWith('http')) {
-            // External URL
-            // Note: url_launcher is not imported, but we can add it back if needed
-            // For now, navigate to ad details
+            // External URL - navigate to ad details for user confirmation
             Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => AdDetailsScreen(ad: ad)),
             );
           } else {
             // Internal navigation (could be a route like '/shops' or '/services')
-            // For now, navigate to ad details
+            // Navigate to ad details for context
             Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => AdDetailsScreen(ad: ad)),

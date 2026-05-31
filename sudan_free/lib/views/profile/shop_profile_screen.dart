@@ -11,8 +11,10 @@ import '../../models/contact_log_model.dart';
 import '../../providers/user_provider.dart';
 import '../../models/post_model.dart';
 import '../../services/firestore_service.dart';
+import '../../widgets/common/adaptive_fab_padding.dart';
 
 import 'create_product_screen.dart';
+import 'shop_dashboard_screen.dart';
 // To show comments/details
 import '../auth/profile_setup_screen.dart'; // For editing
 import '../../views/common/report_dialog.dart';
@@ -33,6 +35,8 @@ import '../../widgets/reviews/review_widgets.dart';
 import '../../core/utils/app_error_handler.dart';
 import 'package:share_plus/share_plus.dart';
 import 'dart:io';
+import 'favorites_screen.dart';
+import '../../services/smart_guide_service.dart';
 
 class ShopProfileScreen extends StatefulWidget {
   final UserModel user;
@@ -55,11 +59,19 @@ class ShopProfileScreen extends StatefulWidget {
 class _ShopProfileScreenState extends State<ShopProfileScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  
+  late Stream<UserModel?> _userStream;
+  late Stream<List<PostModel>> _postsStream;
+  late Stream<List<ReviewModel>> _reviewsStream;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this, initialIndex: widget.initialTabIndex);
+    
+    _userStream = FirestoreService().getUserStream(widget.user.id);
+    _postsStream = FirestoreService().getUserPosts(widget.user.id);
+    _reviewsStream = FirestoreService().getFreelancerReviews(widget.user.id);
 
     if (widget.showReviewDialog && !widget.isMe) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -76,6 +88,22 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
             .incrementProfileViews(widget.user.id, currentUserId)
             .catchError((_) {}); // Non-critical: silently ignore permission errors
       }
+      
+      SmartGuideService.showMicroTip(
+        context,
+        messageAr: 'استكشف منتجات المتجر واقرأ آراء العملاء السابقين 🛍️',
+        messageEn: 'Explore shop products and read customer reviews 🛍️',
+        tipId: 'shop_profile_visit',
+        icon: Icons.storefront_rounded,
+      );
+    } else {
+      SmartGuideService.showMicroTip(
+        context,
+        messageAr: 'أضف منتجات جديدة وتابع إحصائيات متجرك من هنا 📊',
+        messageEn: 'Add new products and track your shop stats here 📊',
+        tipId: 'shop_owner_visit',
+        icon: Icons.dashboard_customize_rounded,
+      );
     }
   }
 
@@ -91,7 +119,7 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: StreamBuilder<UserModel?>(
-          stream: FirestoreService().getUserStream(widget.user.id),
+          stream: _userStream,
           initialData: widget.user,
           builder: (context, snapshot) {
             final user = snapshot.data ?? widget.user;
@@ -257,6 +285,15 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
                       // OWNER ACTIONS: Edit & Settings
                       if (widget.isMe) ...[
                         IconButton(
+                          icon: const Icon(Icons.favorite, color: Colors.white),
+                          tooltip: l10n.localeName == 'ar' ? 'مفضلاتي' : 'Favorites',
+                          onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) =>
+                                      const FavoritesScreen())),
+                        ),
+                        IconButton(
                           icon: const Icon(Icons.edit, color: Colors.white),
                           tooltip: l10n.editStore,
                           onPressed: () => Navigator.push(
@@ -293,158 +330,26 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
                              Column(
                                crossAxisAlignment: CrossAxisAlignment.start,
                                children: [
-                                 // ─── Stats Row ───────────────────────────────
-                                 Row(
-                                   children: [
-                                     // Followers Card
-                                     Expanded(
-                                       child: Container(
-                                         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                                         decoration: BoxDecoration(
-                                           color: AppColors.primary.withValues(alpha: 0.07),
-                                           borderRadius: BorderRadius.circular(14),
-                                           border: Border.all(
-                                             color: AppColors.primary.withValues(alpha: 0.15),
-                                             width: 1,
-                                           ),
-                                         ),
-                                         child: Column(
-                                           children: [
-                                             Row(
-                                               mainAxisAlignment: MainAxisAlignment.center,
-                                               children: [
-                                                 Icon(Icons.people_alt_rounded,
-                                                     size: 16,
-                                                     color: AppColors.primary.withValues(alpha: 0.8)),
-                                                 const SizedBox(width: 5),
-                                                 Text(
-                                                   '${widget.user.followers.length}',
-                                                   style: const TextStyle(
-                                                     fontWeight: FontWeight.bold,
-                                                     fontSize: 18,
-                                                     color: AppColors.primary,
-                                                   ),
-                                                 ),
-                                               ],
-                                             ),
-                                             const SizedBox(height: 4),
-                                             Text(
-                                               l10n.localeName == 'ar' ? 'متابِع' : 'Followers',
-                                               style: TextStyle(
-                                                 color: AppColors.primary.withValues(alpha: 0.7),
-                                                 fontSize: 12,
-                                                 fontWeight: FontWeight.w600,
-                                               ),
-                                             ),
-                                           ],
-                                         ),
-                                       ),
-                                     ),
-                                     const SizedBox(width: 10),
-                                     // Rating Card
-                                     Expanded(
-                                       child: GestureDetector(
-                                         onTap: () => _tabController.animateTo(1),
-                                         child: Container(
-                                           padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                                           decoration: BoxDecoration(
-                                             color: Colors.amber.withValues(alpha: 0.08),
-                                             borderRadius: BorderRadius.circular(14),
-                                             border: Border.all(
-                                               color: Colors.amber.withValues(alpha: 0.3),
-                                               width: 1,
-                                             ),
-                                           ),
-                                           child: Column(
-                                             children: [
-                                               Row(
-                                                 mainAxisAlignment: MainAxisAlignment.center,
-                                                 children: [
-                                                   const Icon(Icons.star_rounded,
-                                                       color: Colors.amber, size: 18),
-                                                   const SizedBox(width: 4),
-                                                   Text(
-                                                     widget.user.rating > 0
-                                                         ? widget.user.rating.toStringAsFixed(1)
-                                                         : '--',
-                                                     style: TextStyle(
-                                                       fontWeight: FontWeight.bold,
-                                                       fontSize: 18,
-                                                       color: Colors.amber.shade800,
-                                                     ),
-                                                   ),
-                                                 ],
-                                               ),
-                                               const SizedBox(height: 4),
-                                               Text(
-                                                 l10n.localeName == 'ar' ? 'التقييم' : 'Rating',
-                                                 style: TextStyle(
-                                                   color: Colors.amber.shade700,
-                                                   fontSize: 12,
-                                                   fontWeight: FontWeight.w600,
-                                                 ),
-                                               ),
-                                             ],
-                                           ),
-                                         ),
-                                       ),
-                                     ),
-                                     const SizedBox(width: 10),
-                                     // Details Button Card
-                                     GestureDetector(
-                                       onTap: () => _showShopDetailsDialog(context),
-                                       child: Container(
-                                         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 14),
-                                         decoration: BoxDecoration(
-                                           color: Colors.grey.withValues(alpha: 0.08),
-                                           borderRadius: BorderRadius.circular(14),
-                                           border: Border.all(
-                                             color: Colors.grey.withValues(alpha: 0.2),
-                                             width: 1,
-                                           ),
-                                         ),
-                                         child: Column(
-                                           children: [
-                                             Icon(Icons.info_outline_rounded,
-                                                 size: 22, color: Colors.grey[600]),
-                                             const SizedBox(height: 4),
-                                             Text(
-                                               l10n.details,
-                                               style: TextStyle(
-                                                 color: Colors.grey[600],
-                                                 fontSize: 12,
-                                                 fontWeight: FontWeight.w600,
-                                               ),
-                                             ),
-                                           ],
-                                         ),
-                                       ),
-                                     ),
-                                   ],
-                                 ),
-                                 const SizedBox(height: 14),
-                                 // ─── Add Product Button ──────────────────────
                                  SizedBox(
                                    width: double.infinity,
-                                   height: 46,
+                                   height: 48,
                                    child: ElevatedButton.icon(
-                                     onPressed: () => Navigator.push(
-                                       context,
-                                       MaterialPageRoute(
-                                         builder: (_) => const CreateProductScreen(),
-                                       ),
-                                     ),
-                                     icon: const Icon(Icons.add_circle_outline_rounded, size: 20),
+                                     onPressed: () {
+                                       Navigator.push(
+                                         context,
+                                         MaterialPageRoute(builder: (_) => ShopDashboardScreen(shop: widget.user)),
+                                       );
+                                     },
+                                     icon: const Icon(Icons.dashboard_rounded),
                                      label: Text(
-                                       l10n.addProduct,
-                                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                                       l10n.localeName == 'ar' ? 'لوحة التحكم' : 'Dashboard',
+                                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                                      ),
                                      style: ElevatedButton.styleFrom(
-                                       backgroundColor: AppColors.secondary,
+                                       backgroundColor: Colors.purple.shade600,
                                        foregroundColor: Colors.white,
-                                       shape: RoundedRectangleBorder(
-                                         borderRadius: BorderRadius.circular(12),
-                                       ),
+                                       elevation: 0,
+                                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                                      ),
                                    ),
                                  ),
@@ -503,13 +408,10 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
                                       Consumer<AuthProvider>(
                                         builder: (context, auth, _) {
                                           final isFollowing = widget.user.followers.contains(auth.user?.id);
-                                          String buttonText = l10n.localeName == 'ar' 
-                                              ? (isFollowing ? 'متابَع' : 'متابعة') 
-                                              : (isFollowing ? 'Following' : 'Follow');
-                                          IconData buttonIcon = isFollowing ? Icons.check_circle : Icons.person_add_alt_1;
-                                          Color buttonColor = isFollowing ? Colors.green : AppColors.primary;
                                           return _buildContactButton(
-                                            buttonIcon, buttonText, buttonColor,
+                                            isFollowing ? Icons.check : Icons.person_add_alt_1,
+                                            isFollowing ? (l10n.localeName == 'ar' ? 'أُتابع' : 'Following') : (l10n.localeName == 'ar' ? 'متابعة' : 'Follow'),
+                                            isFollowing ? Colors.green : AppColors.primary,
                                             () async {
                                               if (auth.user == null) return;
                                               try {
@@ -521,9 +423,7 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
                                                     widget.user.followers.add(auth.user!.id);
                                                   }
                                                 });
-                                              } catch (e, stack) {
-                                                if (context.mounted) AppErrorHandler.show(context, e, stack, logContext: 'ShopProfile.toggleFollow');
-                                              }
+                                              } catch (_) {}
                                             },
                                           );
                                         },
@@ -565,18 +465,31 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
               ),
             );
           }),
-      floatingActionButton: !widget.isMe ? Padding(
-        padding: const EdgeInsets.only(bottom: 16), // usually pushed so no need to change, but if it is covered, I can set it to 32. Let's just leave it 16 for visitors. Wait, I shouldn't change this unless asked.
-        child: FloatingActionButton.extended(
-          onPressed: () => _showContactMenu(context, widget.user),
-          backgroundColor: AppColors.primary,
-          icon: const Icon(Icons.support_agent, color: Colors.white),
-          label: Text(
-            Localizations.localeOf(context).languageCode == 'ar' ? 'تواصل معنا' : 'Contact Us',
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-          ),
-        ),
-      ) : null,
+      floatingActionButton: widget.isMe 
+        ? AdaptiveFabPadding(
+            child: FloatingActionButton(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const CreateProductScreen()),
+              ),
+              backgroundColor: AppColors.secondary,
+              foregroundColor: Colors.white,
+              child: const Icon(Icons.add_box_outlined, size: 26),
+            ),
+          )
+        : (widget.user.role == UserRole.shop || widget.user.role == UserRole.techService || widget.user.role == UserRole.privateService) 
+          ? AdaptiveFabPadding(
+              child: FloatingActionButton.extended(
+                onPressed: () => _showContactMenu(context, widget.user),
+                backgroundColor: AppColors.primary,
+                icon: const Icon(Icons.support_agent, color: Colors.white),
+                label: Text(
+                  Localizations.localeOf(context).languageCode == 'ar' ? 'تواصل معنا' : 'Contact Us',
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ) 
+          : null,
     );
   }
 
@@ -613,7 +526,7 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
               ),
               ListTile(
                 leading: CircleAvatar(backgroundColor: Colors.blue, child: const Icon(Icons.handshake, color: Colors.white)),
-                title: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'إنشاء عقد اتفاق (دردشة)' : 'Create Contract (Chat)'),
+                title: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'إنشاء اتفاق (دردشة)' : 'Create Agreement (Chat)'),
                 onTap: () async {
                   final authProvider = context.read<AuthProvider>();
                   final currentUser = authProvider.user;
@@ -676,7 +589,7 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
   Widget _buildProductsGrid() {
     final l10n = AppLocalizations.of(context)!;
     return StreamBuilder<List<PostModel>>(
-      stream: FirestoreService().getUserPosts(widget.user.id),
+      stream: _postsStream,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -736,18 +649,45 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
                   children: [
                     Expanded(
                       flex: 4,
-                      child: imageUrl != null
-                          ? CachedNetworkImage(
-                              imageUrl: imageUrl,
-                              fit: BoxFit.cover,
-                              width: double.infinity,
-                              placeholder: (_, __) => Container(color: Colors.grey[200]),
-                              errorWidget: (_, __, ___) => const Icon(Icons.broken_image),
-                            )
-                          : Container(
-                              color: Colors.grey[200],
-                              child: const Center(child: Icon(Icons.image, color: Colors.grey)),
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          imageUrl != null
+                              ? CachedNetworkImage(
+                                  imageUrl: imageUrl,
+                                  fit: BoxFit.cover,
+                                  placeholder: (_, __) => Container(color: Colors.grey[200]),
+                                  errorWidget: (_, __, ___) => const Icon(Icons.broken_image),
+                                )
+                              : Container(
+                                  color: Colors.grey[200],
+                                  child: const Center(child: Icon(Icons.image, color: Colors.grey)),
+                                ),
+                          if (widget.isMe)
+                            Positioned(
+                              top: 8,
+                              right: 8,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.6),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.remove_red_eye, size: 12, color: Colors.white),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      '${product.viewsCount}',
+                                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
+                        ],
+                      ),
                     ),
                     Expanded(
                       flex: 2,
@@ -812,8 +752,7 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
 
   Widget _buildReviewsList() {
     return StreamBuilder<List<ReviewModel>>(
-      stream: FirestoreService().getFreelancerReviews(
-          widget.user.id), // Reusing freelancer reviews method for shops
+      stream: _reviewsStream, // Reusing freelancer reviews method for shops
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -844,13 +783,13 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
       return;
     }
 
-    // التحقق من وجود contactLog قبل السماح بالتقييم
-    final hasContact = await FirestoreService().hasContactLog(
+    // التحقق من وجود اتفاق مكتمل قبل السماح بالتقييم
+    final hasCompletedJob = await FirestoreService().hasCompletedJob(
       currentUser.id,
       widget.user.id,
     );
 
-    if (!hasContact) {
+    if (!hasCompletedJob) {
       if (!mounted) return;
       final isArabic = context.read<LocaleProvider>().isArabic;
       showDialog(
@@ -860,29 +799,18 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
             children: [
               const Icon(Icons.info_outline, color: Colors.orange),
               const SizedBox(width: 8),
-              Expanded(child: Text(isArabic ? 'يجب التواصل أولاً' : 'Contact First')),
+              Expanded(child: Text(isArabic ? 'يجب إكمال اتفاق أولاً' : 'Complete an Agreement First')),
             ],
           ),
           content: Text(
             isArabic
-                ? 'يجب التواصل مع المتجر عبر واتساب أو الاتصال قبل إضافة تقييم. هذا يضمن مصداقية التقييمات.'
-                : 'You must contact this shop via WhatsApp or call before leaving a review. This ensures review credibility.',
+                ? 'يجب أن يكون هناك اتفاق مكتمل بينك وبين المتجر قبل إضافة تقييم. هذا يضمن مصداقية التقييمات.'
+                : 'You must have a completed agreement with this shop before leaving a review. This ensures review credibility.',
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: Text(l10n.cancel),
-            ),
-            ElevatedButton.icon(
-              onPressed: () {
-                Navigator.pop(ctx);
-                _openWhatsApp(widget.user.whatsappNumber ?? widget.user.phoneNumber);
-              },
-              icon: const Icon(Icons.chat, size: 18),
-              label: Text(l10n.openWhatsApp),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF25D366),
-              ),
+              child: Text(isArabic ? 'حسناً' : 'OK'),
             ),
           ],
         ),
@@ -919,11 +847,8 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
             await FirestoreService()
                 .createReview(review, isJobCompleted: false);
             
-            // تحديث contactLog كـ reviewed
-            final contactLog = await FirestoreService().getContactLog(currentUser.id, widget.user.id);
-            if (contactLog != null) {
-              await FirestoreService().markContactAsReviewed(contactLog.id);
-            }
+            // Log review successfully added
+            debugPrint('Review added successfully for job completion check');
             
             messenger.showSnackBar(SnackBar(
                 content: Text(l10n.reviewAddedSuccessfully),

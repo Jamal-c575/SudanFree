@@ -25,6 +25,7 @@ class FreelancerCard extends StatelessWidget {
   final String locale;
   final String? currentUserId;
   final String? currentUserName;
+  final bool isPromoted;
 
   const FreelancerCard({
     super.key,
@@ -34,6 +35,7 @@ class FreelancerCard extends StatelessWidget {
     this.locale = 'ar',
     this.currentUserId,
     this.currentUserName,
+    this.isPromoted = false,
   });
 
   Future<void> _openWhatsApp(BuildContext context) async {
@@ -192,7 +194,7 @@ class FreelancerCard extends StatelessWidget {
               ),
               ListTile(
                 leading: CircleAvatar(backgroundColor: Colors.blue, child: const Icon(Icons.handshake, color: Colors.white)),
-                title: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'إنشاء عقد اتفاق (دردشة)' : 'Create Contract (Chat)'),
+                title: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'إنشاء اتفاق (دردشة)' : 'Create Agreement (Chat)'),
                 onTap: () async {
                   if (currentUserId == null) return;
 
@@ -262,23 +264,26 @@ class FreelancerCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        gradient: isRanked 
+        gradient: (isRanked || isPromoted) 
             ? LinearGradient(
                 colors: [
-                  rankColor.withValues(alpha: 0.1),
+                  isPromoted ? AppColors.sudanGold.withValues(alpha: 0.15) : rankColor.withValues(alpha: 0.1),
                   AppColors.primary.withValues(alpha: 0.05),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               )
             : null,
-        color: isRanked ? null : Theme.of(context).cardColor,
+        color: (isRanked || isPromoted) ? null : Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(20),
-        border: isRanked 
-            ? Border.all(color: rankColor.withValues(alpha: 0.4), width: 1.5)
-            : Border.all(
-                color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2), 
-                width: 1),
+        border: Border.all(
+          color: isPromoted 
+              ? AppColors.sudanGold.withValues(alpha: 0.8)
+              : isRanked 
+                  ? rankColor.withValues(alpha: 0.4) 
+                  : Theme.of(context).colorScheme.outline.withValues(alpha: 0.2), 
+          width: isPromoted ? 2.0 : (isRanked ? 1.5 : 1.0),
+        ),
         boxShadow: [
           BoxShadow(
             color: isRanked 
@@ -382,6 +387,11 @@ class FreelancerCard extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
+                        if (isPromoted)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 4.0),
+                            child: Icon(Icons.star_rounded, color: AppColors.sudanGold, size: 20),
+                          ),
                         VerificationBadge(isVerified: freelancer.effectivelyVerified, size: 16),
                       ],
                     ),

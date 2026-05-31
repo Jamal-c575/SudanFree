@@ -82,6 +82,9 @@ class FirestoreService {
   Future<void> sendPartnerRequest(String requesterId, String requesterName, String targetId) => _users.sendPartnerRequest(requesterId, requesterName, targetId);
   Future<void> handlePartnerRequest(String userId, String responderName, String requesterId, bool accept) => _users.handlePartnerRequest(userId, responderName, requesterId, accept);
   Future<List<UserModel>> getUsersByIds(List<String> ids) => _users.getUsersByIds(ids);
+  Future<List<UserModel>> getUsersForMap() => _users.getUsersForMap();
+  Future<List<UserModel>> getUsersInMapBounds(double minLat, double maxLat, double minLng, double maxLng) => 
+      _users.getUsersInMapBounds(minLat, maxLat, minLng, maxLng);
   Future<void> toggleFollow(String followerId, String targetId, bool isFollowing) => _users.toggleFollow(followerId, targetId, isFollowing);
   Future<void> incrementProfileViews(String userId, [String? viewerId]) => _users.incrementProfileViews(userId, viewerId);
   
@@ -97,14 +100,15 @@ class FirestoreService {
   // ==================== POSTS ====================
   Future<String> createPost(PostModel post) => _posts.createPost(post);
   Future<PostModel?> getPost(String postId) => _posts.getPost(postId);
-  Future<Map<String, dynamic>> getFeedPostsPaginated({DocumentSnapshot? startAfterDoc, int limit = 15}) => 
-      _posts.getFeedPostsPaginated(startAfterDoc: startAfterDoc, limit: limit);
+  Future<Map<String, dynamic>> getFeedPostsPaginated({DocumentSnapshot? startAfterDoc, int limit = 15, PostCategoryGroup? categoryGroup}) => 
+      _posts.getFeedPostsPaginated(startAfterDoc: startAfterDoc, limit: limit, categoryGroup: categoryGroup);
   Stream<List<PostModel>> getUserPosts(String userId) => _posts.getUserPosts(userId);
   Future<void> reactToPost(String postId, String userId, String reactionType) => _posts.reactToPost(postId, userId, reactionType);
   Future<void> removeReaction(String postId, String userId) => _posts.removeReaction(postId, userId);
   Future<void> deletePost(String postId) => _posts.deletePost(postId);
   Future<void> togglePin(String postId, bool isPinned) => _posts.togglePin(postId, isPinned);
   Future<void> incrementPostShares(String postId) => _posts.incrementPostShares(postId);
+  Future<void> incrementPostViews(String postId, [String? viewerId]) => _posts.incrementPostViews(postId, viewerId);
   Future<void> updatePost(String postId, Map<String, dynamic> data) => _firestore.collection('posts').doc(postId).update({...data, 'updatedAt': Timestamp.now()});
 
   // ==================== COMMENTS ====================
@@ -128,6 +132,7 @@ class FirestoreService {
   Future<void> deleteJob(String jobId) => _jobs.deleteJob(jobId);
   Future<void> completeJob(String jobId, String freelancerId) => _jobs.completeJob(jobId, freelancerId);
   Future<void> updateMilestones(String jobId, List<MilestoneModel> milestones) => _jobs.updateMilestones(jobId, milestones);
+  Future<bool> hasCompletedJob(String clientId, String freelancerId) => _jobs.hasCompletedJob(clientId, freelancerId);
 
   // ==================== PROPOSALS ====================
   Stream<List<ProposalModel>> getJobProposals(String jobId) => _jobs.getJobProposals(jobId);

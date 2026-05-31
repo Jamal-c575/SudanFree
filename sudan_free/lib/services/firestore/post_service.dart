@@ -21,12 +21,34 @@ class PostsFirestoreService {
   Future<Map<String, dynamic>> getFeedPostsPaginated({
     DocumentSnapshot? startAfterDoc,
     int limit = 15,
+    PostCategoryGroup? categoryGroup,
   }) async {
     Query query = _firestore
         .collection('posts')
-        .where('showInCommunity', isEqualTo: true)
-        .orderBy('createdAt', descending: true)
-        .limit(limit);
+        .where('showInCommunity', isEqualTo: true);
+
+    if (categoryGroup != null) {
+      final groupCats = PostCategory.getCategoriesForGroup(categoryGroup);
+      final Set<String> categoriesSet = groupCats.map((c) => c.name).toSet();
+      
+      // Support legacy posts that saved the group name
+      categoriesSet.add(categoryGroup.name);
+      categoriesSet.add(categoryGroup.getName('ar'));
+      categoriesSet.add(categoryGroup.getName('en'));
+      
+      // Support legacy localized subcategory names
+      for (final cat in groupCats) {
+        categoriesSet.add(cat.getName('ar'));
+        categoriesSet.add(cat.getName('en'));
+      }
+      
+      // Firestore whereIn has a strict limit of 30 items
+      final categories = categoriesSet.take(30).toList();
+
+      query = query.where('category', whereIn: categories);
+    }
+
+    query = query.orderBy('createdAt', descending: true).limit(limit);
 
     if (startAfterDoc != null) {
       query = query.startAfterDocument(startAfterDoc);
@@ -113,6 +135,39 @@ class PostsFirestoreService {
   Future<void> incrementPostShares(String postId) async {
     await _firestore.collection('posts').doc(postId).update({
       'sharesCount': FieldValue.increment(1),
+    });
+  }
+
+  // Increment Post Views with rate limiting
+  Future<void> incrementPostViews(String postId, [String? viewerId]) async {
+    if (viewerId == null) return;
+    
+    final postRef = _firestore.collection('posts').doc(postId);
+    final viewsRef = postRef.collection('views').doc(viewerId);
+    final viewsSnap = await viewsRef.get();
+
+    const int rateWindowMinutes = 60;
+    final now = Timestamp.now();
+
+    if (viewsSnap.exists) {
+      final last = viewsSnap.data()?['lastViewed'] as Timestamp?;
+      if (last != null) {
+        final diff = now.toDate().difference(last.toDate());
+        if (diff.inMinutes < rateWindowMinutes) {
+          return;
+        }
+      }
+    }
+
+    await _firestore.runTransaction((tx) async {
+      final freshDoc = await tx.get(postRef);
+      if (!freshDoc.exists) return;
+
+      tx.update(postRef, {
+        'viewsCount': FieldValue.increment(1),
+      });
+
+      tx.set(viewsRef, {'lastViewed': now}, SetOptions(merge: true));
     });
   }
 

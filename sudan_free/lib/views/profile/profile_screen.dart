@@ -1,8 +1,11 @@
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/firestore_service.dart';
+import '../../services/storage_service.dart';
 import '../../models/user_model.dart';
 import '../../core/constants/app_colors.dart';
 
@@ -11,6 +14,7 @@ import 'shop_profile_screen.dart';
 import 'freelancer_profile_screen.dart';
 import '../auth/profile_setup_screen.dart';
 import '../../widgets/common/verification_badge.dart';
+import 'favorites_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   final String? userId;
@@ -62,6 +66,46 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  bool _isUploadingImage = false;
+
+  Future<void> _pickAndUploadImage() async {
+    if (_isUploadingImage || _user == null) return;
+
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+    
+    if (pickedFile == null || !mounted) return;
+
+    setState(() => _isUploadingImage = true);
+
+    try {
+      final file = File(pickedFile.path);
+      final url = await StorageService().uploadProfileImage(_user!.id, file);
+
+      if (url != null) {
+        await FirestoreService().updateUserProfile(_user!.id, {'profileImageUrl': url});
+        
+        if (mounted) {
+          final auth = context.read<AuthProvider>();
+          await auth.refreshUserProfile();
+          setState(() {
+            _user = auth.user;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('فشل رفع الصورة')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isUploadingImage = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // Watch auth user updates if we are viewing ourselves
@@ -106,16 +150,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
           children: [
             const SizedBox(height: 20),
             // Avatar
-            CircleAvatar(
-              radius: 65,
-              backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-              backgroundImage: user.profileImageUrl != null ? CachedNetworkImageProvider(user.profileImageUrl!) : null,
-              child: user.profileImageUrl == null
-                  ? Text(
-                      user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
-                      style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: AppColors.primary),
-                    )
-                  : null,
+            Stack(
+              alignment: Alignment.bottomRight,
+              children: [
+                GestureDetector(
+                  onTap: isMe && !_isUploadingImage ? _pickAndUploadImage : null,
+                  child: CircleAvatar(
+                    radius: 65,
+                    backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                    backgroundImage: user.profileImageUrl != null ? CachedNetworkImageProvider(user.profileImageUrl!) : null,
+                    child: _isUploadingImage 
+                        ? const CircularProgressIndicator()
+                        : user.profileImageUrl == null
+                            ? Text(
+                                user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
+                                style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: AppColors.primary),
+                              )
+                            : null,
+                  ),
+                ),
+                if (isMe)
+                  Positioned(
+                    bottom: 0,
+                    right: 4,
+                    child: GestureDetector(
+                      onTap: !_isUploadingImage ? _pickAndUploadImage : null,
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Theme.of(context).scaffoldBackgroundColor, width: 3),
+                        ),
+                        child: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
+                      ),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(height: 16),
             Row(
@@ -175,6 +246,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
             
             if (isMe) ...[
               const SizedBox(height: 28),
+              
+              // Favorites Button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FavoritesScreen())),
+                  icon: const Icon(Icons.favorite, color: Colors.white),
+                  label: Text(locale == 'ar' ? 'مفضلاتي' : 'My Favorites', style: const TextStyle(color: Colors.white)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(

@@ -43,6 +43,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   final List<int> _history = [0];
   final BottomBarVisibilityProvider _visibilityProvider = BottomBarVisibilityProvider();
   
+  // Track which tabs have been visited to lazy-load them and save memory
+  final List<bool> _initializedTabs = [true, false, false, false, false];
+  
   // Keys for refreshing tabs
   Key _dashboardKey = UniqueKey();
   Key _freelancersKey = UniqueKey();
@@ -165,6 +168,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         _currentIndex = index;
         _history.remove(index);
         _history.add(index);
+        _initializedTabs[index] = true; // Mark as initialized
       });
     }
   }
@@ -225,13 +229,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             },
             child: Stack(
               children: [
-                // Use Offstage instead of IndexedStack to reduce memory usage
-                // Offstage still keeps widgets in tree but doesn't render them
+                // Lazy-load screens: Only keep them in the tree if they have been visited
                 for (int i = 0; i < screens.length; i++)
-                  Offstage(
-                    offstage: _currentIndex != i,
-                    child: screens[i],
-                  ),
+                  if (_initializedTabs[i])
+                    Offstage(
+                      offstage: _currentIndex != i,
+                      child: screens[i],
+                    ),
               ],
             ),
           ),
@@ -247,9 +251,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             child: Builder(
               builder: (context) {
                 final isDark = Theme.of(context).brightness == Brightness.dark;
+                final bottomPadding = MediaQuery.of(context).padding.bottom;
+                
+                // التكيف مع شريط التنقل الخاص بالنظام (الأزرار الثلاثة أو الإيماءات)
+                // إذا كان هناك شريط أزرار (padding كبير) نرفعه قليلاً، وإذا كان إيماءات نجعله أقرب للحافة
+                final bottomMargin = bottomPadding > 30 ? bottomPadding + 8 : bottomPadding + 14;
             
             return Container(
-              margin: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+              margin: EdgeInsets.fromLTRB(20, 0, 20, bottomMargin),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(24),
                 child: Container(
@@ -359,6 +368,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             _currentIndex = index;
             _history.remove(index);
             _history.add(index);
+            _initializedTabs[index] = true; // Mark as initialized
           });
         }
       },

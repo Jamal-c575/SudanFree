@@ -79,6 +79,14 @@ class NotificationService {
       debugPrint('FCM Token Refreshed: $newToken');
       // Token update logic is usually handled in AuthProvider/UserService
     });
+
+    // 7. Subscribe to global announcements topic
+    try {
+      await subscribeToTopic('all_users');
+      debugPrint('Successfully subscribed to all_users topic');
+    } catch (e) {
+      debugPrint('Failed to subscribe to all_users topic: $e');
+    }
   }
 
   // Get FCM token

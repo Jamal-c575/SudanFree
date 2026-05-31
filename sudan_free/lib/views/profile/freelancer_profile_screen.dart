@@ -15,6 +15,7 @@ import '../../models/review_model.dart';
 import '../../providers/chat_provider.dart';
 import '../chat/chat_screen.dart';
 import '../../services/firestore_service.dart';
+import '../../widgets/common/adaptive_fab_padding.dart';
 import '../posts/create_post_screen.dart';
 import '../auth/profile_setup_screen.dart';
 import '../../widgets/common/loading_widget.dart';
@@ -37,6 +38,8 @@ import '../../widgets/common/verification_badge.dart';
 import '../../views/common/report_dialog.dart';
 import '../../models/portfolio_project_model.dart';
 import '../../core/utils/app_error_handler.dart';
+import 'favorites_screen.dart';
+import '../../services/smart_guide_service.dart';
 
 class FreelancerProfileScreen extends StatefulWidget {
   final UserModel user;
@@ -60,11 +63,24 @@ class FreelancerProfileScreen extends StatefulWidget {
 class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   bool _isUploadingImage = false; // loading state for photo upload
+  
+  late Stream<UserModel?> _userStream;
+  late Stream<List<PostModel>> _postsStream;
+  late Stream<List<PortfolioProjectModel>> _portfolioStream;
+  late Stream<List<ReviewModel>> _reviewsStream;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this, initialIndex: widget.initialTabIndex);
+    _tabController.addListener(() {
+      setState(() {});
+    });
+    
+    _userStream = FirestoreService().getUserStream(widget.user.id);
+    _postsStream = FirestoreService().getUserPosts(widget.user.id);
+    _portfolioStream = FirestoreService().getUserPortfolio(widget.user.id);
+    _reviewsStream = FirestoreService().getFreelancerReviews(widget.user.id);
     
     if (widget.showReviewDialog && !widget.isMe) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -80,6 +96,22 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
             .incrementProfileViews(widget.user.id, currentUserId)
             .catchError((_) {}); // Non-critical: silently ignore permission errors
       }
+      
+      SmartGuideService.showMicroTip(
+        context,
+        messageAr: 'تصفح معرض الأعمال واقرأ تقييمات العملاء السابقين ⭐',
+        messageEn: 'Browse the portfolio and read past client reviews ⭐',
+        tipId: 'profile_first_visit',
+        icon: Icons.person_search_rounded,
+      );
+    } else {
+      SmartGuideService.showMicroTip(
+        context,
+        messageAr: 'أضف أعمالاً جديدة لمعرضك لزيادة فرصك في العمل 💼',
+        messageEn: 'Add new work to your portfolio to increase job chances 💼',
+        tipId: 'portfolio_first_visit',
+        icon: Icons.add_photo_alternate_rounded,
+      );
     }
   }
 
@@ -97,7 +129,7 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
       body: Stack(
         children: [
           StreamBuilder<UserModel?>(
-            stream: FirestoreService().getUserStream(widget.user.id),
+            stream: _userStream,
             initialData: widget.user,
             builder: (context, snapshot) {
               final user = snapshot.data ?? widget.user;
@@ -125,6 +157,15 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
                       },
                     ),
                     if (widget.isMe) ...[
+                      IconButton(
+                        icon: const Icon(Icons.favorite, color: Colors.white),
+                        tooltip: l10n.localeName == 'ar' ? 'مفضلاتي' : 'Favorites',
+                        onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) =>
+                                    const FavoritesScreen())),
+                      ),
                       IconButton(
                         icon: const Icon(Icons.edit, color: Colors.white),
                         tooltip: l10n.editStore,
@@ -348,11 +389,28 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
                                  Colors.red
                                )),
                                
-                               // Partner Button
+                               // Partner / Favorite Button
                                if (!widget.isMe) ...[
                                  Container(width: 1, height: 30, color: Colors.grey.withValues(alpha: 0.2)),
                                  Expanded(child: Consumer<AuthProvider>(
                                    builder: (context, auth, _) {
+                                     final isViewerFreelancer = auth.user?.role == UserRole.freelancer || auth.user?.role == UserRole.techService || auth.user?.role == UserRole.privateService;
+                                     
+                                     // 1. Client/Shop Logic: Favorites (Hearts)
+                                     if (!isViewerFreelancer) {
+                                       final isFavorite = auth.user?.favoriteUserIds.contains(user.id) ?? false;
+                                       return _buildStatItem(
+                                         context.read<LocaleProvider>().isArabic ? 'مفضلة' : 'Favorite',
+                                         isFavorite ? (context.read<LocaleProvider>().isArabic ? 'محفوظ' : 'Saved') : (context.read<LocaleProvider>().isArabic ? 'حفظ' : 'Save'),
+                                         isFavorite ? Icons.favorite : Icons.favorite_border,
+                                         isFavorite ? Colors.red : Colors.grey,
+                                         onTap: () {
+                                           auth.toggleFavoriteUser(user.id);
+                                         },
+                                       );
+                                     }
+
+                                     // 2. Freelancer Viewer Logic: Partnership (Zamalah)
                                      final isPartner = auth.user?.partnerIds.contains(user.id) ?? false;
                                      final isPending = user.pendingPartnerIds.contains(auth.user?.id) || (auth.user?.pendingPartnerIds.contains(user.id) ?? false);
                                      
@@ -370,34 +428,23 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
                                        iconColor = Colors.purple;
                                      }
 
-                                       return _buildStatItem(
-                                         context.read<LocaleProvider>().isArabic ? 'زميل' : 'Partner',
-                                         titleText,
-                                         iconData,
-                                         iconColor,
-                                         onTap: (isPartner || isPending) ? null : () {
-                                           if (auth.user?.role == UserRole.client) {
-                                             ScaffoldMessenger.of(context).showSnackBar(
-                                               SnackBar(
-                                                 content: Text(context.read<LocaleProvider>().isArabic 
-                                                     ? 'لا يمكنك إضافة حرفي كزميل بحساب عميل.' 
-                                                     : 'Clients cannot add freelancers as partners.'),
-                                                 backgroundColor: Colors.red,
-                                               ),
-                                             );
-                                             return;
-                                           }
-                                           auth.sendPartnerRequest(user.id);
-                                           ScaffoldMessenger.of(context).showSnackBar(
-                                             SnackBar(
-                                               content: Text(context.read<LocaleProvider>().isArabic 
-                                                   ? 'تم إرسال طلب الزمالة بنجاح!' 
-                                                   : 'Partner request sent successfully!'),
-                                               backgroundColor: Colors.green,
-                                             ),
-                                           );
-                                         },
-                                       );
+                                     return _buildStatItem(
+                                       context.read<LocaleProvider>().isArabic ? 'زميل' : 'Partner',
+                                       titleText,
+                                       iconData,
+                                       iconColor,
+                                       onTap: (isPartner || isPending) ? null : () {
+                                         auth.sendPartnerRequest(user.id);
+                                         ScaffoldMessenger.of(context).showSnackBar(
+                                           SnackBar(
+                                             content: Text(context.read<LocaleProvider>().isArabic 
+                                                 ? 'تم إرسال طلب الزمالة بنجاح!' 
+                                                 : 'Partner request sent successfully!'),
+                                             backgroundColor: Colors.green,
+                                           ),
+                                         );
+                                       },
+                                     );
                                    },
                                  )),
                                ],
@@ -489,8 +536,7 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
       ),
       floatingActionButton: widget.isMe 
           ? ((_tabController.index == 0 || _tabController.index == 1)
-              ? Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
+              ? AdaptiveFabPadding(
                   child: FloatingActionButton(
                     heroTag: 'add_portfolio_fab',
                     onPressed: () {
@@ -508,12 +554,15 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
                     },
                     backgroundColor: AppColors.primary,
                     mini: true,
-                    child: const Icon(Icons.add, color: Colors.white, size: 22),
+                    child: Icon(
+                      _tabController.index == 0 ? Icons.add_photo_alternate_outlined : Icons.create_new_folder_outlined, 
+                      color: Colors.white, 
+                      size: 22
+                    ),
                   ),
                 )
               : null)
-          : Padding(
-              padding: const EdgeInsets.only(bottom: 16),
+          : AdaptiveFabPadding(
               child: FloatingActionButton.extended(
                 onPressed: () => _showContactMenu(context, widget.user),
                 backgroundColor: AppColors.primary,
@@ -560,7 +609,7 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
               ),
               ListTile(
                 leading: CircleAvatar(backgroundColor: Colors.blue, child: const Icon(Icons.handshake, color: Colors.white)),
-                title: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'إنشاء عقد اتفاق (دردشة)' : 'Create Contract (Chat)'),
+                title: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'إنشاء اتفاق (دردشة)' : 'Create Agreement (Chat)'),
                 onTap: () async {
                   final authProvider = context.read<AuthProvider>();
                   final currentUser = authProvider.user;
@@ -640,7 +689,7 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
   Widget _buildPortfolioGrid() {
     final l10n = AppLocalizations.of(context)!;
     return StreamBuilder<List<PostModel>>(
-      stream: FirestoreService().getUserPosts(widget.user.id),
+      stream: _postsStream,
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           debugPrint('Error loading posts: ${snapshot.error}');
@@ -718,7 +767,7 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
 
   Widget _buildReviewsList() {
     return StreamBuilder<List<ReviewModel>>(
-      stream: FirestoreService().getFreelancerReviews(widget.user.id),
+      stream: _reviewsStream,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) return const LoadingIndicator();
         if (!snapshot.hasData || snapshot.data!.isEmpty) return Center(child: Text(AppLocalizations.of(context)!.noReviews, style: const TextStyle(color: Colors.grey)));
@@ -738,13 +787,13 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
       return;
     }
 
-    // التحقق من وجود contactLog قبل السماح بالتقييم
-    final hasContact = await FirestoreService().hasContactLog(
+    // التحقق من وجود اتفاق مكتمل قبل السماح بالتقييم
+    final hasCompletedJob = await FirestoreService().hasCompletedJob(
       currentUser.id,
       widget.user.id,
     );
 
-    if (!hasContact) {
+    if (!hasCompletedJob) {
       if (!mounted) return;
       final isArabic = context.read<LocaleProvider>().isArabic;
       showDialog(
@@ -754,29 +803,18 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
             children: [
               const Icon(Icons.info_outline, color: Colors.orange),
               const SizedBox(width: 8),
-              Expanded(child: Text(isArabic ? 'يجب التواصل أولاً' : 'Contact First')),
+              Expanded(child: Text(isArabic ? 'يجب إكمال اتفاق أولاً' : 'Complete an Agreement First')),
             ],
           ),
           content: Text(
             isArabic
-                ? 'يجب التواصل مع الحرفي عبر واتساب أو الاتصال قبل إضافة تقييم. هذا يضمن مصداقية التقييمات.'
-                : 'You must contact this freelancer via WhatsApp or call before leaving a review. This ensures review credibility.',
+                ? 'يجب أن يكون هناك اتفاق مكتمل بينك وبين الحرفي قبل إضافة تقييم. هذا يضمن مصداقية التقييمات.'
+                : 'You must have a completed agreement with this freelancer before leaving a review. This ensures review credibility.',
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: Text(l10n.cancel),
-            ),
-            ElevatedButton.icon(
-              onPressed: () {
-                Navigator.pop(ctx);
-                _openWhatsApp(widget.user.whatsappNumber ?? widget.user.phoneNumber);
-              },
-              icon: const Icon(Icons.chat, size: 18),
-              label: Text(l10n.openWhatsApp),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF25D366),
-              ),
+              child: Text(isArabic ? 'حسناً' : 'OK'),
             ),
           ],
         ),
@@ -811,11 +849,8 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
           try {
             await FirestoreService().createReview(review, isJobCompleted: isJobCompleted);
             
-            // تحديث contactLog كـ reviewed
-            final contactLog = await FirestoreService().getContactLog(currentUser.id, widget.user.id);
-            if (contactLog != null) {
-              await FirestoreService().markContactAsReviewed(contactLog.id);
-            }
+            // Log review successfully added
+            debugPrint('Review added successfully for job completion check');
             
             if (!mounted) return;
             messenger.showSnackBar(SnackBar(content: Text(l10n.reviewAddedSuccessfully), backgroundColor: AppColors.success));
@@ -1034,7 +1069,7 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
   Widget _buildProfessionalPortfolio() {
     final locale = context.watch<LocaleProvider>().locale.languageCode;
     return StreamBuilder<List<PortfolioProjectModel>>(
-      stream: FirestoreService().getUserPortfolio(widget.user.id),
+      stream: _portfolioStream,
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           debugPrint('Error loading portfolio: ${snapshot.error}');

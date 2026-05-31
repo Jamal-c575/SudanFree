@@ -11,6 +11,9 @@ import '../../widgets/common/loading_widget.dart';
 import 'add_request_screen.dart';
 import 'request_details_screen.dart';
 import '../home/home_screen.dart';
+import '../../widgets/common/adaptive_fab_padding.dart';
+import '../../widgets/buttons/smart_draggable_fab.dart';
+import '../../services/smart_guide_service.dart';
 
 class RequestsScreen extends StatefulWidget {
   const RequestsScreen({super.key});
@@ -21,6 +24,20 @@ class RequestsScreen extends StatefulWidget {
 
 class _RequestsScreenState extends State<RequestsScreen> {
   bool _showMyRequestsOnly = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      SmartGuideService.showMicroTip(
+        context,
+        messageAr: 'هنا تجد طلبات العملاء، اضغط لتقديم عرضك 📋',
+        messageEn: 'Find client requests here and submit your offer 📋',
+        tipId: 'requests_first_visit',
+        icon: Icons.assignment_rounded,
+      );
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -48,111 +65,115 @@ class _RequestsScreenState extends State<RequestsScreen> {
             ),
         ],
       ),
-      body: StreamBuilder<List<RequestModel>>(
-        stream: FirestoreService().getRequests(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: LoadingIndicator());
-          }
-          if (snapshot.hasError) {
-             return Center(
-               child: Padding(
-                 padding: const EdgeInsets.all(32),
-                 child: Column(
-                   mainAxisAlignment: MainAxisAlignment.center,
-                   children: [
-                     const Icon(Icons.error_outline, size: 48, color: Colors.red),
-                     const SizedBox(height: 16),
-                     Text(
-                       locale == 'ar' ? 'حدث خطأ في تحميل الطلبات' : 'Error loading requests',
-                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: StreamBuilder<List<RequestModel>>(
+              stream: FirestoreService().getRequests(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: LoadingIndicator());
+                }
+                if (snapshot.hasError) {
+                   return Center(
+                     child: Padding(
+                       padding: const EdgeInsets.all(32),
+                       child: Column(
+                         mainAxisAlignment: MainAxisAlignment.center,
+                         children: [
+                           const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                           const SizedBox(height: 16),
+                           Text(
+                             locale == 'ar' ? 'حدث خطأ في تحميل الطلبات' : 'Error loading requests',
+                             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                           ),
+                           const SizedBox(height: 8),
+                           Text(
+                             '${snapshot.error}',
+                             textAlign: TextAlign.center,
+                             style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                           ),
+                           const SizedBox(height: 16),
+                           ElevatedButton.icon(
+                             onPressed: () => setState(() {}),
+                             icon: const Icon(Icons.refresh),
+                             label: Text(locale == 'ar' ? 'إعادة المحاولة' : 'Retry'),
+                           ),
+                         ],
+                       ),
                      ),
-                     const SizedBox(height: 8),
-                     Text(
-                       '${snapshot.error}',
-                       textAlign: TextAlign.center,
-                       style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                     ),
-                     const SizedBox(height: 16),
-                     ElevatedButton.icon(
-                       onPressed: () => setState(() {}),
-                       icon: const Icon(Icons.refresh),
-                       label: Text(locale == 'ar' ? 'إعادة المحاولة' : 'Retry'),
-                     ),
-                   ],
-                 ),
-               ),
-             );
-          }
+                   );
+                }
 
-          var requests = snapshot.data ?? [];
-          
-          if (_showMyRequestsOnly && currentUser != null) {
-            requests = requests.where((r) => r.clientId == currentUser.id).toList();
-          }
+                var requests = snapshot.data ?? [];
+                
+                if (_showMyRequestsOnly && currentUser != null) {
+                  requests = requests.where((r) => r.clientId == currentUser.id).toList();
+                }
 
-          if (requests.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.assignment_outlined, size: 64, color: AppColors.textSecondary.withValues(alpha: 0.5)),
-                  const SizedBox(height: 16),
-                  Text(
-                    locale == 'ar' ? 'لا توجد طلبات حالياً' : 'No requests available',
-                    style: TextStyle(color: AppColors.textSecondary, fontSize: 18),
-                  ),
-                ],
-              ),
-            );
-          }
+                if (requests.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.assignment_outlined, size: 64, color: AppColors.textSecondary.withValues(alpha: 0.5)),
+                        const SizedBox(height: 16),
+                        Text(
+                          locale == 'ar' ? 'لا توجد طلبات حالياً' : 'No requests available',
+                          style: TextStyle(color: AppColors.textSecondary, fontSize: 18),
+                        ),
+                      ],
+                    ),
+                  );
+                }
 
-          return ListView.separated(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-            physics: const ClampingScrollPhysics(),
-            addRepaintBoundaries: true,
-            addAutomaticKeepAlives: false,
-            itemCount: requests.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
-            itemBuilder: (context, index) {
-              final request = requests[index];
-              return RepaintBoundary(
-                child: _RequestCard(
-                  request: request,
-                  locale: locale,
-                  currentUserId: currentUser?.id,
-                ),
-              );
-            },
-          );
-        },
-      ),
-      floatingActionButton: currentUser != null
-          ? Selector<BottomBarVisibilityProvider, bool>(
-              selector: (_, p) => p.isVisible,
-              builder: (_, isVisible, __) => AnimatedPadding(
-                duration: const Duration(milliseconds: 200),
-                curve: Curves.easeOut,
-                padding: EdgeInsets.only(bottom: isVisible ? 70 : 0),
-                child: FloatingActionButton.extended(
-                  onPressed: () {
-                    showModalBottomSheet(
-                      context: context,
-                      isScrollControlled: true,
-                      backgroundColor: Colors.transparent,
-                      builder: (_) => AddRequestBottomSheet(user: currentUser),
+                // 3. منع تداخل المحتوى مع شريط التنقل
+                final bottomInset = MediaQuery.of(context).padding.bottom;
+                final navBarMargin = bottomInset > 30 ? bottomInset + 8 : bottomInset + 14;
+                final navBarHeight = 62.0;
+                final navBarTop = navBarMargin + navBarHeight;
+
+                return ListView.separated(
+                  padding: EdgeInsets.fromLTRB(16, 16, 16, navBarTop + 80),
+                  physics: const ClampingScrollPhysics(),
+                  addRepaintBoundaries: true,
+                  addAutomaticKeepAlives: false,
+                  itemCount: requests.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  itemBuilder: (context, index) {
+                    final request = requests[index];
+                    return RepaintBoundary(
+                      child: _RequestCard(
+                        request: request,
+                        locale: locale,
+                        currentUserId: currentUser?.id,
+                      ),
                     );
                   },
-                  icon: const Icon(Icons.add, color: Colors.white),
-                  label: Text(
-                    locale == 'ar' ? 'أضف طلبك' : 'Add Request',
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                  ),
-                  backgroundColor: AppColors.primary,
-                ),
-              ),
-            )
-          : null,
+                );
+              },
+            ),
+          ),
+          
+          // 2. زر إضافة الطلب الذكي والمتحرك
+          if (currentUser != null)
+            SmartDraggableFab(
+              heroTag: 'create_request_fab',
+              icon: Icons.add,
+              label: locale == 'ar' ? 'أضف طلبك' : 'Add Request',
+              locale: locale,
+              initialBottom: MediaQuery.of(context).padding.bottom + 82.0, // navBar + safe area
+              onPressed: () {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (_) => AddRequestBottomSheet(user: currentUser),
+                );
+              },
+            ),
+        ],
+      ),
     );
   }
 }

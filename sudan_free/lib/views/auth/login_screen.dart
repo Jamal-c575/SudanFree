@@ -357,6 +357,37 @@ class _LoginScreenState extends State<LoginScreen> {
                   },
                 ),
                 
+                const SizedBox(height: 16),
+                
+                // Facebook Login Button
+                _FacebookSignInButton(
+                  isLoading: isLoading,
+                  locale: locale,
+                  onPressed: () async {
+                    final authProvider = context.read<AuthProvider>();
+                    final scaffoldMessenger = ScaffoldMessenger.of(context);
+                    final success = await authProvider.signInWithFacebook();
+                    
+                    if (success && context.mounted) {
+                      if (Navigator.canPop(context)) {
+                        Navigator.popUntil(context, (route) => route.isFirst);
+                      }
+                    } else if (authProvider.errorMessage != null && context.mounted) {
+                      final error = authProvider.errorMessage!;
+                      if (error.startsWith('DEVICE_BANNED:')) {
+                        _showBanDialog(error.replaceFirst('DEVICE_BANNED:', ''));
+                      } else {
+                        scaffoldMessenger.showSnackBar(
+                          SnackBar(
+                            content: Text(error),
+                            backgroundColor: AppColors.error,
+                          ),
+                        );
+                      }
+                    }
+                  },
+                ),
+                
                 const SizedBox(height: 24),
 
                 // Terms and Conditions Link
@@ -524,4 +555,59 @@ class _GoogleIconPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+// Facebook Sign-In Button Widget
+class _FacebookSignInButton extends StatelessWidget {
+  final bool isLoading;
+  final String locale;
+  final VoidCallback onPressed;
+
+  const _FacebookSignInButton({
+    required this.isLoading,
+    required this.locale,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF1877F2), // Facebook Blue
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF1877F2).withValues(alpha: 0.3),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: isLoading ? null : onPressed,
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 13),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.facebook, color: Colors.white, size: 24),
+                const SizedBox(width: 10),
+                Text(
+                  locale == 'ar' ? 'المتابعة باستخدام Facebook' : 'Continue with Facebook',
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

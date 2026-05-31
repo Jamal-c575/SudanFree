@@ -10,6 +10,7 @@ import '../../providers/locale_provider.dart';
 import '../../models/post_model.dart';
 import '../../services/cloudinary_service.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../../services/smart_guide_service.dart';
 
 class CreateProductScreen extends StatefulWidget {
   final PostModel? product; // for editing
@@ -52,6 +53,16 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
       _selectedSizes.addAll(p.productSizes);
       _selectedColors.addAll(p.productColors);
     }
+    
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      SmartGuideService.showMicroTip(
+        context,
+        messageAr: 'أضف تفاصيل واضحة وصور جذابة لمنتجك 📸',
+        messageEn: 'Add clear details and attractive photos 📸',
+        tipId: 'product_create_tip',
+        icon: Icons.add_photo_alternate_rounded,
+      );
+    });
   }
 
   @override

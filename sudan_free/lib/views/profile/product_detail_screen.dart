@@ -10,7 +10,11 @@ import 'package:provider/provider.dart';
 import '../../widgets/common/full_screen_image_viewer.dart';
 import '../../models/user_model.dart';
 import '../posts/create_post_screen.dart';
-
+import '../../providers/posts_provider.dart';
+import '../posts/comments_sheet.dart';
+import 'profile_screen.dart';
+import '../../services/cloudinary_service.dart';
+import '../../services/firestore_service.dart';
 class ProductDetailScreen extends StatefulWidget {
   final PostModel product;
 
@@ -22,6 +26,16 @@ class ProductDetailScreen extends StatefulWidget {
 
 class _ProductDetailScreenState extends State<ProductDetailScreen> {
   int _currentIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final viewerId = context.read<AuthProvider>().user?.id;
+      // Increment views count when the product is opened
+      FirestoreService().incrementPostViews(widget.product.id, viewerId);
+    });
+  }
 
   String _buildProductLink() =>
       'https://jamall123.github.io/HOME_WEB/sudan-free.html?productId=${widget.product.id}';
@@ -84,6 +98,21 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         ),
         centerTitle: true,
         actions: [
+          // Favorite Button (For Clients only, or anyone)
+          if (currentUser != null)
+            Consumer<AuthProvider>(
+              builder: (context, auth, _) {
+                final isFavorite = auth.user?.favoriteProductIds.contains(widget.product.id) ?? false;
+                return IconButton(
+                  icon: Icon(
+                    isFavorite ? Icons.favorite : Icons.favorite_border,
+                    color: isFavorite ? Colors.red : null,
+                  ),
+                  tooltip: isArabic ? 'مفضلة' : 'Favorite',
+                  onPressed: () => auth.toggleFavoriteProduct(widget.product.id),
+                );
+              },
+            ),
           IconButton(
             icon: const Icon(Icons.link_rounded),
             tooltip: isArabic ? 'نسخ رابط المنتج' : 'Copy link',
@@ -123,6 +152,117 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             // ── معرض الصور ──────────────────────────────────────────
             _buildImageGallery(context, allMedia),
 
+            const SizedBox(height: 12),
+
+            // ── Owner Header & Actions ────────────────────────────
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: _InfoCard(
+                child: Column(
+                  children: [
+                    GestureDetector(
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProfileScreen(userId: widget.product.userId))),
+                      child: Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 20,
+                            backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                            backgroundImage: widget.product.userImageUrl != null
+                                ? CachedNetworkImageProvider(CloudinaryService.getOptimizedUrl(widget.product.userImageUrl!, width: 100, quality: 'auto'))
+                                : null,
+                            child: widget.product.userImageUrl == null
+                                ? Text(
+                                    widget.product.userName.isNotEmpty ? widget.product.userName[0].toUpperCase() : '?',
+                                    style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
+                                  )
+                                : null,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  widget.product.userName,
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                                ),
+                                if (widget.product.userJobTitle != null && widget.product.userJobTitle!.isNotEmpty)
+                                  Text(
+                                    widget.product.userJobTitle!,
+                                    style: const TextStyle(color: AppColors.primary, fontSize: 12),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey[400]),
+                        ],
+                      ),
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8),
+                      child: Divider(height: 1),
+                    ),
+                    Consumer<AuthProvider>(
+                      builder: (context, auth, _) {
+                        final currentUserId = auth.user?.id ?? '';
+                        return Consumer<PostsProvider>(
+                          builder: (context, postsProvider, _) {
+                            final latestPost = postsProvider.posts.firstWhere((p) => p.id == widget.product.id, orElse: () => widget.product);
+                            final isLiked = latestPost.reactions.containsKey(currentUserId);
+                            final totalReactions = latestPost.totalReactions;
+
+                            return Row(
+                              children: [
+                                InkWell(
+                                  onTap: () {
+                                    if (currentUserId.isEmpty) return;
+                                    final type = isLiked ? 'unlike' : 'like';
+                                    postsProvider.reactToPost(latestPost.id, currentUserId, auth.user?.name ?? '', latestPost.userId, type);
+                                  },
+                                  borderRadius: BorderRadius.circular(20),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                                    child: Row(
+                                      children: [
+                                        Icon(isLiked ? Icons.favorite_rounded : Icons.favorite_border_rounded, color: isLiked ? Colors.red : Colors.grey[600], size: 22),
+                                        const SizedBox(width: 6),
+                                        Text(totalReactions > 0 ? '$totalReactions' : '', style: TextStyle(fontWeight: FontWeight.bold, color: isLiked ? Colors.red : Colors.grey[600])),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                InkWell(
+                                  onTap: () {
+                                    showModalBottomSheet(
+                                      context: context,
+                                      isScrollControlled: true,
+                                      backgroundColor: Colors.transparent,
+                                      builder: (_) => CommentsSheet(postId: latestPost.id, postOwnerId: latestPost.userId),
+                                    );
+                                  },
+                                  borderRadius: BorderRadius.circular(20),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.chat_bubble_outline_rounded, color: Colors.grey[600], size: 22),
+                                        const SizedBox(width: 6),
+                                        Text(latestPost.commentsCount > 0 ? '${latestPost.commentsCount}' : '', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey[600])),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
             const SizedBox(height: 16),
 
             Padding(
@@ -139,10 +279,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         if (productTitle.isNotEmpty)
                           Text(
                             productTitle,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 22,
                               fontWeight: FontWeight.bold,
                               height: 1.3,
+                              color: theme.textTheme.headlineSmall?.color,
                             ),
                           ),
 
@@ -440,11 +581,12 @@ class _InfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
+        color: isDark ? const Color(0xFF162032) : Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(

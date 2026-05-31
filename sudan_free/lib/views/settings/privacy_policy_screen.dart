@@ -147,15 +147,22 @@ class PrivacyPolicyScreen extends StatelessWidget {
             icon: Icons.phone_android,
             iconColor: Colors.teal,
             text: isAr
-                ? 'بياناتك الشخصية (الاسم، الموقع، رقم الهاتف) تستخدم حصرياً لتحسين تجربتك وربطك بالعملاء داخل التطبيق، ولا نشاركها مع أي جهات خارجية.'
-                : 'Your personal data is used exclusively to connect you with clients. We do not share it with third parties.',
+                ? 'بياناتك الشخصية (الاسم، الموقع الجغرافي، رقم الهاتف) تستخدم حصرياً لتحسين تجربتك وربطك بالعملاء داخل التطبيق، ولا نشاركها مع أي جهات خارجية.'
+                : 'Your personal data (name, location, phone) is used exclusively to connect you with clients. We do not share it with third parties.',
+          ),
+          _PolicyCard(
+            icon: Icons.location_off,
+            iconColor: Colors.indigo,
+            text: isAr
+                ? 'التحكم في الخريطة: يحق لأي حرفي أو متجر إخفاء موقعه الجغرافي بالكامل من الخريطة العامة في أي وقت عبر الإعدادات ("الظهور على الخريطة"). عند التعطيل، يتم حجب موقعك فوراً لحماية خصوصيتك.'
+                : 'Map Control: Any freelancer or shop can hide their location entirely from the public map at any time via settings. When disabled, your location is immediately hidden to protect your privacy.',
           ),
           _PolicyCard(
             icon: Icons.delete_forever,
             iconColor: Colors.deepOrange,
             text: isAr
-                ? 'يحق لك المطالبة بحذف حسابك نهائياً. عند طلب الحذف من الإعدادات، يتم مراجعة طلبك لأسباب أمنية (لضمان عدم وجود حقوق معلقة للآخرين) ثم تُحذف كافة بياناتك بالكامل من خوادمنا.'
-                : 'You have the right to request account deletion. Upon request, it is reviewed for security reasons, then all your data is permanently deleted.',
+                ? 'يحق لك المطالبة بحذف حسابك نهائياً. عند طلب الحذف من الإعدادات، يتم مراجعة طلبك لأسباب أمنية (لضمان عدم وجود حقوق معلقة للآخرين) ثم تُحذف كافة بياناتك بالكامل من خوادمنا بما فيها الإعجابات والمفضلات والموقع.'
+                : 'You have the right to request account deletion. Upon request, it is reviewed for security reasons, then all your data including favorites and location is permanently deleted.',
           ),
 
           const SizedBox(height: 40),

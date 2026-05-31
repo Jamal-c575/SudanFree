@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import '../../models/job_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/job_provider.dart';
 import '../../widgets/common/loading_widget.dart';
+import '../../core/constants/app_colors.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../models/notification_model.dart';
+import '../../services/smart_guide_service.dart';
 
 class ActiveJobTrackingScreen extends StatefulWidget {
   final String jobId;
@@ -20,6 +25,14 @@ class _ActiveJobTrackingScreenState extends State<ActiveJobTrackingScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<JobProvider>().fetchJob(widget.jobId);
+      
+      SmartGuideService.showMicroTip(
+        context,
+        messageAr: 'يمكنك تقسيم الدفعات حسب مراحل الإنجاز 📊',
+        messageEn: 'You can split payments based on milestones 📊',
+        tipId: 'job_tracking_tip',
+        icon: Icons.pie_chart_rounded,
+      );
     });
   }
 
@@ -36,15 +49,29 @@ class _ActiveJobTrackingScreenState extends State<ActiveJobTrackingScreen> {
 
     final isClient = currentUser?.id == job.clientId;
     final isFreelancer = currentUser?.id == job.assignedFreelancerId;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
+      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF8F9FA),
       appBar: AppBar(
-        title: const Text('تتبع المشروع'),
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        title: const Text('إدارة الاتفاق', style: TextStyle(fontWeight: FontWeight.bold)),
         actions: [
           if (isClient && job.status == JobStatus.inProgress)
-            TextButton(
-              onPressed: () => _showCompleteDialog(context, job),
-              child: const Text('إكمال المشروع', style: TextStyle(color: Colors.green)),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
+              child: ElevatedButton.icon(
+                onPressed: () => _showCompleteDialog(context, job),
+                icon: const Icon(Icons.check_circle_outline, size: 18),
+                label: const Text('إكمال الاتفاق'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
             ),
         ],
       ),
@@ -53,26 +80,347 @@ class _ActiveJobTrackingScreenState extends State<ActiveJobTrackingScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildJobHeader(job),
+            _buildJobHeader(job, isDark),
             const SizedBox(height: 24),
-            _buildStatusCard(job),
+            _buildStatusCard(job, isDark),
             const SizedBox(height: 24),
-            const Text('مراحل التنفيذ (Milestones)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            
+            // Progress Section
+            if (job.milestones.isNotEmpty)
+              _buildProgressSection(job),
+              
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('دفعات الإنجاز (Milestones)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                if (isClient && job.status == JobStatus.inProgress)
+                  TextButton.icon(
+                    onPressed: () => _showAddMilestoneSheet(context, job),
+                    icon: const Icon(Icons.add_circle_outline),
+                    label: const Text('إضافة'),
+                  ),
+              ],
+            ),
             const SizedBox(height: 12),
             if (job.milestones.isEmpty)
-               _buildEmptyMilestones(context, job, isClient)
+               _buildEmptyMilestones(context, job, isClient, isDark)
             else
-              ...job.milestones.map((m) => _buildMilestoneTile(context, job, m, isClient, isFreelancer)),
-            
-            if (isClient && job.milestones.isNotEmpty && job.status == JobStatus.inProgress)
-              Padding(
-                padding: const EdgeInsets.only(top: 16),
-                child: Center(
-                  child: OutlinedButton.icon(
-                    onPressed: () => _showAddMilestoneSheet(context, job),
-                    icon: const Icon(Icons.add),
-                    label: const Text('إضافة مرحلة جديدة'),
+              ...job.milestones.map((m) => _buildMilestoneTile(context, job, m, isClient, isFreelancer, isDark)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildJobHeader(JobModel job, bool isDark) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [AppColors.primary, AppColors.primary.withValues(alpha: 0.8)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.3),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.handshake, color: Colors.white, size: 28),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      job.title,
+                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'الطرف الآخر: ${job.assignedFreelancerName ?? job.clientName}',
+                      style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 14),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              _buildHeaderStat(Icons.payments, '${job.budgetMax} SDG', 'الميزانية'),
+              Container(height: 30, width: 1, color: Colors.white.withValues(alpha: 0.3), margin: const EdgeInsets.symmetric(horizontal: 16)),
+              _buildHeaderStat(Icons.calendar_today, DateFormat('dd MMM yyyy').format(job.createdAt), 'تاريخ البدء'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeaderStat(IconData icon, String value, String label) {
+    return Row(
+      children: [
+        Icon(icon, color: Colors.white.withValues(alpha: 0.8), size: 16),
+        const SizedBox(width: 6),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+            Text(label, style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 10)),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatusCard(JobModel job, bool isDark) {
+    Color statusColor;
+    String statusText;
+    IconData statusIcon;
+
+    switch (job.status) {
+      case JobStatus.inProgress:
+        statusColor = Colors.blue;
+        statusText = 'قيد التنفيذ';
+        statusIcon = Icons.autorenew;
+        break;
+      case JobStatus.completed:
+        statusColor = Colors.green;
+        statusText = 'مكتمل';
+        statusIcon = Icons.check_circle;
+        break;
+      case JobStatus.cancelled:
+        statusColor = Colors.red;
+        statusText = 'ملغي';
+        statusIcon = Icons.cancel;
+        break;
+      default:
+        statusColor = Colors.orange;
+        statusText = 'مفتوح';
+        statusIcon = Icons.lock_open;
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: statusColor.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: statusColor.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: statusColor.withValues(alpha: 0.2),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(statusIcon, color: statusColor),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('حالة الاتفاق', style: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey[600], fontSize: 12)),
+                Text(statusText, style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 16)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildProgressSection(JobModel job) {
+    final totalMilestones = job.milestones.length;
+    final completedMilestones = job.milestones.where((m) => m.isCompleted).length;
+    final progress = totalMilestones == 0 ? 0.0 : completedMilestones / totalMilestones;
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('نسبة الإنجاز', style: TextStyle(fontWeight: FontWeight.bold)),
+            Text('${(progress * 100).toInt()}%', style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary)),
+          ],
+        ),
+        const SizedBox(height: 8),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: LinearProgressIndicator(
+            value: progress,
+            minHeight: 8,
+            backgroundColor: Colors.grey.withValues(alpha: 0.2),
+            valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text('$completedMilestones من أصل $totalMilestones مراحل مكتملة', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+      ],
+    );
+  }
+
+  Widget _buildEmptyMilestones(BuildContext context, JobModel job, bool isClient, bool isDark) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(32),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.grey[900] : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: isDark ? Colors.grey[800]! : Colors.grey[200]!),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4)),
+        ],
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.blue.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.account_balance_wallet_outlined, size: 48, color: Colors.blue),
+          ),
+          const SizedBox(height: 16),
+          const Text('لا توجد دفعات محددة بعد', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          const SizedBox(height: 8),
+          const Text(
+            'قم بتحديد دفعات الإنجاز لتسهيل عملية الدفع وتقسيم العمل على مراحل مريحة للطرفين.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.grey, fontSize: 13),
+          ),
+          if (isClient && job.status == JobStatus.inProgress) ...[
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () => _showAddMilestoneSheet(context, job),
+              icon: const Icon(Icons.add),
+              label: const Text('تحديد دفعة جديدة'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMilestoneTile(BuildContext context, JobModel job, MilestoneModel m, bool isClient, bool isFreelancer, bool isDark) {
+    final bool canComplete = isFreelancer && job.status == JobStatus.inProgress;
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.grey[900] : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: m.isPaid ? Colors.green.withValues(alpha: 0.5) : (isDark ? Colors.grey[800]! : Colors.grey[200]!),
+          width: m.isPaid ? 1.5 : 1.0,
+        ),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 2)),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            Checkbox(
+              value: m.isCompleted,
+              activeColor: AppColors.primary,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+              onChanged: canComplete ? (val) => _toggleMilestoneCompletion(job, m, val!) : null,
+            ),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    m.title, 
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold, 
+                      fontSize: 15,
+                      decoration: m.isCompleted ? TextDecoration.lineThrough : null,
+                      color: m.isCompleted ? Colors.grey : null,
+                    )
                   ),
+                  const SizedBox(height: 4),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppColors.secondary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      '${m.amount} ${job.currency}', 
+                      style: const TextStyle(color: AppColors.secondary, fontWeight: FontWeight.w600, fontSize: 13)
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (m.isPaid)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(20)),
+                child: const Row(
+                  children: [
+                    Icon(Icons.check_circle, color: Colors.green, size: 16),
+                    SizedBox(width: 4),
+                    Text('تم الدفع', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 12)),
+                  ],
+                ),
+              )
+            else if (isClient && m.isCompleted && job.status == JobStatus.inProgress)
+              ElevatedButton(
+                onPressed: () => _payMilestone(job, m),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                ),
+                child: const Text('دفع الآن', style: TextStyle(fontSize: 13)),
+              )
+            else
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(20)),
+                child: Row(
+                  children: [
+                    const Icon(Icons.pending_actions, color: Colors.orange, size: 16),
+                    const SizedBox(width: 4),
+                    Text(m.isCompleted ? 'بانتظار الدفع' : 'قيد العمل', style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 12)),
+                  ],
                 ),
               ),
           ],
@@ -81,133 +429,83 @@ class _ActiveJobTrackingScreenState extends State<ActiveJobTrackingScreen> {
     );
   }
 
-  Widget _buildJobHeader(JobModel job) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(job.title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 4),
-        Text('مع ${job.assignedFreelancerName ?? job.clientName}', style: TextStyle(color: Colors.grey[600])),
-      ],
-    );
-  }
-
-  Widget _buildStatusCard(JobModel job) {
-    Color statusColor;
-    String statusText;
-
-    switch (job.status) {
-      case JobStatus.inProgress:
-        statusColor = Colors.blue;
-        statusText = 'قيد التنفيذ';
-        break;
-      case JobStatus.completed:
-        statusColor = Colors.green;
-        statusText = 'مكتمل';
-        break;
-      case JobStatus.cancelled:
-        statusColor = Colors.red;
-        statusText = 'ملغي';
-        break;
-      default:
-        statusColor = Colors.grey;
-        statusText = 'مفتوح';
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: statusColor.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: statusColor.withValues(alpha: 0.3)),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.info_outline, color: statusColor),
-          const SizedBox(width: 12),
-          Text('حالة المشروع: $statusText', style: TextStyle(color: statusColor, fontWeight: FontWeight.bold)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmptyMilestones(BuildContext context, JobModel job, bool isClient) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.grey[100],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[300]!),
-      ),
-      child: Column(
-        children: [
-          const Icon(Icons.list_alt, size: 48, color: Colors.grey),
-          const SizedBox(height: 12),
-          const Text('لا توجد مراحل محددة بعد', style: TextStyle(color: Colors.grey)),
-          if (isClient) ...[
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () => _showAddMilestoneSheet(context, job),
-              child: const Text('تحديد مراحل التنفيذ'),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMilestoneTile(BuildContext context, JobModel job, MilestoneModel m, bool isClient, bool isFreelancer) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: ListTile(
-        leading: Checkbox(
-          value: m.isCompleted,
-          onChanged: (isFreelancer && job.status == JobStatus.inProgress) ? (val) => _toggleMilestoneCompletion(job, m, val!) : null,
-        ),
-        title: Text(m.title, style: TextStyle(decoration: m.isCompleted ? TextDecoration.lineThrough : null)),
-        subtitle: Text('${m.amount} ${job.currency}'),
-        trailing: m.isPaid 
-            ? const Icon(Icons.check_circle, color: Colors.green)
-            : (isClient && m.isCompleted && job.status == JobStatus.inProgress) 
-                ? TextButton(onPressed: () => _payMilestone(job, m), child: const Text('دفع'))
-                : const Icon(Icons.pending_actions, color: Colors.orange),
-      ),
-    );
-  }
-
   void _showAddMilestoneSheet(BuildContext context, JobModel job) {
     final titleController = TextEditingController();
     final amountController = TextEditingController();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom, left: 16, right: 16, top: 16),
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom, left: 24, right: 24, top: 24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('إضافة مرحلة جديدة', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            TextField(controller: titleController, decoration: const InputDecoration(labelText: 'عنوان المرحلة')),
-            TextField(controller: amountController, decoration: const InputDecoration(labelText: 'المبلغ'), keyboardType: TextInputType.number),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                  child: const Icon(Icons.add_task, color: AppColors.primary),
+                ),
+                const SizedBox(width: 12),
+                const Text('إضافة دفعة إنجاز جديدة', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              ],
+            ),
             const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: () {
-                final milestones = List<MilestoneModel>.from(job.milestones);
-                milestones.add(MilestoneModel(
-                  id: DateTime.now().millisecondsSinceEpoch.toString(),
-                  title: titleController.text,
-                  amount: double.parse(amountController.text),
-                ));
-                context.read<JobProvider>().updateMilestones(job.id, milestones);
-                Navigator.pop(ctx);
-              },
-              child: const Text('إضافة'),
+            TextField(
+              controller: titleController, 
+              decoration: InputDecoration(
+                labelText: 'عنوان المرحلة (مثال: الدفعة الأولى)',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                filled: true,
+                fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.withValues(alpha: 0.05),
+              )
             ),
             const SizedBox(height: 16),
+            TextField(
+              controller: amountController, 
+              decoration: InputDecoration(
+                labelText: 'المبلغ (SDG)',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                filled: true,
+                fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.withValues(alpha: 0.05),
+              ), 
+              keyboardType: const TextInputType.numberWithOptions(decimal: true)
+            ),
+            const SizedBox(height: 32),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  if (titleController.text.trim().isEmpty || amountController.text.trim().isEmpty) return;
+                  
+                  final milestones = List<MilestoneModel>.from(job.milestones);
+                  milestones.add(MilestoneModel(
+                    id: DateTime.now().millisecondsSinceEpoch.toString(),
+                    title: titleController.text.trim(),
+                    amount: double.tryParse(amountController.text) ?? 0,
+                  ));
+                  context.read<JobProvider>().updateMilestones(job.id, milestones);
+                  Navigator.pop(ctx);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: const Text('إضافة الدفعة', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              ),
+            ),
+            const SizedBox(height: 24),
           ],
         ),
       ),
@@ -229,6 +527,15 @@ class _ActiveJobTrackingScreenState extends State<ActiveJobTrackingScreen> {
       return item;
     }).toList();
     context.read<JobProvider>().updateMilestones(job.id, milestones);
+
+    if (completed) {
+      _sendNotification(
+        targetUserId: job.clientId,
+        title: 'إنجاز مرحلة',
+        message: 'تم إنجاز المرحلة: ${m.title}. يرجى مراجعتها والدفع.',
+        jobId: job.id,
+      );
+    }
   }
 
   void _payMilestone(JobModel job, MilestoneModel m) {
@@ -247,25 +554,64 @@ class _ActiveJobTrackingScreenState extends State<ActiveJobTrackingScreen> {
       return item;
     }).toList();
     context.read<JobProvider>().updateMilestones(job.id, milestones);
+
+    if (job.assignedFreelancerId != null) {
+      _sendNotification(
+        targetUserId: job.assignedFreelancerId!,
+        title: 'تم الدفع',
+        message: 'تم دفع المرحلة: ${m.title}. استمر في عملك الرائع!',
+        jobId: job.id,
+      );
+    }
   }
 
   void _showCompleteDialog(BuildContext context, JobModel job) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('إكمال المشروع'),
-        content: const Text('هل أنت متأكد أنك تريد تمييز هذا المشروع كمكتمل؟ سيتم إغلاق العقد.'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.check_circle, color: Colors.green),
+            SizedBox(width: 8),
+            Text('إكمال الاتفاق'),
+          ],
+        ),
+        content: const Text('هل أنت متأكد أنك تريد تمييز هذا الاتفاق كمكتمل؟ سيؤدي ذلك إلى إنهاء العمل والسماح لكلا الطرفين بإضافة التقييمات.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
           ElevatedButton(
             onPressed: () {
               context.read<JobProvider>().completeJob(jobId: job.id, freelancerId: job.assignedFreelancerId!);
+              
+              if (job.assignedFreelancerId != null) {
+                _sendNotification(
+                  targetUserId: job.assignedFreelancerId!,
+                  title: 'اكتمل الاتفاق',
+                  message: 'تم إنهاء الاتفاق بنجاح! يمكنك الآن ترك تقييم.',
+                  jobId: job.id,
+                );
+              }
+              
               Navigator.pop(ctx);
             },
-            child: const Text('إكمال'),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
+            child: const Text('تأكيد الإكمال'),
           ),
         ],
       ),
     );
+  }
+
+  void _sendNotification({required String targetUserId, required String title, required String message, required String jobId}) {
+    FirebaseFirestore.instance.collection('notifications').add({
+      'userId': targetUserId,
+      'type': NotificationType.system.name,
+      'title': title,
+      'message': message,
+      'isRead': false,
+      'createdAt': FieldValue.serverTimestamp(),
+      'relatedId': jobId,
+    });
   }
 }

@@ -58,8 +58,8 @@ class _SmartSearchFieldState extends State<SmartSearchField> {
     if (_focusNode.hasFocus) {
       _updateSuggestions(_controller.text);
     } else {
-      // Delay removal to allow tap on suggestion
-      Future.delayed(const Duration(milliseconds: 200), () {
+      // Delay removal to allow tap on suggestion (increased to 800ms per user request)
+      Future.delayed(const Duration(milliseconds: 800), () {
         if (!_focusNode.hasFocus) _removeOverlay();
       });
     }
@@ -230,7 +230,10 @@ class _SmartSearchFieldState extends State<SmartSearchField> {
   final String _tapRegionGroupId = UniqueKey().toString();
 
   void _showOverlay() {
-    _removeOverlay();
+    if (_overlayEntry != null) {
+      _overlayEntry!.markNeedsBuild();
+      return;
+    }
     
     final renderBox = context.findRenderObject() as RenderBox?;
     if (renderBox == null) return;
@@ -276,9 +279,8 @@ class _SmartSearchFieldState extends State<SmartSearchField> {
                       final suggestion = _suggestions[index];
                       final isComposite = suggestion.contains('في ');
                       
-                      return GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTapDown: (_) {
+                      return InkWell(
+                        onTap: () {
                           _controller.text = suggestion;
                           _controller.selection = TextSelection.fromPosition(
                             TextPosition(offset: suggestion.length),
@@ -315,10 +317,19 @@ class _SmartSearchFieldState extends State<SmartSearchField> {
                                   ),
                                 ),
                               ),
-                              Icon(
-                                Icons.north_west,
-                                size: 14,
-                                color: Colors.grey[400],
+                              IconButton(
+                                icon: Icon(
+                                  Icons.north_west,
+                                  size: 16,
+                                  color: Colors.grey[400],
+                                ),
+                                onPressed: () {
+                                  _controller.text = suggestion;
+                                  _controller.selection = TextSelection.fromPosition(
+                                    TextPosition(offset: suggestion.length),
+                                  );
+                                  _focusNode.requestFocus();
+                                },
                               ),
                             ],
                           ),

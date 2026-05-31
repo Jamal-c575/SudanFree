@@ -23,6 +23,17 @@ class JobFirestoreService {
     return null;
   }
 
+  // Check if there is a completed job between client and freelancer
+  Future<bool> hasCompletedJob(String clientId, String freelancerId) async {
+    final snapshot = await _firestore.collection('jobs')
+        .where('clientId', isEqualTo: clientId)
+        .where('assignedFreelancerId', isEqualTo: freelancerId)
+        .where('status', isEqualTo: JobStatus.completed.name)
+        .limit(1)
+        .get();
+    return snapshot.docs.isNotEmpty;
+  }
+
   // Get all jobs - Stream
   Stream<List<JobModel>> getJobs({
     String? category,

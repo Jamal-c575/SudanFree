@@ -35,7 +35,7 @@ class _PortfolioProjectDetailScreenState extends State<PortfolioProjectDetailScr
     super.dispose();
   }
 
-  bool _isAr(BuildContext ctx) => ctx.read<LocaleProvider>().isArabic;
+  bool _isAr(BuildContext ctx) => ctx.watch<LocaleProvider>().isArabic;
 
   void _showFullImage(BuildContext context, List<String> imageUrls, int initialIndex) {
     Navigator.push(

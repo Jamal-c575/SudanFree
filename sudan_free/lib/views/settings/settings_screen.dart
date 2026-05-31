@@ -13,10 +13,34 @@ import '../about/about_app_screen.dart';
 import '../settings/privacy_policy_screen.dart';
 import '../settings/admin_dashboard_screen.dart';
 import '../auth/identity_verification_screen.dart';
+import '../jobs/my_agreements_screen.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
+import '../../core/constants/sudan_locations.dart';
+import '../../services/smart_guide_service.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   final bool asBottomSheet;
   const SettingsScreen({super.key, this.asBottomSheet = false});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      SmartGuideService.showMicroTip(
+        context,
+        messageAr: 'يمكنك تعديل اهتماماتك لتحسين المنشورات التي تراها ⚙️',
+        messageEn: 'Update your interests to improve your feed ⚙️',
+        tipId: 'settings_tip',
+        icon: Icons.settings_rounded,
+      );
+    });
+  }
 
   Future<void> _launchURL(String urlString) async {
     final Uri url = Uri.parse(urlString);
@@ -38,7 +62,7 @@ class SettingsScreen extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
 
     final listContent = ListView(
-      padding: asBottomSheet ? const EdgeInsets.fromLTRB(16, 0, 16, 24) : const EdgeInsets.all(16),
+      padding: widget.asBottomSheet ? const EdgeInsets.fromLTRB(16, 0, 16, 24) : const EdgeInsets.all(16),
       children: [
           // Dark Mode Toggle
           _SettingsTile(
@@ -56,7 +80,8 @@ class SettingsScreen extends StatelessWidget {
           // Availability Toggle (Freelancers Only)
           Consumer<AuthProvider>(
             builder: (context, auth, _) {
-              if (auth.user?.role != UserRole.freelancer && auth.user?.role != UserRole.techService) return const SizedBox.shrink();
+              final role = auth.user?.role;
+              if (role != UserRole.freelancer && role != UserRole.techService && role != UserRole.privateService && role != UserRole.shop) return const SizedBox.shrink();
               final isAvailable = auth.user?.isAvailable ?? true;
               return Column(
                 children: [
@@ -72,6 +97,26 @@ class SettingsScreen extends StatelessWidget {
                       activeThumbColor: AppColors.success,
                     ),
                   ),
+                  const SizedBox(height: 8),
+                  
+                  // Map Visibility Toggle
+                  _SettingsTile(
+                    icon: Icons.map,
+                    iconColor: (auth.user?.showOnMap ?? true) ? AppColors.primary : Colors.grey,
+                    title: locale == 'ar' ? 'الظهور على الخريطة' : 'Show on Map',
+                    subtitle: locale == 'ar' 
+                        ? ((auth.user?.showOnMap ?? true) ? 'مرئي للجميع' : 'مخفي من الخريطة')
+                        : ((auth.user?.showOnMap ?? true) ? 'Visible to all' : 'Hidden from map'),
+                    trailing: Switch(
+                      value: auth.user?.showOnMap ?? true,
+                      onChanged: (value) => auth.toggleShowOnMap(),
+                      activeThumbColor: AppColors.primary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+
+                  // Update Location Button
+                  _UpdateLocationTile(auth: auth, locale: locale),
                   const SizedBox(height: 8),
                 ],
               );
@@ -116,24 +161,40 @@ class SettingsScreen extends StatelessWidget {
             builder: (context, auth, _) {
               if (auth.user?.role != UserRole.admin) return const SizedBox.shrink();
               return Column(
-                children: [
-                  const SizedBox(height: 8),
-                  _SettingsTile(
-                    icon: Icons.admin_panel_settings,
-                    iconColor: Colors.deepPurple,
-                    title: locale == 'ar' ? 'لوحة تحكم المشرف' : 'Admin Dashboard',
-                    subtitle: locale == 'ar' ? 'إدارة التوثيقات والإحصائيات' : 'Manage verifications & stats',
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
-          
-          const SizedBox(height: 20),
+               children: [
+                 const SizedBox(height: 8),
+                 _SettingsTile(
+                   icon: Icons.admin_panel_settings,
+                   iconColor: Colors.deepPurple,
+                   title: locale == 'ar' ? 'لوحة تحكم المشرف' : 'Admin Dashboard',
+                   subtitle: locale == 'ar' ? 'إدارة التوثيقات والإحصائيات' : 'Manage verifications & stats',
+                   onTap: () => Navigator.push(
+                     context,
+                     MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
+                   ),
+                 ),
+               ],
+             );
+           },
+         ),
+         
+         const SizedBox(height: 8),
+
+         // My Agreements
+         _SettingsTile(
+           icon: Icons.assignment,
+           iconColor: Colors.blue,
+           title: locale == 'ar' ? 'اتفاقاتي / عقودي' : 'My Agreements',
+           subtitle: locale == 'ar' ? 'إدارة العقود ومتابعة التنفيذ' : 'Manage contracts and track progress',
+           onTap: () {
+             Navigator.push(
+               context,
+               MaterialPageRoute(builder: (_) => const MyAgreementsScreen()),
+             );
+           },
+         ),
+         
+         const SizedBox(height: 20),
           _SectionHeader(title: locale == 'ar' ? 'الأمان والحماية' : 'Safety & Security'),
           const SizedBox(height: 8),
           
@@ -293,7 +354,7 @@ class SettingsScreen extends StatelessWidget {
 
     Widget finalContent = listContent;
 
-    if (asBottomSheet) {
+    if (widget.asBottomSheet) {
       finalContent = Column(
         children: [
           // Fixed Header
@@ -936,6 +997,171 @@ class _InterestsBottomSheetState extends State<_InterestsBottomSheet> {
           ],
         ),
       ),
+    );
+  }
+}
+class _UpdateLocationTile extends StatefulWidget {
+  final AuthProvider auth;
+  final String locale;
+  const _UpdateLocationTile({required this.auth, required this.locale});
+
+  @override
+  State<_UpdateLocationTile> createState() => _UpdateLocationTileState();
+}
+
+class _UpdateLocationTileState extends State<_UpdateLocationTile> {
+  bool _isLoading = false;
+
+  String? _matchState(String adminArea) {
+    if (adminArea.isEmpty) return null;
+    final area = adminArea.toLowerCase();
+
+    if (area.contains('khartoum')) return 'الخرطوم';
+    if (area.contains('jazira') || area.contains('gezira')) return 'الجزيرة';
+    if (area.contains('river nile')) return 'نهر النيل';
+    if (area.contains('northern')) return 'الشمالية';
+    if (area.contains('kassala')) return 'كسلا';
+    if (area.contains('gedaref') || area.contains('qadaref') || area.contains('qadarif')) return 'القضارف';
+    if (area.contains('red sea')) return 'البحر الأحمر';
+    if (area.contains('sennar')) return 'سنار';
+    if (area.contains('blue nile')) return 'النيل الأزرق';
+    if (area.contains('white nile')) return 'النيل الأبيض';
+    if (area.contains('north') && area.contains('kordofan')) return 'شمال كردفان';
+    if (area.contains('south') && area.contains('kordofan')) return 'جنوب كردفان';
+    if (area.contains('west') && area.contains('kordofan')) return 'غرب كردفان';
+    if (area.contains('north') && area.contains('darfur')) return 'شمال دارفور';
+    if (area.contains('south') && area.contains('darfur')) return 'جنوب دارفور';
+    if (area.contains('west') && area.contains('darfur')) return 'غرب دارفور';
+    if (area.contains('central') && area.contains('darfur')) return 'وسط دارفور';
+    if (area.contains('east') && area.contains('darfur')) return 'شرق دارفور';
+
+    for (var s in SudanLocations.states) {
+      if (adminArea.contains(s) || s.contains(adminArea)) return s;
+    }
+    return null;
+  }
+
+  String? _matchLocality(String localityArea, String state) {
+    if (localityArea.isEmpty) return null;
+    final area = localityArea.toLowerCase();
+    final localities = SudanLocations.getLocalities(state);
+
+    if (area.contains('khartoum north') || area.contains('bahri')) return 'بحري';
+    if (area.contains('khartoum')) return 'الخرطوم';
+    if (area.contains('omdurman')) return 'أم درمان';
+    if (area.contains('karari')) return 'كرري';
+    if (area.contains('umbadda') || area.contains('ombadda')) return 'أم بدة';
+    if (area.contains('jebel aulia')) return 'جبل أولياء';
+    if (area.contains('sharq an nil') || area.contains('east nile')) return 'شرق النيل';
+    if (area.contains('wad madani') || area.contains('wad medani')) return 'ود مدني';
+    if (area.contains('port sudan')) return 'بورتسودان';
+    if (area.contains('kassala')) return 'كسلا';
+    if (area.contains('nyala')) return 'نيالا';
+    if (area.contains('el fasher') || area.contains('al fashir')) return 'الفاشر';
+    if (area.contains('al ubayyid') || area.contains('el obeid')) return 'الأبيض';
+
+    for (var l in localities) {
+      if (localityArea.contains(l) || l.contains(localityArea)) return l;
+    }
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _SettingsTile(
+      icon: Icons.my_location,
+      iconColor: AppColors.primary,
+      title: widget.locale == 'ar' ? 'تحديث موقعي الجغرافي' : 'Update My Location',
+      subtitle: _isLoading
+          ? (widget.locale == 'ar' ? 'جاري التحديث الآن...' : 'Updating now...')
+          : (widget.locale == 'ar' ? 'التقاط موقعك الحالي للخريطة' : 'Capture your current location for the map'),
+      trailing: _isLoading
+          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+          : const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+      onTap: _isLoading ? null : () async {
+        bool serviceEnabled;
+        LocationPermission permission;
+
+        serviceEnabled = await Geolocator.isLocationServiceEnabled();
+        if (!serviceEnabled) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(widget.locale == 'ar' ? 'يرجى تفعيل خدمة تحديد الموقع (GPS)' : 'Please enable Location services')),
+            );
+          }
+          return;
+        }
+
+        permission = await Geolocator.checkPermission();
+        if (permission == LocationPermission.denied) {
+          permission = await Geolocator.requestPermission();
+          if (permission == LocationPermission.denied) {
+            return;
+          }
+        }
+
+        if (permission == LocationPermission.deniedForever) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(widget.locale == 'ar' ? 'صلاحيات الموقع معطلة دائماً' : 'Location permissions are permanently denied')),
+            );
+          }
+          return;
+        }
+
+        setState(() {
+          _isLoading = true;
+        });
+
+        try {
+          Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+          
+          String? state;
+          String? locality;
+          
+          try {
+            List<Placemark> placemarks = await placemarkFromCoordinates(position.latitude, position.longitude);
+            if (placemarks.isNotEmpty) {
+              final placemark = placemarks.first;
+              state = _matchState(placemark.administrativeArea ?? '');
+              if (state != null) {
+                locality = _matchLocality(placemark.locality ?? placemark.subAdministrativeArea ?? '', state);
+              }
+            }
+          } catch (geocodingError) {
+            debugPrint('Error reverse geocoding location: $geocodingError');
+            // Continue without state/locality if geocoding fails
+          }
+          
+          bool success = await widget.auth.updateLocation(
+            position.latitude, 
+            position.longitude,
+            state: state,
+            locality: locality,
+          );
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(
+                success 
+                  ? (widget.locale == 'ar' ? 'تم تحديث موقعك بنجاح!' : 'Location updated successfully!')
+                  : (widget.locale == 'ar' ? 'حدث خطأ أثناء التحديث' : 'Error updating location')
+              )),
+            );
+          }
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(widget.locale == 'ar' ? 'فشل التقاط الموقع' : 'Failed to capture location')),
+            );
+          }
+        } finally {
+          if (mounted) {
+            setState(() {
+              _isLoading = false;
+            });
+          }
+        }
+      },
     );
   }
 }
