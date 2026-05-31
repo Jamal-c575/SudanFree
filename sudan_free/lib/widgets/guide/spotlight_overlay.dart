@@ -159,7 +159,7 @@ class _SpotlightPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = Colors.black.withValues(alpha: 0.72);
+    final paint = Paint()..color = AppColors.primary.withValues(alpha: 0.85);
 
     // رسم الخلفية الكاملة
     final fullRect = Rect.fromLTWH(0, 0, size.width, size.height);

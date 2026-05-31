@@ -80,7 +80,7 @@ class SmartGuideService {
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 4),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        backgroundColor: AppColors.primary.withValues(alpha: 0.95),
+        backgroundColor: AppColors.primary,
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),
         dismissDirection: DismissDirection.horizontal,
       ),

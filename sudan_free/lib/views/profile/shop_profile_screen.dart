@@ -467,14 +467,18 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
           }),
       floatingActionButton: widget.isMe 
         ? AdaptiveFabPadding(
-            child: FloatingActionButton(
+            child: FloatingActionButton.extended(
               onPressed: () => Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const CreateProductScreen()),
               ),
               backgroundColor: AppColors.secondary,
               foregroundColor: Colors.white,
-              child: const Icon(Icons.add_box_outlined, size: 26),
+              icon: const Icon(Icons.shopping_bag_outlined, size: 22),
+              label: Text(
+                Localizations.localeOf(context).languageCode == 'ar' ? 'إضافة منتج' : 'Add Product',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
             ),
           )
         : (widget.user.role == UserRole.shop || widget.user.role == UserRole.techService || widget.user.role == UserRole.privateService) 
