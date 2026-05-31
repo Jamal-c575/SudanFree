@@ -136,9 +136,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               if (!hasUnread) return const SizedBox.shrink();
               return TextButton(
                 onPressed: () async {
-                  for (final n in notifications.where((n) => !n.isRead)) {
-                    await FirestoreService().markNotificationAsRead(n.id);
-                  }
+                  await FirestoreService().markAllNotificationsAsRead(user.id);
                 },
                 child: Text(
                   locale == 'ar' ? 'قراءة الكل' : 'Read all',

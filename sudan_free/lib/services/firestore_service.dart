@@ -179,6 +179,7 @@ class FirestoreService {
   Stream<int> getUnreadNotificationsCount(String userId) => _notifications.getUnreadNotificationsCount(userId);
   Future<void> sendNotification(NotificationModel notification) => _notifications.addNotification(notification);
   Future<void> markNotificationAsRead(String notifId) => _firestore.collection('notifications').doc(notifId).update({'isRead': true});
+  Future<void> markAllNotificationsAsRead(String userId) => _notifications.markAllAsRead(userId);
   Future<void> deleteNotification(String notifId) => _notifications.deleteNotification(notifId);
 
   // ==================== PAYMENTS ====================
