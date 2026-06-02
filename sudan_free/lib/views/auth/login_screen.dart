@@ -403,28 +403,18 @@ class _LoginScreenState extends State<LoginScreen> {
                 _FacebookSignInButton(
                   isLoading: isLoading,
                   locale: locale,
-                  onPressed: () async {
-                    final authProvider = context.read<AuthProvider>();
-                    final scaffoldMessenger = ScaffoldMessenger.of(context);
-                    final success = await authProvider.signInWithFacebook();
-                    
-                    if (success && context.mounted) {
-                      if (Navigator.canPop(context)) {
-                        Navigator.popUntil(context, (route) => route.isFirst);
-                      }
-                    } else if (authProvider.errorMessage != null && context.mounted) {
-                      final error = authProvider.errorMessage!;
-                      if (error.startsWith('DEVICE_BANNED:')) {
-                        _showBanDialog(error.replaceFirst('DEVICE_BANNED:', ''));
-                      } else {
-                        scaffoldMessenger.showSnackBar(
-                          SnackBar(
-                            content: Text(error),
-                            backgroundColor: AppColors.error,
-                          ),
-                        );
-                      }
-                    }
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          locale == 'ar' 
+                              ? 'قريباً سيتم تفعيل المصادقة عبر فيسبوك' 
+                              : 'Facebook authentication will be activated soon',
+                        ),
+                        backgroundColor: Colors.orange,
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
                   },
                 ),
                 
@@ -611,39 +601,42 @@ class _FacebookSignInButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFF1877F2), // Facebook Blue
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF1877F2).withValues(alpha: 0.3),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: isLoading ? null : onPressed,
+    return Opacity(
+      opacity: 0.7,
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFF1877F2), // Facebook Blue
           borderRadius: BorderRadius.circular(12),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 13),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.facebook, color: Colors.white, size: 24),
-                const SizedBox(width: 10),
-                Text(
-                  locale == 'ar' ? 'المتابعة باستخدام Facebook' : 'Continue with Facebook',
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 15,
-                    color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF1877F2).withValues(alpha: 0.3),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: isLoading ? null : onPressed,
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 13),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.facebook, color: Colors.white, size: 24),
+                  const SizedBox(width: 10),
+                  Text(
+                    locale == 'ar' ? 'المتابعة باستخدام Facebook' : 'Continue with Facebook',
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                      color: Colors.white,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
