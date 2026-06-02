@@ -74,22 +74,28 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _onTypingChanged(String value) {
-    if (!_isMeTyping && value.isNotEmpty) {
-      _isMeTyping = true;
-      final userId = context.read<AuthProvider>().user?.id;
-      if (userId != null) {
-        context.read<ChatProvider>().setTypingStatus(userId, true);
+    final userId = context.read<AuthProvider>().user?.id;
+    if (userId == null) return;
+
+    if (value.isEmpty) {
+      if (_isMeTyping) {
+        _isMeTyping = false;
+        context.read<ChatProvider>().setTypingStatus(userId, false);
       }
+      _typingTimer?.cancel();
+      return;
+    }
+
+    if (!_isMeTyping) {
+      _isMeTyping = true;
+      context.read<ChatProvider>().setTypingStatus(userId, true);
     }
 
     _typingTimer?.cancel();
     _typingTimer = Timer(const Duration(seconds: 2), () {
       if (_isMeTyping) {
         _isMeTyping = false;
-        final userId = context.read<AuthProvider>().user?.id;
-        if (userId != null) {
-          context.read<ChatProvider>().setTypingStatus(userId, false);
-        }
+        context.read<ChatProvider>().setTypingStatus(userId, false);
       }
     });
   }
@@ -251,10 +257,11 @@ class _ChatScreenState extends State<ChatScreen> {
     final chatProvider = context.watch<ChatProvider>();
     final user = authProvider.user;
     final messages = chatProvider.messages;
-    final otherName = widget.chat.getOtherParticipantName(user?.id ?? '');
-    final otherImage = widget.chat.getOtherParticipantImage(user?.id ?? '');
-    final otherId = widget.chat.getOtherParticipantId(user?.id ?? '');
-    final isOtherTyping = widget.chat.isTyping(otherId);
+    final liveChat = chatProvider.chats.firstWhere((c) => c.id == widget.chat.id, orElse: () => widget.chat);
+    final otherName = liveChat.getOtherParticipantName(user?.id ?? '');
+    final otherImage = liveChat.getOtherParticipantImage(user?.id ?? '');
+    final otherId = liveChat.getOtherParticipantId(user?.id ?? '');
+    final isOtherTyping = liveChat.isTyping(otherId);
 
     return Scaffold(
       appBar: AppBar(
@@ -385,37 +392,43 @@ class _ChatScreenState extends State<ChatScreen> {
                     ),
             ),
             const SizedBox(width: 8),
-            GestureDetector(
-              onLongPressStart: (_) {
-                if (_messageController.text.trim().isEmpty && !_isRecording) {
-                  _startRecording();
-                }
+            ValueListenableBuilder<TextEditingValue>(
+              valueListenable: _messageController,
+              builder: (context, value, child) {
+                final hasText = value.text.trim().isNotEmpty;
+                return GestureDetector(
+                  onLongPressStart: (_) {
+                    if (!hasText && !_isRecording) {
+                      _startRecording();
+                    }
+                  },
+                  onLongPressEnd: (_) {
+                    if (_isRecording) {
+                      _stopRecording();
+                    }
+                  },
+                  child: FloatingActionButton(
+                    onPressed: () {
+                      if (_isRecording) {
+                        _stopRecording();
+                      } else if (hasText) {
+                        _sendMessage();
+                      } else {
+                        _startRecording();
+                      }
+                    },
+                    mini: true,
+                    elevation: 2,
+                    backgroundColor: _isRecording ? Colors.red : AppColors.primary,
+                    child: Icon(
+                      _isRecording 
+                          ? Icons.send
+                          : (hasText ? Icons.send : Icons.mic),
+                      color: Colors.white,
+                    ),
+                  ),
+                );
               },
-              onLongPressEnd: (_) {
-                if (_isRecording) {
-                  _stopRecording();
-                }
-              },
-              child: FloatingActionButton(
-                onPressed: () {
-                  if (_isRecording) {
-                    _stopRecording();
-                  } else if (_messageController.text.trim().isNotEmpty) {
-                    _sendMessage();
-                  } else {
-                    _startRecording();
-                  }
-                },
-                mini: true,
-                elevation: 2,
-                backgroundColor: _isRecording ? Colors.red : AppColors.primary,
-                child: Icon(
-                  _isRecording 
-                      ? Icons.send
-                      : (_messageController.text.trim().isEmpty ? Icons.mic : Icons.send),
-                  color: Colors.white,
-                ),
-              ),
             ),
           ],
         ),

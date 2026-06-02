@@ -182,6 +182,8 @@ class AuthProvider extends ChangeNotifier {
 
       _authSubscription = _authService.authStateChanges.listen((User? user) {
         _handleAuthStateChange(user);
+      }, onError: (error) {
+        debugPrint('Auth provider stream error: $error');
       });
     } catch (e) {
       debugPrint('Auth provider initialization error: $e');

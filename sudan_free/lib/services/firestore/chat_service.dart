@@ -32,7 +32,7 @@ class ChatFirestoreService {
     await batch.commit();
   }
 
-  // Get user's chats
+  // Get user's chats (Stream - for active chat view if needed)
   Stream<List<ChatModel>> getUserChats(String userId) {
     return _firestore
         .collection('chats')
@@ -40,6 +40,16 @@ class ChatFirestoreService {
         .orderBy('lastMessageTime', descending: true)
         .snapshots()
         .map((snapshot) => snapshot.docs.map((doc) => ChatModel.fromFirestore(doc)).toList());
+  }
+
+  // Get user's chats ONCE (Get - to save reads)
+  Future<List<ChatModel>> getUserChatsOnce(String userId) async {
+    final snapshot = await _firestore
+        .collection('chats')
+        .where('participants', arrayContains: userId)
+        .orderBy('lastMessageTime', descending: true)
+        .get();
+    return snapshot.docs.map((doc) => ChatModel.fromFirestore(doc)).toList();
   }
 
   // Get or create chat between two users

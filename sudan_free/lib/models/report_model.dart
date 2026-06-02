@@ -8,6 +8,7 @@ class ReportModel {
   final String reportedUserName;
   final String? reportedUserPhone;
   final String reason;
+  final String? imageUrl;
   final DateTime createdAt;
   final String status; // 'pending', 'resolved'
 
@@ -19,6 +20,7 @@ class ReportModel {
     required this.reportedUserName,
     this.reportedUserPhone,
     required this.reason,
+    this.imageUrl,
     required this.createdAt,
     this.status = 'pending',
   });
@@ -29,8 +31,9 @@ class ReportModel {
       'reporterName': reporterName,
       'reportedUserId': reportedUserId,
       'reportedUserName': reportedUserName,
-      'reportedUserPhone': reportedUserPhone,
+      if (reportedUserPhone != null) 'reportedUserPhone': reportedUserPhone,
       'reason': reason,
+      if (imageUrl != null) 'imageUrl': imageUrl,
       'createdAt': Timestamp.fromDate(createdAt),
       'status': status,
     };
@@ -46,7 +49,10 @@ class ReportModel {
       reportedUserName: data['reportedUserName'] ?? '',
       reportedUserPhone: data['reportedUserPhone'],
       reason: data['reason'] ?? '',
-      createdAt: (data['createdAt'] as Timestamp).toDate(),
+      imageUrl: data['imageUrl'],
+      createdAt: data['createdAt'] is Timestamp 
+          ? (data['createdAt'] as Timestamp).toDate()
+          : DateTime.now(),
       status: data['status'] ?? 'pending',
     );
   }

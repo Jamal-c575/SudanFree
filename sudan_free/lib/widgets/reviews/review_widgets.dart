@@ -393,3 +393,94 @@ class ReviewCard extends StatelessWidget {
     return '${date.day}/${date.month}/${date.year}';
   }
 }
+
+class ReviewStatsWidget extends StatelessWidget {
+  final List<ReviewModel> reviews;
+  final String locale;
+
+  const ReviewStatsWidget({super.key, required this.reviews, required this.locale});
+
+  @override
+  Widget build(BuildContext context) {
+    if (reviews.isEmpty) return const SizedBox.shrink();
+
+    final totalReviews = reviews.length;
+    double averageRating = reviews.map((r) => r.rating).reduce((a, b) => a + b) / totalReviews;
+    final counts = {5: 0, 4: 0, 3: 0, 2: 0, 1: 0};
+    
+    for (var r in reviews) {
+      final rInt = r.rating.round();
+      if (counts.containsKey(rInt)) {
+        counts[rInt] = counts[rInt]! + 1;
+      }
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 24),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // Average Rating Circle
+          Column(
+            children: [
+              Text(
+                averageRating.toStringAsFixed(1),
+                style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold),
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: List.generate(5, (index) => Icon(
+                  index < averageRating.round() ? Icons.star : Icons.star_border,
+                  color: Colors.amber,
+                  size: 16,
+                )),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '$totalReviews ${locale == 'ar' ? 'تقييم' : 'Reviews'}',
+                style: const TextStyle(color: Colors.grey, fontSize: 12),
+              ),
+            ],
+          ),
+          const SizedBox(width: 24),
+          // Progress Bars
+          Expanded(
+            child: Column(
+              children: [5, 4, 3, 2, 1].map((stars) {
+                final count = counts[stars]!;
+                final double percent = totalReviews > 0 ? count / totalReviews : 0;
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Row(
+                    children: [
+                      Text('$stars', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                      const Icon(Icons.star, color: Colors.amber, size: 12),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: LinearProgressIndicator(
+                            value: percent,
+                            backgroundColor: Colors.grey.withValues(alpha: 0.2),
+                            valueColor: const AlwaysStoppedAnimation<Color>(Colors.amber),
+                            minHeight: 8,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

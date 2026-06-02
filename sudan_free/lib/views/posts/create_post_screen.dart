@@ -259,9 +259,9 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
           price: double.tryParse(_priceController.text.trim()),
         );
       } else {
-        // Create
+        // Create Background
         final user = context.read<AuthProvider>().user!;
-        success = await context.read<PostsProvider>().createPost(
+        context.read<PostsProvider>().createPostInBackground(
           userId: user.id,
           userName: user.name,
           userRole: user.role.name,
@@ -282,6 +282,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
           linkedProductImage: widget.linkedProduct?.allImageUrls.firstOrNull,
           linkedProductPrice: widget.linkedProduct?.price,
         );
+        success = true;
       }
     } catch (e, stack) {
       if (mounted) {
@@ -303,8 +304,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         SnackBar(
           content: Text(widget.post != null 
               ? (locale == 'ar' ? 'تم تحديث المنشور بنجاح ✅' : 'Post updated successfully ✅')
-              : (locale == 'ar' ? 'تم نشر العمل بنجاح ✅' : 'Post published successfully ✅')),
-          backgroundColor: Colors.green,
+              : (locale == 'ar' ? 'جاري النشر في الخلفية... ⏳' : 'Posting in background... ⏳')),
+          backgroundColor: widget.post != null ? Colors.green : AppColors.primary,
         ),
       );
       Navigator.pop(context);

@@ -3,6 +3,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'dart:ui';
 
 import 'create_portfolio_project_screen.dart';
 import 'portfolio_project_detail_screen.dart';
@@ -126,6 +127,7 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
     final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      extendBody: true,
       body: Stack(
         children: [
           StreamBuilder<UserModel?>(
@@ -534,6 +536,9 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
             ),
         ],
       ),
+      bottomNavigationBar: !widget.isMe 
+          ? _buildGlassContactBar(context, widget.user)
+          : null,
       floatingActionButton: widget.isMe 
           ? ((_tabController.index == 0 || _tabController.index == 1)
               ? AdaptiveFabPadding(
@@ -562,17 +567,47 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
                   ),
                 )
               : null)
-          : AdaptiveFabPadding(
-              child: FloatingActionButton.extended(
-                onPressed: () => _showContactMenu(context, widget.user),
-                backgroundColor: AppColors.primary,
-                icon: const Icon(Icons.support_agent, color: Colors.white),
-                label: Text(
-                  Localizations.localeOf(context).languageCode == 'ar' ? 'تواصل معي' : 'Contact Me',
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          : null,
+    );
+  }
+
+  Widget _buildGlassContactBar(BuildContext context, UserModel freelancer) {
+    return ClipRRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          padding: EdgeInsets.only(
+            left: 16, 
+            right: 16, 
+            top: 12, 
+            bottom: MediaQuery.of(context).padding.bottom + 12
+          ),
+          decoration: BoxDecoration(
+            color: Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.8),
+            border: Border(top: BorderSide(color: Colors.grey.withValues(alpha: 0.2))),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () => _showContactMenu(context, freelancer),
+                  icon: const Icon(Icons.support_agent),
+                  label: Text(
+                    Localizations.localeOf(context).languageCode == 'ar' ? 'تواصل معي' : 'Contact Me',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
                 ),
               ),
-            ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -773,7 +808,13 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
         if (!snapshot.hasData || snapshot.data!.isEmpty) return Center(child: Text(AppLocalizations.of(context)!.noReviews, style: const TextStyle(color: Colors.grey)));
         
         return Column(
-          children: snapshot.data!.map((review) => ReviewCard(review: review, locale: context.read<LocaleProvider>().locale.languageCode)).toList(),
+          children: [
+            ReviewStatsWidget(
+              reviews: snapshot.data!,
+              locale: context.read<LocaleProvider>().locale.languageCode,
+            ),
+            ...snapshot.data!.map((review) => ReviewCard(review: review, locale: context.read<LocaleProvider>().locale.languageCode)).toList(),
+          ],
         );
       },
     );

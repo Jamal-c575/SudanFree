@@ -7,6 +7,7 @@ import '../../models/job_model.dart';
 import '../../core/constants/app_colors.dart';
 import 'active_job_tracking_screen.dart';
 import '../../services/smart_guide_service.dart';
+import 'package:shimmer/shimmer.dart';
 
 class MyAgreementsScreen extends StatefulWidget {
   const MyAgreementsScreen({super.key});
@@ -76,6 +77,9 @@ class _MyAgreementsScreenState extends State<MyAgreementsScreen> with SingleTick
       ),
       body: Consumer<JobProvider>(
         builder: (context, jobProvider, child) {
+          if (jobProvider.isLoading && jobProvider.clientJobs.isEmpty && jobProvider.freelancerJobs.isEmpty) {
+            return _buildShimmerList(isDark);
+          }
           final allJobs = [...jobProvider.clientJobs, ...jobProvider.freelancerJobs];
           
           // Remove duplicates if user is both client and freelancer on same job (rare)
@@ -226,6 +230,52 @@ class _MyAgreementsScreenState extends State<MyAgreementsScreen> with SingleTick
         text,
         style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold),
       ),
+    );
+  }
+
+  Widget _buildShimmerList(bool isDark) {
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: 5,
+      itemBuilder: (context, index) {
+        return Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          elevation: 2,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          color: isDark ? Colors.grey[900] : Colors.white,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Shimmer.fromColors(
+              baseColor: isDark ? Colors.grey[800]! : Colors.grey[300]!,
+              highlightColor: isDark ? Colors.grey[700]! : Colors.grey[100]!,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Container(width: 150, height: 20, color: Colors.white),
+                      Container(width: 60, height: 20, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12))),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Container(width: double.infinity, height: 14, color: Colors.white),
+                  const SizedBox(height: 4),
+                  Container(width: 200, height: 14, color: Colors.white),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Container(width: 100, height: 14, color: Colors.white),
+                      Container(width: 80, height: 16, color: Colors.white),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

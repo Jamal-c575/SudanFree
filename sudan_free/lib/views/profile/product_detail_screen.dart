@@ -483,19 +483,38 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     ),
                   ),
                 ),
-                child: CachedNetworkImage(
-                  imageUrl: allMedia[index],
-                  fit: BoxFit.cover,
-                  placeholder: (_, __) => Container(
-                    color: placeholderColor,
-                    child: const Center(child: CircularProgressIndicator()),
-                  ),
-                  errorWidget: (_, __, ___) => Container(
-                    color: placeholderColor,
-                    child: const Icon(Icons.broken_image,
-                        color: Colors.grey, size: 50),
-                  ),
-                ),
+                child: index == 0
+                    ? Hero(
+                        tag: 'product_image_${widget.product.id}',
+                        child: CachedNetworkImage(
+                          imageUrl: allMedia[index],
+                          fit: BoxFit.cover,
+                          memCacheWidth: 800,
+                          placeholder: (_, __) => Container(
+                            color: placeholderColor,
+                            child: const Center(child: CircularProgressIndicator()),
+                          ),
+                          errorWidget: (_, __, ___) => Container(
+                            color: placeholderColor,
+                            child: const Icon(Icons.broken_image,
+                                color: Colors.grey, size: 50),
+                          ),
+                        ),
+                      )
+                    : CachedNetworkImage(
+                        imageUrl: allMedia[index],
+                        fit: BoxFit.cover,
+                        memCacheWidth: 800,
+                        placeholder: (_, __) => Container(
+                          color: placeholderColor,
+                          child: const Center(child: CircularProgressIndicator()),
+                        ),
+                        errorWidget: (_, __, ___) => Container(
+                          color: placeholderColor,
+                          child: const Icon(Icons.broken_image,
+                              color: Colors.grey, size: 50),
+                        ),
+                      ),
               ),
             ),
           ),

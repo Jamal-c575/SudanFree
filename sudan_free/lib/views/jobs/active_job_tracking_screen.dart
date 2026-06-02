@@ -84,6 +84,8 @@ class _ActiveJobTrackingScreenState extends State<ActiveJobTrackingScreen> {
             const SizedBox(height: 24),
             _buildStatusCard(job, isDark),
             const SizedBox(height: 24),
+            _buildStepper(job, isDark),
+            const SizedBox(height: 24),
             
             // Progress Section
             if (job.milestones.isNotEmpty)
@@ -247,6 +249,94 @@ class _ActiveJobTrackingScreenState extends State<ActiveJobTrackingScreen> {
                 Text(statusText, style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 16)),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStepper(JobModel job, bool isDark) {
+    if (job.status == JobStatus.cancelled) return const SizedBox.shrink();
+
+    int currentStep = 0;
+    if (job.status == JobStatus.inProgress) {
+      if (job.milestones.isNotEmpty && job.milestones.any((m) => m.isCompleted)) {
+        currentStep = 2; // Some progress made
+      } else {
+        currentStep = 1; // Just started
+      }
+    } else if (job.status == JobStatus.completed) {
+      currentStep = 3;
+    }
+
+    final steps = [
+      {'title': 'مفتوح', 'icon': Icons.assignment},
+      {'title': 'قيد التنفيذ', 'icon': Icons.play_circle_fill},
+      {'title': 'مرحلي', 'icon': Icons.hourglass_bottom},
+      {'title': 'مكتمل', 'icon': Icons.check_circle},
+    ];
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.grey[900] : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('مسار الاتفاق', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 20),
+          Row(
+            children: List.generate(steps.length * 2 - 1, (index) {
+              if (index % 2 != 0) {
+                // Line
+                final stepIndex = index ~/ 2;
+                final isPassed = stepIndex < currentStep;
+                return Expanded(
+                  child: Container(
+                    height: 3,
+                    color: isPassed ? AppColors.primary : Colors.grey.withValues(alpha: 0.2),
+                  ),
+                );
+              }
+              // Circle
+              final stepIndex = index ~/ 2;
+              final isActive = stepIndex == currentStep;
+              final isPassed = stepIndex < currentStep;
+              final color = isPassed || isActive ? AppColors.primary : Colors.grey.withValues(alpha: 0.3);
+              
+              return Column(
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: isActive ? color.withValues(alpha: 0.2) : color,
+                      shape: BoxShape.circle,
+                      border: isActive ? Border.all(color: color, width: 2) : null,
+                    ),
+                    child: Icon(
+                      steps[stepIndex]['icon'] as IconData, 
+                      size: 16, 
+                      color: isActive ? color : Colors.white
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    steps[stepIndex]['title'] as String,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: isActive || isPassed ? FontWeight.bold : FontWeight.normal,
+                      color: isActive || isPassed ? AppColors.primary : Colors.grey,
+                    ),
+                  ),
+                ],
+              );
+            }),
           ),
         ],
       ),

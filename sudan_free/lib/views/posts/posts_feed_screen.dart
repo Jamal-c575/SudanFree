@@ -450,9 +450,9 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
                                 itemBuilder: (context, index) {
                                   final item = mixedFeed[index];
 
-                                  // ─ عرض إعلان ─ محاط بـ ClipRect لمنع تداخل أنيميشن المنشورات المجاورة
                                   if (item is AdModel) {
                                     return ClipRect(
+                                      key: ValueKey('ad_${item.id}'),
                                       child: AdWidget(
                                         ad: item,
                                         onTap: () {
@@ -474,6 +474,7 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
                                       .length;
 
                                   return Column(
+                                    key: ValueKey('post_${post.id}'),
                                     children: [
                                       StaggeredAnimatedWidget(
                                         index: postIndex,

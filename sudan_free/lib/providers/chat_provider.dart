@@ -35,21 +35,24 @@ class ChatProvider extends ChangeNotifier {
     return _chats.fold(0, (total, chat) => total + chat.getUnreadCount(userId));
   }
 
-  // Fetch user's chats
-  void fetchChats(String userId) {
+  // Fetch user's chats ONCE (Get instead of Listen to save costs)
+  Future<void> fetchChats(String userId) async {
+    if (_isLoading && _chats.isNotEmpty) return;
+    
     _isLoading = true;
     notifyListeners();
 
-    _chatsSubscription?.cancel();
-    _chatsSubscription = _firestoreService.getUserChats(userId).listen((chats) {
+    try {
+      _chatsSubscription?.cancel(); // Cancel any existing stream just in case
+      final chats = await _firestoreService.getUserChatsOnce(userId);
       _chats = chats;
       _isLoading = false;
       notifyListeners();
-    }, onError: (e) {
+    } catch (e) {
       _isLoading = false;
       _errorMessage = e.toString();
       notifyListeners();
-    });
+    }
   }
 
   // Get or create chat with another user
@@ -73,12 +76,11 @@ class ChatProvider extends ChangeNotifier {
         user1Name: currentUserName,
         user1ImageUrl: currentUserImageUrl,
         user2Id: otherUserId,
-      _messages = removeTemporaryMessage(_messages, tempId);
+        user2Name: otherUserName,
         user2ImageUrl: otherUserImageUrl,
         jobId: jobId,
         jobTitle: jobTitle,
       );
-      _messages = removeTemporaryMessage(_messages, tempId);
       _currentChat = chat;
       _isLoading = false;
       notifyListeners();
@@ -105,6 +107,10 @@ class ChatProvider extends ChangeNotifier {
     _messagesSubscription = _firestoreService.getChatMessages(chat.id).listen((messages) {
       _messages = messages;
       notifyListeners();
+    }, onError: (error) {
+      debugPrint('ChatProvider: Error fetching messages: $error');
+      _errorMessage = error.toString();
+      notifyListeners();
     });
   }
 
@@ -121,8 +127,9 @@ class ChatProvider extends ChangeNotifier {
     // لا نستدعي notifyListeners هنا لتجنب إعادة الرسم المتكرر
 
     try {
+      final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
       final message = MessageModel(
-        id: 'temp_${DateTime.now().millisecondsSinceEpoch}',
+        id: tempId,
         chatId: _currentChat!.id,
         senderId: senderId,
         senderName: senderName,
@@ -138,6 +145,7 @@ class ChatProvider extends ChangeNotifier {
       await _firestoreService.sendMessage(message);
       _isSending = false;
       _messages = removeTemporaryMessage(_messages, tempId);
+      return true;
     } catch (e) {
       _isSending = false;
       _errorMessage = e.toString();

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -396,7 +397,96 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
+              
+              // Bio
+              if (user.bio != null && user.bio!.isNotEmpty) ...[
+                Text(
+                  user.bio!,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 13, color: Colors.grey[700], height: 1.4),
+                ),
+                const SizedBox(height: 12),
+              ],
+              
+              // Skills / Tags
+              if (user.skills.isNotEmpty) ...[
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: user.skills.take(3).map((skill) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        skill,
+                        style: const TextStyle(color: AppColors.primary, fontSize: 11, fontWeight: FontWeight.w600),
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 12),
+              ],
+
+              // Location & Work Hours
+              if ((user.state != null && user.state!.isNotEmpty) || 
+                  (user.locality != null && user.locality!.isNotEmpty) || 
+                  (user.openingHours != null && user.openingHours!.isNotEmpty))
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  margin: const EdgeInsets.only(bottom: 20),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).cardColor,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey[300]!),
+                  ),
+                  child: Column(
+                    children: [
+                      // Location
+                      if ((user.state != null && user.state!.isNotEmpty) || (user.locality != null && user.locality!.isNotEmpty))
+                        Row(
+                          children: [
+                            Icon(Icons.location_on, size: 16, color: Colors.grey[600]),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                [user.state, user.locality].where((e) => e != null && e.isNotEmpty).join(' - '),
+                                style: TextStyle(fontSize: 13, color: Colors.grey[800]),
+                              ),
+                            ),
+                          ],
+                        ),
+                      
+                      // Work Hours
+                      if (user.openingHours != null && user.openingHours!.isNotEmpty) ...[
+                        if ((user.state != null && user.state!.isNotEmpty) || (user.locality != null && user.locality!.isNotEmpty))
+                          const Divider(height: 16),
+                        Row(
+                          children: [
+                            Icon(Icons.access_time, size: 16, color: Colors.grey[600]),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                isAr ? 'زمن العمل: من ${user.openingHours} إلى ${user.closingHours ?? ''}'
+                                     : 'Working hours: ${user.openingHours} to ${user.closingHours ?? ''}',
+                                style: TextStyle(fontSize: 13, color: Colors.grey[800]),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                )
+              else if (user.bio != null || user.skills.isNotEmpty)
+                const SizedBox(height: 8)
+              else
+                const SizedBox(height: 20),
+
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
@@ -633,8 +723,14 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
                 userAgentPackageName: 'com.sudan.free',
                 tileProvider: CachedTileProvider(),
               ),
-              MarkerLayer(
-                markers: _validMarkerUsers.map((user) {
+              MarkerClusterLayerWidget(
+                options: MarkerClusterLayerOptions(
+                  maxClusterRadius: 45,
+                  size: const Size(40, 40),
+                  alignment: Alignment.center,
+                  padding: const EdgeInsets.all(50),
+                  maxZoom: 15,
+                  markers: _validMarkerUsers.map((user) {
                   final isShop = user.isShop;
                   final markerColor = isShop ? Colors.amber : Colors.cyanAccent;
                   return Marker(
@@ -686,7 +782,30 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
                     ),
                   );
                 }).toList(),
+                builder: (context, markers) {
+                  return Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.primary,
+                      border: Border.all(color: Colors.white, width: 2),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Colors.black26,
+                          blurRadius: 5,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Center(
+                      child: Text(
+                        markers.length.toString(),
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                      ),
+                    ),
+                  );
+                },
               ),
+            ),
             ],
           ),
           

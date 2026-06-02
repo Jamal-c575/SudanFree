@@ -3,6 +3,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'product_detail_screen.dart';
 import '../../widgets/common/linkable_text.dart';
+import 'dart:ui';
 
 // ignore: unused_import
 import '../../core/constants/app_colors.dart';
@@ -118,6 +119,7 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
     final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      extendBody: true,
       body: StreamBuilder<UserModel?>(
           stream: _userStream,
           initialData: widget.user,
@@ -465,6 +467,9 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
               ),
             );
           }),
+      bottomNavigationBar: !widget.isMe && (widget.user.role == UserRole.shop || widget.user.role == UserRole.techService || widget.user.role == UserRole.privateService) 
+          ? _buildGlassContactBar(context, widget.user)
+          : null,
       floatingActionButton: widget.isMe 
         ? AdaptiveFabPadding(
             child: FloatingActionButton.extended(
@@ -481,19 +486,47 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
               ),
             ),
           )
-        : (widget.user.role == UserRole.shop || widget.user.role == UserRole.techService || widget.user.role == UserRole.privateService) 
-          ? AdaptiveFabPadding(
-              child: FloatingActionButton.extended(
-                onPressed: () => _showContactMenu(context, widget.user),
-                backgroundColor: AppColors.primary,
-                icon: const Icon(Icons.support_agent, color: Colors.white),
-                label: Text(
-                  Localizations.localeOf(context).languageCode == 'ar' ? 'تواصل معنا' : 'Contact Us',
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        : null,
+    );
+  }
+
+  Widget _buildGlassContactBar(BuildContext context, UserModel shopUser) {
+    return ClipRRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          padding: EdgeInsets.only(
+            left: 16, 
+            right: 16, 
+            top: 12, 
+            bottom: MediaQuery.of(context).padding.bottom + 12
+          ),
+          decoration: BoxDecoration(
+            color: Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.8),
+            border: Border(top: BorderSide(color: Colors.grey.withValues(alpha: 0.2))),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () => _showContactMenu(context, shopUser),
+                  icon: const Icon(Icons.support_agent),
+                  label: Text(
+                    Localizations.localeOf(context).languageCode == 'ar' ? 'تواصل معنا' : 'Contact Us',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
                 ),
               ),
-            ) 
-          : null,
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -657,11 +690,15 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
                         fit: StackFit.expand,
                         children: [
                           imageUrl != null
-                              ? CachedNetworkImage(
-                                  imageUrl: imageUrl,
-                                  fit: BoxFit.cover,
-                                  placeholder: (_, __) => Container(color: Colors.grey[200]),
-                                  errorWidget: (_, __, ___) => const Icon(Icons.broken_image),
+                              ? Hero(
+                                  tag: 'product_image_${product.id}',
+                                  child: CachedNetworkImage(
+                                    imageUrl: CloudinaryService.getOptimizedUrl(imageUrl, width: 400, quality: 'auto'),
+                                    fit: BoxFit.cover,
+                                    memCacheWidth: 400,
+                                    placeholder: (_, __) => Container(color: Colors.grey[200]),
+                                    errorWidget: (_, __, ___) => const Icon(Icons.broken_image),
+                                  ),
                                 )
                               : Container(
                                   color: Colors.grey[200],
@@ -768,11 +805,17 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
         }
 
         return Column(
-          children: snapshot.data!
-              .map((review) => ReviewCard(
-                  review: review,
-                  locale: context.read<LocaleProvider>().locale.languageCode))
-              .toList(),
+          children: [
+            ReviewStatsWidget(
+              reviews: snapshot.data!,
+              locale: context.read<LocaleProvider>().locale.languageCode,
+            ),
+            ...snapshot.data!
+                .map((review) => ReviewCard(
+                    review: review,
+                    locale: context.read<LocaleProvider>().locale.languageCode))
+                .toList(),
+          ],
         );
       },
     );

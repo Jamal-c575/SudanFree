@@ -72,6 +72,8 @@ class JobProvider extends ChangeNotifier {
     _clientJobsSubscription = _firestoreService.getClientJobs(clientId).listen((jobs) {
       _clientJobs = jobs;
       notifyListeners();
+    }, onError: (error) {
+      debugPrint('JobProvider clientJobs error: $error');
     });
   }
 
@@ -81,6 +83,8 @@ class JobProvider extends ChangeNotifier {
     _freelancerJobsSubscription = _firestoreService.getFreelancerJobs(freelancerId).listen((jobs) {
       _freelancerJobs = jobs;
       notifyListeners();
+    }, onError: (error) {
+      debugPrint('JobProvider freelancerJobs error: $error');
     });
   }
 
@@ -289,6 +293,8 @@ class JobProvider extends ChangeNotifier {
     _proposalsSubscription = _firestoreService.getJobProposals(jobId).listen((proposals) {
       _jobProposals = proposals;
       notifyListeners();
+    }, onError: (error) {
+      debugPrint('JobProvider jobProposals error: $error');
     });
   }
 
@@ -297,6 +303,8 @@ class JobProvider extends ChangeNotifier {
     _firestoreService.getFreelancerProposals(freelancerId).listen((proposals) {
       _myProposals = proposals;
       notifyListeners();
+    }, onError: (error) {
+      debugPrint('JobProvider myProposals error: $error');
     });
   }
 

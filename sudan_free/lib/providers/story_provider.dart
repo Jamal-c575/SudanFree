@@ -17,6 +17,10 @@ class StoryProvider extends ChangeNotifier {
       _stories = fetchedStories;
       _isLoading = false;
       notifyListeners();
+    }, onError: (error) {
+      debugPrint('StoryProvider: Error fetching stories: $error');
+      _isLoading = false;
+      notifyListeners();
     });
   }
 

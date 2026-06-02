@@ -152,6 +152,7 @@ class FirestoreService {
   Future<ChatModel?> getChatById(String chatId) => _chat.getChatById(chatId);
   Future<void> updateMessage(String messageId, Map<String, dynamic> data, {String? chatId}) => _chat.updateMessage(messageId, data, chatId: chatId);
   Stream<List<ChatModel>> getUserChats(String userId) => _chat.getUserChats(userId);
+  Future<List<ChatModel>> getUserChatsOnce(String userId) => _chat.getUserChatsOnce(userId);
   Future<ChatModel> getOrCreateChat({
     required String user1Id,
     required String user1Name,

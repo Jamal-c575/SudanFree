@@ -9,6 +9,7 @@ import '../services/firestore_service.dart';
 import '../services/cache_service.dart';
 import '../services/cloudinary_service.dart';
 import '../services/analytics_service.dart';
+import '../services/network_service.dart';
 
 class PostsProvider extends ChangeNotifier {
   final FirestoreService _firestoreService = FirestoreService();
@@ -59,33 +60,50 @@ class PostsProvider extends ChangeNotifier {
   bool get isLoadingMore => _isLoadingMore;
   bool get hasNewPosts => _hasNewPosts;
 
-  Future<void> fetchPosts({bool forceRefresh = false}) async {
-    if (_posts.isEmpty && !forceRefresh) {
-      final cached = _cacheService.getCachedPosts();
-      if (cached != null && cached.isNotEmpty) {
-         _posts = cached.map((e) => PostModel.fromMap(e)).toList();
-         _postsLoaded = true;
-         if (_posts.isNotEmpty) {
-           // Intentionally left blank, used to set _latestPostDate
-         }
-         notifyListeners(); 
-      }
+  /// Returns up to 5 trending posts (last 7 days, sorted by engagement)
+  List<PostModel> get trendingPosts {
+    if (_posts.isEmpty) return [];
+    final sevenDaysAgo = DateTime.now().subtract(const Duration(days: 7));
+    final recent = _posts.where((p) => p.createdAt.isAfter(sevenDaysAgo)).toList();
+    
+    // Engagement Score = (Reactions * 2) + Comments
+    recent.sort((a, b) {
+      final scoreA = (a.reactions.length * 2) + a.commentsCount;
+      final scoreB = (b.reactions.length * 2) + b.commentsCount;
+      return scoreB.compareTo(scoreA); // Descending
+    });
+    
+    return recent.take(5).toList();
+  }
+
+  PostCategoryGroup? _currentCategoryGroup;
+
+  Future<void> fetchPosts({bool forceRefresh = false, PostCategoryGroup? categoryGroup}) async {
+    final bool isChangingCategory = _currentCategoryGroup != categoryGroup;
+    _currentCategoryGroup = categoryGroup;
+    
+    if (_posts.isEmpty && !forceRefresh && categoryGroup == null && !isChangingCategory) {
+      // Intentionally removed _cacheService.getCachedPosts() to rely purely on Firestore offline persistence
     }
 
-    if (_postsLoaded && !forceRefresh && _posts.isNotEmpty) {
+    if (_postsLoaded && !forceRefresh && _posts.isNotEmpty && !isChangingCategory) {
       return; 
     }
     
-    if (_posts.isEmpty) {
+    if (forceRefresh || _posts.isEmpty || isChangingCategory) {
       _isLoading = true;
+      _posts = []; // clear to load new category or full feed
+      _lastDoc = null;
       notifyListeners();
     }
     
     debugPrint('PostsProvider: Fetching paginated posts...');
     try {
-      final result = await _firestoreService.getFeedPostsPaginated(limit: 15);
+      final result = await _firestoreService.getFeedPostsPaginated(
+        limit: 15,
+        categoryGroup: categoryGroup,
+      );
       
-      // Safe type extraction with null checks
       final fetchedPosts = result['posts'];
       if (fetchedPosts is! List<PostModel>) {
         throw TypeError();
@@ -100,21 +118,11 @@ class PostsProvider extends ChangeNotifier {
       }
       _hasMore = hasMore;
       
-      _hasNewPosts = false; // Reset new posts indicator
+      _hasNewPosts = false;
       _isLoading = false;
       _postsLoaded = true;
       
-      if (_posts.isNotEmpty) {
-        // Intentionally left blank, used to set _latestPostDate
-      }
-      
-      // _listenForNewPosts(); // Temporarily disabled for efficiency
-      
-      try {
-        _cacheService.cachePosts(_posts.map((e) => e.toJsonMap()).toList());
-      } catch (e) {
-        debugPrint('PostsProvider: Cache Error: $e');
-      }
+      // Intentionally removed _cacheService.cachePosts() to rely purely on Firestore offline persistence
       
       notifyListeners();
     } catch (e) {
@@ -135,16 +143,15 @@ class PostsProvider extends ChangeNotifier {
       final result = await _firestoreService.getFeedPostsPaginated(
         startAfterDoc: _lastDoc,
         limit: 15,
+        categoryGroup: _currentCategoryGroup,
       );
       
-      // Safe type extraction with null checks
       final morePosts = result['posts'];
       if (morePosts is! List<PostModel>) {
         throw TypeError();
       }
       
       if (morePosts.isNotEmpty) {
-        // Deduplicate: only add posts not already in the list
         final existingIds = _posts.map((p) => p.id).toSet();
         final uniquePosts = morePosts.where((p) => !existingIds.contains(p.id)).toList();
         _posts.addAll(uniquePosts);
@@ -156,9 +163,7 @@ class PostsProvider extends ChangeNotifier {
         }
         _hasMore = hasMore;
         
-        try {
-          _cacheService.cachePosts(_posts.map((e) => e.toJsonMap()).toList());
-        } catch (e) { debugPrint('PostsProvider: Cache error: $e'); }
+        // Intentionally removed _cacheService.cachePosts() to rely purely on Firestore offline persistence
       } else {
         _hasMore = false;
       }
@@ -175,6 +180,91 @@ class PostsProvider extends ChangeNotifier {
 
   Future<String?> uploadPostImage(File imageFile) async {
     return await CloudinaryService().uploadImage(imageFile, folder: 'posts');
+  }
+
+  Future<void> createPostInBackground({
+    required String userId,
+    required String userName,
+    String? userRole,
+    String? userJobTitle,
+    String? userImageUrl,
+    List<File>? imageFiles,
+    String? caption,
+    String? category,
+    List<String>? mentionedUsers,
+    bool showInCommunity = true,
+    bool showInProfile = true,
+    double? price,
+    String? linkedProductId,
+    String? linkedProductName,
+    String? linkedProductImage,
+    double? linkedProductPrice,
+  }) async {
+    final pendingId = 'pending_${DateTime.now().millisecondsSinceEpoch}';
+    
+    // 1. Optimistic Update (Show in UI instantly)
+    final pendingPost = PostModel(
+      id: pendingId,
+      userId: userId,
+      userName: userName,
+      userRole: userRole,
+      userJobTitle: userJobTitle,
+      userImageUrl: userImageUrl,
+      imageUrl: imageFiles?.isNotEmpty == true ? imageFiles!.first.path : null, // local path for preview
+      imageUrls: imageFiles?.map((f) => f.path).toList() ?? [], // local paths for carousel
+      caption: caption,
+      category: category,
+      mentionedUsers: mentionedUsers ?? [],
+      showInCommunity: showInCommunity,
+      showInProfile: showInProfile,
+      createdAt: DateTime.now(),
+      price: price,
+      linkedProductId: linkedProductId,
+      linkedProductName: linkedProductName,
+      linkedProductImage: linkedProductImage,
+      linkedProductPrice: linkedProductPrice,
+    );
+    
+    _posts.insert(0, pendingPost);
+    notifyListeners();
+
+    // 2. Background Upload Loop
+    bool success = false;
+    while (!success) {
+      try {
+        if (!NetworkService().isConnected) {
+          await Future.delayed(const Duration(seconds: 5));
+          continue; // wait and retry
+        }
+
+        List<String> imageUrls = [];
+        if (imageFiles != null && imageFiles.isNotEmpty) {
+          final futures = imageFiles.map((f) => uploadPostImage(f));
+          final results = await Future.wait(futures);
+          for (final url in results) {
+            if (url == null) throw Exception("Upload failed");
+            imageUrls.add(url);
+          }
+        }
+
+        final postToSave = pendingPost.copyWith(
+          id: '', // let Firestore generate real ID
+          imageUrl: imageUrls.isNotEmpty ? imageUrls.first : null,
+          imageUrls: imageUrls,
+        );
+
+        await _firestoreService.createPost(postToSave);
+        success = true;
+        
+        // Remove pending and fetch latest to get real ID
+        _posts.removeWhere((p) => p.id == pendingId);
+        fetchPosts(forceRefresh: true);
+        
+      } catch (e) {
+        debugPrint('Background post failed, retrying: $e');
+        await Future.delayed(const Duration(seconds: 5));
+      }
+    }
   }
 
   Future<bool> createPost({
@@ -219,6 +309,9 @@ class PostsProvider extends ChangeNotifier {
       }
 
       if (filesToUpload.isNotEmpty) {
+        if (!NetworkService().isConnected) {
+          throw Exception("لا يوجد اتصال بالإنترنت، لا يمكن رفع الصورة الآن");
+        }
         // Upload all images in parallel
         final futures = filesToUpload.map((f) => uploadPostImage(f));
         final results = await Future.wait(futures);
@@ -279,11 +372,11 @@ class PostsProvider extends ChangeNotifier {
         }
       }
 
-      // Notify Followers if it's a Shop
+      // Notify Followers if it's a Shop (parallel, fire-and-forget)
       if (userRole == 'shop') {
         final userDoc = await _firestoreService.getUser(userId);
         if (userDoc != null && userDoc.followers.isNotEmpty) {
-          for (final followerId in userDoc.followers) {
+          final futures = userDoc.followers.map((followerId) {
             final notification = NotificationModel(
               id: '',
               userId: followerId,
@@ -293,8 +386,12 @@ class PostsProvider extends ChangeNotifier {
               createdAt: Timestamp.now(),
               relatedId: userId,
             );
-            await _firestoreService.sendNotification(notification);
-          }
+            return _firestoreService.sendNotification(notification);
+          });
+          // Send all notifications in parallel
+          Future.wait(futures).catchError((e) {
+            debugPrint('PostsProvider: Error notifying followers: $e');
+          });
         }
       }
 
@@ -370,7 +467,8 @@ class PostsProvider extends ChangeNotifier {
       } else {
         post.reactions[userId] = reactionType;
       }
-      notifyListeners();
+      // notifyListeners removed to prevent full list rebuild.
+      // UI is already optimistically updated via local state in PostCard.
     }
 
     if (reactionType == 'unlike') {
@@ -419,21 +517,37 @@ class PostsProvider extends ChangeNotifier {
       post.reactions[userId] = reactionType;
     }
     
-    // Notify listeners to update UI instantly
-    notifyListeners();
+    // notifyListeners removed to prevent full list rebuild.
+    // UI is already optimistically updated via local state in PostCard.
 
-    // 3. Perform Network Request
+    // 3. Perform Network Request (no extra notifyListeners)
     try {
       if (currentReaction == reactionType) {
-        await removeReaction(postId, userId);
+        await _firestoreService.removeReaction(postId, userId);
       } else {
-        await reactToPost(postId, userId, userName, postOwnerId, reactionType);
+        await _firestoreService.reactToPost(postId, userId, reactionType);
+        // Send notification to post owner (only on like, not unlike) with rate limiting
+        if (userId != postOwnerId) {
+          final rateLimitKey = '${postId}_like_$userId';
+          if (_canSendNotif(rateLimitKey)) {
+            _markNotifSent(rateLimitKey);
+            final notification = NotificationModel(
+              id: '',
+              userId: postOwnerId,
+              type: NotificationType.like,
+              title: 'تفاعل جديد',
+              message: 'أعجب $userName بمنشورك',
+              createdAt: Timestamp.now(),
+              relatedId: postId,
+            );
+            _firestoreService.sendNotification(notification); // fire-and-forget
+          }
+        }
       }
     } catch (e) {
       // 4. Rollback on Error
       post.reactions.clear();
       post.reactions.addAll(oldReactions);
-      notifyListeners();
       _errorMessage = 'Failed to update reaction: $e';
       notifyListeners();
     }

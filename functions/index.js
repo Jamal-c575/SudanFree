@@ -1,5 +1,6 @@
 const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/firestore");
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { FieldValue } = require("firebase-admin/firestore");
 const { initializeApp } = require("firebase-admin/app");
 const { getFirestore } = require("firebase-admin/firestore");
@@ -13,7 +14,7 @@ initializeApp();
 const db = getFirestore();
 const authAdmin = getAuth();
 const storage = getStorage();
-const bucket = storage.bucket();
+const getBucket = () => storage.bucket('sudanfree-d04fc.appspot.com');
 const messaging = getMessaging();
 
 // Development flag: set IS_PRODUCTION=true in prod env
@@ -274,7 +275,7 @@ async function deleteUserStorageData(userId) {
     ];
 
     for (const prefix of prefixes) {
-        const [files] = await bucket.getFiles({ prefix });
+        const [files] = await getBucket().getFiles({ prefix });
         if (!files.length) continue;
         await Promise.all(files.map((file) => file.delete().catch((error) => {
             console.error(`Failed to delete file at ${file.name}:`, error);
@@ -1068,12 +1069,12 @@ exports.deleteUserAccount = onCall(async (request) => {
 });
 
 /**
- * Callable Cloud Function: sendBulkNotification
+ * Callable Cloud Function: adminSendNotification
  * 
  * Sends a targeted push notification and creates in-app notifications
  * to a filtered segment of users.
  */
-exports.sendBulkNotification = onCall(async (request) => {
+exports.adminSendNotification = onCall(async (request) => {
     // 1. Check if caller is admin
     const callerUid = request.auth?.uid;
     if (!callerUid) {
@@ -1254,3 +1255,216 @@ exports.sendBulkNotification = onCall(async (request) => {
         throw new HttpsError('internal', `Failed to send notifications: ${error.message}`);
     }
 });
+
+/**
+ * Scheduled Cloud Function: notifyNewLocalProviders
+ * Runs every day at 19:00 (7 PM) Africa/Khartoum time.
+ * Finds newly registered service providers in the last 24 hours,
+ * groups them by locality, and sends a localized push notification to users in that locality.
+ */
+exports.notifyNewLocalProviders = onSchedule({
+    schedule: "0 19 * * *",
+    timeZone: "Africa/Khartoum",
+    retryCount: 3
+}, async (event) => {
+    try {
+        console.log("Starting daily check for new local providers...");
+        
+        const now = new Date();
+        const yesterday = new Date(now.getTime() - (24 * 60 * 60 * 1000));
+        
+        // 1. Find new providers registered in the last 24 hours
+        // We look for roles: freelancer, shop, privateService, techService
+        const newProvidersSnapshot = await db.collection("users")
+            .where("role", "in", ["freelancer", "shop", "privateService", "techService", "Freelancer", "Shop"])
+            .where("createdAt", ">=", yesterday)
+            .get();
+            
+        if (newProvidersSnapshot.empty) {
+            console.log("No new providers registered in the last 24 hours.");
+            return;
+        }
+
+        console.log(`Found ${newProvidersSnapshot.size} new providers.`);
+
+        // 2. Group new providers by locality (or state if locality missing)
+        const locationMap = {}; // { "Khartoum_Bahri": { count: 3, names: ["Ali", "ShopX"] } }
+        
+        newProvidersSnapshot.docs.forEach(doc => {
+            const data = doc.data();
+            const locationKey = data.locality || data.state;
+            
+            if (locationKey && typeof locationKey === 'string' && locationKey.trim() !== '') {
+                const key = locationKey.trim();
+                if (!locationMap[key]) {
+                    locationMap[key] = { count: 0, names: [] };
+                }
+                locationMap[key].count++;
+                if (data.name && locationMap[key].names.length < 2) {
+                    locationMap[key].names.push(data.name); // Store up to 2 names for the message
+                }
+            }
+        });
+
+        const locations = Object.keys(locationMap);
+        if (locations.length === 0) {
+            console.log("New providers did not have valid localities/states.");
+            return;
+        }
+
+        console.log(`Grouped new providers into ${locations.length} locations:`, locations);
+
+        // 3. For each location, find users and send notification
+        let totalNotificationsSent = 0;
+
+        for (const loc of locations) {
+            const info = locationMap[loc];
+            // Build a catchy localized message
+            const title = `مقدمي خدمات جدد في ${loc}! 📍`;
+            let body = `انضم إلينا اليوم ${info.count} من المتاجر والحرفيين الجدد في ${loc}.`;
+            if (info.names.length > 0) {
+                body += ` رحبوا بـ ${info.names.join(' و')}!`;
+            }
+
+            console.log(`Processing location ${loc} -> Title: ${title}`);
+
+            // Find all users in this locality to notify them (clients, other freelancers, etc.)
+            // Note: If you have a huge userbase, you might need to paginate this query.
+            const localUsersQuery1 = await db.collection("users").where("locality", "==", loc).get();
+            const localUsersQuery2 = await db.collection("users").where("state", "==", loc).get();
+
+            // Merge and deduplicate by document ID
+            const usersMap = new Map();
+            localUsersQuery1.docs.forEach(d => usersMap.set(d.id, d.data()));
+            localUsersQuery2.docs.forEach(d => usersMap.set(d.id, d.data()));
+
+            const tokens = [];
+            usersMap.forEach((userData, userId) => {
+                if (userData.fcmToken && typeof userData.fcmToken === 'string' && userData.fcmToken.length > 10) {
+                    tokens.push(userData.fcmToken);
+                }
+            });
+
+            if (tokens.length === 0) {
+                console.log(`No users with FCM tokens found in ${loc}.`);
+                continue;
+            }
+
+            // Send FCM Multicast
+            const maxTokensPerRequest = 500;
+            for (let i = 0; i < tokens.length; i += maxTokensPerRequest) {
+                const tokenBatch = tokens.slice(i, i + maxTokensPerRequest);
+                
+                const fcmMessage = {
+                    tokens: tokenBatch,
+                    notification: {
+                        title: title,
+                        body: body,
+                    },
+                    data: {
+                        type: 'system',
+                        click_action: 'FLUTTER_NOTIFICATION_CLICK',
+                    },
+                    android: {
+                        priority: 'high',
+                        notification: {
+                            channelId: 'sudan_free_channel',
+                            defaultSound: true,
+                            defaultVibrateTimings: true,
+                            icon: '@drawable/sudan1',
+                        },
+                    },
+                    apns: {
+                        payload: {
+                            aps: {
+                                alert: { title, body },
+                                sound: 'default',
+                            },
+                        },
+                    },
+                };
+
+                try {
+                    const response = await messaging.sendEachForMulticast(fcmMessage);
+                    totalNotificationsSent += response.successCount;
+                    console.log(`Sent to ${response.successCount} users in ${loc}`);
+                } catch (err) {
+                    console.error(`Error sending to ${loc}:`, err);
+                }
+            }
+        }
+
+        console.log(`Daily local providers notification completed. Total sent: ${totalNotificationsSent}`);
+        
+        await logAudit('DAILY_LOCAL_PROVIDERS_NOTIF', null, {
+            status: 'success',
+            metadata: { locationsProcessed: locations.length, totalSent: totalNotificationsSent }
+        });
+
+    } catch (error) {
+        console.error('Error in notifyNewLocalProviders schedule:', error);
+        await logAudit('DAILY_LOCAL_PROVIDERS_ERROR', null, {
+            status: 'error',
+            errorMessage: error.message
+        });
+    }
+});
+
+/**
+ * Cloud Function: onAdCreated
+ * 
+ * Sends a global push notification to all users when a new Ad is created.
+ */
+exports.onAdCreated = onDocumentCreated(
+    { document: "ads/{adId}", concurrency: 80 },
+    async (event) => {
+        const ad = event.data?.data();
+        if (!ad) return null;
+
+        if (ad.isActive === false) return null;
+
+        const fcmMessage = {
+            topic: "all_users",
+            notification: {
+                title: ad.title || "إعلان جديد! 📣",
+                body: ad.description || "تصفح أحدث الإعلانات في تطبيق سودان فري",
+            },
+            data: {
+                type: "ad",
+                relatedId: event.params.adId,
+                click_action: "FLUTTER_NOTIFICATION_CLICK",
+            },
+            android: {
+                priority: "high",
+                notification: {
+                    channelId: "sudan_free_channel",
+                    priority: "high",
+                    defaultSound: true,
+                    defaultVibrateTimings: true,
+                    icon: "@drawable/sudan1",
+                },
+            },
+            apns: {
+                payload: {
+                    aps: {
+                        alert: {
+                            title: ad.title || "إعلان جديد! 📣",
+                            body: ad.description || "تصفح أحدث الإعلانات",
+                        },
+                        badge: 1,
+                        sound: "default",
+                    },
+                },
+            },
+        };
+
+        try {
+            const response = await messaging.send(fcmMessage);
+            console.log(`Global ad push sent to all_users:`, response);
+            return response;
+        } catch (error) {
+            console.error(`Error sending global ad push:`, error);
+            return null;
+        }
+    }
+);

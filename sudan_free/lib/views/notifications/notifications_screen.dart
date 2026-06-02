@@ -165,8 +165,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               icon: Icons.notifications_off_rounded,
               title: locale == 'ar' ? 'لا توجد تنبيهات' : 'No notifications',
               subtitle: locale == 'ar'
-                  ? 'سيتم عرض الإشعارات الجديدة هنا'
-                  : 'New notifications will appear here',
+                  ? 'ابق على اطلاع! تصفح المجتمع وتفاعل الآن.'
+                  : 'Stay updated! Browse the community now.',
+              actionLabel: locale == 'ar' ? 'تصفح المجتمع' : 'Explore Community',
+              actionIcon: Icons.explore_rounded,
+              onAction: () {
+                Navigator.popUntil(context, (route) => route.isFirst);
+              },
             );
           }
 

@@ -27,6 +27,7 @@ enum PostCategoryGroup {
   specialServices,// خدمات خاصة
   techCommunity,  // مبرمجين ومصممين
   education,      // تعليم وتدريب
+  entertainment,  // ترفيه وألعاب
   jobs;           // وظائف وفرص عمل
 
   String getName(String locale) {
@@ -45,6 +46,7 @@ enum PostCategoryGroup {
         case PostCategoryGroup.specialServices: return 'خدمات خاصة';
         case PostCategoryGroup.techCommunity: return 'مبرمجين ومصممين';
         case PostCategoryGroup.education: return 'تعليم وتدريب';
+        case PostCategoryGroup.entertainment: return 'ترفيه وألعاب';
         case PostCategoryGroup.jobs: return 'وظائف وفرص';
       }
     } else {
@@ -62,6 +64,7 @@ enum PostCategoryGroup {
         case PostCategoryGroup.specialServices: return 'Special Services';
         case PostCategoryGroup.techCommunity: return 'Tech Community';
         case PostCategoryGroup.education: return 'Education';
+        case PostCategoryGroup.entertainment: return 'Entertainment & Games';
         case PostCategoryGroup.jobs: return 'Jobs & Opportunities';
       }
     }
@@ -82,6 +85,7 @@ enum PostCategoryGroup {
       case PostCategoryGroup.specialServices: return Icons.miscellaneous_services;
       case PostCategoryGroup.techCommunity: return Icons.code;
       case PostCategoryGroup.education: return Icons.school;
+      case PostCategoryGroup.entertainment: return Icons.sports_esports;
       case PostCategoryGroup.jobs: return Icons.work;
     }
   }
@@ -101,6 +105,7 @@ enum PostCategoryGroup {
       case PostCategoryGroup.specialServices: return const Color(0xFF74b9ff);
       case PostCategoryGroup.techCommunity: return const Color(0xFF0984e3);
       case PostCategoryGroup.education: return const Color(0xFF6c5ce7);
+      case PostCategoryGroup.entertainment: return const Color(0xFFa29bfe);
       case PostCategoryGroup.jobs: return const Color(0xFF00b894);
     }
   }
@@ -214,6 +219,12 @@ enum PostCategory {
   eduTraining,
   eduOnlineCourses,
   eduOther,
+
+  // ── ترفيه وألعاب ──
+  entVideoGames,
+  entSeriesMovies,
+  entToys,
+  entOther,
 
   // ── وظائف وفرص ──
   jobsFullTime,
@@ -337,6 +348,12 @@ enum PostCategory {
       case PostCategory.eduOther:
         return PostCategoryGroup.education;
 
+      case PostCategory.entVideoGames:
+      case PostCategory.entSeriesMovies:
+      case PostCategory.entToys:
+      case PostCategory.entOther:
+        return PostCategoryGroup.entertainment;
+
       case PostCategory.jobsFullTime:
       case PostCategory.jobsPartTime:
       case PostCategory.jobsFreelance:
@@ -458,6 +475,12 @@ enum PostCategory {
         case PostCategory.eduOnlineCourses: return 'دورات أونلاين';
         case PostCategory.eduOther: return 'تعليم أخرى';
 
+        // ترفيه وألعاب
+        case PostCategory.entVideoGames: return 'ألعاب فيديو وبلايستيشن';
+        case PostCategory.entSeriesMovies: return 'أفلام ومسلسلات';
+        case PostCategory.entToys: return 'ألعاب أطفال';
+        case PostCategory.entOther: return 'ترفيه أخرى';
+
         // وظائف وفرص
         case PostCategory.jobsFullTime: return 'وظيفة دوام كامل';
         case PostCategory.jobsPartTime: return 'وظيفة دوام جزئي';
@@ -576,6 +599,12 @@ enum PostCategory {
         case PostCategory.eduOnlineCourses: return 'Online Courses';
         case PostCategory.eduOther: return 'Other Education';
 
+        // Entertainment
+        case PostCategory.entVideoGames: return 'Video Games';
+        case PostCategory.entSeriesMovies: return 'Movies & Series';
+        case PostCategory.entToys: return 'Toys';
+        case PostCategory.entOther: return 'Other Entertainment';
+
         // Jobs
         case PostCategory.jobsFullTime: return 'Full-time Job';
         case PostCategory.jobsPartTime: return 'Part-time Job';
@@ -627,6 +656,7 @@ class PostModel {
   final String? linkedProductName;     // اسم المنتج للعرض السريع
   final String? linkedProductImage;    // صورة المنتج المصغرة
   final double? linkedProductPrice;    // سعر المنتج
+  final int viewsCount;                // عدد المشاهدات
 
   PostModel({
     required this.id,
@@ -659,6 +689,7 @@ class PostModel {
     this.linkedProductName,
     this.linkedProductImage,
     this.linkedProductPrice,
+    this.viewsCount = 0,
   });
 
   factory PostModel.fromFirestore(DocumentSnapshot doc) {
@@ -704,6 +735,7 @@ class PostModel {
       linkedProductName: data['linkedProductName'],
       linkedProductImage: data['linkedProductImage'],
       linkedProductPrice: (data['linkedProductPrice'] as num?)?.toDouble(),
+      viewsCount: data['viewsCount'] ?? 0,
     );
   }
 
@@ -737,6 +769,7 @@ class PostModel {
       if (linkedProductName != null) 'linkedProductName': linkedProductName,
       if (linkedProductImage != null) 'linkedProductImage': linkedProductImage,
       if (linkedProductPrice != null) 'linkedProductPrice': linkedProductPrice,
+      'viewsCount': viewsCount,
     };
     if (category != null) {
       map['category'] = category;
@@ -797,6 +830,7 @@ class PostModel {
     String? linkedProductName,
     String? linkedProductImage,
     double? linkedProductPrice,
+    int? viewsCount,
   }) {
     return PostModel(
       id: id ?? this.id,
@@ -829,6 +863,7 @@ class PostModel {
       linkedProductName: linkedProductName ?? this.linkedProductName,
       linkedProductImage: linkedProductImage ?? this.linkedProductImage,
       linkedProductPrice: linkedProductPrice ?? this.linkedProductPrice,
+      viewsCount: viewsCount ?? this.viewsCount,
     );
   }
 }

@@ -261,6 +261,7 @@ class _BrowseFreelancersScreenState extends State<BrowseFreelancersScreen>
                                   final freelancer = freelancers[index];
                                   final currentUser = context.read<AuthProvider>().user;
                                   return StaggeredAnimatedWidget(
+                                    key: ValueKey('freelancer_${freelancer.id}'),
                                     index: index,
                                     listId: 'freelancers_list',
                                     child: FreelancerCard(

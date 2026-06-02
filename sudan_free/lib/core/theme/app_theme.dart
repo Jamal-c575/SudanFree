@@ -21,7 +21,7 @@ class AppTheme {
       onError: Colors.white,
     ),
     
-    fontFamily: 'Cairo',
+    fontFamily: 'Tajawal',
     
     textTheme: const TextTheme(
       displayLarge: TextStyle(
@@ -112,7 +112,7 @@ class AppTheme {
         statusBarBrightness: Brightness.light, // For iOS
       ),
       titleTextStyle: TextStyle(
-        fontFamily: 'Cairo',
+        fontFamily: 'Tajawal',
         fontSize: 18,
         fontWeight: FontWeight.w600,
         color: AppColors.textPrimary,
@@ -138,7 +138,7 @@ class AppTheme {
           borderRadius: BorderRadius.circular(AppRadius.md),
         ),
         textStyle: const TextStyle(
-          fontFamily: 'Cairo',
+          fontFamily: 'Tajawal',
           fontSize: 16,
           fontWeight: FontWeight.w600,
         ),
@@ -155,7 +155,7 @@ class AppTheme {
           borderRadius: BorderRadius.circular(AppRadius.md),
         ),
         textStyle: const TextStyle(
-          fontFamily: 'Cairo',
+          fontFamily: 'Tajawal',
           fontSize: 16,
           fontWeight: FontWeight.w600,
         ),
@@ -166,7 +166,7 @@ class AppTheme {
       style: TextButton.styleFrom(
         foregroundColor: AppColors.primary,
         textStyle: const TextStyle(
-          fontFamily: 'Cairo',
+          fontFamily: 'Tajawal',
           fontSize: 14,
           fontWeight: FontWeight.w600,
         ),
@@ -198,11 +198,11 @@ class AppTheme {
         borderSide: const BorderSide(color: AppColors.error, width: 2),
       ),
       labelStyle: const TextStyle(
-        fontFamily: 'Cairo',
+        fontFamily: 'Tajawal',
         color: AppColors.textSecondary,
       ),
       hintStyle: const TextStyle(
-        fontFamily: 'Cairo',
+        fontFamily: 'Tajawal',
         color: AppColors.textLight,
       ),
     ),
@@ -211,7 +211,7 @@ class AppTheme {
       backgroundColor: AppColors.background,
       selectedColor: AppColors.primary.withValues(alpha: 0.2),
       labelStyle: const TextStyle(
-        fontFamily: 'Cairo',
+        fontFamily: 'Tajawal',
         fontSize: 12,
         color: AppColors.textPrimary,
       ),
@@ -238,7 +238,7 @@ class AppTheme {
     snackBarTheme: SnackBarThemeData(
       backgroundColor: AppColors.textPrimary,
       contentTextStyle: const TextStyle(
-        fontFamily: 'Cairo',
+        fontFamily: 'Tajawal',
         color: Colors.white,
       ),
       shape: RoundedRectangleBorder(
@@ -287,7 +287,7 @@ class AppTheme {
       onSecondaryContainer: Colors.white,
     ),
     
-    fontFamily: 'Cairo',
+    fontFamily: 'Tajawal',
     
     textTheme: const TextTheme(
       displayLarge: TextStyle(
@@ -383,7 +383,7 @@ class AppTheme {
         statusBarBrightness: Brightness.dark,
       ),
       titleTextStyle: TextStyle(
-        fontFamily: 'Cairo',
+        fontFamily: 'Tajawal',
         fontSize: 18,
         fontWeight: FontWeight.bold,
         color: AppColors.textDark,
@@ -420,7 +420,7 @@ class AppTheme {
           borderRadius: BorderRadius.circular(AppRadius.md),
         ),
         textStyle: const TextStyle(
-          fontFamily: 'Cairo',
+          fontFamily: 'Tajawal',
           fontSize: 16,
           fontWeight: FontWeight.bold,
         ),
@@ -436,7 +436,7 @@ class AppTheme {
           borderRadius: BorderRadius.circular(AppRadius.md),
         ),
         textStyle: const TextStyle(
-          fontFamily: 'Cairo',
+          fontFamily: 'Tajawal',
           fontSize: 16,
           fontWeight: FontWeight.w600,
         ),
@@ -460,12 +460,12 @@ class AppTheme {
         borderSide: const BorderSide(color: AppColors.primary, width: 2.5),
       ),
       labelStyle: const TextStyle(
-        fontFamily: 'Cairo',
+        fontFamily: 'Tajawal',
         color: AppColors.textDark, // More visible label
         fontWeight: FontWeight.w500,
       ),
       hintStyle: const TextStyle(
-        fontFamily: 'Cairo',
+        fontFamily: 'Tajawal',
         color: Color(0xFF64748B),
       ),
       prefixIconColor: AppColors.primaryLight,
@@ -483,7 +483,7 @@ class AppTheme {
     snackBarTheme: SnackBarThemeData(
       backgroundColor: AppColors.surfaceDark,
       contentTextStyle: const TextStyle(
-        fontFamily: 'Cairo',
+        fontFamily: 'Tajawal',
         color: AppColors.textDark,
       ),
       shape: RoundedRectangleBorder(

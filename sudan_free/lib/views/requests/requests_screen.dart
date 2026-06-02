@@ -11,6 +11,7 @@ import '../../core/constants/app_colors.dart';
 import '../../widgets/common/loading_widget.dart';
 import 'add_request_screen.dart';
 import 'request_details_screen.dart';
+import 'package:shimmer/shimmer.dart';
 import '../home/home_screen.dart';
 import '../../widgets/common/adaptive_fab_padding.dart';
 import '../../widgets/buttons/smart_draggable_fab.dart';
@@ -52,6 +53,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
     final authProvider = context.watch<AuthProvider>();
     final currentUser = authProvider.user;
     final locale = context.watch<LocaleProvider>().locale.languageCode;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       appBar: AppBar(
         title: Text(locale == 'ar' ? 'الطلبات' : 'Requests'),
@@ -80,7 +82,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
               stream: FirestoreService().getRequests(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: LoadingIndicator());
+                  return _buildRequestsShimmer(isDark);
                 }
                 if (snapshot.hasError) {
                    return Center(
@@ -182,6 +184,54 @@ class _RequestsScreenState extends State<RequestsScreen> {
             ),
         ],
       ),
+    );
+  }
+
+  Widget _buildRequestsShimmer(bool isDark) {
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+      itemCount: 4,
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemBuilder: (context, index) {
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: isDark ? Colors.grey[900] : Colors.white,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Shimmer.fromColors(
+            baseColor: isDark ? Colors.grey[800]! : Colors.grey[300]!,
+            highlightColor: isDark ? Colors.grey[700]! : Colors.grey[100]!,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const CircleAvatar(radius: 20, backgroundColor: Colors.white),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(width: 100, height: 16, color: Colors.white),
+                          const SizedBox(height: 4),
+                          Container(width: 60, height: 12, color: Colors.white),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Container(width: double.infinity, height: 14, color: Colors.white),
+                const SizedBox(height: 4),
+                Container(width: 250, height: 14, color: Colors.white),
+                const SizedBox(height: 16),
+                Container(width: 120, height: 14, color: Colors.white),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

@@ -11,19 +11,19 @@ class CacheService {
   static const String _settingsBoxName = 'settings';
   static const String _dataBoxName = 'app_data_cache';
 
-  Box<String>? _jobsBox;
-  Box<String>? _userBox;
+  Box<dynamic>? _jobsBox;
+  Box<dynamic>? _userBox;
   Box<dynamic>? _settingsBox;
-  Box<String>? _dataBox;
+  Box<dynamic>? _dataBox;
 
   // Initialize Hive
   Future<void> initialize() async {
     await Hive.initFlutter();
     
-    _jobsBox = await Hive.openBox<String>(_jobsBoxName);
-    _userBox = await Hive.openBox<String>(_userBoxName);
+    _jobsBox = await Hive.openBox<dynamic>(_jobsBoxName);
+    _userBox = await Hive.openBox<dynamic>(_userBoxName);
     _settingsBox = await Hive.openBox<dynamic>(_settingsBoxName);
-    _dataBox = await Hive.openBox<String>(_dataBoxName);
+    _dataBox = await Hive.openBox<dynamic>(_dataBoxName);
   }
 
   // Helper to ensure box is ready
@@ -36,18 +36,28 @@ class CacheService {
   // --- Freelancers ---
   Future<void> cacheFreelancers(List<Map<String, dynamic>> data) async {
     await _ensureReady();
-    await _dataBox?.put('freelancers_list', jsonEncode(data));
+    await _dataBox?.put('freelancers_list', data);
     await _dataBox?.put('freelancers_cached_at', DateTime.now().toIso8601String());
   }
 
   List<Map<String, dynamic>>? getCachedFreelancers() {
-    final String? data = _dataBox?.get('freelancers_list');
+    final data = _dataBox?.get('freelancers_list');
     if (data == null) return null;
-    try {
-      return List<Map<String, dynamic>>.from(jsonDecode(data));
-    } catch (e) {
-      return null;
+    
+    if (data is String) {
+      try {
+        return List<Map<String, dynamic>>.from(jsonDecode(data));
+      } catch (e) {
+        return null;
+      }
+    } else if (data is List) {
+      try {
+        return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      } catch (e) {
+        return null;
+      }
     }
+    return null;
   }
 
   bool isFreelancersCacheValid([Duration duration = const Duration(minutes: 30)]) {
@@ -64,18 +74,28 @@ class CacheService {
   // --- Shops ---
   Future<void> cacheShops(List<Map<String, dynamic>> data) async {
     await _ensureReady();
-    await _dataBox?.put('shops_list', jsonEncode(data));
+    await _dataBox?.put('shops_list', data);
     await _dataBox?.put('shops_cached_at', DateTime.now().toIso8601String());
   }
 
   List<Map<String, dynamic>>? getCachedShops() {
-    final String? data = _dataBox?.get('shops_list');
+    final data = _dataBox?.get('shops_list');
     if (data == null) return null;
-    try {
-      return List<Map<String, dynamic>>.from(jsonDecode(data));
-    } catch (e) {
-      return null;
+    
+    if (data is String) {
+      try {
+        return List<Map<String, dynamic>>.from(jsonDecode(data));
+      } catch (e) {
+        return null;
+      }
+    } else if (data is List) {
+      try {
+        return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      } catch (e) {
+        return null;
+      }
     }
+    return null;
   }
 
   bool isShopsCacheValid([Duration duration = const Duration(minutes: 30)]) {
@@ -92,18 +112,28 @@ class CacheService {
   // --- Posts ---
   Future<void> cachePosts(List<Map<String, dynamic>> data) async {
     await _ensureReady();
-    await _dataBox?.put('posts_list', jsonEncode(data));
+    await _dataBox?.put('posts_list', data);
     await _dataBox?.put('posts_cached_at', DateTime.now().toIso8601String());
   }
 
   List<Map<String, dynamic>>? getCachedPosts() {
-    final String? data = _dataBox?.get('posts_list');
+    final data = _dataBox?.get('posts_list');
     if (data == null) return null;
-    try {
-      return List<Map<String, dynamic>>.from(jsonDecode(data));
-    } catch (e) {
-      return null;
+    
+    if (data is String) {
+      try {
+        return List<Map<String, dynamic>>.from(jsonDecode(data));
+      } catch (e) {
+        return null;
+      }
+    } else if (data is List) {
+      try {
+        return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      } catch (e) {
+        return null;
+      }
     }
+    return null;
   }
 
   bool isPostsCacheValid([Duration duration = const Duration(minutes: 15)]) {
@@ -121,16 +151,27 @@ class CacheService {
 
   Future<void> cacheJobs(List<Map<String, dynamic>> jobs) async {
     await _ensureReady();
-    final jsonString = jsonEncode(jobs);
-    await _jobsBox?.put('all_jobs', jsonString);
+    await _jobsBox?.put('all_jobs', jobs);
     await _jobsBox?.put('jobs_cached_at', DateTime.now().toIso8601String());
   }
 
   List<Map<String, dynamic>>? getCachedJobs() {
-    final jsonString = _jobsBox?.get('all_jobs');
-    if (jsonString != null) {
-      final List<dynamic> decoded = jsonDecode(jsonString);
-      return decoded.map((e) => Map<String, dynamic>.from(e)).toList();
+    final data = _jobsBox?.get('all_jobs');
+    if (data == null) return null;
+    
+    if (data is String) {
+      try {
+        final List<dynamic> decoded = jsonDecode(data);
+        return decoded.map((e) => Map<String, dynamic>.from(e)).toList();
+      } catch (e) {
+        return null;
+      }
+    } else if (data is List) {
+      try {
+        return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      } catch (e) {
+        return null;
+      }
     }
     return null;
   }
@@ -148,13 +189,25 @@ class CacheService {
 
   Future<void> cacheUserProfile(String userId, Map<String, dynamic> user) async {
     await _ensureReady();
-    await _userBox?.put('user_$userId', jsonEncode(user));
+    await _userBox?.put('user_$userId', user);
   }
 
   Map<String, dynamic>? getCachedUserProfile(String userId) {
-    final jsonString = _userBox?.get('user_$userId');
-    if (jsonString != null) {
-      return Map<String, dynamic>.from(jsonDecode(jsonString));
+    final data = _userBox?.get('user_$userId');
+    if (data == null) return null;
+    
+    if (data is String) {
+      try {
+        return Map<String, dynamic>.from(jsonDecode(data));
+      } catch (e) {
+        return null;
+      }
+    } else if (data is Map) {
+      try {
+        return Map<String, dynamic>.from(data);
+      } catch (e) {
+        return null;
+      }
     }
     return null;
   }

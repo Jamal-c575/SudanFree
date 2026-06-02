@@ -502,6 +502,7 @@ class _CommentsSheetState extends State<CommentsSheet> {
                       itemBuilder: (context, index) {
                         final comment = topComments[index];
                         return Column(
+                          key: ValueKey('comment_tree_${comment.id}'),
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: buildCommentTree(comment, 0),
                         );

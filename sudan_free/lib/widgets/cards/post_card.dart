@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -107,27 +108,40 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
   }
 
   Widget _buildGridImage(String url, {double? height, bool isHero = false}) {
-    // Precache high-res only once per URL (not on every build)
-    final detailUrl = CloudinaryService.getOptimizedUrl(url, width: 1200, quality: 'auto');
-    if (!_precachedUrls.contains(detailUrl)) {
-      _precachedUrls.add(detailUrl);
-      precacheImage(CachedNetworkImageProvider(detailUrl), context);
-    }
+    Widget image;
+    
+    if (url.startsWith('/')) {
+      // Local pending file
+      image = Image.file(
+        File(url),
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: height,
+      );
+    } else {
+      // Network file
+      final detailUrl = CloudinaryService.getOptimizedUrl(url, width: 1200, quality: 'auto');
+      if (!_precachedUrls.contains(detailUrl)) {
+        _precachedUrls.add(detailUrl);
+        precacheImage(CachedNetworkImageProvider(detailUrl), context);
+      }
 
-    Widget image = CachedNetworkImage(
-      imageUrl: CloudinaryService.getOptimizedUrl(url, width: 600, quality: 'auto'),
-      fit: BoxFit.cover,
-      width: double.infinity,
-      height: height,
-      placeholder: (_, __) => Container(
-        color: AppColors.border.withValues(alpha: 0.1),
-        child: const Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))),
-      ),
-      errorWidget: (_, __, ___) => Container(
-        color: AppColors.border.withValues(alpha: 0.1),
-        child: const Icon(Icons.broken_image, color: Colors.grey, size: 20),
-      ),
-    );
+      image = CachedNetworkImage(
+        imageUrl: CloudinaryService.getOptimizedUrl(url, width: 600, quality: 'auto'),
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: height,
+        memCacheWidth: 800, // Memory Optimization
+        placeholder: (_, __) => Container(
+          color: AppColors.border.withValues(alpha: 0.1),
+          child: const Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))),
+        ),
+        errorWidget: (_, __, ___) => Container(
+          color: AppColors.border.withValues(alpha: 0.1),
+          child: const Icon(Icons.broken_image, color: Colors.grey, size: 20),
+        ),
+      );
+    }
 
     if (isHero && widget.enableHero) {
       image = Hero(tag: widget.post.id, child: image);
@@ -192,6 +206,7 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final hasImage = widget.post.allImageUrls.isNotEmpty;
     final isOwner = widget.currentUserId == widget.post.userId;
+    final isPending = widget.post.id.startsWith('pending_');
     final isLiked = _localIsLiked ?? widget.post.reactions.containsKey(widget.currentUserId);
     final totalReactions = _localTotalReactions ?? widget.post.totalReactions;
 
@@ -232,7 +247,10 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
                           backgroundColor: AppColors.primary.withValues(alpha: 0.1),
                           backgroundImage: widget.post.userImageUrl != null
                               ? CachedNetworkImageProvider(
-                                  CloudinaryService.getOptimizedUrl(widget.post.userImageUrl!, width: 100, quality: 'auto'))
+                                  CloudinaryService.getOptimizedUrl(widget.post.userImageUrl!, width: 100, quality: 'auto'),
+                                  maxWidth: 150,
+                                  maxHeight: 150,
+                                )
                               : null,
                           child: widget.post.userImageUrl == null
                               ? Text(
@@ -333,8 +351,16 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
                     ),
                   ),
 
-                  // More options
-                  if (isOwner)
+                  // More options or pending indicator
+                  if (isPending)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      child: SizedBox(
+                        width: 18, height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                      ),
+                    )
+                  else if (isOwner)
                     IconButton(
                       icon: Icon(Icons.more_vert, size: 20, color: Colors.grey[500]),
                       onPressed: () => _showOptions(context),

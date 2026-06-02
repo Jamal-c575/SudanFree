@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../models/user_model.dart';
 import '../models/notification_model.dart';
 import '../services/firestore_service.dart';
+import '../services/firestore/promotion_service.dart';
 
 import '../services/storage_service.dart';
 import '../services/image_compress_service.dart';
@@ -13,6 +14,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class UserProvider extends ChangeNotifier {
   final FirestoreService _firestoreService = FirestoreService();
   final CacheService _cacheService = CacheService();
+  final PromotionService _promotionService = PromotionService();
+  
+  List<String> _promotedUserIds = [];
+  List<String> get promotedUserIds => _promotedUserIds;
+
   String? _currentUserState; // ولاية المستخدم الحالي
 
   UserModel? _viewedUser;
@@ -146,6 +152,11 @@ class UserProvider extends ChangeNotifier {
     _freelancerError = null;
     
     try {
+      if (_promotedUserIds.isEmpty) {
+        final promos = await _promotionService.getActivePromotions();
+        _promotedUserIds = promos.map((p) => p.userId).toList();
+      }
+
       final result = await _firestoreService.getFreelancersPaginated(limit: 100);
       List<UserModel> combined = result['users'] as List<UserModel>;
       _lastFreelancerDoc = result['lastDoc'] as DocumentSnapshot?;
@@ -232,6 +243,11 @@ class UserProvider extends ChangeNotifier {
     _shopError = null;
     
     try {
+      if (_promotedUserIds.isEmpty) {
+        final promos = await _promotionService.getActivePromotions();
+        _promotedUserIds = promos.map((p) => p.userId).toList();
+      }
+
       final result = await _firestoreService.getShopsPaginated(limit: 100);
       List<UserModel> combined = result['users'] as List<UserModel>;
       _lastShopDoc = result['lastDoc'] as DocumentSnapshot?;
@@ -288,13 +304,16 @@ class UserProvider extends ChangeNotifier {
     }
   }
 
-  // Shuffle list prioritizing local state, high-rated, and randomness
+  // Shuffle list prioritizing promoted, local state, high-rated, and randomness
   void _shuffleWithPriority(List<UserModel> list) {
     if (list.isEmpty) return;
     
-    // تقسيم القائمة إلى: محليين وغير محليين (الخدمات التقنية دائماً تعتبر محلية لأنها عن بعد)
-    final localList = list.where((u) => u.state == _currentUserState || u.role == UserRole.techService).toList();
-    final otherList = list.where((u) => u.state != _currentUserState && u.role != UserRole.techService).toList();
+    final promotedList = list.where((u) => _promotedUserIds.contains(u.id)).toList()..shuffle();
+    final nonPromotedList = list.where((u) => !_promotedUserIds.contains(u.id)).toList();
+
+    // تقسيم القائمة غير المروجة إلى: محليين وغير محليين
+    final localList = nonPromotedList.where((u) => u.state == _currentUserState || u.role == UserRole.techService).toList();
+    final otherList = nonPromotedList.where((u) => u.state != _currentUserState && u.role != UserRole.techService).toList();
 
     void sortAndShuffle(List<UserModel> sublist) {
       final highRated = sublist.where((u) => u.rating >= 4.0).toList()..shuffle();
@@ -310,8 +329,11 @@ class UserProvider extends ChangeNotifier {
     sortAndShuffle(otherList);
     
     list.clear();
-    // ضع أبناء المنطقة أولاً، ثم البقية من المناطق الأخرى
+    // 1. المروجين دائماً في البداية (Promoted)
+    list.addAll(promotedList);
+    // 2. أبناء المنطقة
     list.addAll(localList);
+    // 3. البقية
     list.addAll(otherList);
   }
 

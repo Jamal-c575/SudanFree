@@ -27,13 +27,7 @@ service cloud.firestore {
       return request.resource.data.keys().hasAll(fields);
     }
 
-    // ─── Timestamp Validation (Basic Rate Limiting) ─────────────
-    // Ensure createdAt is within the last 5 minutes (prevents replay attacks)
-    function isRecentTimestamp() {
-      return request.resource.data.createdAt is timestamp &&
-        request.resource.data.createdAt <= request.time &&
-        request.resource.data.createdAt > request.time - duration.value(5, 'm');
-    }
+
 
     // ═══════════════════ المستخدمين (Users) ═══════════════════
     match /users/{userId} {
@@ -41,7 +35,8 @@ service cloud.firestore {
       allow create: if isOwner(userId) &&
         hasRequiredFields(['name', 'role']) &&
         isValidString(request.resource.data.name, 100) &&
-        isValidString(request.resource.data.role, 30);
+        isValidString(request.resource.data.role, 30) &&
+        request.resource.data.role != 'admin';
       allow update: if isAuthenticated() && (
         // المالك يعدل بياناته — لا يمكنه تغيير الحقول المحمية
         (isOwner(userId) && (
@@ -53,7 +48,7 @@ service cloud.firestore {
         ))
         || 
         // مستخدمون آخرون يعدلون فقط حقول التفاعل
-        (!isOwner(userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rating', 'reviewsCount', 'completedJobs', 'negativeReports', 'ratingCounts', 'updatedAt', 'profileViews', 'viewers', 'pendingPartnerIds', 'partnerIds', 'followers']))
+        (!isOwner(userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rating', 'reviewsCount', 'completedJobs', 'negativeReports', 'ratingCounts', 'updatedAt', 'profileViews', 'dailyProfileViews', 'lastViewReset', 'viewers', 'pendingPartnerIds', 'partnerIds', 'followers']))
         ||
         // المشرف يعدل أي شيء
         isAdmin()
@@ -62,7 +57,7 @@ service cloud.firestore {
 
       // عداد الزيارات الفريدة
       match /views/{visitorId} {
-        allow read, create: if isAuthenticated() && request.auth.uid == visitorId;
+        allow read, create, update: if isAuthenticated() && request.auth.uid == visitorId;
       }
       
       // إعدادات المستخدم الشخصية
@@ -86,8 +81,12 @@ service cloud.firestore {
         isValidString(request.resource.data.caption, 5000);
       allow update: if isAuthenticated() && (
         isOwner(resource.data.userId) || 
-        // السماح بتحديث حقول التفاعل فقط لغير المالك
-        (!isOwner(resource.data.userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions', 'commentsCount', 'likesCount', 'sharesCount', 'isPinned'])) ||
+        // السماح بتحديث حقول التفاعل فقط لغير المالك (حذف isPinned)
+        (!isOwner(resource.data.userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions', 'commentsCount', 'likesCount', 'sharesCount', 'viewsCount']) &&
+          (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['commentsCount']) || 
+           request.resource.data.commentsCount == resource.data.commentsCount + 1 || 
+           request.resource.data.commentsCount == resource.data.commentsCount - 1)
+        ) ||
         isAdmin()
       );
       allow delete: if isOwner(resource.data.userId) || isAdmin();
@@ -103,6 +102,11 @@ service cloud.firestore {
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likedBy'])
         );
         allow delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      }
+      
+      // عداد الزيارات الفريدة للمنشور/المنتج
+      match /views/{visitorId} {
+        allow read, create, update: if isAuthenticated() && request.auth.uid == visitorId;
       }
     }
 
@@ -146,8 +150,10 @@ service cloud.firestore {
         isValidString(request.resource.data.description, 5000);
       allow update: if isAuthenticated() && (
          isOwner(resource.data.clientId) ||
-         // فقط عداد العروض يمكن تعديله من غير المالك
-         (!isOwner(resource.data.clientId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['proposalsCount', 'status', 'assignedFreelancerId', 'updatedAt'])) ||
+         // Freelancer updating milestones
+         (request.auth.uid == resource.data.assignedFreelancerId && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['milestones', 'updatedAt'])) ||
+         // Anyone adding a proposal
+         (!isOwner(resource.data.clientId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['proposalsCount', 'updatedAt'])) ||
          isAdmin()
       );
       allow delete: if isOwner(resource.data.clientId) || isAdmin();
@@ -186,7 +192,7 @@ service cloud.firestore {
             request.resource.data.content.size() <= 5000
           );
         allow update: if isAuthenticated() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants && (
-          request.resource.data.diff(resource.data).affectedKeys().hasAny(['contractStatus', 'contractDetails', 'contractPrice', 'cancelRequesterId', 'jobId', 'isRead']) ||
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['contractStatus', 'contractDetails', 'contractPrice', 'cancelRequesterId', 'jobId', 'isRead']) ||
           (resource.data.senderId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['content', 'isEdited']))
         );
         allow delete: if isAuthenticated() && (
@@ -240,8 +246,9 @@ service cloud.firestore {
         (!('imageUrls' in request.resource.data) || request.resource.data.imageUrls.size() <= 3);
       allow update: if isAuthenticated() && (
         isOwner(resource.data.clientId) || 
-        // السماح بتحديث عداد العروض والحالة فقط لغير المالك
-        (!isOwner(resource.data.clientId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['offersCount', 'status', 'updatedAt']))
+        // السماح بتحديث عداد العروض فقط لغير المالك
+        (!isOwner(resource.data.clientId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['offersCount', 'updatedAt'])) ||
+        isAdmin()
       );
       allow delete: if isAuthenticated() && (isOwner(resource.data.clientId) || isAdmin());
       
