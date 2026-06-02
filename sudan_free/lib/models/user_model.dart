@@ -35,6 +35,8 @@ class UserModel {
   final String? idCardUrl;
   final String? verificationSelfieUrl;
   final int profileViews;
+  final int dailyProfileViews;
+  final DateTime? lastViewReset;
   final String name;
   final UserRole role;
   final String? bio;
@@ -67,6 +69,7 @@ class UserModel {
   final String preferredLanguage;
   final bool isAvailable;
   final bool isBanned; // To block user from platform
+  final String? banReason; // The reason why the user was banned
   final double walletBalance;
   final List<String> partnerIds; // Accepted colleagues
   final List<String> pendingPartnerIds; // Pending colleague requests
@@ -78,6 +81,11 @@ class UserModel {
   // Client Interests
   final List<String> shopInterests;    // أنواع المتاجر التي يهتم بها العميل
   final List<String> serviceInterests; // أنواع الخدمات التي يحتاجها العميل
+  final List<String> favoriteUserIds;  // المفضلة: حرفيون أو متاجر
+  final List<String> favoriteProductIds; // المفضلة: المنتجات
+  final bool showOnMap; // إظهار أو إخفاء من الخريطة
+  final double? latitude; // خط العرض
+  final double? longitude; // خط الطول
 
   UserModel({
     required this.id,
@@ -85,6 +93,8 @@ class UserModel {
     this.username,
     this.phoneNumber,
     this.profileViews = 0,
+    this.dailyProfileViews = 0,
+    this.lastViewReset,
     required this.name,
     required this.role,
     this.bio,
@@ -114,6 +124,7 @@ class UserModel {
     this.preferredLanguage = 'ar',
     this.isAvailable = true,
     this.isBanned = false,
+    this.banReason,
     this.walletBalance = 0.0,
     this.partnerIds = const [],
     this.pendingPartnerIds = const [],
@@ -134,6 +145,11 @@ class UserModel {
     this.searchKeywords = const [],
     this.shopInterests = const [],
     this.serviceInterests = const [],
+    this.favoriteUserIds = const [],
+    this.favoriteProductIds = const [],
+    this.showOnMap = true,
+    this.latitude,
+    this.longitude,
   });
 
   factory UserModel.fromFirestore(DocumentSnapshot doc) {
@@ -149,11 +165,14 @@ class UserModel {
       username: data['username'],
       phoneNumber: data['phoneNumber'],
       profileViews: data['profileViews'] ?? 0,
+      dailyProfileViews: data['dailyProfileViews'] ?? 0,
+      lastViewReset: data['lastViewReset'] is Timestamp
+          ? (data['lastViewReset'] as Timestamp).toDate()
+          : data['lastViewReset'] is String
+              ? DateTime.parse(data['lastViewReset'])
+              : null,
       name: data['name'] ?? '',
-      role: UserRole.values.firstWhere(
-        (e) => e.name.toLowerCase() == (data['role']?.toString().toLowerCase() ?? ''),
-        orElse: () => UserRole.client,
-      ),
+      role: UserModel._parseRole(data['role']),
       bio: data['bio'],
       jobTitle: data['jobTitle'],
       profileImageUrl: data['profileImageUrl'],
@@ -195,6 +214,7 @@ class UserModel {
       preferredLanguage: data['preferredLanguage'] ?? 'ar',
       isAvailable: data['isAvailable'] ?? true,
       isBanned: data['isBanned'] ?? false,
+      banReason: data['banReason'],
       walletBalance: (data['walletBalance'] as num?)?.toDouble() ?? 0.0,
       partnerIds: List<String>.from(data['partnerIds'] ?? []),
       pendingPartnerIds: List<String>.from(data['pendingPartnerIds'] ?? []),
@@ -222,7 +242,49 @@ class UserModel {
       searchKeywords: List<String>.from(data['searchKeywords'] ?? []),
       shopInterests: List<String>.from(data['shopInterests'] ?? []),
       serviceInterests: List<String>.from(data['serviceInterests'] ?? []),
+      favoriteUserIds: List<String>.from(data['favoriteUserIds'] ?? []),
+      favoriteProductIds: List<String>.from(data['favoriteProductIds'] ?? []),
+      showOnMap: data['showOnMap'] ?? true,
+      latitude: data['latitude']?.toDouble(),
+      longitude: data['longitude']?.toDouble(),
     );
+  }
+
+  static UserRole _parseRole(dynamic rawRole) {
+    final normalized = rawRole?.toString().trim().toLowerCase();
+    switch (normalized) {
+      case 'freelancer':
+      case 'craftsman':
+      case 'worker':
+      case 'artisan':
+      case 'service provider':
+      case 'provider':
+        return UserRole.freelancer;
+      case 'techservice':
+      case 'tech_service':
+      case 'tech service':
+      case 'technician':
+        return UserRole.techService;
+      case 'privateservice':
+      case 'private_service':
+      case 'private service':
+      case 'provider_private':
+        return UserRole.privateService;
+      case 'shop':
+      case 'store':
+      case 'gallery':
+      case 'معرض':
+        return UserRole.shop;
+      case 'client':
+        return UserRole.client;
+      case 'admin':
+        return UserRole.admin;
+      default:
+        return UserRole.values.firstWhere(
+          (e) => e.name.toLowerCase() == normalized,
+          orElse: () => UserRole.client,
+        );
+    }
   }
 
   Map<String, dynamic> toFirestore() {
@@ -231,6 +293,8 @@ class UserModel {
       'username': username,
       'phoneNumber': phoneNumber,
       'profileViews': profileViews,
+      'dailyProfileViews': dailyProfileViews,
+      if (lastViewReset != null) 'lastViewReset': Timestamp.fromDate(lastViewReset!),
       'name': name,
       'role': role.name,
       'bio': bio,
@@ -259,6 +323,7 @@ class UserModel {
       'preferredLanguage': preferredLanguage,
       'isAvailable': isAvailable,
       'isBanned': isBanned,
+      if (banReason != null) 'banReason': banReason,
       'walletBalance': walletBalance,
       'negativeReports': negativeReports,
       'partnerIds': partnerIds,
@@ -273,6 +338,11 @@ class UserModel {
       'notificationSettings': notificationSettings,
       'shopInterests': shopInterests,
       'serviceInterests': serviceInterests,
+      'favoriteUserIds': favoriteUserIds,
+      'favoriteProductIds': favoriteProductIds,
+      'showOnMap': showOnMap,
+      if (latitude != null) 'latitude': latitude,
+      if (longitude != null) 'longitude': longitude,
       'searchKeywords': generateSearchKeywords(
         name: name,
         jobTitle: jobTitle,
@@ -304,6 +374,8 @@ class UserModel {
     String? username,
     String? phoneNumber,
     int? profileViews,
+    int? dailyProfileViews,
+    DateTime? lastViewReset,
     String? name,
     UserRole? role,
     String? bio,
@@ -332,6 +404,8 @@ class UserModel {
     String? fcmToken,
     String? preferredLanguage,
     bool? isAvailable,
+    bool? isBanned,
+    String? banReason,
     double? walletBalance,
     List<String>? partnerIds,
     List<String>? pendingPartnerIds,
@@ -344,6 +418,11 @@ class UserModel {
     Map<String, bool>? notificationSettings,
     List<String>? shopInterests,
     List<String>? serviceInterests,
+    List<String>? favoriteUserIds,
+    List<String>? favoriteProductIds,
+    bool? showOnMap,
+    double? latitude,
+    double? longitude,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -351,6 +430,8 @@ class UserModel {
       username: username ?? this.username,
       phoneNumber: phoneNumber ?? this.phoneNumber,
       profileViews: profileViews ?? this.profileViews,
+      dailyProfileViews: dailyProfileViews ?? this.dailyProfileViews,
+      lastViewReset: lastViewReset ?? this.lastViewReset,
       name: name ?? this.name,
       role: role ?? this.role,
       bio: bio ?? this.bio,
@@ -378,6 +459,8 @@ class UserModel {
       fcmToken: fcmToken ?? this.fcmToken,
       preferredLanguage: preferredLanguage ?? this.preferredLanguage,
       isAvailable: isAvailable ?? this.isAvailable,
+      isBanned: isBanned ?? this.isBanned,
+      banReason: banReason ?? this.banReason,
       walletBalance: walletBalance ?? this.walletBalance,
       partnerIds: partnerIds ?? this.partnerIds,
       pendingPartnerIds: pendingPartnerIds ?? this.pendingPartnerIds,
@@ -391,6 +474,11 @@ class UserModel {
       searchKeywords: searchKeywords,
       shopInterests: shopInterests ?? this.shopInterests,
       serviceInterests: serviceInterests ?? this.serviceInterests,
+      favoriteUserIds: favoriteUserIds ?? this.favoriteUserIds,
+      favoriteProductIds: favoriteProductIds ?? this.favoriteProductIds,
+      showOnMap: showOnMap ?? this.showOnMap,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
     );
   }
 
@@ -491,6 +579,11 @@ class UserModel {
         ShopCategory.other: 'Other',
       }
     };
+    
+    if (shopCategory == ShopCategory.other && jobTitle != null && jobTitle!.isNotEmpty) {
+      return jobTitle!;
+    }
+    
     return names[locale]?[shopCategory] ?? (locale == 'ar' ? 'أخرى' : 'Other');
   }
 

@@ -102,8 +102,48 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  // Toggle Favorite User
+  Future<void> toggleFavoriteUser(String targetUserId) async {
+    if (_user == null) return;
+    try {
+      final updatedFavorites = List<String>.from(_user!.favoriteUserIds);
+      if (updatedFavorites.contains(targetUserId)) {
+        updatedFavorites.remove(targetUserId);
+      } else {
+        updatedFavorites.add(targetUserId);
+      }
+      
+      _user = _user!.copyWith(favoriteUserIds: updatedFavorites);
+      await _firestoreService.updateUserProfile(_user!.id, {'favoriteUserIds': updatedFavorites});
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error toggling favorite user: $e');
+      refreshUserProfile(); // rollback on error
+    }
+  }
+
+  // Toggle Favorite Product
+  Future<void> toggleFavoriteProduct(String productId) async {
+    if (_user == null) return;
+    try {
+      final updatedFavorites = List<String>.from(_user!.favoriteProductIds);
+      if (updatedFavorites.contains(productId)) {
+        updatedFavorites.remove(productId);
+      } else {
+        updatedFavorites.add(productId);
+      }
+      
+      _user = _user!.copyWith(favoriteProductIds: updatedFavorites);
+      await _firestoreService.updateUserProfile(_user!.id, {'favoriteProductIds': updatedFavorites});
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error toggling favorite product: $e');
+      refreshUserProfile(); // rollback on error
+    }
+  }
+
   // Fetch My Partners & Followed Shops
-  Future<void> fetchPartners() async {
+  Future<void> fetchPartners({bool forceRefresh = false}) async {
     if (_user == null) {
       _partners = [];
       notifyListeners();
@@ -116,6 +156,11 @@ class AuthProvider extends ChangeNotifier {
     if (combinedIds.isEmpty) {
       _partners = [];
       notifyListeners();
+      return;
+    }
+
+    if (!forceRefresh && _partners.isNotEmpty) {
+      // If we already have them and it's not a forced refresh, just return
       return;
     }
 
@@ -200,6 +245,15 @@ class AuthProvider extends ChangeNotifier {
     try {
       final profile = await _authService.getUserProfile(uid);
       if (profile != null) {
+        if (profile.isBanned) {
+          await _authService.signOut();
+          _user = null;
+          _status = AuthStatus.error;
+          _errorMessage = 'BANNED:${profile.banReason ?? "مخالفة الشروط والأحكام"}';
+          notifyListeners();
+          return;
+        }
+
         _user = profile;
         _isNewUser = false;
 
@@ -227,8 +281,16 @@ class AuthProvider extends ChangeNotifier {
   void _subscribeToUserStream(String uid) {
     _userSubscription?.cancel();
     _userSubscription = _firestoreService.getUserStream(uid).listen(
-      (profile) {
+      (profile) async {
         if (profile != null) {
+          if (profile.isBanned) {
+            await _authService.signOut();
+            _user = null;
+            _status = AuthStatus.error;
+            _errorMessage = 'BANNED:${profile.banReason ?? "مخالفة الشروط والأحكام"}';
+            notifyListeners();
+            return;
+          }
           _user = profile;
           notifyListeners();
         }
@@ -277,6 +339,49 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       final credential = await _authService.signInWithGoogle();
+      if (credential == null) {
+        // User cancelled
+        _status = AuthStatus.unauthenticated;
+        _isManualSignIn = false;
+        notifyListeners();
+        return false;
+      }
+
+      // Load user data directly to ensure immediate state update
+      if (credential.user != null) {
+        // Check device ban
+        final banReason = await _deviceService.checkDeviceBan();
+        if (banReason != null) {
+          await _authService.signOut();
+          _status = AuthStatus.error;
+          _errorMessage = 'DEVICE_BANNED:$banReason';
+          _isManualSignIn = false;
+          notifyListeners();
+          return false;
+        }
+        await _loadUserData(credential.user!.uid);
+        _syncFCMToken(credential.user!.uid);
+      }
+      _isManualSignIn = false;
+      return true;
+    } catch (e) {
+      _status = AuthStatus.error;
+      _errorMessage = e.toString();
+      _isManualSignIn = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // Sign in with Facebook
+  Future<bool> signInWithFacebook() async {
+    _status = AuthStatus.loading;
+    _errorMessage = null;
+    _isManualSignIn = true;
+    notifyListeners();
+
+    try {
+      final credential = await _authService.signInWithFacebook();
       if (credential == null) {
         // User cancelled
         _status = AuthStatus.unauthenticated;
@@ -537,10 +642,13 @@ class AuthProvider extends ChangeNotifier {
     List<String>? skills,
     double? hourlyRate,
     ShopCategory? shopCategory,
+    String? jobTitle,
     String? openingHours,
     String? closingHours,
     List<String>? shopInterests,
     List<String>? serviceInterests,
+    double? latitude,
+    double? longitude,
   }) async {
     // Don't set status=loading here — it triggers app.dart to rebuild
     // and show SplashScreen, which unmounts ProfileSetupScreen mid-operation.
@@ -562,6 +670,7 @@ class AuthProvider extends ChangeNotifier {
         name: name,
         role: role,
         bio: bio,
+        jobTitle: jobTitle,
         skills: skills ?? [],
         hourlyRate: hourlyRate,
         state: state,
@@ -572,6 +681,8 @@ class AuthProvider extends ChangeNotifier {
         whatsappNumber: phoneNumber ?? currentUser.phoneNumber,
         shopInterests: shopInterests ?? [],
         serviceInterests: serviceInterests ?? [],
+        latitude: latitude,
+        longitude: longitude,
         createdAt: now,
         updatedAt: now,
       );
@@ -679,6 +790,29 @@ class AuthProvider extends ChangeNotifier {
 
     final newStatus = !_user!.isAvailable;
     return await updateUserProfile({'isAvailable': newStatus});
+  }
+
+  // Toggle Map Visibility Status (For Freelancers and Shops)
+  Future<bool> toggleShowOnMap() async {
+    if (_user == null) return false;
+
+    final newStatus = !_user!.showOnMap;
+    return await updateUserProfile({'showOnMap': newStatus});
+  }
+
+  // Update user's GPS Location for Map
+  Future<bool> updateLocation(double lat, double lng, {String? state, String? locality}) async {
+    if (_user == null) return false;
+    
+    final updates = <String, dynamic>{
+      'latitude': lat,
+      'longitude': lng,
+    };
+    
+    if (state != null) updates['state'] = state;
+    if (locality != null) updates['locality'] = locality;
+    
+    return await updateUserProfile(updates);
   }
 
   // Toggle Push Notifications

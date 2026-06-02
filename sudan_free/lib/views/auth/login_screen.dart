@@ -8,6 +8,8 @@ import '../../widgets/inputs/custom_text_field.dart';
 import 'register_screen.dart';
 import '../settings/privacy_policy_screen.dart';
 
+import 'package:url_launcher/url_launcher.dart';
+
 import '../../l10n/generated/app_localizations.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -21,6 +23,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  bool _isBanDialogShowing = false;
 
   @override
   void dispose() {
@@ -143,14 +146,20 @@ class _LoginScreenState extends State<LoginScreen> {
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
         icon: const Icon(Icons.block, color: Colors.red, size: 48),
-        title: const Text('تم حظر هذا الجهاز', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('تم إيقاف حسابك', style: TextStyle(fontWeight: FontWeight.bold)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              reason,
+            const Text(
+              'عذراً، تم إيقاف حسابك من قبل الإدارة للسبب التالي:',
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 14),
+              style: TextStyle(fontSize: 13, color: Colors.grey),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              reason.isEmpty ? 'مخالفة الشروط والأحكام' : reason,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.red),
             ),
             const SizedBox(height: 16),
             Container(
@@ -161,7 +170,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
               ),
               child: const Text(
-                'إذا كنت قد اشتريت هذا الهاتف مؤخراً وليس لديك علاقة بالاحتيال السابق، يرجى التواصل معنا لحل المشكلة.',
+                'إذا كنت تعتقد أن هذا حدث بالخطأ، يرجى التواصل مع الدعم الفني لحل المشكلة.',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 12, color: Colors.orange),
               ),
@@ -170,12 +179,30 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('إغلاق'),
+            onPressed: () {
+              Navigator.pop(ctx);
+            },
+            child: const Text('إغلاق', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton.icon(
+            icon: const Icon(Icons.chat, size: 18),
+            label: const Text('تواصل معنا'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () async {
+              final url = Uri.parse('https://wa.me/249900578357');
+              if (await canLaunchUrl(url)) {
+                await launchUrl(url, mode: LaunchMode.externalApplication);
+              }
+            },
           ),
         ],
       ),
-    );
+    ).then((_) {
+      if (mounted) setState(() => _isBanDialogShowing = false);
+    });
   }
 
   @override
@@ -184,6 +211,19 @@ class _LoginScreenState extends State<LoginScreen> {
     final locale = context.watch<LocaleProvider>().locale.languageCode;
     final authProvider = context.watch<AuthProvider>();
     final isLoading = authProvider.status == AuthStatus.loading;
+
+    // Check if user was kicked out in real-time
+    if (authProvider.status == AuthStatus.error && authProvider.errorMessage != null) {
+      final err = authProvider.errorMessage!;
+      if (err.startsWith('BANNED:') || err.startsWith('DEVICE_BANNED:')) {
+        if (!_isBanDialogShowing) {
+          _isBanDialogShowing = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _showBanDialog(err.replaceFirst('BANNED:', '').replaceFirst('DEVICE_BANNED:', ''));
+          });
+        }
+      }
+    }
 
     return Scaffold(
       body: SafeArea(
