@@ -82,11 +82,7 @@ service cloud.firestore {
       allow update: if isAuthenticated() && (
         isOwner(resource.data.userId) || 
         // السماح بتحديث حقول التفاعل فقط لغير المالك (حذف isPinned)
-        (!isOwner(resource.data.userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions', 'commentsCount', 'likesCount', 'sharesCount', 'viewsCount']) &&
-          (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['commentsCount']) || 
-           request.resource.data.commentsCount == resource.data.commentsCount + 1 || 
-           request.resource.data.commentsCount == resource.data.commentsCount - 1)
-        ) ||
+        (!isOwner(resource.data.userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions', 'commentsCount', 'likesCount', 'sharesCount', 'viewsCount'])) ||
         isAdmin()
       );
       allow delete: if isOwner(resource.data.userId) || isAdmin();
