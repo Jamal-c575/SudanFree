@@ -12,7 +12,9 @@ import '../../models/contact_log_model.dart';
 import '../../providers/user_provider.dart';
 import '../../models/post_model.dart';
 import '../../services/firestore_service.dart';
+import '../../services/cloudinary_service.dart';
 import '../../widgets/common/adaptive_fab_padding.dart';
+import '../../widgets/common/empty_state_widget.dart';
 
 import 'create_product_screen.dart';
 import 'shop_dashboard_screen.dart';
@@ -467,9 +469,6 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
               ),
             );
           }),
-      bottomNavigationBar: !widget.isMe && (widget.user.role == UserRole.shop || widget.user.role == UserRole.techService || widget.user.role == UserRole.privateService) 
-          ? _buildGlassContactBar(context, widget.user)
-          : null,
       floatingActionButton: widget.isMe 
         ? AdaptiveFabPadding(
             child: FloatingActionButton.extended(
@@ -486,47 +485,20 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
               ),
             ),
           )
-        : null,
-    );
-  }
-
-  Widget _buildGlassContactBar(BuildContext context, UserModel shopUser) {
-    return ClipRRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: Container(
-          padding: EdgeInsets.only(
-            left: 16, 
-            right: 16, 
-            top: 12, 
-            bottom: MediaQuery.of(context).padding.bottom + 12
-          ),
-          decoration: BoxDecoration(
-            color: Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.8),
-            border: Border(top: BorderSide(color: Colors.grey.withValues(alpha: 0.2))),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () => _showContactMenu(context, shopUser),
-                  icon: const Icon(Icons.support_agent),
+        : (widget.user.role == UserRole.shop || widget.user.role == UserRole.techService || widget.user.role == UserRole.privateService)
+            ? AdaptiveFabPadding(
+                child: FloatingActionButton.extended(
+                  onPressed: () => _showContactMenu(context, widget.user),
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  icon: const Icon(Icons.support_agent, size: 22),
                   label: Text(
                     Localizations.localeOf(context).languageCode == 'ar' ? 'تواصل معنا' : 'Contact Us',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
-              ),
-            ],
-          ),
-        ),
-      ),
+              )
+            : null,
     );
   }
 

@@ -536,9 +536,6 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
             ),
         ],
       ),
-      bottomNavigationBar: !widget.isMe 
-          ? _buildGlassContactBar(context, widget.user)
-          : null,
       floatingActionButton: widget.isMe 
           ? ((_tabController.index == 0 || _tabController.index == 1)
               ? AdaptiveFabPadding(
@@ -567,47 +564,18 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
                   ),
                 )
               : null)
-          : null,
-    );
-  }
-
-  Widget _buildGlassContactBar(BuildContext context, UserModel freelancer) {
-    return ClipRRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: Container(
-          padding: EdgeInsets.only(
-            left: 16, 
-            right: 16, 
-            top: 12, 
-            bottom: MediaQuery.of(context).padding.bottom + 12
-          ),
-          decoration: BoxDecoration(
-            color: Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.8),
-            border: Border(top: BorderSide(color: Colors.grey.withValues(alpha: 0.2))),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () => _showContactMenu(context, freelancer),
-                  icon: const Icon(Icons.support_agent),
-                  label: Text(
-                    Localizations.localeOf(context).languageCode == 'ar' ? 'تواصل معي' : 'Contact Me',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
+          : AdaptiveFabPadding(
+              child: FloatingActionButton.extended(
+                onPressed: () => _showContactMenu(context, widget.user),
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                icon: const Icon(Icons.support_agent, size: 22),
+                label: Text(
+                  Localizations.localeOf(context).languageCode == 'ar' ? 'تواصل معي' : 'Contact Me',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
-            ],
-          ),
-        ),
-      ),
+            ),
     );
   }
 

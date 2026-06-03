@@ -8,6 +8,7 @@ import '../../providers/locale_provider.dart';
 import 'chat_screen.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import '../../widgets/common/empty_state_widget.dart';
+import '../../models/message_model.dart';
 
 class ChatsListScreen extends StatefulWidget {
   const ChatsListScreen({super.key});
