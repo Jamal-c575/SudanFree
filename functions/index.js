@@ -1219,10 +1219,10 @@ exports.adminSendNotification = onCall(async (request) => {
         const logData = {
             title,
             message,
-            targetRole,
-            targetJobTitle,
-            targetState,
-            targetLocality,
+            targetRole: targetRole || null,
+            targetJobTitle: targetJobTitle || null,
+            targetState: targetState || null,
+            targetLocality: targetLocality || null,
             matchedUsers: users.length,
             fcmSent: successCount,
             fcmFailed: failureCount,
@@ -1468,3 +1468,34 @@ exports.onAdCreated = onDocumentCreated(
         }
     }
 );
+
+/**
+ * Callable Cloud Function: generateCloudinarySignature
+ * Generates a signed signature for secure Cloudinary uploads from the client.
+ */
+exports.generateCloudinarySignature = onCall(async (request) => {
+    const apiSecret = process.env.CLOUDINARY_API_SECRET;
+    const apiKey = process.env.CLOUDINARY_API_KEY;
+    
+    if (!apiSecret || !apiKey) {
+        throw new HttpsError('internal', 'Cloudinary API credentials are not configured.');
+    }
+
+    if (!request.auth) {
+        throw new HttpsError('unauthenticated', 'User must be logged in to upload files.');
+    }
+
+    const timestamp = Math.round((new Date).getTime() / 1000);
+    const folder = request.data?.folder || 'general';
+    
+    const crypto = require('crypto');
+    const signatureString = `folder=${folder}&timestamp=${timestamp}${apiSecret}`;
+    const signature = crypto.createHash('sha1').update(signatureString).digest('hex');
+
+    return {
+        timestamp: timestamp,
+        signature: signature,
+        folder: folder,
+        apiKey: apiKey
+    };
+});
