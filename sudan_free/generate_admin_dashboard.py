@@ -635,8 +635,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     setState(() => _isSendingNotif = true);
 
     try {
-      final callable = FirebaseFunctions.instance.httpsCallable('sendBulkNotification');
-      final result = await callable.call({
+      final callable = FirebaseFunctions.instance.httpsCallable('adminSendNotification');
+      final result = await callable.call(<String, dynamic>{
         'title': _notifTitleCtrl.text,
         'message': _notifMsgCtrl.text,
         'targetRole': _notifTargetRole,

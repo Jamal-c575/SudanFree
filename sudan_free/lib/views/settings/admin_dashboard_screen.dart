@@ -437,7 +437,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                            'isBanned': !user.isBanned,
                          });
                          if (mounted) {
-                           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                           final scaffoldMessenger = ScaffoldMessenger.of(context);
+                           scaffoldMessenger.showSnackBar(SnackBar(
                              content: Text(user.isBanned ? 'تم فك حظر المستخدم' : 'تم حظر المستخدم'),
                              backgroundColor: user.isBanned ? Colors.green : Colors.red,
                            ));
@@ -626,15 +627,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   Future<void> _sendBulkNotification() async {
     if (_notifTitleCtrl.text.isEmpty || _notifMsgCtrl.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('الرجاء إدخال العنوان والنص')));
+      final scaffoldMessenger = ScaffoldMessenger.of(context);
+      scaffoldMessenger.showSnackBar(const SnackBar(content: Text('الرجاء إدخال العنوان والنص')));
       return;
     }
 
     setState(() => _isSendingNotif = true);
 
     try {
-      final callable = FirebaseFunctions.instance.httpsCallable('sendBulkNotification');
-      final result = await callable.call({
+      final callable = FirebaseFunctions.instance.httpsCallable('adminSendNotification');
+      final result = await callable.call(<String, dynamic>{
         'title': _notifTitleCtrl.text,
         'message': _notifMsgCtrl.text,
         'targetRole': _notifTargetRole,
@@ -645,7 +647,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       final data = result.data as Map<String, dynamic>;
       
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        final scaffoldMessenger = ScaffoldMessenger.of(context);
+        scaffoldMessenger.showSnackBar(SnackBar(
           content: Text(data['message'] ?? 'تم الإرسال بنجاح'),
           backgroundColor: Colors.green,
           duration: const Duration(seconds: 4),
@@ -655,7 +658,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        final scaffoldMessenger = ScaffoldMessenger.of(context);
+        scaffoldMessenger.showSnackBar(SnackBar(
           content: Text('خطأ في الإرسال: $e'),
           backgroundColor: Colors.red,
         ));
