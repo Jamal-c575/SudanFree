@@ -13,6 +13,7 @@ import '../../providers/job_provider.dart';
 import '../requests/requests_screen.dart';
 import '../shops/browse_shops_screen.dart';
 import '../posts/posts_feed_screen.dart';
+import '../squads/squads_explorer_screen.dart';
 import '../../l10n/generated/app_localizations.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -44,12 +45,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   final BottomBarVisibilityProvider _visibilityProvider = BottomBarVisibilityProvider();
   
   // Track which tabs have been visited to lazy-load them and save memory
-  final List<bool> _initializedTabs = [true, false, false, false, false];
+  final List<bool> _initializedTabs = [true, false, false, false, false, false];
   
   // Keys for refreshing tabs
   Key _dashboardKey = UniqueKey();
   Key _freelancersKey = UniqueKey();
   Key _shopsKey = UniqueKey();
+  Key _squadsKey = UniqueKey();
   Key _requestsKey = UniqueKey();
 
   @override
@@ -102,7 +104,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           context,
           latestVersion,
           info['force_update'] as bool? ?? false,
-          info['url'] as String? ?? 'https://jamall123.github.io/HOME_WEB/sudan-free.html',
+          info['url'] as String? ?? 'https://sudanfree.com/sudan-free.html',
           info['message_ar'] as String?,
           info['message_en'] as String?,
         );
@@ -163,7 +165,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   /// Navigate to a specific tab — used by DashboardScreen
   void _navigateToTab(int index) {
-    if (index >= 0 && index <= 4) {
+    if (index >= 0 && index <= 5) {
       setState(() {
         _currentIndex = index;
         _history.remove(index);
@@ -191,7 +193,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       BrowseFreelancersScreen(key: _freelancersKey),        // 1 - الخدمات
       BrowseShopsScreen(key: _shopsKey),                            // 2 - المتاجر
       const PostsFeedScreen(),                              // 3 - المجتمع (يحدث عبر الـ Provider)
-      RequestsScreen(key: _requestsKey),                               // 4 - الطلبات
+      SquadsExplorerScreen(key: _squadsKey),                // 4 - المجموعات
+      RequestsScreen(key: _requestsKey),                               // 5 - الطلبات
     ];
 
     return PopScope(
@@ -325,6 +328,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       ),
                       _buildNavItem(
                         index: 4,
+                        icon: Icons.groups_outlined,
+                        activeIcon: Icons.groups,
+                        label: locale == 'ar' ? 'المجموعات' : 'Squads',
+                        isDark: isDark,
+                      ),
+                      _buildNavItem(
+                        index: 5,
                         icon: Icons.assignment_outlined,
                         activeIcon: Icons.assignment,
                         label: locale == 'ar' ? 'الطلبات' : 'Requests',
@@ -352,6 +362,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     required bool isDark,
     bool hasBadge = false,
     int badgeCount = 0,
+    bool isProminent = false,
   }) {
     return _NavItemWidget(
       index: index,
@@ -362,6 +373,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       isActive: _currentIndex == index,
       hasBadge: hasBadge,
       badgeCount: badgeCount,
+      isProminent: isProminent,
       onTap: () {
         if (_currentIndex != index) {
           setState(() {
@@ -378,7 +390,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           if (index == 1) _freelancersKey = UniqueKey();
           if (index == 2) _shopsKey = UniqueKey();
           if (index == 3) context.read<PostsProvider>().fetchPosts(forceRefresh: true);
-          if (index == 4) _requestsKey = UniqueKey();
+          if (index == 4) _squadsKey = UniqueKey();
+          if (index == 5) _requestsKey = UniqueKey();
         });
       },
     );
@@ -394,6 +407,7 @@ class _NavItemWidget extends StatefulWidget {
   final bool isActive;
   final bool hasBadge;
   final int badgeCount;
+  final bool isProminent;
   final VoidCallback onTap;
   final VoidCallback onRefresh;
 
@@ -406,6 +420,7 @@ class _NavItemWidget extends StatefulWidget {
     required this.isActive,
     required this.hasBadge,
     required this.badgeCount,
+    this.isProminent = false,
     required this.onTap,
     required this.onRefresh,
   });
@@ -479,7 +494,7 @@ class _NavItemWidgetState extends State<_NavItemWidget> with SingleTickerProvide
                 decoration: BoxDecoration(
                   color: widget.isActive 
                       ? AppColors.primary.withValues(alpha: 0.12)
-                      : Colors.transparent,
+                      : (widget.isProminent ? AppColors.secondary.withValues(alpha: 0.15) : Colors.transparent),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Badge(
@@ -498,8 +513,8 @@ class _NavItemWidgetState extends State<_NavItemWidget> with SingleTickerProvide
                     child: Icon(
                       widget.isActive ? widget.activeIcon : widget.icon,
                       key: ValueKey(widget.isActive),
-                      size: widget.isActive ? 22 : 20,
-                      color: color,
+                      size: widget.isActive ? (widget.isProminent ? 26 : 22) : (widget.isProminent ? 24 : 20),
+                      color: widget.isProminent && !widget.isActive ? AppColors.secondary : color,
                     ),
                   ),
                 ),
@@ -509,7 +524,7 @@ class _NavItemWidgetState extends State<_NavItemWidget> with SingleTickerProvide
                 style: TextStyle(
                   fontSize: widget.isActive ? 10 : 9,
                   fontWeight: widget.isActive ? FontWeight.w700 : FontWeight.w500,
-                  color: color,
+                  color: widget.isProminent && !widget.isActive ? AppColors.secondary : color,
                   fontFamily: 'Cairo',
                 ),
                 child: Text(widget.label, maxLines: 1, overflow: TextOverflow.ellipsis),

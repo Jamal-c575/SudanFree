@@ -89,10 +89,13 @@ class _AddReviewDialogState extends State<AddReviewDialog> {
                     onTap: () => setState(() => _rating = index + 1.0),
                     child: Padding(
                       padding: const EdgeInsets.all(4),
-                      child: Icon(
-                        index < _rating ? Icons.star : Icons.star_border,
-                        color: Colors.amber,
-                        size: 36,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
+                        child: Icon(
+                          index < _rating ? Icons.star : Icons.star_border,
+                          color: index < _rating ? _getStarColor(_rating) : Colors.grey.withValues(alpha: 0.3),
+                          size: 36,
+                        ),
                       ),
                     ),
                   );
@@ -256,6 +259,14 @@ class _AddReviewDialogState extends State<AddReviewDialog> {
     return locale == 'ar' ? 'ممتاز' : 'Excellent';
   }
 
+  Color _getStarColor(double rating) {
+    if (rating == 0) return Colors.grey;
+    if (rating <= 1) return Colors.black87; // نجمة واحدة: أسود
+    if (rating <= 2) return Colors.red;     // نجمتان: أحمر
+    if (rating <= 3) return Colors.amber;   // ٣ نجوم: أصفر
+    return Colors.green;                    // ٤ إلى ٥ نجوم: أخضر
+  }
+
   @override
   void dispose() {
     _commentController.dispose();
@@ -315,7 +326,7 @@ class ReviewCard extends StatelessWidget {
                         children: [
                           ...List.generate(5, (i) => Icon(
                             i < review.rating.round() ? Icons.star : Icons.star_border,
-                            color: Colors.amber,
+                            color: i < review.rating.round() ? _getCardStarColor(review.rating.round()) : Colors.grey.withValues(alpha: 0.3),
                             size: 14,
                           )),
                           const SizedBox(width: 8),
@@ -392,6 +403,13 @@ class ReviewCard extends StatelessWidget {
   String _formatDate(DateTime date) {
     return '${date.day}/${date.month}/${date.year}';
   }
+
+  Color _getCardStarColor(int stars) {
+    if (stars <= 1) return Colors.black87;
+    if (stars <= 2) return Colors.red;
+    if (stars <= 3) return Colors.amber;
+    return Colors.green;
+  }
 }
 
 class ReviewStatsWidget extends StatelessWidget {
@@ -437,7 +455,7 @@ class ReviewStatsWidget extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: List.generate(5, (index) => Icon(
                   index < averageRating.round() ? Icons.star : Icons.star_border,
-                  color: Colors.amber,
+                  color: index < averageRating.round() ? _getBarColor(averageRating.round()) : Colors.grey.withValues(alpha: 0.3),
                   size: 16,
                 )),
               ),
@@ -468,7 +486,7 @@ class ReviewStatsWidget extends StatelessWidget {
                           child: LinearProgressIndicator(
                             value: percent,
                             backgroundColor: Colors.grey.withValues(alpha: 0.2),
-                            valueColor: const AlwaysStoppedAnimation<Color>(Colors.amber),
+                            valueColor: AlwaysStoppedAnimation<Color>(_getBarColor(stars)),
                             minHeight: 8,
                           ),
                         ),
@@ -483,4 +501,12 @@ class ReviewStatsWidget extends StatelessWidget {
       ),
     );
   }
+
+  Color _getBarColor(int stars) {
+    if (stars <= 1) return Colors.black87;
+    if (stars <= 2) return Colors.red;
+    if (stars <= 3) return Colors.amber;
+    return Colors.green;
+  }
 }
+

@@ -199,6 +199,7 @@ class PostsProvider extends ChangeNotifier {
     String? linkedProductName,
     String? linkedProductImage,
     double? linkedProductPrice,
+    PollModel? poll,
   }) async {
     final pendingId = 'pending_${DateTime.now().millisecondsSinceEpoch}';
     
@@ -223,6 +224,7 @@ class PostsProvider extends ChangeNotifier {
       linkedProductName: linkedProductName,
       linkedProductImage: linkedProductImage,
       linkedProductPrice: linkedProductPrice,
+      poll: poll,
     );
     
     _posts.insert(0, pendingPost);
@@ -291,6 +293,7 @@ class PostsProvider extends ChangeNotifier {
     String? linkedProductName,
     String? linkedProductImage,
     double? linkedProductPrice,
+    PollModel? poll,
   }) async {
     try {
       _isCreating = true;
@@ -350,6 +353,7 @@ class PostsProvider extends ChangeNotifier {
         linkedProductName: linkedProductName,
         linkedProductImage: linkedProductImage,
         linkedProductPrice: linkedProductPrice,
+        poll: poll,
         createdAt: DateTime.now(),
       );
 
@@ -549,6 +553,62 @@ class PostsProvider extends ChangeNotifier {
       post.reactions.clear();
       post.reactions.addAll(oldReactions);
       _errorMessage = 'Failed to update reaction: $e';
+      notifyListeners();
+    }
+  }
+
+  Future<void> voteInPoll(String postId, int optionIndex, String userId) async {
+    // 1. Check if post exists locally
+    final index = _posts.indexWhere((p) => p.id == postId);
+    if (index == -1) return;
+
+    final post = _posts[index];
+    if (post.poll == null) return;
+
+    // Make a deep copy of the poll options to rollback if needed
+    final oldOptions = post.poll!.options.map((o) => o.copyWith(voterIds: List.from(o.voterIds))).toList();
+    final oldPoll = PollModel(
+      question: post.poll!.question,
+      options: oldOptions,
+      expiresAt: post.poll!.expiresAt,
+      isMultipleChoice: post.poll!.isMultipleChoice,
+    );
+
+    // 2. Optimistic Update (Immediate Feedback)
+    final newOptions = post.poll!.options.map((o) => o.copyWith(voterIds: List.from(o.voterIds))).toList();
+    
+    // Remove user from all other options if not multiple choice
+    if (!post.poll!.isMultipleChoice) {
+      for (var option in newOptions) {
+        option.voterIds.remove(userId);
+      }
+    }
+    
+    // Add or remove user from the selected option
+    final selectedOption = newOptions[optionIndex];
+    if (selectedOption.voterIds.contains(userId)) {
+      selectedOption.voterIds.remove(userId);
+    } else {
+      selectedOption.voterIds.add(userId);
+    }
+
+    final newPoll = PollModel(
+      question: post.poll!.question,
+      options: newOptions,
+      expiresAt: post.poll!.expiresAt,
+      isMultipleChoice: post.poll!.isMultipleChoice,
+    );
+
+    _posts[index] = post.copyWith(poll: newPoll);
+    notifyListeners();
+
+    // 3. Perform Network Request
+    try {
+      await _firestoreService.voteInPoll(postId, newPoll.toMap());
+    } catch (e) {
+      // 4. Rollback on Error
+      _posts[index] = post.copyWith(poll: oldPoll);
+      _errorMessage = 'Failed to vote: $e';
       notifyListeners();
     }
   }

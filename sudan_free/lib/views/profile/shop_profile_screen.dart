@@ -3,7 +3,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'product_detail_screen.dart';
 import '../../widgets/common/linkable_text.dart';
-import 'dart:ui';
 
 // ignore: unused_import
 import '../../core/constants/app_colors.dart';
@@ -14,7 +13,10 @@ import '../../models/post_model.dart';
 import '../../services/firestore_service.dart';
 import '../../services/cloudinary_service.dart';
 import '../../widgets/common/adaptive_fab_padding.dart';
-import '../../widgets/common/empty_state_widget.dart';
+import '../../widgets/common/full_screen_image_viewer.dart';
+import '../../core/routes/premium_page_route.dart';
+import 'digital_id_card_screen.dart';
+import '../map/map_explorer_screen.dart';
 
 import 'create_product_screen.dart';
 import 'shop_dashboard_screen.dart';
@@ -70,7 +72,7 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this, initialIndex: widget.initialTabIndex);
+    _tabController = TabController(length: 3, vsync: this, initialIndex: widget.initialTabIndex);
     
     _userStream = FirestoreService().getUserStream(widget.user.id);
     _postsStream = FirestoreService().getUserPosts(widget.user.id);
@@ -245,7 +247,7 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
                                               ],
                                             ),
                                           ),
-                                          VerificationBadge(isVerified: user.effectivelyVerified, size: 22),
+                                          SmartVerificationBadge(user: user, size: 22),
                                         ],
                                       ),
                                       const SizedBox(height: 4),
@@ -279,11 +281,18 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
                         icon: const Icon(Icons.share, color: Colors.white),
                         tooltip: l10n.localeName == 'ar' ? 'مشاركة الملف الشخصي' : 'Share Profile',
                         onPressed: () {
-                          final url = 'https://jamall123.github.io/HOME_WEB/sudan-free.html?profileId=${user.id}';
+                          final url = 'https://sudanfree.com/sudan-free.html?profileId=${user.id}';
                           final text = l10n.localeName == 'ar' 
                               ? 'تفضل بزيارة متجر ${user.name} على تطبيق سودان فري:\n$url' 
-                              : 'Check out ${user.name}\'s shop on SudanFree:\n$url';
+                              : 'Visit ${user.name}\'s store on SudanFree:\n$url';
                           Share.share(text);
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.badge, color: Colors.white),
+                        tooltip: l10n.localeName == 'ar' ? 'هويتي الرقمية' : 'Digital ID',
+                        onPressed: () {
+                          Navigator.push(context, PremiumPageRoute(page: DigitalIdCardScreen(user: user)));
                         },
                       ),
                       // OWNER ACTIONS: Edit & Settings
@@ -453,6 +462,7 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
                         unselectedLabelColor: Colors.grey,
                         tabs: [
                           Tab(text: l10n.products),
+                          Tab(text: l10n.localeName == 'ar' ? 'المعرض' : 'Gallery'),
                           Tab(text: l10n.reviews),
                         ],
                       ),
@@ -464,6 +474,7 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
                 controller: _tabController,
                 children: [
                   KeepAliveTabView(child: _buildProductsGrid()),
+                  KeepAliveTabView(child: _buildShopGallery()),
                   KeepAliveTabView(child: _buildReviewsSection()),
                 ],
               ),
@@ -487,15 +498,51 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
           )
         : (widget.user.role == UserRole.shop || widget.user.role == UserRole.techService || widget.user.role == UserRole.privateService)
             ? AdaptiveFabPadding(
-                child: FloatingActionButton.extended(
-                  onPressed: () => _showContactMenu(context, widget.user),
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  icon: const Icon(Icons.support_agent, size: 22),
-                  label: Text(
-                    Localizations.localeOf(context).languageCode == 'ar' ? 'تواصل معنا' : 'Contact Us',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    FloatingActionButton.small(
+                      heroTag: 'shop_location_btn',
+                      onPressed: () {
+                        if (widget.user.latitude == null || widget.user.longitude == null) {
+                          final scaffoldMessenger = ScaffoldMessenger.of(context);
+                          scaffoldMessenger.showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                Localizations.localeOf(context).languageCode == 'ar'
+                                    ? 'الموقع غير متوفر لهذا المستخدم'
+                                    : 'Location not available for this user',
+                              ),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                          return;
+                        }
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => MapExplorerScreen(targetUser: widget.user),
+                          ),
+                        );
+                      },
+                      backgroundColor: Colors.white,
+                      foregroundColor: AppColors.primary,
+                      child: const Icon(Icons.location_on_outlined),
+                    ),
+                    const SizedBox(height: 12),
+                    FloatingActionButton.extended(
+                      heroTag: 'shop_contact_btn',
+                      onPressed: () => _showContactMenu(context, widget.user),
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      icon: const Icon(Icons.support_agent, size: 22),
+                      label: Text(
+                        Localizations.localeOf(context).languageCode == 'ar' ? 'تواصل معنا' : 'Contact Us',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
                 ),
               )
             : null,
@@ -738,6 +785,55 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
     );
   }
 
+  Widget _buildShopGallery() {
+    final images = widget.user.shopImages;
+    if (images.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.photo_library, size: 64, color: Colors.grey[300]),
+            const SizedBox(height: 16),
+            Text(
+              Localizations.localeOf(context).languageCode == 'ar' 
+                ? (widget.isMe ? 'لا توجد صور في المعرض. يمكنك إضافتها من إعدادات الملف.' : 'لا توجد صور في المعرض حالياً')
+                : (widget.isMe ? 'No images in gallery. Add from profile settings.' : 'No images in gallery'),
+              style: TextStyle(color: Colors.grey[600]),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
+    return GridView.builder(
+      padding: const EdgeInsets.all(8),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        childAspectRatio: 1.0,
+        crossAxisSpacing: 4,
+        mainAxisSpacing: 4,
+      ),
+      itemCount: images.length,
+      itemBuilder: (context, index) {
+        return GestureDetector(
+          onTap: () {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => FullScreenImageViewer(imageUrls: images, initialIndex: index)));
+          },
+          child: Hero(
+            tag: 'shop_gallery_${images[index]}',
+            child: CachedNetworkImage(
+              imageUrl: CloudinaryService.getOptimizedUrl(images[index], width: 300, quality: 'auto'),
+              fit: BoxFit.cover,
+              memCacheWidth: 300,
+              placeholder: (_, __) => Container(color: Colors.grey[200]),
+              errorWidget: (_, __, ___) => const Icon(Icons.broken_image),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildReviewsSection() {
     final l10n = AppLocalizations.of(context)!;
     return ListView(
@@ -785,8 +881,7 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
             ...snapshot.data!
                 .map((review) => ReviewCard(
                     review: review,
-                    locale: context.read<LocaleProvider>().locale.languageCode))
-                .toList(),
+                    locale: context.read<LocaleProvider>().locale.languageCode)),
           ],
         );
       },
@@ -1165,7 +1260,8 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
     if (pickedFile == null) return;
 
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    scaffoldMessenger.showSnackBar(
       SnackBar(
           content: Text(l10n.uploadingImage),
           duration: const Duration(seconds: 2)),
@@ -1193,7 +1289,8 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
       }
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      final scaffoldMessenger = ScaffoldMessenger.of(context);
+      scaffoldMessenger.showSnackBar(
         SnackBar(
             content: Text(l10n.imageUpdated),
             backgroundColor: AppColors.success),
@@ -1216,7 +1313,8 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
                   isMe: true)));
     } else {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      final scaffoldMessenger = ScaffoldMessenger.of(context);
+      scaffoldMessenger.showSnackBar(
         SnackBar(
             content: Text(l10n.imageUploadFailed), backgroundColor: Colors.red),
       );

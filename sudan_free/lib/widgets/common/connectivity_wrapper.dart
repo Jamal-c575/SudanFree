@@ -69,14 +69,17 @@ class _ConnectivityWrapperState extends State<ConnectivityWrapper> {
                     children: [
                       const Icon(Icons.wifi_off, color: Colors.white, size: 16),
                       const SizedBox(width: 8),
-                      Text(
-                        context.read<LocaleProvider>().isArabic
-                            ? 'لا يوجد اتصال بالإنترنت'
-                            : 'No internet connection',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
+                      Flexible(
+                        child: Text(
+                          context.read<LocaleProvider>().isArabic
+                              ? 'أنت غير متصل. سيتم مزامنة بياناتك وتفاعلاتك تلقائياً عند عودة الاتصال'
+                              : 'Offline. Your data and interactions will sync automatically when connected',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          textAlign: TextAlign.center,
                         ),
                       ),
                     ],

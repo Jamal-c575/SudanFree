@@ -8,6 +8,7 @@ import '../../services/firestore_service.dart';
 import '../../services/storage_service.dart';
 import '../../models/user_model.dart';
 import '../../core/constants/app_colors.dart';
+import '../map/map_explorer_screen.dart';
 
 // Import the new separate screens
 import 'shop_profile_screen.dart';
@@ -82,20 +83,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final file = File(pickedFile.path);
       final url = await StorageService().uploadProfileImage(_user!.id, file);
 
-      if (url != null) {
-        await FirestoreService().updateUserProfile(_user!.id, {'profileImageUrl': url});
-        
-        if (mounted) {
-          final auth = context.read<AuthProvider>();
-          await auth.refreshUserProfile();
-          setState(() {
-            _user = auth.user;
-          });
-        }
+      await FirestoreService().updateUserProfile(_user!.id, {'profileImageUrl': url});
+      
+      if (mounted) {
+        final auth = context.read<AuthProvider>();
+        await auth.refreshUserProfile();
+        setState(() {
+          _user = auth.user;
+        });
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        final scaffoldMessenger = ScaffoldMessenger.of(context);
+        scaffoldMessenger.showSnackBar(
           const SnackBar(content: Text('فشل رفع الصورة')),
         );
       }
@@ -196,7 +196,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   user.name,
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
                 ),
-                VerificationBadge(isVerified: user.effectivelyVerified, size: 24),
+                SmartVerificationBadge(user: user, size: 24),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => MapExplorerScreen(targetUser: user)),
+                    );
+                  },
+                  icon: const Icon(Icons.map, size: 18),
+                  label: Text(locale == 'ar' ? 'عرض على الخريطة' : 'Open on Map'),
+                ),
               ],
             ),
             const SizedBox(height: 8),
@@ -239,6 +255,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       '${user.state}${user.locality != null ? ' - ${user.locality}' : ''}',
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
+                      const Spacer(),
+                      TextButton.icon(
+                        onPressed: () {
+                          if (context.mounted) {
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => MapExplorerScreen(targetUser: user)));
+                          }
+                        },
+                        icon: const Icon(Icons.map_rounded),
+                        label: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'افتح على الخريطة' : 'Open on Map'),
+                      ),
                   ],
                 ),
               ),

@@ -43,6 +43,7 @@ class RequestFirestoreService {
     return _firestore
         .collection('requests')
         .orderBy('createdAt', descending: true)
+        .limit(100) // Performance fix: Prevent pulling all documents
         .snapshots()
         .map((snapshot) => snapshot.docs
             .map((doc) => RequestModel.fromMap(doc.data(), doc.id))

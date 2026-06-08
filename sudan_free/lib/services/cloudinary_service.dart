@@ -2,26 +2,49 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:cloud_functions/cloud_functions.dart';
 
-/// خدمة رفع الصور إلى Cloudinary عبر HTTP مباشرة
-/// أكثر موثوقية من cloudinary_public package
+/// خدمة رفع الصور إلى Cloudinary عبر HTTP مباشرة مع التوقيع الآمن (Signed Upload)
 class CloudinaryService {
   static const String cloudName = 'dmuc5x843';
-  static const String uploadPreset = 'Sudfree';
   static const int maxRetries = 3;
 
   static const String _uploadUrl =
       'https://api.cloudinary.com/v1_1/$cloudName/image/upload';
 
-  /// رفع صورة مع إعادة المحاولة
+  /// جلب التوقيع الآمن من Cloud Functions
+  Future<Map<String, dynamic>?> _getSignature(String folder) async {
+    try {
+      final callable = FirebaseFunctions.instance.httpsCallable('generateCloudinarySignature');
+      final results = await callable.call({'folder': folder});
+      return Map<String, dynamic>.from(results.data);
+    } catch (e) {
+      debugPrint('Cloudinary Signature Error: $e');
+      return null;
+    }
+  }
+
+  /// رفع صورة مع التوقيع الآمن وإعادة المحاولة
   Future<String?> uploadImage(File imageFile, {String? folder}) async {
+    final targetFolder = folder ?? 'general';
+    final signatureData = await _getSignature(targetFolder);
+    
+    if (signatureData == null) {
+      debugPrint('Cloudinary: ❌ فشل في جلب التوقيع للرفع');
+      return null;
+    }
+
     for (int attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         debugPrint('Cloudinary: محاولة $attempt/$maxRetries...');
 
         final request = http.MultipartRequest('POST', Uri.parse(_uploadUrl));
-        request.fields['upload_preset'] = uploadPreset;
-        if (folder != null) request.fields['folder'] = folder;
+        
+        // إرفاق بيانات التوقيع للرفع الآمن
+        request.fields['api_key'] = signatureData['apiKey'];
+        request.fields['timestamp'] = signatureData['timestamp'].toString();
+        request.fields['signature'] = signatureData['signature'];
+        request.fields['folder'] = signatureData['folder'];
 
         request.files.add(
           await http.MultipartFile.fromPath('file', imageFile.path),
@@ -55,13 +78,24 @@ class CloudinaryService {
     const videoUrl =
         'https://api.cloudinary.com/v1_1/$cloudName/video/upload';
 
+    final targetFolder = folder ?? 'general';
+    final signatureData = await _getSignature(targetFolder);
+    
+    if (signatureData == null) {
+      debugPrint('Cloudinary Video: ❌ فشل في جلب التوقيع للرفع');
+      return null;
+    }
+
     for (int attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         debugPrint('Cloudinary Video: محاولة $attempt/$maxRetries...');
 
         final request = http.MultipartRequest('POST', Uri.parse(videoUrl));
-        request.fields['upload_preset'] = uploadPreset;
-        if (folder != null) request.fields['folder'] = folder;
+        
+        request.fields['api_key'] = signatureData['apiKey'];
+        request.fields['timestamp'] = signatureData['timestamp'].toString();
+        request.fields['signature'] = signatureData['signature'];
+        request.fields['folder'] = signatureData['folder'];
 
         request.files.add(
           await http.MultipartFile.fromPath('file', videoFile.path),

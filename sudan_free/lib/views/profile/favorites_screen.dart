@@ -11,6 +11,8 @@ import '../posts/post_details_screen.dart';
 import '../../models/post_model.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../services/smart_guide_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../services/firestore/user_service.dart';
 
 class FavoritesScreen extends StatefulWidget {
   const FavoritesScreen({super.key});
@@ -20,9 +22,12 @@ class FavoritesScreen extends StatefulWidget {
 }
 
 class _FavoritesScreenState extends State<FavoritesScreen> {
+  String? _mySquadId;
+
   @override
   void initState() {
     super.initState();
+    _checkSquadLeaderStatus();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       SmartGuideService.showMicroTip(
         context,
@@ -32,6 +37,22 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
         icon: Icons.favorite_rounded,
       );
     });
+  }
+
+  Future<void> _checkSquadLeaderStatus() async {
+    final user = context.read<AuthProvider>().user;
+    if (user != null) {
+      try {
+        final snap = await FirebaseFirestore.instance.collection('squads').where('leaderId', isEqualTo: user.id).limit(1).get();
+        if (snap.docs.isNotEmpty && mounted) {
+          setState(() {
+            _mySquadId = snap.docs.first.id;
+          });
+        }
+      } catch (e) {
+        debugPrint('Error fetching squad leader status: $e');
+      }
+    }
   }
 
   @override
@@ -50,7 +71,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     final title = locale == 'ar' ? (!isFreelancer ? 'مفضلاتي' : 'الزملاء والمفضلة') : (!isFreelancer ? 'My Favorites' : 'Partners & Favorites');
 
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Scaffold(
         appBar: AppBar(
           title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
@@ -58,15 +79,18 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
           bottom: TabBar(
             indicatorColor: AppColors.primary,
             labelColor: AppColors.primary,
+            isScrollable: true,
             tabs: [
-              Tab(text: locale == 'ar' ? (!isFreelancer ? 'الحسابات المحفوظة' : 'الزملاء') : (!isFreelancer ? 'Saved Accounts' : 'Partners')),
-              Tab(text: locale == 'ar' ? 'المنشورات والمنتجات المحفوظة' : 'Saved Posts & Products'),
+              Tab(text: locale == 'ar' ? 'الزملاء' : 'Partners'),
+              Tab(text: locale == 'ar' ? 'الحسابات المحفوظة' : 'Saved Accounts'),
+              Tab(text: locale == 'ar' ? 'المنشورات المحفوظة' : 'Saved Posts'),
             ],
           ),
         ),
         body: TabBarView(
           children: [
-            _buildUsersTab(context, user, isFreelancer, locale),
+            _buildUsersList(context, user, user.partnerIds, locale, isPartnerList: true),
+            _buildUsersList(context, user, user.favoriteUserIds, locale, isPartnerList: false),
             _buildProductsTab(context, user, locale),
           ],
         ),
@@ -74,20 +98,18 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     );
   }
 
-  Widget _buildUsersTab(BuildContext context, UserModel user, bool isFreelancer, String locale) {
-    final userIds = <String>{...user.favoriteUserIds, ...user.partnerIds}.toList();
-    
+  Widget _buildUsersList(BuildContext context, UserModel user, List<String> userIds, String locale, {required bool isPartnerList}) {
     if (userIds.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(!isFreelancer ? Icons.favorite_border : Icons.group_off, size: 60, color: Colors.grey),
+            Icon(isPartnerList ? Icons.group_off : Icons.favorite_border, size: 60, color: Colors.grey),
             const SizedBox(height: 16),
             Text(
               locale == 'ar' 
-                  ? (!isFreelancer ? 'لا توجد حسابات مفضلة بعد' : 'لا يوجد زملاء حالياً') 
-                  : (!isFreelancer ? 'No favorite accounts yet' : 'No partners yet'),
+                  ? (isPartnerList ? 'لا يوجد زملاء حالياً' : 'لا توجد حسابات مفضلة بعد') 
+                  : (isPartnerList ? 'No partners yet' : 'No favorite accounts yet'),
               style: TextStyle(color: Colors.grey[600]),
             ),
           ],
@@ -111,78 +133,167 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
         return ListView.separated(
           padding: const EdgeInsets.all(16),
           itemCount: users.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 10),
+          separatorBuilder: (_, __) => const SizedBox(height: 12),
           itemBuilder: (context, index) {
             final targetUser = users[index];
             final isFavorite = user.favoriteUserIds.contains(targetUser.id);
             final isPartner = user.partnerIds.contains(targetUser.id);
             
-            return ListTile(
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProfileScreen(userId: targetUser.id))),
-              leading: CircleAvatar(
-                backgroundImage: targetUser.profileImageUrl != null ? NetworkImage(targetUser.profileImageUrl!) : null,
-                child: targetUser.profileImageUrl == null ? Icon(targetUser.role == UserRole.shop ? Icons.store : Icons.person) : null,
-              ),
-              title: Text(targetUser.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: Text(targetUser.jobTitle ?? (locale == 'ar' ? 'حساب في سودان فري' : 'SudanFree Account')),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (isPartner)
-                    Container(
-                      margin: const EdgeInsets.only(right: 8),
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
+            return Card(
+              elevation: 4,
+              shadowColor: Colors.black26,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              child: ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProfileScreen(userId: targetUser.id))),
+                leading: CircleAvatar(
+                  radius: 28,
+                  backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                  backgroundImage: targetUser.profileImageUrl != null ? NetworkImage(targetUser.profileImageUrl!) : null,
+                  child: targetUser.profileImageUrl == null ? Icon(targetUser.role == UserRole.shop ? Icons.store : Icons.person, color: AppColors.primary) : null,
+                ),
+                title: Text(targetUser.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                subtitle: Text(targetUser.jobTitle ?? (locale == 'ar' ? 'حساب في سودان فري' : 'SudanFree Account'), style: TextStyle(color: Colors.grey[600])),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (!isPartnerList)
+                      IconButton(
+                        icon: Icon(
+                          isFavorite ? Icons.favorite : Icons.favorite_border,
+                          color: isFavorite ? Colors.red : Colors.grey,
+                        ),
+                        onPressed: () {
+                          context.read<AuthProvider>().toggleFavoriteUser(targetUser.id);
+                          setState(() {});
+                        },
                       ),
-                      child: Text(
-                        locale == 'ar' ? 'زميل' : 'Partner',
-                        style: const TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  if (isPartner)
-                    IconButton(
-                      icon: const Icon(Icons.person_remove, color: Colors.red),
-                      tooltip: locale == 'ar' ? 'إلغاء الزمالة' : 'Remove Partner',
-                      onPressed: () async {
-                        final confirm = await showDialog<bool>(
-                          context: context,
-                          builder: (ctx) => AlertDialog(
-                            title: Text(locale == 'ar' ? 'إلغاء الزمالة' : 'Remove Partner'),
-                            content: Text(locale == 'ar' ? 'هل أنت متأكد من إلغاء زمالة ${targetUser.name}؟' : 'Are you sure you want to remove ${targetUser.name}?'),
-                            actions: [
-                              TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(locale == 'ar' ? 'تراجع' : 'Cancel')),
-                              TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(locale == 'ar' ? 'حذف' : 'Remove', style: const TextStyle(color: Colors.red))),
-                            ],
+                    PopupMenuButton<String>(
+                      icon: const Icon(Icons.more_vert),
+                      onSelected: (val) => _handleMenuAction(val, targetUser, user, locale),
+                      itemBuilder: (context) => [
+                        if (isPartner)
+                          PopupMenuItem(
+                            value: 'remove_partner',
+                            child: Row(children: [const Icon(Icons.person_remove, color: Colors.red, size: 20), const SizedBox(width: 8), Text(locale == 'ar' ? 'إلغاء الزمالة' : 'Remove Partner', style: const TextStyle(color: Colors.red))]),
                           ),
-                        );
-                        if (confirm == true) {
-                          await context.read<AuthProvider>().handlePartnerRequest(targetUser.id, false);
-                          // Re-fetch partners to update UI
-                          context.read<AuthProvider>().fetchPartners(forceRefresh: true);
-                        }
-                      },
+                        PopupMenuItem(
+                          value: 'vouch',
+                          child: Row(children: [const Icon(Icons.verified, color: AppColors.sudanGold, size: 20), const SizedBox(width: 8), Text(locale == 'ar' ? 'تزكية الحرفي' : 'Recommend Pro')]),
+                        ),
+                        if (_mySquadId != null && user.role != UserRole.client && user.role != UserRole.shop && targetUser.role != UserRole.client && targetUser.role != UserRole.shop)
+                          PopupMenuItem(
+                            value: 'invite_squad',
+                            child: Row(children: [const Icon(Icons.groups, color: AppColors.primary, size: 20), const SizedBox(width: 8), Text(locale == 'ar' ? 'دعوة للمجموعة' : 'Invite to Squad')]),
+                          ),
+                        if (user.masterId == targetUser.id || user.apprenticesIds.contains(targetUser.id))
+                          PopupMenuItem(
+                            value: 'cancel_apprenticeship',
+                            child: Row(children: [const Icon(Icons.handshake_rounded, color: Colors.red, size: 20), const SizedBox(width: 8), Text(locale == 'ar' ? 'إلغاء التتلمذ' : 'Cancel Apprenticeship', style: const TextStyle(color: Colors.red))]),
+                          )
+                        else if (user.masterId == null && user.role != UserRole.shop && user.role != UserRole.client && targetUser.role != UserRole.shop && targetUser.role != UserRole.client) // Cannot request if I am already an apprentice, or if either is shop/client
+                          PopupMenuItem(
+                            value: 'request_apprenticeship',
+                            child: Row(children: [const Icon(Icons.engineering, color: Colors.teal, size: 20), const SizedBox(width: 8), Text(locale == 'ar' ? 'طلب تتلمذ' : 'Apprenticeship Request')]),
+                          ),
+                      ],
                     ),
-                  IconButton(
-                    icon: Icon(
-                      isFavorite ? Icons.favorite : Icons.favorite_border,
-                      color: isFavorite ? Colors.red : Colors.grey,
-                    ),
-                    tooltip: locale == 'ar' ? 'المفضلة' : 'Favorite',
-                    onPressed: () {
-                      context.read<AuthProvider>().toggleFavoriteUser(targetUser.id);
-                    },
-                  ),
-                ],
+                  ],
+                ),
               ),
-              tileColor: Theme.of(context).cardColor,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             );
           },
         );
       },
     );
+  }
+
+  Future<void> _handleMenuAction(String action, UserModel targetUser, UserModel currentUser, String locale) async {
+    final isAr = locale == 'ar';
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+
+    if (action == 'remove_partner') {
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(isAr ? 'إلغاء الزمالة' : 'Remove Partner'),
+          content: Text(isAr ? 'هل أنت متأكد من إلغاء زمالة ${targetUser.name}؟' : 'Are you sure you want to remove ${targetUser.name}?'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(isAr ? 'تراجع' : 'Cancel')),
+            TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(isAr ? 'حذف' : 'Remove', style: const TextStyle(color: Colors.red))),
+          ],
+        ),
+      );
+      if (confirm == true) {
+        await context.read<AuthProvider>().handlePartnerRequest(targetUser.id, false);
+        if (!mounted) return;
+        context.read<AuthProvider>().fetchPartners(forceRefresh: true);
+        setState(() {});
+      }
+    } else if (action == 'vouch') {
+      try {
+        await UserFirestoreService().vouchForUser(targetUser.id, currentUser);
+        scaffoldMessenger.showSnackBar(SnackBar(content: Text(isAr ? 'تم إرسال التزكية بنجاح!' : 'Recommendation sent successfully!'), backgroundColor: Colors.green));
+      } catch (e) {
+        scaffoldMessenger.showSnackBar(SnackBar(content: Text(isAr ? 'حدث خطأ أثناء التزكية، قد تكون زكيته مسبقاً.' : 'Error sending recommendation, you may have already vouched.'), backgroundColor: Colors.red));
+      }
+    } else if (action == 'invite_squad') {
+      if (_mySquadId == null) return;
+      
+      try {
+        // Check if user is already in a squad
+        final isLeaderSnap = await FirebaseFirestore.instance.collection('squads').where('leaderId', isEqualTo: targetUser.id).get();
+        final isMemberSnap = await FirebaseFirestore.instance.collection('squads').where('memberIds', arrayContains: targetUser.id).get();
+        
+        if (isLeaderSnap.docs.isNotEmpty || isMemberSnap.docs.isNotEmpty) {
+          scaffoldMessenger.showSnackBar(SnackBar(content: Text(isAr ? 'هذا المستخدم منضم لمجموعة بالفعل ولا يمكنه الدخول في مجموعة أخرى.' : 'This user is already in a squad and cannot join another.'), backgroundColor: Colors.red));
+          return;
+        }
+        
+        // Send invite
+        await FirebaseFirestore.instance.collection('users').doc(targetUser.id).update({
+          'pendingSquadInvites': FieldValue.arrayUnion([_mySquadId])
+        });
+        scaffoldMessenger.showSnackBar(SnackBar(content: Text(isAr ? 'تم إرسال دعوة المجموعة بنجاح!' : 'Squad invite sent successfully!'), backgroundColor: Colors.green));
+      } catch (e) {
+        scaffoldMessenger.showSnackBar(SnackBar(content: Text(isAr ? 'حدث خطأ أثناء إرسال الدعوة' : 'Error sending invite'), backgroundColor: Colors.red));
+      }
+    } else if (action == 'request_apprenticeship') {
+      try {
+        await UserFirestoreService().sendApprenticeshipRequest(currentUser.id, targetUser.id);
+        scaffoldMessenger.showSnackBar(SnackBar(content: Text(isAr ? 'تم إرسال طلب التتلمذ بنجاح!' : 'Apprenticeship request sent!'), backgroundColor: Colors.green));
+      } catch (e) {
+        scaffoldMessenger.showSnackBar(SnackBar(content: Text(isAr ? 'حدث خطأ أثناء إرسال الطلب' : 'Error sending request'), backgroundColor: Colors.red));
+      }
+    } else if (action == 'cancel_apprenticeship') {
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(isAr ? 'إلغاء التتلمذ' : 'Cancel Apprenticeship'),
+          content: Text(isAr ? 'هل أنت متأكد من فك الارتباط؟ إذا كنت الصبي، سيتم إرسال طلب للموافقة.' : 'Are you sure you want to cancel? If you are the apprentice, a request will be sent for approval.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(isAr ? 'تراجع' : 'Cancel')),
+            TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(isAr ? 'تأكيد' : 'Confirm', style: const TextStyle(color: Colors.red))),
+          ],
+        ),
+      );
+      if (confirm == true) {
+        try {
+          if (currentUser.apprenticesIds.contains(targetUser.id)) {
+            // Master firing apprentice
+            await UserFirestoreService().terminateApprentice(currentUser.id, targetUser.id);
+            scaffoldMessenger.showSnackBar(SnackBar(content: Text(isAr ? 'تم إلغاء التتلمذ بنجاح' : 'Apprenticeship canceled'), backgroundColor: Colors.green));
+          } else if (currentUser.masterId == targetUser.id) {
+            // Apprentice requesting to leave
+            await UserFirestoreService().sendLeaveRequest(currentUser.id, targetUser.id);
+            scaffoldMessenger.showSnackBar(SnackBar(content: Text(isAr ? 'تم إرسال طلب الموافقة على ترك التتلمذ' : 'Leave request sent to master'), backgroundColor: Colors.green));
+          }
+          setState(() {});
+        } catch (e) {
+          scaffoldMessenger.showSnackBar(SnackBar(content: Text(isAr ? 'حدث خطأ' : 'Error occurred'), backgroundColor: Colors.red));
+        }
+      }
+    }
   }
 
   Widget _buildProductsTab(BuildContext context, UserModel user, String locale) {

@@ -308,7 +308,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             icon: Icons.language,
             iconColor: Colors.purple,
             title: locale == 'ar' ? 'الموقع الإلكتروني' : 'Website',
-            onTap: () => _launchURL('https://jamall123.github.io/HOME_WEB/'),
+            onTap: () => _launchURL('https://sudanfree.com/'),
           ),
           
           const SizedBox(height: 8),
@@ -320,8 +320,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: locale == 'ar' ? 'شارك التطبيق' : 'Share App',
             onTap: () async {
               final text = locale == 'ar' 
-                  ? 'جرب تطبيق سودان فري للعثور على فرص عمل ومستقلين موثوقين! حمل التطبيق الآن: https://jamall123.github.io/HOME_WEB/sudan-free.html'
-                  : 'Try SudanFree to find jobs and trusted freelancers! Download now: https://jamall123.github.io/HOME_WEB/sudan-free.html';
+                  ? 'جرب تطبيق سودان فري للعثور على فرص عمل ومستقلين موثوقين! حمل التطبيق الآن: https://sudanfree.com/sudan-free.html'
+                  : 'Try SudanFree to find jobs and trusted freelancers! Download now: https://sudanfree.com/sudan-free.html';
               // ignore: deprecated_member_use
               await Share.share(text);
             },
@@ -538,7 +538,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   
                   if (success && context.mounted) {
                     Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    final scaffoldMessenger = ScaffoldMessenger.of(context);
+                    scaffoldMessenger.showSnackBar(SnackBar(
                       content: Text(locale == 'ar' ? 'تم إرسال طلب الحذف بنجاح' : 'Deletion request sent successfully'),
                       backgroundColor: Colors.green,
                     ));
@@ -546,7 +547,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   } else {
                     setState(() => isLoading = false);
                     if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      final scaffoldMessenger = ScaffoldMessenger.of(context);
+                      scaffoldMessenger.showSnackBar(SnackBar(
                         content: Text(locale == 'ar' ? 'حدث خطأ، حاول مرة أخرى' : 'Error occurred, try again'),
                         backgroundColor: Colors.red,
                       ));
@@ -764,8 +766,9 @@ class _InterestsBottomSheetState extends State<_InterestsBottomSheet> {
     });
     if (mounted) {
       setState(() => _isSaving = false);
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      if (context.mounted) Navigator.pop(context);
+      final scaffoldMessenger = ScaffoldMessenger.of(context);
+      scaffoldMessenger.showSnackBar(SnackBar(
         content: Text(widget.locale == 'ar' ? 'تم حفظ اهتماماتك ✅' : 'Interests saved ✅'),
         backgroundColor: Colors.green,
         behavior: SnackBarBehavior.floating,
@@ -1085,7 +1088,8 @@ class _UpdateLocationTileState extends State<_UpdateLocationTile> {
         serviceEnabled = await Geolocator.isLocationServiceEnabled();
         if (!serviceEnabled) {
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
+            final scaffoldMessenger = ScaffoldMessenger.of(context);
+            scaffoldMessenger.showSnackBar(
               SnackBar(content: Text(widget.locale == 'ar' ? 'يرجى تفعيل خدمة تحديد الموقع (GPS)' : 'Please enable Location services')),
             );
           }
@@ -1102,7 +1106,8 @@ class _UpdateLocationTileState extends State<_UpdateLocationTile> {
 
         if (permission == LocationPermission.deniedForever) {
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
+            final scaffoldMessenger = ScaffoldMessenger.of(context);
+            scaffoldMessenger.showSnackBar(
               SnackBar(content: Text(widget.locale == 'ar' ? 'صلاحيات الموقع معطلة دائماً' : 'Location permissions are permanently denied')),
             );
           }
@@ -1140,7 +1145,8 @@ class _UpdateLocationTileState extends State<_UpdateLocationTile> {
             locality: locality,
           );
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
+            final scaffoldMessenger = ScaffoldMessenger.of(context);
+            scaffoldMessenger.showSnackBar(
               SnackBar(content: Text(
                 success 
                   ? (widget.locale == 'ar' ? 'تم تحديث موقعك بنجاح!' : 'Location updated successfully!')
@@ -1150,7 +1156,8 @@ class _UpdateLocationTileState extends State<_UpdateLocationTile> {
           }
         } catch (e) {
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
+            final scaffoldMessenger = ScaffoldMessenger.of(context);
+            scaffoldMessenger.showSnackBar(
               SnackBar(content: Text(widget.locale == 'ar' ? 'فشل التقاط الموقع' : 'Failed to capture location')),
             );
           }

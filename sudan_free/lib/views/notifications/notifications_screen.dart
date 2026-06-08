@@ -106,7 +106,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   onPressed: () =>
                       _showPendingRequestsSheet(context, user, locale),
                 ),
-                if (user.pendingPartnerIds.isNotEmpty)
+                if (user.pendingPartnerIds.isNotEmpty || user.pendingSquadInvites.isNotEmpty)
                   Positioned(
                     right: 8,
                     top: 8,
@@ -117,7 +117,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         shape: BoxShape.circle,
                       ),
                       child: Text(
-                        '${user.pendingPartnerIds.length}',
+                        '${user.pendingPartnerIds.length + user.pendingSquadInvites.length}',
                         style: const TextStyle(
                             color: Colors.white,
                             fontSize: 10,
@@ -489,6 +489,7 @@ class _SimpleNotificationTileState extends State<_SimpleNotificationTile> {
           if (notification.relatedId != null) {
             await _navigateToProfile(context, notification.relatedId!);
           } else {
+            if (!context.mounted) return;
             showModalBottomSheet(
               context: context,
               isScrollControlled: true,
@@ -579,7 +580,8 @@ class _SimpleNotificationTileState extends State<_SimpleNotificationTile> {
         });
       }
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
+      final scaffoldMessenger = ScaffoldMessenger.of(context);
+      scaffoldMessenger.showSnackBar(
         const SnackBar(content: Text('عذراً، هذا المنشور لم يعد موجوداً')),
       );
     }
@@ -619,7 +621,8 @@ class _SimpleNotificationTileState extends State<_SimpleNotificationTile> {
           MaterialPageRoute(
               builder: (_) => RequestDetailsScreen(request: request)));
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
+      final scaffoldMessenger = ScaffoldMessenger.of(context);
+      scaffoldMessenger.showSnackBar(
         const SnackBar(content: Text('عذراً، هذا الطلب لم يعد موجوداً')),
       );
     }
@@ -636,7 +639,8 @@ class _SimpleNotificationTileState extends State<_SimpleNotificationTile> {
     if (contactLog != null && contactLog.hasReviewed) {
       if (!context.mounted) return;
       final isArabic = context.read<LocaleProvider>().isArabic;
-      ScaffoldMessenger.of(context).showSnackBar(
+      final scaffoldMessenger = ScaffoldMessenger.of(context);
+      scaffoldMessenger.showSnackBar(
         SnackBar(
           content:
               Text(isArabic ? 'تم التقييم مسبقاً ✅' : 'Already reviewed ✅'),
@@ -741,7 +745,8 @@ class _PendingRequestsSheetState extends State<_PendingRequestsSheet> {
           _processingIds.remove(requesterId);
         });
 
-        ScaffoldMessenger.of(context).showSnackBar(
+        final scaffoldMessenger = ScaffoldMessenger.of(context);
+        scaffoldMessenger.showSnackBar(
           SnackBar(
             content: Text(accept
                 ? (widget.locale == 'ar'
@@ -761,7 +766,8 @@ class _PendingRequestsSheetState extends State<_PendingRequestsSheet> {
           _processingIds.remove(requesterId);
           _requesters.insert(requesterIndex, requester);
         });
-        ScaffoldMessenger.of(context).showSnackBar(
+        final scaffoldMessenger = ScaffoldMessenger.of(context);
+        scaffoldMessenger.showSnackBar(
           SnackBar(
             content: Text(widget.locale == 'ar'
                 ? 'حدث خطأ، يرجى المحاولة'
@@ -774,7 +780,7 @@ class _PendingRequestsSheetState extends State<_PendingRequestsSheet> {
   }
 
   void _navigateToProfile(UserModel user) {
-    Navigator.pop(context);
+    if (context.mounted) Navigator.pop(context);
     if (user.isFreelancer) {
       Navigator.push(
           context,

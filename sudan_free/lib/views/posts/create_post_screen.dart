@@ -48,6 +48,19 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   bool _showMentions = false;
   final Set<String> _mentionedUserIds = {}; // Use Set to avoid duplicates
 
+  // Poll
+  bool _showPollFields = false;
+  final _pollQuestionController = TextEditingController();
+  final List<TextEditingController> _pollOptionControllers = [
+    TextEditingController(),
+    TextEditingController(),
+  ];
+  bool _isPollMultipleChoice = false;
+
+  // Barter
+  final _barterOfferController = TextEditingController();
+  final _barterRequestController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
@@ -59,6 +72,31 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       if (widget.post!.category != null) {
         try {
           _selectedCategory = PostCategory.values.firstWhere((e) => e.name == widget.post!.category);
+          // If it's a barter post, try to parse the text backwards
+          if (_selectedCategory == PostCategory.barter) {
+            final caption = _captionController.text;
+            if (caption.contains('**أقدم:**') && caption.contains('**أحتاج مقابل ذلك:**')) {
+              final offerStart = caption.indexOf('**أقدم:**') + '**أقدم:**'.length;
+              final offerEnd = caption.indexOf('\n\n**أحتاج مقابل ذلك:**');
+              if (offerStart != -1 && offerEnd != -1) {
+                _barterOfferController.text = caption.substring(offerStart, offerEnd).trim();
+              }
+              final requestStart = caption.indexOf('**أحتاج مقابل ذلك:**') + '**أحتاج مقابل ذلك:**'.length;
+              if (requestStart != -1) {
+                _barterRequestController.text = caption.substring(requestStart).trim();
+              }
+            } else if (caption.contains('**I offer:**') && caption.contains('**I need in return:**')) {
+              final offerStart = caption.indexOf('**I offer:**') + '**I offer:**'.length;
+              final offerEnd = caption.indexOf('\n\n**I need in return:**');
+              if (offerStart != -1 && offerEnd != -1) {
+                _barterOfferController.text = caption.substring(offerStart, offerEnd).trim();
+              }
+              final requestStart = caption.indexOf('**I need in return:**') + '**I need in return:**'.length;
+              if (requestStart != -1) {
+                _barterRequestController.text = caption.substring(requestStart).trim();
+              }
+            }
+          }
         } catch (_) {}
       }
       if (widget.post!.price != null) {
@@ -157,6 +195,12 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   void dispose() {
     _captionController.dispose();
     _priceController.dispose();
+    _pollQuestionController.dispose();
+    for (var c in _pollOptionControllers) {
+      c.dispose();
+    }
+    _barterOfferController.dispose();
+    _barterRequestController.dispose();
     super.dispose();
   }
 
@@ -215,12 +259,51 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   Future<void> _handleSubmit() async {
     final locale = context.read<LocaleProvider>().locale.languageCode;
     
-    if (_captionController.text.trim().isEmpty && _selectedImages.isEmpty && widget.post?.imageUrl == null && widget.post?.allImageUrls.isEmpty != false) {
-      ScaffoldMessenger.of(context).showSnackBar(
+    // Format Barter text before validation
+    if (_showInCommunity && _selectedCategory == PostCategory.barter) {
+      final offer = _barterOfferController.text.trim();
+      final request = _barterRequestController.text.trim();
+      if (offer.isNotEmpty && request.isNotEmpty) {
+        _captionController.text = locale == 'ar'
+            ? "🤝 **طلب مقايضة**\n\n**أقدم:** $offer\n\n**أحتاج مقابل ذلك:** $request"
+            : "🤝 **Barter Request**\n\n**I offer:** $offer\n\n**I need in return:** $request";
+      } else if (offer.isEmpty || request.isEmpty) {
+        final scaffoldMessenger = ScaffoldMessenger.of(context);
+        scaffoldMessenger.showSnackBar(
+          SnackBar(
+            content: Text(locale == 'ar' 
+                ? 'يرجى تعبئة كلا الحقلين: ماذا تقدم وماذا تطلب' 
+                : 'Please fill both fields: what you offer and what you need'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+    }
+
+    PollModel? pollData;
+    if (_showPollFields && _pollQuestionController.text.trim().isNotEmpty) {
+      final validOptions = _pollOptionControllers
+          .map((c) => c.text.trim())
+          .where((t) => t.isNotEmpty)
+          .toList();
+      if (validOptions.length >= 2) {
+        pollData = PollModel(
+          question: _pollQuestionController.text.trim(),
+          options: validOptions.map((o) => PollOption(text: o)).toList(),
+          expiresAt: DateTime.now().add(const Duration(days: 3)), // Default 3 days
+          isMultipleChoice: _isPollMultipleChoice,
+        );
+      }
+    }
+
+    if (_captionController.text.trim().isEmpty && _selectedImages.isEmpty && widget.post?.imageUrl == null && widget.post?.allImageUrls.isEmpty != false && pollData == null) {
+      final scaffoldMessenger = ScaffoldMessenger.of(context);
+      scaffoldMessenger.showSnackBar(
         SnackBar(
           content: Text(locale == 'ar' 
-              ? 'يرجى كتابة نص أو إضافة صورة' 
-              : 'Please write text or add image'),
+              ? 'يرجى كتابة نص أو إضافة صورة أو استطلاع رأي' 
+              : 'Please write text, add image, or add a poll'),
         ),
       );
       return;
@@ -228,7 +311,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
 
     // التحقق من تصنيف المنشور للمنشورات المجتمعية
     if (_showInCommunity && _selectedCategory == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      final scaffoldMessenger = ScaffoldMessenger.of(context);
+      scaffoldMessenger.showSnackBar(
         SnackBar(
           content: Text(locale == 'ar' 
               ? 'يرجى تصنيف منشورك (عام، نقاش، بيع/شراء، مساعدة، إعلان، أو سؤال)' 
@@ -243,6 +327,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     // prevent double-tap
     if (_isPosting) return;
     setState(() => _isPosting = true);
+
+    // Poll data is already extracted above.
 
     bool success = false;
     try {
@@ -281,6 +367,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
           linkedProductName: widget.linkedProduct?.caption?.split('\n').first,
           linkedProductImage: widget.linkedProduct?.allImageUrls.firstOrNull,
           linkedProductPrice: widget.linkedProduct?.price,
+          poll: pollData,
         );
         success = true;
       }
@@ -300,7 +387,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     setState(() => _isPosting = false);
 
     if (success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      final scaffoldMessenger = ScaffoldMessenger.of(context);
+      scaffoldMessenger.showSnackBar(
         SnackBar(
           content: Text(widget.post != null 
               ? (locale == 'ar' ? 'تم تحديث المنشور بنجاح ✅' : 'Post updated successfully ✅')
@@ -308,11 +396,12 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
           backgroundColor: widget.post != null ? Colors.green : AppColors.primary,
         ),
       );
-      Navigator.pop(context);
+      if (context.mounted) Navigator.pop(context);
     } else if (!success && mounted) {
       final errorMsg = context.read<PostsProvider>().errorMessage ?? 
           (locale == 'ar' ? 'حدث خطأ، حاول مرة أخرى' : 'An error occurred, please try again');
-      ScaffoldMessenger.of(context).showSnackBar(
+      final scaffoldMessenger = ScaffoldMessenger.of(context);
+      scaffoldMessenger.showSnackBar(
         SnackBar(
           content: Text(errorMsg),
           backgroundColor: Colors.red,
@@ -405,42 +494,6 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                       ),
                     ),
                   
-                  // Caption Input
-                  TextField(
-                    controller: _captionController,
-                    maxLines: null,
-                    decoration: InputDecoration(
-                      hintText: (!widget.showInCommunity && widget.showInProfile)
-                          ? (context.read<LocaleProvider>().isArabic ? 'ما هو آخر عمل أنجزته؟' : 'What is the latest work you completed?')
-                          : (context.read<LocaleProvider>().isArabic ? 'بماذا تفكر؟' : "What's on your mind?"),
-                      border: InputBorder.none,
-                      hintStyle: TextStyle(
-                        color: AppColors.textSecondary.withValues(alpha: 0.5),
-                        fontSize: 18,
-                      ),
-                    ),
-                    style: const TextStyle(fontSize: 18),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Price Input (Only for Shops)
-                  if (user?.role == UserRole.shop && !widget.showInCommunity && widget.showInProfile) ...[
-                    TextField(
-                      controller: _priceController,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      decoration: InputDecoration(
-                        hintText: context.read<LocaleProvider>().isArabic ? 'السعر (اختياري)' : 'Price (Optional)',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
-                        ),
-                        prefixIcon: const Icon(Icons.attach_money),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-                  
                   // Category Selection (Only for Community Posts)
                   if (_showInCommunity) ...[ 
                     SizedBox(
@@ -525,6 +578,93 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                     ),
                     const SizedBox(height: 24),
                   ],
+                  
+                  // Barter Inputs OR Caption Input
+                  if (_selectedCategory == PostCategory.barter) ...[
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppColors.sudanGold.withValues(alpha: 0.05),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppColors.sudanGold.withValues(alpha: 0.3)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.handshake_outlined, color: AppColors.sudanGold),
+                              const SizedBox(width: 8),
+                              Text(
+                                context.read<LocaleProvider>().isArabic ? 'سوق المقايضة (بدون أموال)' : 'Barter Market',
+                                style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.sudanGold, fontSize: 16),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          TextField(
+                            controller: _barterOfferController,
+                            decoration: InputDecoration(
+                              labelText: context.read<LocaleProvider>().isArabic ? 'ماذا تقدم؟ (خدمة أو أداة)' : 'What do you offer?',
+                              hintText: context.read<LocaleProvider>().isArabic ? 'مثال: صيانة سباكة كاملة' : 'Example: Full plumbing maintenance',
+                              filled: true,
+                              fillColor: Theme.of(context).cardColor,
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                            ),
+                            maxLines: 2,
+                          ),
+                          const SizedBox(height: 12),
+                          TextField(
+                            controller: _barterRequestController,
+                            decoration: InputDecoration(
+                              labelText: context.read<LocaleProvider>().isArabic ? 'ماذا تطلب مقابل ذلك؟' : 'What do you need in return?',
+                              hintText: context.read<LocaleProvider>().isArabic ? 'مثال: تفصيل دولاب خشب' : 'Example: Wooden closet',
+                              filled: true,
+                              fillColor: Theme.of(context).cardColor,
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                            ),
+                            maxLines: 2,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ] else ...[
+                    // Caption Input
+                    TextField(
+                      controller: _captionController,
+                      maxLines: null,
+                      decoration: InputDecoration(
+                        hintText: (!widget.showInCommunity && widget.showInProfile)
+                            ? (context.read<LocaleProvider>().isArabic ? 'ما هو آخر عمل أنجزته؟' : 'What is the latest work you completed?')
+                            : (context.read<LocaleProvider>().isArabic ? 'بماذا تفكر؟' : "What's on your mind?"),
+                        border: InputBorder.none,
+                        hintStyle: TextStyle(
+                          color: AppColors.textSecondary.withValues(alpha: 0.5),
+                          fontSize: 18,
+                        ),
+                      ),
+                      style: const TextStyle(fontSize: 18),
+                    ),
+                  ],
+
+                  const SizedBox(height: 16),
+
+                  // Price Input (Only for Shops)
+                  if (user?.role == UserRole.shop && !widget.showInCommunity && widget.showInProfile) ...[
+                    TextField(
+                      controller: _priceController,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: InputDecoration(
+                        hintText: context.read<LocaleProvider>().isArabic ? 'السعر (اختياري)' : 'Price (Optional)',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
+                        ),
+                        prefixIcon: const Icon(Icons.attach_money),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
 
                   // ─── خيار الإضافة لمعرض الأعمال ───────────────────────────────
                   // يظهر فقط عند النشر في المجتمع وللمستخدمين الذين لديهم معرض (غير المتاجر لأن المتاجر تضيف المنتجات في الملف)
@@ -554,6 +694,121 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                     _LinkedProductCard(
                       product: widget.linkedProduct!,
                       isArabic: context.read<LocaleProvider>().isArabic,
+                    ),
+
+                  // ─── Poll Fields ──────────────────────────────────────────
+                  if (_showPollFields)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 24),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppColors.secondary.withValues(alpha: 0.05),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppColors.secondary.withValues(alpha: 0.2)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.poll, color: AppColors.secondary, size: 20),
+                              const SizedBox(width: 8),
+                              Text(
+                                context.read<LocaleProvider>().isArabic ? 'إضافة استطلاع رأي' : 'Add Poll',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.secondary,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              const Spacer(),
+                              IconButton(
+                                icon: const Icon(Icons.close, size: 20, color: Colors.grey),
+                                onPressed: () {
+                                  setState(() {
+                                    _showPollFields = false;
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          TextField(
+                            controller: _pollQuestionController,
+                            decoration: InputDecoration(
+                              hintText: context.read<LocaleProvider>().isArabic ? 'سؤال الاستطلاع...' : 'Poll question...',
+                              filled: true,
+                              fillColor: Theme.of(context).cardColor,
+                              isDense: true,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide.none,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          ...List.generate(_pollOptionControllers.length, (index) {
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 8.0),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: TextField(
+                                      controller: _pollOptionControllers[index],
+                                      decoration: InputDecoration(
+                                        hintText: context.read<LocaleProvider>().isArabic ? 'الخيار ${index + 1}' : 'Option ${index + 1}',
+                                        filled: true,
+                                        fillColor: Theme.of(context).cardColor,
+                                        isDense: true,
+                                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                        border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                          borderSide: BorderSide.none,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  if (_pollOptionControllers.length > 2)
+                                    IconButton(
+                                      icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
+                                      onPressed: () {
+                                        setState(() {
+                                          _pollOptionControllers[index].dispose();
+                                          _pollOptionControllers.removeAt(index);
+                                        });
+                                      },
+                                    ),
+                                ],
+                              ),
+                            );
+                          }),
+                          if (_pollOptionControllers.length < 5)
+                            TextButton.icon(
+                              onPressed: () {
+                                setState(() {
+                                  _pollOptionControllers.add(TextEditingController());
+                                });
+                              },
+                              icon: const Icon(Icons.add),
+                              label: Text(context.read<LocaleProvider>().isArabic ? 'إضافة خيار' : 'Add Option'),
+                              style: TextButton.styleFrom(
+                                foregroundColor: AppColors.secondary,
+                              ),
+                            ),
+                          SwitchListTile(
+                            title: Text(context.read<LocaleProvider>().isArabic ? 'اختيار متعدد' : 'Multiple Choice'),
+                            value: _isPollMultipleChoice,
+                            onChanged: (val) {
+                              setState(() {
+                                _isPollMultipleChoice = val;
+                              });
+                            },
+                            contentPadding: EdgeInsets.zero,
+                            activeColor: AppColors.secondary,
+                          ),
+                        ],
+                      ),
                     ),
 
                   const SizedBox(height: 24),
@@ -626,6 +881,23 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                       ),
                     ),
                   ),
+                  
+                  const SizedBox(width: 8),
+
+                  // Poll button
+                  if (_showInCommunity && widget.post == null)
+                    Material(
+                      color: _showPollFields ? AppColors.secondary.withValues(alpha: 0.1) : Colors.transparent,
+                      borderRadius: BorderRadius.circular(12),
+                      child: IconButton(
+                        icon: Icon(Icons.poll_outlined, color: _showPollFields ? AppColors.secondary : Colors.grey[600], size: 22),
+                        onPressed: () {
+                          setState(() {
+                            _showPollFields = !_showPollFields;
+                          });
+                        },
+                      ),
+                    ),
                   
                   const Spacer(),
                   

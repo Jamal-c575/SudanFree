@@ -89,14 +89,16 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
   Future<void> _handleSubmit() async {
     final isAr = context.read<LocaleProvider>().isArabic;
     if (_nameController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      final scaffoldMessenger = ScaffoldMessenger.of(context);
+      scaffoldMessenger.showSnackBar(SnackBar(
         content: Text(isAr ? 'يرجى كتابة اسم المنتج' : 'Please enter a product name'),
         backgroundColor: Colors.orange,
       ));
       return;
     }
     if (_selectedImages.isEmpty && (widget.product?.allImageUrls.isEmpty ?? true)) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      final scaffoldMessenger = ScaffoldMessenger.of(context);
+      scaffoldMessenger.showSnackBar(SnackBar(
         content: Text(isAr ? 'يرجى إضافة صورة للمنتج' : 'Please add a product image'),
         backgroundColor: Colors.orange,
       ));
@@ -151,11 +153,12 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
       if (!mounted) return;
       setState(() => _isPosting = false);
       if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        final scaffoldMessenger = ScaffoldMessenger.of(context);
+        scaffoldMessenger.showSnackBar(SnackBar(
           content: Text(isAr ? 'تم نشر المنتج بنجاح ✅' : 'Product published successfully ✅'),
           backgroundColor: Colors.green,
         ));
-        Navigator.pop(context);
+        if (context.mounted) Navigator.pop(context);
       }
     } catch (e, stack) {
       if (mounted) {

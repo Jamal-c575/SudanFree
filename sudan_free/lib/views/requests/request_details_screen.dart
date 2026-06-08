@@ -90,7 +90,8 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
                       child: ElevatedButton(
                         onPressed: _isApplying ? null : () async {
                           if (_offerController.text.trim().isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
+                            final scaffoldMessenger = ScaffoldMessenger.of(context);
+                            scaffoldMessenger.showSnackBar(
                               SnackBar(content: Text(locale == 'ar' ? 'الرجاء كتابة تفاصيل العرض' : 'Please write offer details'), backgroundColor: AppColors.warning),
                             );
                             return;

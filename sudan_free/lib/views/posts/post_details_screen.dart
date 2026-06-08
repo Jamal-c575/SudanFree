@@ -14,7 +14,6 @@ import '../../services/firestore_service.dart';
 import '../../providers/posts_provider.dart';
 import '../../views/posts/comments_sheet.dart';
 import '../profile/profile_screen.dart';
-import '../../services/cloudinary_service.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../profile/product_detail_screen.dart';

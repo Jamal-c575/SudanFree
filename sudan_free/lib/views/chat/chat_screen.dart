@@ -5,9 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'package:timeago/timeago.dart' as timeago;
+import '../../services/firestore_service.dart';
 import 'package:record/record.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:audioplayers/audioplayers.dart';
@@ -15,6 +15,7 @@ import 'package:audioplayers/audioplayers.dart';
 import '../profile/profile_screen.dart';
 import '../../core/constants/app_colors.dart';
 import '../../models/message_model.dart';
+import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/chat_provider.dart';
 import '../../providers/job_provider.dart';
@@ -163,7 +164,8 @@ class _ChatScreenState extends State<ChatScreen> {
         // Max 10 MB
         if (fileSize > 10 * 1024 * 1024) {
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
+            final scaffoldMessenger = ScaffoldMessenger.of(context);
+            scaffoldMessenger.showSnackBar(
               const SnackBar(
                 content: Text('حجم الملف كبير جداً، الحد الأقصى 10 ميجابايت'),
                 backgroundColor: Colors.orange,
@@ -192,7 +194,8 @@ class _ChatScreenState extends State<ChatScreen> {
     } catch (e) {
       debugPrint('Error picking file: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        final scaffoldMessenger = ScaffoldMessenger.of(context);
+        scaffoldMessenger.showSnackBar(
           SnackBar(
             content: Text('حدث خطأ أثناء اختيار الملف: $e'),
             backgroundColor: Colors.red,
@@ -504,18 +507,14 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget _buildOnlineStatus(String otherId) {
-    return StreamBuilder<DocumentSnapshot>(
-      stream: FirebaseFirestore.instance.collection('users').doc(otherId).snapshots(),
+    return StreamBuilder<UserModel?>(
+      stream: FirestoreService().getUserStream(otherId),
       builder: (context, snapshot) {
-        if (!snapshot.hasData || !snapshot.data!.exists) {
+        final otherUser = snapshot.data;
+        if (otherUser == null || otherUser.lastActive == null) {
           return const Text('غير متصل', style: TextStyle(fontSize: 12, color: Colors.grey));
         }
-        final data = snapshot.data!.data() as Map<String, dynamic>?;
-        final lastActive = data?['lastActive'];
-        if (lastActive == null) {
-          return const Text('غير متصل', style: TextStyle(fontSize: 12, color: Colors.grey));
-        }
-        final lastActiveDate = lastActive is Timestamp ? lastActive.toDate() : DateTime.now();
+        final lastActiveDate = otherUser.lastActive!;
         final diff = DateTime.now().difference(lastActiveDate).inMinutes;
         if (diff < 5) {
           return const Text('نشط الآن', style: TextStyle(fontSize: 12, color: Colors.green));
@@ -643,14 +642,16 @@ class _ChatScreenState extends State<ChatScreen> {
                       final details = detailsController.text.trim();
                       final priceText = priceController.text.trim();
                       if (details.isEmpty || priceText.isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
+                        final scaffoldMessenger = ScaffoldMessenger.of(context);
+                        scaffoldMessenger.showSnackBar(
                           const SnackBar(content: Text('يرجى ملء وصف الخدمة والمبلغ'), backgroundColor: Colors.orange),
                         );
                         return;
                       }
                       final price = double.tryParse(priceText);
                       if (price == null || price <= 0) {
-                        ScaffoldMessenger.of(context).showSnackBar(
+                        final scaffoldMessenger = ScaffoldMessenger.of(context);
+                        scaffoldMessenger.showSnackBar(
                           const SnackBar(content: Text('يرجى إدخال مبلغ صحيح'), backgroundColor: Colors.orange),
                         );
                         return;
@@ -820,32 +821,28 @@ class _MessageBubbleState extends State<MessageBubble> {
                   ElevatedButton.icon(
                     onPressed: () async {
                       Navigator.pop(ctx);
+                      final scaffoldMessenger = ScaffoldMessenger.of(context);
                       try {
-                        await FirebaseFirestore.instance
-                            .collection('chats')
-                            .doc(chat.id)
-                            .collection('messages')
-                            .doc(message.id)
-                            .delete();
-                        
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(isRtl ? 'تم حذف الرسالة' : 'Message deleted'),
-                              duration: const Duration(seconds: 2),
-                            ),
-                          );
-                        }
+                        await context.read<ChatProvider>().deleteMessage(
+                              message.id,
+                              chatId: chat.id,
+                            );
+                        if (!mounted) return;
+                        scaffoldMessenger.showSnackBar(
+                          SnackBar(
+                            content: Text(isRtl ? 'تم حذف الرسالة' : 'Message deleted'),
+                            duration: const Duration(seconds: 2),
+                          ),
+                        );
                       } catch (e) {
                         debugPrint('Error deleting message: $e');
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(isRtl ? 'فشل حذف الرسالة' : 'Failed to delete message'),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
-                        }
+                        if (!mounted) return;
+                        scaffoldMessenger.showSnackBar(
+                          SnackBar(
+                            content: Text(isRtl ? 'فشل حذف الرسالة' : 'Failed to delete message'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
                       }
                     },
                     icon: const Icon(Icons.delete, color: Colors.white),
@@ -991,19 +988,19 @@ class _MessageBubbleState extends State<MessageBubble> {
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: Text(isRtl ? 'إلغاء' : 'Cancel')),
           ElevatedButton(
-            onPressed: () {
-              if (controller.text.trim().isNotEmpty && controller.text.trim() != message.content) {
-                FirebaseFirestore.instance
-                    .collection('chats')
-                    .doc(chat.id)
-                    .collection('messages')
-                    .doc(message.id)
-                    .update({
-                  'content': controller.text.trim(),
-                  'isEdited': true,
-                });
+            onPressed: () async {
+              final chatProvider = context.read<ChatProvider>();
+              final newText = controller.text.trim();
+              final currentContext = context;
+              if (newText.isNotEmpty && newText != message.content) {
+                await chatProvider.editMessage(
+                      message.id,
+                      newText,
+                      chatId: chat.id,
+                    );
               }
-              Navigator.pop(ctx);
+              if (!mounted) return;
+                Navigator.pop(currentContext);
             },
             child: Text(isRtl ? 'حفظ' : 'Save'),
           ),
@@ -1165,7 +1162,9 @@ class _MessageBubbleState extends State<MessageBubble> {
                       final clientImageUrl = chat.participantImages[clientId];
 
                       // 1. Start the Project
-                      final jobId = await context.read<JobProvider>().startProject(
+                      final jobProvider = context.read<JobProvider>();
+                      final chatProvider = context.read<ChatProvider>();
+                      final jobId = await jobProvider.startProject(
                         clientId: clientId,
                         clientName: clientName,
                         clientImageUrl: clientImageUrl,
@@ -1178,24 +1177,23 @@ class _MessageBubbleState extends State<MessageBubble> {
 
                       if (jobId != null) {
                         // 2. Update the contract status with the new job ID
-                        final chatProvider = context.read<ChatProvider>();
                         await chatProvider.updateContractStatus(message.id, 'accepted', jobId: jobId);
-                        if (context.mounted) {
-                          Navigator.pop(context); // Close loading dialog
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('تم إنشاء المشروع بنجاح!'), backgroundColor: Colors.green),
-                          );
-                        }
+                        if (!context.mounted) return;
+                        if (context.mounted) Navigator.pop(context); // Close loading dialog
+                        final scaffoldMessenger = ScaffoldMessenger.of(context);
+                        scaffoldMessenger.showSnackBar(
+                          const SnackBar(content: Text('تم إنشاء المشروع بنجاح!'), backgroundColor: Colors.green),
+                        );
                       } else {
-                        if (context.mounted) {
-                          Navigator.pop(context); // Close loading dialog
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('حدث خطأ أثناء إنشاء المشروع'), backgroundColor: Colors.red),
-                          );
-                        }
+                        if (!context.mounted) return;
+                        if (context.mounted) Navigator.pop(context); // Close loading dialog
+                        final scaffoldMessenger = ScaffoldMessenger.of(context);
+                        scaffoldMessenger.showSnackBar(
+                          const SnackBar(content: Text('حدث خطأ أثناء إنشاء المشروع'), backgroundColor: Colors.red),
+                        );
                       }
                     } catch (e) {
-                      if (context.mounted) Navigator.pop(context); // Close loading dialog
+                      if (context.mounted) if (context.mounted) Navigator.pop(context); // Close loading dialog
                     }
                   },
                   style: ElevatedButton.styleFrom(
@@ -1237,7 +1235,8 @@ class _MessageBubbleState extends State<MessageBubble> {
                       ),
                     );
                   } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    final scaffoldMessenger = ScaffoldMessenger.of(context);
+                    scaffoldMessenger.showSnackBar(
                       const SnackBar(content: Text('لم يتم العثور على المشروع')),
                     );
                   }

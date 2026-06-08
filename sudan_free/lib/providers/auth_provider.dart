@@ -14,6 +14,7 @@ import 'user_provider.dart';
 import 'posts_provider.dart';
 import '../services/notification_service.dart';
 import '../services/notification_polling_service.dart';
+import '../services/network_service.dart';
 
 enum AuthStatus { initial, loading, authenticated, unauthenticated, error }
 
@@ -33,6 +34,7 @@ class AuthProvider extends ChangeNotifier {
   StreamSubscription?
       _authSubscription; // Fix: track auth stream to cancel on dispose
   StreamSubscription<UserModel?>? _userSubscription;
+  StreamSubscription<bool>? _networkSubscription;
 
   // Partners
   List<UserModel> _partners = [];
@@ -45,6 +47,16 @@ class AuthProvider extends ChangeNotifier {
   String? get userId => _authService.currentUserId;
   List<UserModel> get partners => _partners; // Added getter
   bool get isManualSignIn => _isManualSignIn; // Added for smooth UI transitions
+
+
+
+  @override
+  void dispose() {
+    _authSubscription?.cancel();
+    _userSubscription?.cancel();
+    _networkSubscription?.cancel();
+    super.dispose();
+  }
 
   // Toggle Partner (Add/Remove Colleague)
   Future<void> sendPartnerRequest(String targetId) async {
@@ -185,6 +197,17 @@ class AuthProvider extends ChangeNotifier {
       }, onError: (error) {
         debugPrint('Auth provider stream error: $error');
       });
+
+      // Listen to network changes to recover from offline app launch
+      _networkSubscription = NetworkService().onConnectivityChanged.listen((isConnected) {
+        if (isConnected && _authService.currentUser != null) {
+          // If we had an error loading the profile (e.g. launched offline), retry loading it
+          if (_status == AuthStatus.error || (_status == AuthStatus.unauthenticated && _user == null)) {
+            debugPrint('Network recovered. Retrying to load user profile...');
+            _handleAuthStateChange(_authService.currentUser);
+          }
+        }
+      });
     } catch (e) {
       debugPrint('Auth provider initialization error: $e');
       _status = AuthStatus.unauthenticated;
@@ -259,12 +282,16 @@ class AuthProvider extends ChangeNotifier {
         _user = profile;
         _isNewUser = false;
 
-        // OneSignal User Tagging
-        OneSignal.login(uid);
-        OneSignal.User.addTags({
-          "state": profile.state,
-          "role": profile.role.name,
-        });
+        // OneSignal User Tagging (modern API)
+        try {
+          await OneSignal.login(uid);
+          await OneSignal.User.addTags({
+            "state": profile.state ?? '',
+            "role": profile.role.name,
+          });
+        } catch (e) {
+          debugPrint('OneSignal tagging failed: $e');
+        }
 
         _subscribeToUserStream(uid);
       } else {
@@ -828,10 +855,14 @@ class AuthProvider extends ChangeNotifier {
 
       await updateUserProfile({'notificationSettings': updatedSettings});
 
-      if (enabled) {
-        OneSignal.User.pushSubscription.optIn();
-      } else {
-        OneSignal.User.pushSubscription.optOut();
+      try {
+        if (enabled) {
+          await OneSignal.User.pushSubscription.optIn();
+        } else {
+          await OneSignal.User.pushSubscription.optOut();
+        }
+      } catch (e) {
+        debugPrint('OneSignal toggle push failed: $e');
       }
       return true;
     } catch (e) {
@@ -909,7 +940,11 @@ class AuthProvider extends ChangeNotifier {
     NotificationPollingService().reset();
 
     await _authService.signOut();
-    OneSignal.logout();
+    try {
+      await OneSignal.logout();
+    } catch (e) {
+      debugPrint('OneSignal logout failed: $e');
+    }
     await _cacheService.clearAllData();
     _user = null;
     _isNewUser = false;
@@ -953,12 +988,5 @@ class AuthProvider extends ChangeNotifier {
   void setErrorMessage(String message) {
     _errorMessage = message;
     notifyListeners();
-  }
-
-  @override
-  void dispose() {
-    _authSubscription?.cancel();
-    _userSubscription?.cancel();
-    super.dispose();
   }
 }

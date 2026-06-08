@@ -11,6 +11,8 @@ class LinkableText extends StatelessWidget {
   final int? maxLines;
   final TextOverflow? overflow;
   final TextAlign? textAlign;
+  final Function(String)? onMentionTap;
+  final Function(String)? onHashtagTap;
 
   /// Optional: additional styled spans (e.g. @mentions).
   /// If provided, URLs within those spans are also handled.
@@ -23,11 +25,13 @@ class LinkableText extends StatelessWidget {
     this.maxLines,
     this.overflow,
     this.textAlign,
+    this.onMentionTap,
+    this.onHashtagTap,
     this.extraSpans,
   });
 
-  static final RegExp _urlRegex = RegExp(
-    r'(?:https?://|www\.)[^\s<>\[\]{}|\\^`\u0600-\u06FF]+',
+  static final RegExp _entityRegex = RegExp(
+    r'((?:https?://|www\.)[^\s<>\[\]{}|\\^`\u0600-\u06FF]+)|(#[\w\u0600-\u06FF]+)|(@[\w\u0600-\u06FF]+)',
     caseSensitive: false,
   );
 
@@ -50,13 +54,24 @@ class LinkableText extends StatelessWidget {
       height: 1.4,
       color: isDark ? Colors.white : Colors.black87,
     );
+    
     final linkStyle = defaultStyle.copyWith(
       color: isDark ? const Color(0xFF64B5F6) : AppColors.primary,
       decoration: TextDecoration.underline,
       decorationColor: (isDark ? const Color(0xFF64B5F6) : AppColors.primary).withValues(alpha: 0.4),
     );
+    
+    final hashtagStyle = defaultStyle.copyWith(
+      color: isDark ? const Color(0xFF81C784) : const Color(0xFF2E7D32),
+      fontWeight: FontWeight.w600,
+    );
+    
+    final mentionStyle = defaultStyle.copyWith(
+      color: isDark ? const Color(0xFFFFB74D) : const Color(0xFFF57C00),
+      fontWeight: FontWeight.bold,
+    );
 
-    final matches = _urlRegex.allMatches(text).toList();
+    final matches = _entityRegex.allMatches(text).toList();
 
     if (matches.isEmpty) {
       return Text(
@@ -72,23 +87,43 @@ class LinkableText extends StatelessWidget {
     int lastEnd = 0;
 
     for (final match in matches) {
-      // Add normal text before the URL
+      // Add normal text before the match
       if (match.start > lastEnd) {
         spans.add(TextSpan(text: text.substring(lastEnd, match.start)));
       }
 
-      // Add the clickable URL
-      final url = match.group(0)!;
-      spans.add(TextSpan(
-        text: url,
-        style: linkStyle,
-        recognizer: TapGestureRecognizer()..onTap = () => _launchURL(url),
-      ));
+      final urlMatch = match.group(1);
+      final hashtagMatch = match.group(2);
+      final mentionMatch = match.group(3);
+
+      if (urlMatch != null) {
+        spans.add(TextSpan(
+          text: urlMatch,
+          style: linkStyle,
+          recognizer: TapGestureRecognizer()..onTap = () => _launchURL(urlMatch),
+        ));
+      } else if (hashtagMatch != null) {
+        spans.add(TextSpan(
+          text: hashtagMatch,
+          style: hashtagStyle,
+          recognizer: TapGestureRecognizer()..onTap = () {
+            if (onHashtagTap != null) onHashtagTap!(hashtagMatch);
+          },
+        ));
+      } else if (mentionMatch != null) {
+        spans.add(TextSpan(
+          text: mentionMatch,
+          style: mentionStyle,
+          recognizer: TapGestureRecognizer()..onTap = () {
+            if (onMentionTap != null) onMentionTap!(mentionMatch.substring(1)); // Remove '@'
+          },
+        ));
+      }
 
       lastEnd = match.end;
     }
 
-    // Add remaining text after last URL
+    // Add remaining text after last match
     if (lastEnd < text.length) {
       spans.add(TextSpan(text: text.substring(lastEnd)));
     }

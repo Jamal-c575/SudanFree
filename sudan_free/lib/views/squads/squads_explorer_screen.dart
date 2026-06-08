@@ -1,0 +1,206 @@
+import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:provider/provider.dart';
+import '../../models/squad_model.dart';
+import '../../core/constants/app_colors.dart';
+import '../../providers/locale_provider.dart';
+import '../../providers/auth_provider.dart';
+import '../../models/user_model.dart';
+import '../profile/squad_profile_screen.dart';
+import 'create_squad_screen.dart';
+import '../../widgets/buttons/smart_draggable_fab.dart';
+
+class SquadsExplorerScreen extends StatefulWidget {
+  const SquadsExplorerScreen({super.key});
+
+  @override
+  State<SquadsExplorerScreen> createState() => _SquadsExplorerScreenState();
+}
+
+class _SquadsExplorerScreenState extends State<SquadsExplorerScreen> {
+  SquadCategory? _selectedCategory;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final locale = context.watch<LocaleProvider>().locale.languageCode;
+    final isAr = locale == 'ar';
+    final user = context.watch<AuthProvider>().user;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(isAr ? 'اكتشف المجموعات' : 'Explore Squads'),
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+      ),
+      body: Stack(
+        children: [
+          Column(
+            children: [
+              // Search Bar
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                child: TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: isAr ? 'ابحث عن مجموعة...' : 'Search squads...',
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: _searchQuery.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() => _searchQuery = '');
+                            },
+                          )
+                        : null,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    filled: true,
+                    fillColor: Theme.of(context).cardColor,
+                  ),
+                  onChanged: (value) {
+                    setState(() => _searchQuery = value);
+                  },
+                ),
+              ),
+              // Category Filter
+              SizedBox(
+            height: 50,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: SquadCategory.values.length + 1,
+              itemBuilder: (context, index) {
+                if (index == 0) {
+                  final isSelected = _selectedCategory == null;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: FilterChip(
+                      label: Text(isAr ? 'الكل' : 'All'),
+                      selected: isSelected,
+                      onSelected: (val) => setState(() => _selectedCategory = null),
+                      selectedColor: AppColors.primary.withValues(alpha: 0.2),
+                      checkmarkColor: AppColors.primary,
+                    ),
+                  );
+                }
+                final cat = SquadCategory.values[index - 1];
+                final isSelected = _selectedCategory == cat;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: FilterChip(
+                    label: Text(cat.getName(locale)),
+                    selected: isSelected,
+                    onSelected: (val) => setState(() => _selectedCategory = val ? cat : null),
+                    selectedColor: AppColors.primary.withValues(alpha: 0.2),
+                    checkmarkColor: AppColors.primary,
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: _selectedCategory == null
+                  ? FirebaseFirestore.instance.collection('squads').orderBy('rating', descending: true).snapshots()
+                  : FirebaseFirestore.instance.collection('squads').where('category', isEqualTo: _selectedCategory!.name).orderBy('rating', descending: true).snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) return Center(child: Text('Error: ${snapshot.error}'));
+                if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                
+                final docs = snapshot.data!.docs;
+                
+                final filteredDocs = docs.where((doc) {
+                  if (_searchQuery.isEmpty) return true;
+                  final squadName = (doc.data() as Map<String, dynamic>)['name']?.toString() ?? '';
+                  return squadName.toLowerCase().contains(_searchQuery.toLowerCase());
+                }).toList();
+
+                if (filteredDocs.isEmpty) {
+                  return Center(
+                    child: Text(isAr ? 'لا توجد مجموعات' : 'No squads found'),
+                  );
+                }
+                return ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+                  itemCount: filteredDocs.length,
+                  itemBuilder: (context, index) {
+                    final squad = SquadModel.fromFirestore(filteredDocs[index]);
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      elevation: 4,
+                      shadowColor: Colors.black26,
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.all(16),
+                        leading: CircleAvatar(
+                          radius: 30,
+                          backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                          backgroundImage: squad.squadImageUrl != null ? NetworkImage(squad.squadImageUrl!) : null,
+                          child: squad.squadImageUrl == null ? const Icon(Icons.groups, color: AppColors.primary) : null,
+                        ),
+                        title: Text(squad.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 6),
+                            Text(squad.category.getName(locale), style: const TextStyle(color: AppColors.secondary, fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                const Icon(Icons.star, color: Colors.amber, size: 16),
+                                const SizedBox(width: 4),
+                                Text(squad.rating.toStringAsFixed(1)),
+                                const SizedBox(width: 16),
+                                const Icon(Icons.work, color: Colors.grey, size: 16),
+                                const SizedBox(width: 4),
+                                Text('${squad.completedJobs} ${isAr ? "عمل" : "jobs"}'),
+                              ],
+                            ),
+                          ],
+                        ),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => SquadProfileScreen(squad: squad)),
+                          );
+                        },
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+      if (user != null && user.role != UserRole.client)
+        SmartDraggableFab(
+          heroTag: 'create_squad_fab',
+          icon: Icons.add,
+          label: isAr ? 'إنشاء مجموعة' : 'Create Squad',
+          locale: locale,
+          initialBottom: MediaQuery.of(context).padding.bottom + 82.0, // navBar + safe area
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const CreateSquadScreen()),
+            );
+          },
+        ),
+      ],
+    ),
+  );
+}
+}

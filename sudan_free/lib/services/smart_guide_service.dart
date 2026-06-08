@@ -52,7 +52,8 @@ class SmartGuideService {
 
     final isArabic = context.read<LocaleProvider>().isArabic;
 
-    ScaffoldMessenger.of(context).showSnackBar(
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    scaffoldMessenger.showSnackBar(
       SnackBar(
         content: Row(
           children: [

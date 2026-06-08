@@ -9,14 +9,17 @@ class ProposalModel {
   final String freelancerId;
   final String freelancerName;
   final String? freelancerImageUrl;
+  final String? squadId; // Squad submitting the proposal (if applicable)
+  final String? squadName;
   final String clientId;
   final double proposedPrice;
   final String currency;
-  final int deliveryDays;
   final String coverLetter;
+  final String? voiceUrl; // Voice-First Interactions
   final ProposalStatus status;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final int deliveryDays;
 
   ProposalModel({
     required this.id,
@@ -25,11 +28,14 @@ class ProposalModel {
     required this.freelancerId,
     required this.freelancerName,
     this.freelancerImageUrl,
+    this.squadId,
+    this.squadName,
     required this.clientId,
     required this.proposedPrice,
     this.currency = 'SDG',
     required this.deliveryDays,
     required this.coverLetter,
+    this.voiceUrl,
     this.status = ProposalStatus.pending,
     required this.createdAt,
     required this.updatedAt,
@@ -44,11 +50,14 @@ class ProposalModel {
       freelancerId: data['freelancerId'] ?? '',
       freelancerName: data['freelancerName'] ?? '',
       freelancerImageUrl: data['freelancerImageUrl'],
+      squadId: data['squadId'],
+      squadName: data['squadName'],
       clientId: data['clientId'] ?? '',
       proposedPrice: (data['proposedPrice'] as num?)?.toDouble() ?? 0,
       currency: data['currency'] ?? 'SDG',
       deliveryDays: data['deliveryDays'] ?? 0,
       coverLetter: data['coverLetter'] ?? '',
+      voiceUrl: data['voiceUrl'],
       status: ProposalStatus.values.firstWhere(
         (e) => e.name == data['status'],
         orElse: () => ProposalStatus.pending,
@@ -65,11 +74,14 @@ class ProposalModel {
       'freelancerId': freelancerId,
       'freelancerName': freelancerName,
       'freelancerImageUrl': freelancerImageUrl,
+      if (squadId != null) 'squadId': squadId,
+      if (squadName != null) 'squadName': squadName,
       'clientId': clientId,
       'proposedPrice': proposedPrice,
       'currency': currency,
       'deliveryDays': deliveryDays,
       'coverLetter': coverLetter,
+      if (voiceUrl != null) 'voiceUrl': voiceUrl,
       'status': status.name,
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
@@ -83,11 +95,14 @@ class ProposalModel {
     String? freelancerId,
     String? freelancerName,
     String? freelancerImageUrl,
+    String? squadId,
+    String? squadName,
     String? clientId,
     double? proposedPrice,
     String? currency,
     int? deliveryDays,
     String? coverLetter,
+    String? voiceUrl,
     ProposalStatus? status,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -99,11 +114,14 @@ class ProposalModel {
       freelancerId: freelancerId ?? this.freelancerId,
       freelancerName: freelancerName ?? this.freelancerName,
       freelancerImageUrl: freelancerImageUrl ?? this.freelancerImageUrl,
+      squadId: squadId ?? this.squadId,
+      squadName: squadName ?? this.squadName,
       clientId: clientId ?? this.clientId,
       proposedPrice: proposedPrice ?? this.proposedPrice,
       currency: currency ?? this.currency,
       deliveryDays: deliveryDays ?? this.deliveryDays,
       coverLetter: coverLetter ?? this.coverLetter,
+      voiceUrl: voiceUrl ?? this.voiceUrl,
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

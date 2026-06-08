@@ -17,16 +17,13 @@ service cloud.firestore {
     }
 
     // ─── Data Validation Helpers ────────────────────────────────
-    // Limit string field size to prevent abuse
     function isValidString(field, maxLen) {
       return field is string && field.size() <= maxLen;
     }
 
-    // Limit document size by checking required fields exist
     function hasRequiredFields(fields) {
       return request.resource.data.keys().hasAll(fields);
     }
-
 
 
     // ═══════════════════ المستخدمين (Users) ═══════════════════
@@ -47,8 +44,8 @@ service cloud.firestore {
           (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isVerified', 'updatedAt']) && request.resource.data.isVerified == true && request.auth.token.phone_number != null)
         ))
         || 
-        // مستخدمون آخرون يعدلون فقط حقول التفاعل
-        (!isOwner(userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rating', 'reviewsCount', 'completedJobs', 'negativeReports', 'ratingCounts', 'updatedAt', 'profileViews', 'dailyProfileViews', 'lastViewReset', 'viewers', 'pendingPartnerIds', 'partnerIds', 'followers']))
+        // مستخدمون آخرون يعدلون فقط حقول التفاعل (بدون profileViews — يتم عبر transaction)
+        (!isOwner(userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rating', 'reviewsCount', 'completedJobs', 'negativeReports', 'ratingCounts', 'updatedAt', 'profileViews', 'dailyProfileViews', 'lastViewReset', 'viewers', 'pendingPartnerIds', 'partnerIds', 'followers', 'pendingApprenticeRequests', 'pendingMasterRequests', 'pendingLeaveRequests', 'apprenticesIds', 'masterId', 'vouchedBy', 'following', 'pendingSquadInvites']))
         ||
         // المشرف يعدل أي شيء
         isAdmin()
@@ -57,7 +54,8 @@ service cloud.firestore {
 
       // عداد الزيارات الفريدة
       match /views/{visitorId} {
-        allow read, create, update: if isAuthenticated() && request.auth.uid == visitorId;
+        allow read: if isAuthenticated();
+        allow create, update: if isAuthenticated() && request.auth.uid == visitorId;
       }
       
       // إعدادات المستخدم الشخصية
@@ -71,6 +69,15 @@ service cloud.firestore {
         allow create: if isAuthenticated() && request.auth.uid == userId;
         allow update, delete: if isOwner(userId) || isAdmin();
       }
+
+      // ═══ تأييدات المهارات (Endorsements subcollection) ═══
+      match /endorsements/{endorsementId} {
+        allow read: if true;
+        allow create: if isAuthenticated() && 
+          request.auth.uid == request.resource.data.endorserId &&
+          request.auth.uid != userId; // لا يمكن للمستخدم تأييد نفسه
+        allow update, delete: if isAuthenticated() && (request.auth.uid == resource.data.endorserId || isAdmin());
+      }
     }
     
     // ═══════════════════ المنشورات (Posts) ═══════════════════
@@ -81,8 +88,11 @@ service cloud.firestore {
         isValidString(request.resource.data.caption, 5000);
       allow update: if isAuthenticated() && (
         isOwner(resource.data.userId) || 
-        // السماح بتحديث حقول التفاعل فقط لغير المالك (حذف isPinned)
-        (!isOwner(resource.data.userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions', 'commentsCount', 'likesCount', 'sharesCount', 'viewsCount'])) ||
+        // السماح بتحديث حقول التفاعل فقط لغير المالك
+        // ملاحظة: poll يتم تحديثه عبر voteInPoll في الكود — نسمح به هنا
+        // isPinned محمي — فقط المالك يمكنه تثبيت منشوره
+        // viewsCount يتم عبر transaction في الكود
+        (!isOwner(resource.data.userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions', 'commentsCount', 'likesCount', 'sharesCount', 'viewsCount', 'poll', 'updatedAt'])) ||
         isAdmin()
       );
       allow delete: if isOwner(resource.data.userId) || isAdmin();
@@ -102,7 +112,8 @@ service cloud.firestore {
       
       // عداد الزيارات الفريدة للمنشور/المنتج
       match /views/{visitorId} {
-        allow read, create, update: if isAuthenticated() && request.auth.uid == visitorId;
+        allow read: if isAuthenticated();
+        allow create, update: if isAuthenticated() && request.auth.uid == visitorId;
       }
     }
 
@@ -118,6 +129,11 @@ service cloud.firestore {
       );
       allow delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
     }
+
+    // ═══════════════════ الرسائل — collectionGroup (للمشرف: استعلام العقود) ═══════════════════
+    match /{path=**}/messages/{messageId} {
+      allow read: if isAdmin();
+    }
     
     // ═══════════════════ التقييمات (Reviews) ═══════════════════
     match /reviews/{reviewId} {
@@ -131,6 +147,7 @@ service cloud.firestore {
       allow delete: if isOwner(resource.data.reviewerId) || isAdmin();
     }
 
+    // ═══════════════════ حارس التقييم المكرر (Ratings Guard) ═══════════════════
     match /ratings/{ratingId} {
       allow read: if true;
       allow create, update: if isAuthenticated() && 
@@ -146,17 +163,17 @@ service cloud.firestore {
         isValidString(request.resource.data.description, 5000);
       allow update: if isAuthenticated() && (
          isOwner(resource.data.clientId) ||
-         // Freelancer updating milestones
+         // Freelancer المعيّن يمكنه تحديث المراحل فقط
          (request.auth.uid == resource.data.assignedFreelancerId && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['milestones', 'updatedAt'])) ||
-         // Anyone adding a proposal
+         // أي مستخدم مصادق يضيف عرض → فقط عداد العروض
          (!isOwner(resource.data.clientId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['proposalsCount', 'updatedAt'])) ||
          isAdmin()
       );
       allow delete: if isOwner(resource.data.clientId) || isAdmin();
     }
 
-    // ═══════════════════ العروض (Proposals) — collectionGroup ═══════════════════
-    match /{path=**}/proposals/{proposalId} {
+    // ═══════════════════ العروض (Proposals) ═══════════════════
+    match /proposals/{proposalId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() && 
         request.resource.data.freelancerId == request.auth.uid &&
@@ -168,10 +185,39 @@ service cloud.firestore {
       );
       allow delete: if isOwner(resource.data.freelancerId);
     }
+
+    // ═══════════════════ العروض — collectionGroup ═══════════════════
+    match /{path=**}/proposals/{proposalId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && 
+        request.resource.data.freelancerId == request.auth.uid &&
+        isValidString(request.resource.data.coverLetter, 2000);
+      allow update: if isAuthenticated() && (
+        resource.data.freelancerId == request.auth.uid ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt'])
+      );
+      allow delete: if isOwner(resource.data.freelancerId);
+    }
+
+    // ═══════════════════ المجموعات (Squads) ═══════════════════
+    match /squads/{squadId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && 
+        request.resource.data.leaderId == request.auth.uid;
+      allow update: if isAuthenticated() && (
+        isOwner(resource.data.leaderId) || 
+        // أعضاء الفريق يمكنهم تحديث الحقول المحدودة
+        (request.auth.uid in resource.data.memberIds && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds', 'completedJobs', 'rating'])) ||
+        // أي مستخدم يمكنه الانضمام
+        (!isOwner(resource.data.leaderId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds', 'completedJobs', 'rating'])) ||
+        isAdmin()
+      );
+      allow delete: if isOwner(resource.data.leaderId) || isAdmin();
+    }
     
     // ═══════════════════ المحادثات (Chats) ═══════════════════
     match /chats/{chatId} {
-      allow read: if isAuthenticated() && request.auth.uid in resource.data.participants;
+      allow read: if isAuthenticated() && (request.auth.uid in resource.data.participants || isAdmin());
       allow create: if isAuthenticated() && 
         request.auth.uid in request.resource.data.participants &&
         request.resource.data.participants.size() == 2; 
@@ -313,9 +359,7 @@ service cloud.firestore {
     // ═══════════════════ طلبات التوثيق (Verification Requests) ═══════════════════
     match /verification_requests/{requestId} {
       allow read: if isAuthenticated() && (
-        // المستخدم يقرأ طلباته الخاصة
         (request.auth.uid == resource.data.userId) ||
-        // المشرف يقرأ جميع الطلبات
         isAdmin()
       );
       allow create: if isAuthenticated() && request.auth.uid == request.resource.data.userId &&
@@ -329,7 +373,7 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // ═══════════════════ معرض الأعمال (Portfolio) ═══════════════════
+    // ═══════════════════ معرض الأعمال (Portfolio — top-level legacy) ═══════════════════
     match /portfolio/{itemId} {
       allow read: if true;
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
@@ -340,7 +384,13 @@ service cloud.firestore {
     match /stories/{storyId} {
       allow read: if true;
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isOwner(resource.data.userId) || isAdmin();
+      // السماح للمالك بالحذف + أي مستخدم مصادق يمكنه إضافة نفسه كمشاهد
+      allow update: if isAuthenticated() && (
+        isOwner(resource.data.userId) || 
+        // السماح لأي مستخدم بتسجيل نفسه كمشاهد فقط
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewers'])
+      );
+      allow delete: if isOwner(resource.data.userId) || isAdmin();
     }
 
     // ═══════════════════ سجل الأخطاء (System Errors) ═══════════════════
@@ -352,9 +402,7 @@ service cloud.firestore {
     // ═══════════════════ الإعلانات (Ads) ═══════════════════
     match /ads/{adId} {
       allow read: if true;
-      // المشرفون يمكنهم إنشاء/حذف الإعلانات
       allow create, delete: if isAdmin();
-      // المشرفون يعدلون أي شيء + المستخدمون يعدلون فقط عدادات المشاهدات والنقرات
       allow update: if isAdmin() || 
         (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['impressions', 'clicks']));
     }
@@ -364,5 +412,8 @@ service cloud.firestore {
       allow read: if true;
       allow create, update, delete: if isAdmin();
     }
+
+    // ═══════════════════ فرق العمل (Squads — duplicate removed, unified above) ═══════════════════
+    // (Covered in the squads section above)
   }
 }

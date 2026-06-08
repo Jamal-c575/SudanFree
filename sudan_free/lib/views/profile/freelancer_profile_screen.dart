@@ -3,12 +3,13 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
-import 'dart:ui';
 
 import 'create_portfolio_project_screen.dart';
 import 'portfolio_project_detail_screen.dart';
 import '../../core/constants/app_colors.dart';
 import '../../models/user_model.dart';
+import 'digital_id_card_screen.dart';
+import '../../core/routes/premium_page_route.dart';
 import '../../models/contact_log_model.dart';
 import '../../providers/user_provider.dart';
 import '../../models/post_model.dart';
@@ -18,7 +19,9 @@ import '../chat/chat_screen.dart';
 import '../../services/firestore_service.dart';
 import '../../widgets/common/adaptive_fab_padding.dart';
 import '../posts/create_post_screen.dart';
+import '../map/map_explorer_screen.dart';
 import '../auth/profile_setup_screen.dart';
+import 'profile_screen.dart';
 import '../../widgets/common/loading_widget.dart';
 import '../../widgets/cards/post_card.dart';
 import '../../widgets/common/linkable_text.dart';
@@ -151,11 +154,18 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
                       icon: const Icon(Icons.share, color: Colors.white),
                       tooltip: l10n.localeName == 'ar' ? 'مشاركة الملف الشخصي' : 'Share Profile',
                       onPressed: () {
-                        final url = 'https://jamall123.github.io/HOME_WEB/sudan-free.html?profileId=${user.id}';
+                        final url = 'https://sudanfree.com/sudan-free.html?profileId=${user.id}';
                         final text = l10n.localeName == 'ar' 
                             ? 'شاهد الملف الشخصي لـ ${user.name} على تطبيق سودان فري:\n$url' 
                             : 'Check out ${user.name}\'s profile on SudanFree:\n$url';
                         Share.share(text);
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.badge, color: Colors.white),
+                      tooltip: l10n.localeName == 'ar' ? 'هويتي الرقمية' : 'Digital ID',
+                      onPressed: () {
+                        Navigator.push(context, PremiumPageRoute(page: DigitalIdCardScreen(user: user)));
                       },
                     ),
                     if (widget.isMe) ...[
@@ -326,7 +336,7 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
                               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 24),
                               textAlign: TextAlign.center,
                             ),
-                            VerificationBadge(isVerified: user.effectivelyVerified, size: 24),
+                            SmartVerificationBadge(user: user, size: 24),
                           ],
                         ),
                         // All Skills as Chips
@@ -437,7 +447,8 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
                                        iconColor,
                                        onTap: (isPartner || isPending) ? null : () {
                                          auth.sendPartnerRequest(user.id);
-                                         ScaffoldMessenger.of(context).showSnackBar(
+                                         final scaffoldMessenger = ScaffoldMessenger.of(context);
+                                         scaffoldMessenger.showSnackBar(
                                            SnackBar(
                                              content: Text(context.read<LocaleProvider>().isArabic 
                                                  ? 'تم إرسال طلب الزمالة بنجاح!' 
@@ -454,6 +465,140 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
                           ),
                         ),
                         
+                        const SizedBox(height: 16),
+
+                        // Reputation Score & Vouchers
+                        if (user.completedJobs > 0 || user.reviewsCount > 0 || user.vouchedBy.isNotEmpty)
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).cardColor,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.05),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              children: [
+                                // Part 1: Reputation Score
+                                Expanded(
+                                  flex: 1,
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                                    child: Row(
+                                      children: [
+                                        ReputationScoreWidget(user: user, size: 48),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                context.read<LocaleProvider>().isArabic ? 'نقاط السمعة' : 'Reputation',
+                                                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                                              ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                context.read<LocaleProvider>().isArabic 
+                                                    ? 'مبنية على الأعمال' 
+                                                    : 'Based on jobs',
+                                                style: TextStyle(fontSize: 10, color: AppColors.textLight),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                
+                                // Divider
+                                Container(width: 1, height: 50, color: Colors.grey.withValues(alpha: 0.2)),
+
+                                // Part 2: Vouchers
+                                Expanded(
+                                  flex: 1,
+                                  child: InkWell(
+                                    onTap: () => _showVouchersBottomSheet(context, user.vouchedBy),
+                                    borderRadius: BorderRadius.horizontal(
+                                      right: context.read<LocaleProvider>().isArabic ? Radius.zero : const Radius.circular(16),
+                                      left: context.read<LocaleProvider>().isArabic ? const Radius.circular(16) : Radius.zero,
+                                    ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            context.read<LocaleProvider>().isArabic ? 'المُزكّين' : 'Vouchers',
+                                            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                                          ),
+                                          const SizedBox(height: 6),
+                                          if (user.vouchedBy.isEmpty)
+                                            Text(
+                                              context.read<LocaleProvider>().isArabic ? 'لا توجد تزكيات' : 'No vouches yet',
+                                              style: TextStyle(fontSize: 11, color: AppColors.textLight),
+                                            )
+                                          else
+                                              SizedBox(
+                                                height: 42,
+                                                child: Stack(
+                                                  children: [
+                                                    for (int i = 0; i < (user.vouchedBy.length > 3 ? 3 : user.vouchedBy.length); i++)
+                                                      Positioned(
+                                                        right: context.read<LocaleProvider>().isArabic ? null : (i * 26.0),
+                                                        left: context.read<LocaleProvider>().isArabic ? (i * 26.0) : null,
+                                                        child: Container(
+                                                          decoration: BoxDecoration(
+                                                            shape: BoxShape.circle,
+                                                            border: Border.all(color: Theme.of(context).cardColor, width: 2),
+                                                          ),
+                                                          child: CircleAvatar(
+                                                            radius: 19,
+                                                            backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                                                            backgroundImage: user.vouchedBy[i]['profileImageUrl'] != null 
+                                                                ? NetworkImage(user.vouchedBy[i]['profileImageUrl']) 
+                                                                : null,
+                                                            child: user.vouchedBy[i]['profileImageUrl'] == null
+                                                                ? const Icon(Icons.person, size: 20, color: AppColors.primary)
+                                                                : null,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    if (user.vouchedBy.length > 3)
+                                                      Positioned(
+                                                        right: context.read<LocaleProvider>().isArabic ? null : (3 * 26.0),
+                                                        left: context.read<LocaleProvider>().isArabic ? (3 * 26.0) : null,
+                                                        child: Container(
+                                                          decoration: BoxDecoration(
+                                                            shape: BoxShape.circle,
+                                                            border: Border.all(color: Theme.of(context).cardColor, width: 2),
+                                                          ),
+                                                          child: CircleAvatar(
+                                                            radius: 19,
+                                                            backgroundColor: AppColors.sudanGold,
+                                                            child: Text(
+                                                              '+${user.vouchedBy.length - 3}',
+                                                              style: const TextStyle(fontSize: 14, color: Colors.white, fontWeight: FontWeight.bold),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                  ],
+                                                ),
+                                              ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
                         const SizedBox(height: 16),
 
                         // Bio
@@ -565,15 +710,53 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
                 )
               : null)
           : AdaptiveFabPadding(
-              child: FloatingActionButton.extended(
-                onPressed: () => _showContactMenu(context, widget.user),
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                icon: const Icon(Icons.support_agent, size: 22),
-                label: Text(
-                  Localizations.localeOf(context).languageCode == 'ar' ? 'تواصل معي' : 'Contact Me',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
+              child: Consumer<AuthProvider>(
+                builder: (context, auth, _) {
+                  final isAr = Localizations.localeOf(context).languageCode == 'ar';
+
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      FloatingActionButton.small(
+                        heroTag: 'freelancer_location_btn',
+                        onPressed: () {
+                          if (widget.user.latitude == null || widget.user.longitude == null) {
+                            final scaffoldMessenger = ScaffoldMessenger.of(context);
+                            scaffoldMessenger.showSnackBar(
+                              SnackBar(
+                                content: Text(isAr ? 'الموقع غير متوفر لهذا المستخدم' : 'Location not available for this user'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                            return;
+                          }
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => MapExplorerScreen(targetUser: widget.user),
+                            ),
+                          );
+                        },
+                        backgroundColor: Colors.white,
+                        foregroundColor: AppColors.primary,
+                        child: const Icon(Icons.location_on_outlined),
+                      ),
+                      const SizedBox(height: 12),
+                      FloatingActionButton.extended(
+                        heroTag: 'freelancer_contact_btn',
+                        onPressed: () => _showContactMenu(context, widget.user),
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        icon: const Icon(Icons.support_agent, size: 22),
+                        label: Text(
+                          isAr ? 'تواصل معي' : 'Contact Me',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
             ),
     );
@@ -781,7 +964,7 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
               reviews: snapshot.data!,
               locale: context.read<LocaleProvider>().locale.languageCode,
             ),
-            ...snapshot.data!.map((review) => ReviewCard(review: review, locale: context.read<LocaleProvider>().locale.languageCode)).toList(),
+            ...snapshot.data!.map((review) => ReviewCard(review: review, locale: context.read<LocaleProvider>().locale.languageCode)),
           ],
         );
       },
@@ -792,7 +975,8 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
     final l10n = AppLocalizations.of(context)!;
     final currentUser = context.read<AuthProvider>().user;
     if (currentUser == null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.loginToReview)));
+      final scaffoldMessenger = ScaffoldMessenger.of(context);
+      scaffoldMessenger.showSnackBar(SnackBar(content: Text(l10n.loginToReview)));
       return;
     }
 
@@ -1043,7 +1227,8 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
         if (mounted) context.read<UserProvider>().fetchFreelancers(forceRefresh: true);
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
+          final scaffoldMessenger = ScaffoldMessenger.of(context);
+          scaffoldMessenger.showSnackBar(
             SnackBar(
               content: Text(
                 context.read<LocaleProvider>().isArabic 
@@ -1056,7 +1241,8 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
         }
       } else {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
+          final scaffoldMessenger = ScaffoldMessenger.of(context);
+          scaffoldMessenger.showSnackBar(
             SnackBar(
               content: Text(
                 context.read<LocaleProvider>().isArabic 
@@ -1347,6 +1533,66 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
           ),
         ],
       ),
+    );
+  }
+  void _showVouchersBottomSheet(BuildContext context, List<Map<String, dynamic>> vouchedBy) {
+    if (vouchedBy.isEmpty) return;
+    final isAr = context.read<LocaleProvider>().isArabic;
+    
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) {
+        return Container(
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                isAr ? 'قائمة المُزكّين' : 'Vouchers List',
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: vouchedBy.length,
+                  itemBuilder: (ctx, index) {
+                    final voucher = vouchedBy[index];
+                    return FutureBuilder<UserModel?>(
+                      future: FirestoreService().getUser(voucher['id']),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const ListTile(
+                            leading: CircleAvatar(child: CircularProgressIndicator(strokeWidth: 2)),
+                            title: Text('...'),
+                          );
+                        }
+                        final user = snapshot.data;
+                        if (user == null) return const SizedBox.shrink();
+
+                        return ListTile(
+                          leading: CircleAvatar(
+                            backgroundImage: user.profileImageUrl != null ? NetworkImage(user.profileImageUrl!) : null,
+                            child: user.profileImageUrl == null ? const Icon(Icons.person) : null,
+                          ),
+                          title: Text(user.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                          subtitle: Text('${user.jobTitle ?? ''} • ${user.state ?? ''}', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: () {
+                            Navigator.pop(ctx);
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => ProfileScreen(userId: user.id)));
+                          },
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

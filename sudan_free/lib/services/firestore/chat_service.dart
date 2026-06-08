@@ -167,6 +167,29 @@ class ChatFirestoreService {
     }
   }
 
+  // Delete a message from a chat
+  Future<void> deleteMessage(String messageId, {String? chatId}) async {
+    if (chatId != null) {
+      await _firestore
+          .collection('chats')
+          .doc(chatId)
+          .collection('messages')
+          .doc(messageId)
+          .delete();
+      return;
+    }
+
+    final querySnapshot = await _firestore
+        .collectionGroup('messages')
+        .where(FieldPath.documentId, isEqualTo: messageId)
+        .limit(1)
+        .get();
+
+    if (querySnapshot.docs.isNotEmpty) {
+      await querySnapshot.docs.first.reference.delete();
+    }
+  }
+
   // Update typing status
   Future<void> updateTypingStatus(String chatId, String userId, bool isTyping) async {
     await _firestore.collection('chats').doc(chatId).update({

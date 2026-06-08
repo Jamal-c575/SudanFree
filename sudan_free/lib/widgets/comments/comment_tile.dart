@@ -238,8 +238,9 @@ class CommentTile extends StatelessWidget {
               title: Text(locale == 'ar' ? 'نسخ التعليق' : 'Copy comment'),
               onTap: () {
                 Clipboard.setData(ClipboardData(text: comment.content));
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
+                if (context.mounted) Navigator.pop(context);
+                final scaffoldMessenger = ScaffoldMessenger.of(context);
+                scaffoldMessenger.showSnackBar(
                   SnackBar(
                     content: Text(locale == 'ar' ? 'تم النسخ' : 'Copied'),
                     duration: const Duration(seconds: 1),
@@ -255,7 +256,7 @@ class CommentTile extends StatelessWidget {
                   style: const TextStyle(color: Colors.red),
                 ),
                 onTap: () {
-                  Navigator.pop(context);
+                  if (context.mounted) Navigator.pop(context);
                   onDelete!();
                 },
               ),

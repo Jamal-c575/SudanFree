@@ -409,6 +409,33 @@ class ChatProvider extends ChangeNotifier {
     }
   }
 
+  // Delete a chat message safely through the provider
+  Future<void> deleteMessage(String messageId, {String? chatId}) async {
+    try {
+      await _firestoreService.deleteMessage(messageId, chatId: chatId ?? _currentChat?.id);
+    } catch (e) {
+      _errorMessage = e.toString();
+      notifyListeners();
+    }
+  }
+
+  // Edit a chat message content
+  Future<void> editMessage(String messageId, String content, {String? chatId}) async {
+    try {
+      await _firestoreService.updateMessage(
+        messageId,
+        {
+          'content': content,
+          'isEdited': true,
+        },
+        chatId: chatId ?? _currentChat?.id,
+      );
+    } catch (e) {
+      _errorMessage = e.toString();
+      notifyListeners();
+    }
+  }
+
   // Update contract details (for editing)
   Future<void> updateContractDetails(String messageId, String details, double price) async {
     try {

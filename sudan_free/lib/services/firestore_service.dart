@@ -111,6 +111,13 @@ class FirestoreService {
   Future<void> incrementPostViews(String postId, [String? viewerId]) => _posts.incrementPostViews(postId, viewerId);
   Future<void> updatePost(String postId, Map<String, dynamic> data) => _firestore.collection('posts').doc(postId).update({...data, 'updatedAt': Timestamp.now()});
 
+  Future<void> voteInPoll(String postId, Map<String, dynamic> pollMap) async {
+    final docRef = _firestore.collection('posts').doc(postId);
+    await docRef.update({
+      'poll': pollMap
+    });
+  }
+
   // ==================== COMMENTS ====================
   Future<void> addComment(CommentModel comment, {String? postOwnerId, String? parentUserId}) => _posts.addComment(comment, postOwnerId: postOwnerId, parentUserId: parentUserId);
   Stream<List<CommentModel>> getPostComments(String postId, {int limit = 50}) => _posts.getComments(postId);
@@ -151,6 +158,7 @@ class FirestoreService {
   Stream<List<MessageModel>> getChatMessages(String chatId, {int limit = 50}) => _chat.getMessages(chatId);
   Future<ChatModel?> getChatById(String chatId) => _chat.getChatById(chatId);
   Future<void> updateMessage(String messageId, Map<String, dynamic> data, {String? chatId}) => _chat.updateMessage(messageId, data, chatId: chatId);
+  Future<void> deleteMessage(String messageId, {String? chatId}) => _chat.deleteMessage(messageId, chatId: chatId);
   Stream<List<ChatModel>> getUserChats(String userId) => _chat.getUserChats(userId);
   Future<List<ChatModel>> getUserChatsOnce(String userId) => _chat.getUserChatsOnce(userId);
   Future<ChatModel> getOrCreateChat({

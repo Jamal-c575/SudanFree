@@ -50,7 +50,8 @@ class _LoginScreenState extends State<LoginScreen> {
       if (error.startsWith('DEVICE_BANNED:')) {
         _showBanDialog(error.replaceFirst('DEVICE_BANNED:', ''));
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
+        final scaffoldMessenger = ScaffoldMessenger.of(context);
+        scaffoldMessenger.showSnackBar(
           SnackBar(
             content: Text(error),
             backgroundColor: AppColors.error,
@@ -120,7 +121,8 @@ class _LoginScreenState extends State<LoginScreen> {
               final authProvider = context.read<AuthProvider>();
               final success = await authProvider.resetPassword(email);
               if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
+                final scaffoldMessenger = ScaffoldMessenger.of(context);
+                scaffoldMessenger.showSnackBar(
                   SnackBar(
                     content: Text(
                       success
@@ -404,7 +406,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   isLoading: isLoading,
                   locale: locale,
                   onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    final scaffoldMessenger = ScaffoldMessenger.of(context);
+                    scaffoldMessenger.showSnackBar(
                       SnackBar(
                         content: Text(
                           locale == 'ar' 

@@ -12,8 +12,12 @@ import '../../core/constants/app_colors.dart';
 import '../../services/smart_search_service.dart';
 
 class SmartSearchDelegate extends SearchDelegate<UserModel?> {
+  final String? initialQuery;
+
+  SmartSearchDelegate({this.initialQuery}) : super(searchFieldLabel: 'ابحث عن مهارات، حرفيين، مواقع...');
+
   @override
-  String get searchFieldLabel => 'ابحث عن مهارات، حرفيين، مواقع...';
+  String get searchFieldLabel => super.searchFieldLabel ?? 'ابحث عن مهارات، حرفيين، مواقع...';
 
   @override
   ThemeData appBarTheme(BuildContext context) {

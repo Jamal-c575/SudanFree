@@ -216,7 +216,7 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
               text: isArabic ? 'حسناً' : 'OK',
               onPressed: () {
                 Navigator.pop(ctx); // close dialog
-                Navigator.pop(context); // close screen
+                if (context.mounted) Navigator.pop(context); // close screen
               },
             ),
           ),
@@ -277,19 +277,22 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
                     currentStep: _currentStep,
                     onStepContinue: () {
                       if (_currentStep == 0 && !_isPhoneVerified) {
-                        ScaffoldMessenger.of(context).showSnackBar(
+                        final scaffoldMessenger = ScaffoldMessenger.of(context);
+                        scaffoldMessenger.showSnackBar(
                           SnackBar(content: Text(isArabic ? 'يرجى تأكيد رقم الهاتف أولاً' : 'Please verify phone first')),
                         );
                         return;
                       }
                       if (_currentStep == 1 && _personalPhoto == null) {
-                        ScaffoldMessenger.of(context).showSnackBar(
+                        final scaffoldMessenger = ScaffoldMessenger.of(context);
+                        scaffoldMessenger.showSnackBar(
                           SnackBar(content: Text(isArabic ? 'يرجى التقاط صورة شخصية' : 'Please take a personal photo')),
                         );
                         return;
                       }
                       if (_currentStep == 2 && _idCardPhoto == null) {
-                        ScaffoldMessenger.of(context).showSnackBar(
+                        final scaffoldMessenger = ScaffoldMessenger.of(context);
+                        scaffoldMessenger.showSnackBar(
                           SnackBar(content: Text(isArabic ? 'يرجى رفع صورة الهوية' : 'Please upload ID card photo')),
                         );
                         return;

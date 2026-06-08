@@ -33,10 +33,18 @@ void main() {
     imageCache.maximumSize = ImageCacheConfig.maxMemoryCacheCount;
     imageCache.maximumSizeBytes = ImageCacheConfig.maxMemoryCacheSizeMB * 1024 * 1024;
     
-    // Initialize OneSignal (debug logging activated for this build)
-    OneSignal.Debug.setLogLevel(OSLogLevel.verbose);
-    OneSignal.initialize("5b1ec6d9-34d2-44ee-b985-d58a598e71d7");
-    OneSignal.Notifications.requestPermission(true);
+    // Initialize OneSignal with the current package API
+    try {
+      await OneSignal.Debug.setLogLevel(OSLogLevel.verbose);
+      const oneSignalAppId = String.fromEnvironment('ONESIGNAL_APP_ID', defaultValue: '5b1ec6d9-34d2-44ee-b985-d58a598e71d7');
+      OneSignal.initialize(oneSignalAppId);
+      // Prompt for permission on iOS only
+      try {
+        await OneSignal.Notifications.requestPermission(true);
+      } catch (_) {}
+    } catch (e) {
+      debugPrint('OneSignal init warning: $e');
+    }
 
     // Initialize network monitoring
     await NetworkService().initialize();
@@ -48,18 +56,23 @@ void main() {
         options: DefaultFirebaseOptions.currentPlatform,
       );
       
-      // Setup background message handler
-      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-      
-      // Initialize notifications
-      final notificationService = NotificationService();
-      await notificationService.initialize();
-      
-      // Enable Offline Persistence for Firestore
+      // Enable Offline Persistence for Firestore (Do this immediately after Firebase init)
       FirebaseFirestore.instance.settings = const Settings(
         persistenceEnabled: true, 
         cacheSizeBytes: 50 * 1024 * 1024, // 50 MB limit instead of unlimited
       );
+
+      // Setup background message handler
+      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+      
+      // Initialize notifications with a timeout so it doesn't freeze the app if offline
+      try {
+        final notificationService = NotificationService();
+        await notificationService.initialize().timeout(const Duration(seconds: 3));
+      } catch (e) {
+        debugPrint('Notification service init timed out or failed (likely offline): $e');
+      }
+      
       initTrace.putAttribute('status', 'success');
     } catch (e, stack) {
       debugPrint('Firebase initialization error: $e');

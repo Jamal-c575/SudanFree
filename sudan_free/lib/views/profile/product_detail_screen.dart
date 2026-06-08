@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../models/post_model.dart';
 import '../../widgets/common/linkable_text.dart';
@@ -15,6 +16,9 @@ import '../posts/comments_sheet.dart';
 import 'profile_screen.dart';
 import '../../services/cloudinary_service.dart';
 import '../../services/firestore_service.dart';
+import '../../providers/chat_provider.dart';
+import '../chat/chat_screen.dart';
+
 class ProductDetailScreen extends StatefulWidget {
   final PostModel product;
 
@@ -38,12 +42,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   }
 
   String _buildProductLink() =>
-      'https://jamall123.github.io/HOME_WEB/sudan-free.html?productId=${widget.product.id}';
+      'https://sudanfree.com/sudan-free.html?productId=${widget.product.id}';
 
   Future<void> _copyProductLink(bool isArabic) async {
     await Clipboard.setData(ClipboardData(text: _buildProductLink()));
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    scaffoldMessenger.showSnackBar(SnackBar(
       content: Row(children: [
         const Icon(Icons.check_circle, color: Colors.white, size: 18),
         const SizedBox(width: 8),
@@ -69,6 +74,126 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
+  Future<void> _handleOrderNow(BuildContext context, bool isArabic) async {
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    
+    // Fetch Shop User to get their WhatsApp number
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+    
+    try {
+      final shopUser = await FirestoreService().getUser(widget.product.userId);
+      if (!context.mounted) return;
+      Navigator.pop(context); // Pop loading
+      
+      if (shopUser == null) {
+        scaffoldMessenger.showSnackBar(SnackBar(content: Text(isArabic ? 'حدث خطأ، المتجر غير موجود' : 'Shop not found'), backgroundColor: Colors.red));
+        return;
+      }
+
+      final productUrl = _buildProductLink();
+      final message = isArabic 
+          ? 'مرحباً، أريد طلب هذا المنتج:\n${widget.product.caption?.split('\n').first ?? ''}\n$productUrl\n\nهل هو متوفر؟'
+          : 'Hello, I want to order this product:\n${widget.product.caption?.split('\n').first ?? ''}\n$productUrl\n\nIs it available?';
+
+      showModalBottomSheet(
+        context: context,
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        builder: (ctx) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  isArabic ? 'اطلب الآن عبر' : 'Order Now via',
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+                ListTile(
+                  leading: const CircleAvatar(backgroundColor: Colors.green, child: Icon(Icons.chat, color: Colors.white)),
+                  title: Text(isArabic ? 'واتساب' : 'WhatsApp'),
+                  onTap: () async {
+                    Navigator.pop(ctx);
+                    final number = shopUser.whatsappNumber ?? shopUser.phoneNumber;
+                    if (number == null || number.isEmpty) return;
+                    
+                    String formattedNumber = number;
+                    if (formattedNumber.startsWith('0')) {
+                      formattedNumber = '249${formattedNumber.substring(1)}';
+                    }
+                    if (!formattedNumber.startsWith('+')) {
+                      formattedNumber = '+$formattedNumber';
+                    }
+                    
+                    final whatsappUrl = Uri.parse('whatsapp://send?phone=$formattedNumber&text=${Uri.encodeComponent(message)}');
+                    try {
+                      await launchUrl(whatsappUrl);
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(isArabic ? 'لم يتم العثور على واتساب' : 'WhatsApp not found')));
+                      }
+                    }
+                  },
+                ),
+                ListTile(
+                  leading: CircleAvatar(backgroundColor: AppColors.primary, child: const Icon(Icons.message_rounded, color: Colors.white)),
+                  title: Text(isArabic ? 'محادثة داخل التطبيق' : 'In-App Chat'),
+                  onTap: () async {
+                    Navigator.pop(ctx);
+                    final authProvider = context.read<AuthProvider>();
+                    final currentUser = authProvider.user;
+                    if (currentUser == null) return;
+                    
+                    final chatProvider = context.read<ChatProvider>();
+                    final nav = Navigator.of(context);
+                    
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (_) => const Center(child: CircularProgressIndicator()),
+                    );
+
+                    try {
+                      final chat = await chatProvider.getOrCreateChat(
+                        currentUserId: currentUser.id,
+                        currentUserName: currentUser.name,
+                        currentUserImageUrl: currentUser.profileImageUrl,
+                        otherUserId: shopUser.id,
+                        otherUserName: shopUser.name,
+                        otherUserImageUrl: shopUser.profileImageUrl,
+                      );
+                      
+                      nav.pop(); // dismiss loading
+                      if (chat != null) {
+                        await chatProvider.sendMessage(
+                          senderId: currentUser.id,
+                          senderName: currentUser.name,
+                          receiverId: shopUser.id,
+                          content: message,
+                        );
+                        nav.push(MaterialPageRoute(builder: (_) => ChatScreen(chat: chat)));
+                      }
+                    } catch (e) {
+                      nav.pop();
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      Navigator.pop(context); // Pop loading
+      scaffoldMessenger.showSnackBar(SnackBar(content: Text(isArabic ? 'حدث خطأ' : 'An error occurred'), backgroundColor: Colors.red));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final locale = context.watch<LocaleProvider>().locale.languageCode;
@@ -85,7 +210,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         : '';
 
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -121,29 +245,56 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         ],
       ),
 
-      bottomNavigationBar: (isMyProduct && isShopOwner) ? SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-          child: SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: _shareInCommunity,
-              icon: const Icon(Icons.group_rounded, size: 18),
-              label: Text(
-                isArabic ? 'نشر في المجتمع' : 'Post to Community',
-                style: const TextStyle(fontSize: 13),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 13),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
+      bottomNavigationBar: (isMyProduct && isShopOwner) 
+        ? SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _shareInCommunity,
+                  icon: const Icon(Icons.group_rounded, size: 18),
+                  label: Text(
+                    isArabic ? 'نشر في المجتمع' : 'Post to Community',
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
               ),
             ),
-          ),
-        ),
-      ) : null,
+          ) 
+        : (!isMyProduct 
+            ? SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () => _handleOrderNow(context, isArabic),
+                      icon: const Icon(Icons.shopping_cart_checkout_rounded, size: 20),
+                      label: Text(
+                        isArabic ? 'اطلب الآن' : 'Order Now',
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green.shade600,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                        elevation: 4,
+                      ),
+                    ),
+                  ),
+                ),
+              )
+            : null),
 
       body: SingleChildScrollView(
         child: Column(

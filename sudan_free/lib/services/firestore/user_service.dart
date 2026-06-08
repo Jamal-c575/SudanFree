@@ -82,6 +82,108 @@ class UserFirestoreService {
     await batch.commit();
   }
 
+  // Master-Apprentice System: Send request to join as apprentice
+  Future<void> sendApprenticeshipRequest(String requesterId, String targetMasterId) async {
+    final masterRef = _firestore.collection('users').doc(targetMasterId);
+    await masterRef.update({
+      'pendingApprenticeRequests': FieldValue.arrayUnion([requesterId])
+    });
+  }
+
+  // Master-Apprentice System: Send invite to become an apprentice
+  Future<void> sendMasterInvite(String masterId, String targetApprenticeId) async {
+    final apprenticeRef = _firestore.collection('users').doc(targetApprenticeId);
+    await apprenticeRef.update({
+      'pendingMasterRequests': FieldValue.arrayUnion([masterId])
+    });
+  }
+
+  // Master-Apprentice System: Handle join request (Master's side)
+  Future<void> handleApprenticeshipRequest(String masterId, String apprenticeId, bool accept) async {
+    final batch = _firestore.batch();
+    final masterRef = _firestore.collection('users').doc(masterId);
+    final apprenticeRef = _firestore.collection('users').doc(apprenticeId);
+
+    batch.update(masterRef, {
+      'pendingApprenticeRequests': FieldValue.arrayRemove([apprenticeId])
+    });
+
+    if (accept) {
+      batch.update(masterRef, {
+        'apprenticesIds': FieldValue.arrayUnion([apprenticeId])
+      });
+      batch.update(apprenticeRef, {
+        'masterId': masterId
+      });
+    }
+    await batch.commit();
+  }
+
+  // Master-Apprentice System: Handle invite (Apprentice's side)
+  Future<void> handleMasterInvite(String apprenticeId, String masterId, bool accept) async {
+    final batch = _firestore.batch();
+    final masterRef = _firestore.collection('users').doc(masterId);
+    final apprenticeRef = _firestore.collection('users').doc(apprenticeId);
+
+    batch.update(apprenticeRef, {
+      'pendingMasterRequests': FieldValue.arrayRemove([masterId])
+    });
+
+    if (accept) {
+      batch.update(masterRef, {
+        'apprenticesIds': FieldValue.arrayUnion([apprenticeId])
+      });
+      batch.update(apprenticeRef, {
+        'masterId': masterId
+      });
+    }
+    await batch.commit();
+  }
+
+  // Master-Apprentice System: Send Leave Request (Apprentice -> Master)
+  Future<void> sendLeaveRequest(String apprenticeId, String masterId) async {
+    final masterRef = _firestore.collection('users').doc(masterId);
+    await masterRef.update({
+      'pendingLeaveRequests': FieldValue.arrayUnion([apprenticeId])
+    });
+  }
+
+  // Master-Apprentice System: Handle Leave Request (Master's side)
+  Future<void> handleLeaveRequest(String masterId, String apprenticeId, bool accept) async {
+    final batch = _firestore.batch();
+    final masterRef = _firestore.collection('users').doc(masterId);
+    final apprenticeRef = _firestore.collection('users').doc(apprenticeId);
+
+    batch.update(masterRef, {
+      'pendingLeaveRequests': FieldValue.arrayRemove([apprenticeId])
+    });
+
+    if (accept) {
+      batch.update(masterRef, {
+        'apprenticesIds': FieldValue.arrayRemove([apprenticeId])
+      });
+      batch.update(apprenticeRef, {
+        'masterId': null
+      });
+    }
+    await batch.commit();
+  }
+
+  // Master-Apprentice System: Immediate Termination (Master firing apprentice)
+  Future<void> terminateApprentice(String masterId, String apprenticeId) async {
+    final batch = _firestore.batch();
+    final masterRef = _firestore.collection('users').doc(masterId);
+    final apprenticeRef = _firestore.collection('users').doc(apprenticeId);
+
+    batch.update(masterRef, {
+      'apprenticesIds': FieldValue.arrayRemove([apprenticeId])
+    });
+    batch.update(apprenticeRef, {
+      'masterId': null
+    });
+    await batch.commit();
+  }
+
   // Toggle Follow
   Future<void> toggleFollow(String followerId, String targetId, bool isFollowing) async {
     final batch = _firestore.batch();
@@ -291,7 +393,7 @@ class UserFirestoreService {
   // Get both freelancers and shops paginated (for smart search)
   Future<Map<String, dynamic>> getProvidersPaginated({
     DocumentSnapshot? startAfterDoc,
-    int limit = 200,
+    int limit = 50,
   }) async {
     final trace = PerformanceService().startTrace('query_all_providers');
     trace.putAttribute('limit', limit.toString());
@@ -337,6 +439,7 @@ class UserFirestoreService {
           'techService', 'tech service', 'TechService', 'Tech Service',
           'freelancer ', 'Freelancer ', 'shop ', 'Shop '
         ])
+        .limit(300) // Performance fix: limit map markers
         .get();
         
     return snapshot.docs
@@ -402,7 +505,7 @@ class UserFirestoreService {
   }
 
   // Stream freelancers for variety (legacy support if needed)
-  Stream<List<UserModel>> getFreelancersStream({String? skill, int limit = 100}) {
+  Stream<List<UserModel>> getFreelancersStream({String? skill, int limit = 30}) {
     return _firestore
         .collection('users')
         .where('role', whereIn: [
@@ -435,6 +538,18 @@ class UserFirestoreService {
     final notifications = await _firestore.collection('notifications').where('userId', isEqualTo: userId).get();
     allRefs.addAll(notifications.docs.map((d) => d.reference));
     
+    // Cleanup missing critical collections
+    final jobsClient = await _firestore.collection('jobs').where('clientId', isEqualTo: userId).get();
+    allRefs.addAll(jobsClient.docs.map((d) => d.reference));
+    final jobsFreelancer = await _firestore.collection('jobs').where('assignedFreelancerId', isEqualTo: userId).get();
+    allRefs.addAll(jobsFreelancer.docs.map((d) => d.reference));
+    final paymentsClient = await _firestore.collection('payments').where('clientId', isEqualTo: userId).get();
+    allRefs.addAll(paymentsClient.docs.map((d) => d.reference));
+    final paymentsFreelancer = await _firestore.collection('payments').where('freelancerId', isEqualTo: userId).get();
+    allRefs.addAll(paymentsFreelancer.docs.map((d) => d.reference));
+    final stories = await _firestore.collection('stories').where('userId', isEqualTo: userId).get();
+    allRefs.addAll(stories.docs.map((d) => d.reference));
+    
     // Clean up subcollections
     final portfolio = await _firestore.collection('users').doc(userId).collection('portfolio').get();
     allRefs.addAll(portfolio.docs.map((d) => d.reference));
@@ -454,14 +569,89 @@ class UserFirestoreService {
   }
   // Update user profile images across posts (Legacy/Batch)
   Future<void> updateUserProfileImages(String userId, String? imageUrl, String? userName) async {
-    final batch = _firestore.batch();
     final postsQuery = await _firestore.collection('posts').where('userId', isEqualTo: userId).get();
-    for (var doc in postsQuery.docs) {
-      final updates = <String, dynamic>{};
-      if (imageUrl != null) updates['userImageUrl'] = imageUrl;
-      if (userName != null) updates['userName'] = userName;
-      if (updates.isNotEmpty) batch.update(doc.reference, updates);
+    
+    // Process in batches of 400 to prevent exceeding Firestore limit (500)
+    for (var i = 0; i < postsQuery.docs.length; i += 400) {
+      final batch = _firestore.batch();
+      final end = (i + 400 < postsQuery.docs.length) ? i + 400 : postsQuery.docs.length;
+      
+      for (var j = i; j < end; j++) {
+        final doc = postsQuery.docs[j];
+        final updates = <String, dynamic>{};
+        if (imageUrl != null) updates['userImageUrl'] = imageUrl;
+        if (userName != null) updates['userName'] = userName;
+        if (updates.isNotEmpty) batch.update(doc.reference, updates);
+      }
+      
+      await batch.commit();
     }
+  }
+
+  // ==================== نظام التزكية والضامن (Guarantor System) ====================
+  
+  /// يقوم خبير (Top Pro) بتزكية حرفي جديد
+  Future<void> vouchForUser(String targetUserId, UserModel guarantor) async {
+    final userRef = _firestore.collection('users').doc(targetUserId);
+    
+    final vouchData = {
+      'id': guarantor.id,
+      'name': guarantor.name,
+      'profileImageUrl': guarantor.profileImageUrl,
+      'level': guarantor.verificationStatus.name, // e.g., 'verified'
+      'timestamp': Timestamp.now(),
+    };
+
+    await userRef.update({
+      'vouchedBy': FieldValue.arrayUnion([vouchData])
+    });
+
+    // إرسال إشعار للحرفي
+    final notifRef = _firestore.collection('notifications').doc();
+    final notification = NotificationModel(
+      id: notifRef.id,
+      userId: targetUserId,
+      type: NotificationType.system,
+      title: 'تزكية جديدة 🌟',
+      message: 'قام ${guarantor.name} بتزكيتك كحرفي موثوق!',
+      createdAt: Timestamp.now(),
+      relatedId: guarantor.id,
+    );
+    await notifRef.set(notification.toFirestore());
+  }
+
+  /// معاقبة الضامن (المزكي) إذا أخطأ الحرفي الذي زكّاه
+  /// يتم استدعاء هذا عند تلقي بلاغ سلبي (Fraud Report) مؤكد
+  Future<void> penalizeGuarantors(UserModel defaultingUser, int penaltyPoints) async {
+    if (defaultingUser.vouchedBy.isEmpty) return;
+
+    final batch = _firestore.batch();
+    
+    // سحب نقاط من كل شخص زكّى هذا الحرفي (لأنهم يتحملون جزء من المسؤولية المجتمعية)
+    for (var guarantorData in defaultingUser.vouchedBy) {
+      final guarantorId = guarantorData['id'] as String;
+      final guarantorRef = _firestore.collection('users').doc(guarantorId);
+      
+      // نحن نخصم من نقاط السمعة (totalJobs أو ما يعادلها في حساب الـ Reputation)
+      // هنا سنقوم بزيادة negativeReports للضامن كعقوبة غير مباشرة أو خصم تقييم
+      batch.update(guarantorRef, {
+        'negativeReports': FieldValue.increment(1) // عقوبة التزكية الخاطئة
+      });
+
+      // إشعار الضامن بأنه تم معاقبته بسبب من زكّاه
+      final notifRef = _firestore.collection('notifications').doc();
+      final notification = NotificationModel(
+        id: notifRef.id,
+        userId: guarantorId,
+        type: NotificationType.system,
+        title: 'تحذير تزكية ⚠️',
+        message: 'تم تلقي شكاوى مؤكدة ضد ${defaultingUser.name} الذي قمت بتزكيته. أثر ذلك سلباً على سمعتك قليلاً.',
+        createdAt: Timestamp.now(),
+        relatedId: defaultingUser.id,
+      );
+      batch.set(notifRef, notification.toFirestore());
+    }
+
     await batch.commit();
   }
 }

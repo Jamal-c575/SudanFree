@@ -109,7 +109,8 @@ class _CreatePortfolioProjectScreenState extends State<CreatePortfolioProjectScr
   Future<void> _submitProject() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedImages.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      final scaffoldMessenger = ScaffoldMessenger.of(context);
+      scaffoldMessenger.showSnackBar(SnackBar(
         content: Text(_isAr(context) ? 'يرجى إضافة صورة واحدة على الأقل' : 'Please add at least one image'),
         backgroundColor: Colors.orange,
       ));
@@ -154,15 +155,17 @@ class _CreatePortfolioProjectScreenState extends State<CreatePortfolioProjectScr
       await FirestoreService().addPortfolioProject(project);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        final scaffoldMessenger = ScaffoldMessenger.of(context);
+        scaffoldMessenger.showSnackBar(SnackBar(
           content: Text(_isAr(context) ? 'تمت إضافة المشروع بنجاح! ✅' : 'Project added successfully! ✅'),
           backgroundColor: AppColors.success,
         ));
-        Navigator.pop(context);
+        if (context.mounted) Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        final scaffoldMessenger = ScaffoldMessenger.of(context);
+        scaffoldMessenger.showSnackBar(SnackBar(
           content: Text('${_isAr(context) ? "خطأ" : "Error"}: $e'),
           backgroundColor: Colors.red,
         ));
@@ -175,7 +178,8 @@ class _CreatePortfolioProjectScreenState extends State<CreatePortfolioProjectScr
   void _showCollaboratorsPicker() {
     final user = context.read<AuthProvider>().user;
     if (user == null || user.partnerIds.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      final scaffoldMessenger = ScaffoldMessenger.of(context);
+      scaffoldMessenger.showSnackBar(SnackBar(
         content: Text(_isAr(context) ? 'ليس لديك زملاء مضافين حالياً' : 'You have no colleagues added currently'),
         backgroundColor: Colors.orange,
       ));

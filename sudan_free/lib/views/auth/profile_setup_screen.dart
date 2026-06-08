@@ -51,8 +51,26 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   int _currentStep = 0;
 
 
-  /// Helper: switch role and clear stale categories / shop category
   void _switchRole(UserRole role) {
+    // ── Security Lock: Prevent jumping between Provider Types ──
+    if (widget.existingUser != null) {
+      final oldRole = widget.existingUser!.role;
+      if (oldRole != UserRole.client && role != UserRole.client && role != oldRole) {
+        final locale = context.read<LocaleProvider>().locale.languageCode;
+        final scaffoldMessenger = ScaffoldMessenger.of(context);
+        scaffoldMessenger.showSnackBar(
+          SnackBar(
+            content: Text(locale == 'ar' 
+                ? 'لا يمكنك تحويل الحساب لمهنة جديدة للحفاظ على تقييماتك السابقة. يمكنك البقاء كعميل أو كمهنتك الأصلية فقط.'
+                : 'You cannot switch to a new provider type to protect your reviews. You can only be a Client or your original profession.'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+        return; // Reject the switch
+      }
+    }
+
     setState(() {
       if (_selectedRole != role) {
         _selectedCategories.clear();
@@ -211,7 +229,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                 _selectedLocality = _matchLocality(place.locality ?? place.subAdministrativeArea ?? '', _selectedState!);
               }
            });
-           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم تحديد الموقع بنجاح'), backgroundColor: AppColors.success));
+           final scaffoldMessenger = ScaffoldMessenger.of(context);
+           scaffoldMessenger.showSnackBar(const SnackBar(content: Text('تم تحديد الموقع بنجاح'), backgroundColor: AppColors.success));
         }
       }
     } catch (e) {
@@ -225,7 +244,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     setState(() { _isVerifyingGPS = true; });
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      final scaffoldMessenger = ScaffoldMessenger.of(context);
+      scaffoldMessenger.showSnackBar(SnackBar(
         content: Row(
           children: [
             const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)),
@@ -246,7 +266,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
       if (gpsResult == null) {
         // GPS unavailable (permissions denied or service off)
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        final scaffoldMessenger = ScaffoldMessenger.of(context);
+        scaffoldMessenger.showSnackBar(SnackBar(
           content: Text(locale == 'ar'
               ? 'لم نتمكن من الوصول لخدمات الموقع. تأكد من تفعيل GPS والأذونات.'
               : 'Could not access location services. Make sure GPS and permissions are enabled.'),
@@ -262,14 +283,16 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       });
 
       if (gpsResult.isInSudan) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        final scaffoldMessenger = ScaffoldMessenger.of(context);
+        scaffoldMessenger.showSnackBar(SnackBar(
           content: Text(locale == 'ar'
               ? '✅ تم التحقق بنجاح! أنت داخل السودان.'
               : '✅ Verified successfully! You are in Sudan.'),
           backgroundColor: AppColors.success,
         ));
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        final scaffoldMessenger = ScaffoldMessenger.of(context);
+        scaffoldMessenger.showSnackBar(SnackBar(
           content: Text(locale == 'ar'
               ? 'يبدو أنك خارج السودان حالياً. يمكنك التسجيل كعميل.'
               : 'It appears you are outside Sudan. You can register as a client.'),
@@ -279,7 +302,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        final scaffoldMessenger = ScaffoldMessenger.of(context);
+        scaffoldMessenger.showSnackBar(SnackBar(
           content: Text(locale == 'ar' ? 'حدث خطأ أثناء التحقق من الموقع' : 'Error verifying location'),
           backgroundColor: AppColors.error,
         ));
@@ -347,7 +371,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     if (_selectedRole != UserRole.shop) {
       final totalSelected = _selectedCategories.where((c) => c != JobCategory.other).length + _customJobTitles.length;
       if (totalSelected >= 2) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        final scaffoldMessenger = ScaffoldMessenger.of(context);
+        scaffoldMessenger.showSnackBar(
           SnackBar(
             content: Text(locale == 'ar' ? 'عذراً، يمكنك اختيار مسميين وظيفيين كحد أقصى' : 'Sorry, you can select up to 2 categories'),
             backgroundColor: Colors.orange,
@@ -357,7 +382,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       }
     } else {
       if (_customJobTitles.isNotEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        final scaffoldMessenger = ScaffoldMessenger.of(context);
+        scaffoldMessenger.showSnackBar(
           SnackBar(
             content: Text(locale == 'ar' ? 'عذراً، يمكنك إضافة نوع متجر مخصص واحد فقط' : 'Sorry, you can only add one custom shop type'),
             backgroundColor: Colors.orange,
@@ -447,7 +473,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   void _confirmAddCustomTitle(String locale) {
     final title = _customSkillController.text.trim();
     if (title.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      final scaffoldMessenger = ScaffoldMessenger.of(context);
+      scaffoldMessenger.showSnackBar(
         SnackBar(
           content: Text(locale == 'ar' ? 'الرجاء الكتابة أولاً' : 'Please type first'),
           backgroundColor: Colors.orange,
@@ -456,7 +483,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       return;
     }
     if (_customJobTitles.contains(title)) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      final scaffoldMessenger = ScaffoldMessenger.of(context);
+      scaffoldMessenger.showSnackBar(
         SnackBar(
           content: Text(locale == 'ar' ? 'هذا المسمى مضاف بالفعل' : 'This title is already added'),
           backgroundColor: Colors.orange,
@@ -660,7 +688,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     } catch (e, stack) {
       success = false;
       if (mounted) {
-        Navigator.pop(context); // Close loading overlay
+        if (context.mounted) Navigator.pop(context); // Close loading overlay
         AppErrorHandler.show(context, e, stack, logContext: 'ProfileSetupScreen.handleSubmit');
       }
       return;
@@ -668,7 +696,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
     // ── Always close loading overlay first ──
     if (mounted && Navigator.canPop(context)) {
-      Navigator.pop(context);
+      if (context.mounted) Navigator.pop(context);
     }
 
     if (!mounted) return;
@@ -676,8 +704,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     if (success) {
       if (widget.existingUser != null) {
         // تحديث الحساب
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (context.mounted) Navigator.pop(context);
+        final scaffoldMessenger = ScaffoldMessenger.of(context);
+        scaffoldMessenger.showSnackBar(
           const SnackBar(
             content: Text('تم حفظ البيانات بنجاح'),
             backgroundColor: AppColors.success,
@@ -686,7 +715,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       } else {
         // إنشاء حساب جديد — app.dart سيتولى التوجيه تلقائياً إلى HomeScreen
         // بعد notifyListeners() في createUserProfile
-        ScaffoldMessenger.of(context).showSnackBar(
+        final scaffoldMessenger = ScaffoldMessenger.of(context);
+        scaffoldMessenger.showSnackBar(
           const SnackBar(
             content: Text('تم إنشاء الحساب بنجاح! 🎉'),
             backgroundColor: AppColors.success,
@@ -700,7 +730,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       // ── Operation returned false without exception → show error ──
       final locale = context.read<LocaleProvider>().locale.languageCode;
       final errorMsg = context.read<AuthProvider>().errorMessage;
-      ScaffoldMessenger.of(context).showSnackBar(
+      final scaffoldMessenger = ScaffoldMessenger.of(context);
+      scaffoldMessenger.showSnackBar(
         SnackBar(
           content: Text(errorMsg ?? (locale == 'ar' 
               ? 'فشل في حفظ البيانات. يرجى المحاولة مرة أخرى.' 
@@ -752,7 +783,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           onStepContinue: () {
           if (_currentStep == 0) {
             if (_isLoadingRegion || _isVerifyingGPS) {
-              ScaffoldMessenger.of(context).showSnackBar(
+              final scaffoldMessenger = ScaffoldMessenger.of(context);
+              scaffoldMessenger.showSnackBar(
                 SnackBar(
                   content: Text(locale == 'ar' ? 'يرجى الانتظار حتى يكتمل التحقق من الموقع' : 'Please wait for location verification to complete'),
                   backgroundColor: AppColors.warning,
@@ -761,7 +793,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
               return;
             }
             if (_selectedRole == null) {
-              ScaffoldMessenger.of(context).showSnackBar(
+              final scaffoldMessenger = ScaffoldMessenger.of(context);
+              scaffoldMessenger.showSnackBar(
                 SnackBar(
                   content: Text(locale == 'ar' ? 'اختر نوع الحساب' : 'Select an account type'),
                   backgroundColor: AppColors.warning,
@@ -774,7 +807,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             final nameText = _nameController.text.trim();
             final nameRegExp = RegExp(r'[a-zA-Z\u0600-\u06FF]'); // يحتوي على أحرف حقيقية (عربية أو إنجليزية) ولا يقبل مسافات فقط أو رموز
             if (nameText.length < 2 || !nameRegExp.hasMatch(nameText)) {
-              ScaffoldMessenger.of(context).showSnackBar(
+              final scaffoldMessenger = ScaffoldMessenger.of(context);
+              scaffoldMessenger.showSnackBar(
                 SnackBar(
                   content: Text(locale == 'ar' ? 'يرجى كتابة اسم حقيقي (أحرف فقط)' : 'Please enter a valid real name (letters only)'),
                   backgroundColor: AppColors.warning,
@@ -786,7 +820,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             final phoneText = _phoneController.text.trim();
             final phoneRegExp = RegExp(r'^\+?[0-9]{9,15}$'); // أرقام فقط وقد يبدأ بـ + وطوله منطقي
             if (phoneText.isEmpty || !phoneRegExp.hasMatch(phoneText)) {
-              ScaffoldMessenger.of(context).showSnackBar(
+              final scaffoldMessenger = ScaffoldMessenger.of(context);
+              scaffoldMessenger.showSnackBar(
                 SnackBar(
                   content: Text(locale == 'ar' ? 'رقم الهاتف إجباري ويجب أن يكون صحيحاً' : 'A valid phone number is required'),
                   backgroundColor: AppColors.warning,
@@ -797,7 +832,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           }
           if (_currentStep == 2 && (_selectedRole == UserRole.freelancer || _selectedRole == UserRole.techService || _selectedRole == UserRole.privateService || _selectedRole == UserRole.shop)) {
              if (_selectedState == null) {
-                ScaffoldMessenger.of(context).showSnackBar(
+                final scaffoldMessenger = ScaffoldMessenger.of(context);
+                scaffoldMessenger.showSnackBar(
                   SnackBar(
                     content: Text(locale == 'ar' ? 'يجب تحديد الولاية لمقدمي الخدمات العامة والمتاجر' : 'State must be selected for general services and shops'),
                     backgroundColor: AppColors.warning,
@@ -807,7 +843,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
              }
              // التحقق من المحلية
              if (_selectedLocality == null) {
-                ScaffoldMessenger.of(context).showSnackBar(
+                final scaffoldMessenger = ScaffoldMessenger.of(context);
+                scaffoldMessenger.showSnackBar(
                   SnackBar(
                     content: Text(locale == 'ar' ? 'يجب تحديد المحلية' : 'Locality must be selected'),
                     backgroundColor: AppColors.warning,
@@ -847,7 +884,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                     isLoading: isLastStep && isLoading,
                     enabled: !isCheckingLocation,
                     onPressed: isCheckingLocation ? () {
-                      ScaffoldMessenger.of(context).showSnackBar(
+                      final scaffoldMessenger = ScaffoldMessenger.of(context);
+                      scaffoldMessenger.showSnackBar(
                         SnackBar(
                           content: Text(locale == 'ar' ? 'يرجى الانتظار قليلاً حتى يكتمل تحديد الموقع' : 'Please wait while location is being detected'),
                           backgroundColor: AppColors.warning,
@@ -1303,7 +1341,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                         // "أخرى" doesn't count toward the 2-category limit
                         final totalSelected = _selectedCategories.where((c) => c != JobCategory.other).length + _customJobTitles.length;
                         if (category != JobCategory.other && totalSelected >= 2) {
-                          ScaffoldMessenger.of(context).showSnackBar(
+                          final scaffoldMessenger = ScaffoldMessenger.of(context);
+                          scaffoldMessenger.showSnackBar(
                             SnackBar(
                               content: Text(locale == 'ar' ? 'عذراً، يمكنك اختيار مسميين وظيفيين كحد أقصى' : 'Sorry, you can select up to 2 categories'),
                               backgroundColor: Colors.orange,

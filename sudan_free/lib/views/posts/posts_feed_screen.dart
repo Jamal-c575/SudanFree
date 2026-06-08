@@ -131,22 +131,23 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
       HapticFeedback.mediumImpact();
     }
     
+    if (!mounted) return;
+    
     final locale = context.read<LocaleProvider>().locale.languageCode;
     setState(() {
       _pinnedGroup = group;
     });
     
-    if (mounted) {
-      final msgAr = isUnpin ? 'تم إلغاء تثبيت الفئة' : 'تم تثبيت هذه الفئة لتكون الافتراضية 📌';
-      final msgEn = isUnpin ? 'Category unpinned' : 'Category pinned as default 📌';
-      ScaffoldMessenger.of(context).showSnackBar(
+    final msgAr = isUnpin ? 'تم إلغاء تثبيت الفئة' : 'تم تثبيت هذه الفئة لتكون الافتراضية 📌';
+    final msgEn = isUnpin ? 'Category unpinned' : 'Category pinned as default 📌';
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+      scaffoldMessenger.showSnackBar(
         SnackBar(
           content: Text(locale == 'ar' ? msgAr : msgEn),
           backgroundColor: isUnpin ? Colors.grey[800] : AppColors.primary,
           behavior: SnackBarBehavior.floating,
         ),
       );
-    }
   }
 
   Future<void> _fetchAds() async {

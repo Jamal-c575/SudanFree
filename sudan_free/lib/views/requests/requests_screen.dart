@@ -8,11 +8,10 @@ import '../../providers/auth_provider.dart';
 import '../../providers/locale_provider.dart';
 import '../../core/constants/app_colors.dart';
 
-import '../../widgets/common/loading_widget.dart';
+
 import 'add_request_screen.dart';
 import 'request_details_screen.dart';
 import 'package:shimmer/shimmer.dart';
-import '../home/home_screen.dart';
 import '../../widgets/common/adaptive_fab_padding.dart';
 import '../../widgets/buttons/smart_draggable_fab.dart';
 import '../../services/smart_guide_service.dart';
@@ -273,7 +272,8 @@ class _RequestCard extends StatelessWidget {
       try {
         await FirestoreService().deleteRequest(request.id);
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
+          final scaffoldMessenger = ScaffoldMessenger.of(context);
+          scaffoldMessenger.showSnackBar(
             SnackBar(
               content: Text(locale == 'ar' ? 'تم حذف الطلب بنجاح' : 'Request deleted successfully'),
               backgroundColor: AppColors.success,
@@ -282,7 +282,8 @@ class _RequestCard extends StatelessWidget {
         }
       } catch (e) {
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
+          final scaffoldMessenger = ScaffoldMessenger.of(context);
+          scaffoldMessenger.showSnackBar(
             SnackBar(
               content: Text('${locale == 'ar' ? 'حدث خطأ: ' : 'Error: '}$e'),
               backgroundColor: Colors.red,

@@ -56,7 +56,8 @@ class _PortfolioProjectDetailScreenState extends State<PortfolioProjectDetailScr
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
+          final scaffoldMessenger = ScaffoldMessenger.of(context);
+          scaffoldMessenger.showSnackBar(
             SnackBar(content: Text('لا يمكن فتح الرابط: $url')),
           );
         }

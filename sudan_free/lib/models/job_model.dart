@@ -59,6 +59,8 @@ enum JobCategory {
   dumpTruckDirt,                 // قلابات تراب
   dumpTruckSand,                 // قلابات رملة
   dumpTruckConcrete,             // قلابات خرسانة
+  // Bartering
+  bartering,                     // مقايضة
   // Other
   other,
 }
@@ -115,6 +117,7 @@ class JobModel {
   final double budgetMax;
   final String currency;
   final DateTime deadline;
+  final bool isUrgent; // SOS / Urgent Services Layer
   final JobStatus status;
   final String? assignedFreelancerId;
   final String? assignedFreelancerName;
@@ -138,6 +141,7 @@ class JobModel {
     required this.budgetMax,
     this.currency = 'SDG',
     required this.deadline,
+    this.isUrgent = false,
     this.status = JobStatus.open,
     this.assignedFreelancerId,
     this.assignedFreelancerName,
@@ -167,6 +171,7 @@ class JobModel {
       budgetMax: (data['budgetMax'] as num?)?.toDouble() ?? 0,
       currency: data['currency'] ?? 'SDG',
       deadline: (data['deadline'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      isUrgent: data['isUrgent'] ?? false,
       status: JobStatus.values.firstWhere(
         (e) => e.name == data['status'],
         orElse: () => JobStatus.open,
@@ -195,6 +200,7 @@ class JobModel {
       'budgetMax': budgetMax,
       'currency': currency,
       'deadline': Timestamp.fromDate(deadline),
+      'isUrgent': isUrgent,
       'status': status.name,
       'assignedFreelancerId': assignedFreelancerId,
       'assignedFreelancerName': assignedFreelancerName,
@@ -220,6 +226,7 @@ class JobModel {
     double? budgetMax,
     String? currency,
     DateTime? deadline,
+    bool? isUrgent,
     JobStatus? status,
     String? assignedFreelancerId,
     String? assignedFreelancerName,
@@ -242,6 +249,7 @@ class JobModel {
       budgetMax: budgetMax ?? this.budgetMax,
       currency: currency ?? this.currency,
       deadline: deadline ?? this.deadline,
+      isUrgent: isUrgent ?? this.isUrgent,
       status: status ?? this.status,
       assignedFreelancerId: assignedFreelancerId ?? this.assignedFreelancerId,
       assignedFreelancerName: assignedFreelancerName ?? this.assignedFreelancerName,
@@ -312,6 +320,7 @@ class JobModel {
         JobCategory.dumpTruckDirt: 'Dump Truck (Dirt)',
         JobCategory.dumpTruckSand: 'Dump Truck (Sand)',
         JobCategory.dumpTruckConcrete: 'Dump Truck (Concrete)',
+        JobCategory.bartering: 'Bartering',
         JobCategory.other: 'Other',
       };
       return namesEn[category] ?? 'Other';
@@ -366,6 +375,7 @@ class JobModel {
       JobCategory.dumpTruckDirt: 'قلابات تراب',
       JobCategory.dumpTruckSand: 'قلابات رملة',
       JobCategory.dumpTruckConcrete: 'قلابات خرسانة',
+      JobCategory.bartering: 'سوق المقايضة (بدون أموال)',
       JobCategory.other: 'أخرى',
     };
     return namesAr[category] ?? 'أخرى';

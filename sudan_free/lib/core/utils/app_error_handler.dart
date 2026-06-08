@@ -65,7 +65,8 @@ class AppErrorHandler {
 
     final message = customMessage ?? toArabic(error);
 
-    ScaffoldMessenger.of(context).showSnackBar(
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    scaffoldMessenger.showSnackBar(
       SnackBar(
         content: Row(
           children: [
@@ -85,7 +86,8 @@ class AppErrorHandler {
   /// عرض رسالة نجاح للمستخدم
   static void showSuccess(BuildContext context, String message) {
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    scaffoldMessenger.showSnackBar(
       SnackBar(
         content: Row(
           children: [

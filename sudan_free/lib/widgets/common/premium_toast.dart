@@ -29,7 +29,8 @@ class PremiumToast {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final config = _getConfig(type);
 
-    ScaffoldMessenger.of(context).showSnackBar(
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    scaffoldMessenger.showSnackBar(
       SnackBar(
         content: Row(
           children: [

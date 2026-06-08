@@ -29,7 +29,7 @@ class SearchProvider extends ChangeNotifier {
   /// Fetch and cache providers for suggestions
   Future<void> _ensureCached() async {
     if (_cachedProviders.isNotEmpty) return;
-    final result = await _firestoreService.getProvidersPaginated(limit: 200);
+    final result = await _firestoreService.getProvidersPaginated(limit: 50);
     _cachedProviders = List<UserModel>.from(result['users']);
   }
 

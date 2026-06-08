@@ -218,4 +218,58 @@ class JobFirestoreService {
       'updatedAt': FieldValue.serverTimestamp(),
     });
   }
+
+  // ==================== AI Fair-Pricing Broker (السمسار الذكي للتسعير العادل) ====================
+
+  /// يحسب السعر العادل (Fair Market Value) بناءً على متوسط الوظائف السابقة المكتملة
+  Future<double?> calculateFairPrice(JobCategory category) async {
+    try {
+      final snapshot = await _firestore.collection('jobs')
+          .where('category', isEqualTo: category.name)
+          .where('status', isEqualTo: JobStatus.completed.name)
+          .orderBy('createdAt', descending: true)
+          .limit(20) // نأخذ آخر 20 وظيفة مكتملة كعينة لمتوسط السوق
+          .get();
+
+      if (snapshot.docs.isEmpty) return null;
+
+      List<double> prices = [];
+      for (var doc in snapshot.docs) {
+        final data = doc.data();
+        final budgetMin = (data['budgetMin'] as num?)?.toDouble() ?? 0.0;
+        final budgetMax = (data['budgetMax'] as num?)?.toDouble() ?? 0.0;
+        if (budgetMax > 0) {
+          prices.add((budgetMin + budgetMax) / 2);
+        }
+      }
+
+      if (prices.isEmpty) return null;
+
+      // حساب الوسيط (Median) لتجنب الأسعار الشاذة (Outliers)
+      prices.sort();
+      double median;
+      int middle = prices.length ~/ 2;
+      if (prices.length % 2 == 1) {
+        median = prices[middle];
+      } else {
+        median = (prices[middle - 1] + prices[middle]) / 2.0;
+      }
+
+      return median;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// حساب تكلفة المواصلات العادلة بناءً على المسافة بالكيلومتر
+  double calculateDistancePremium(double distanceKm) {
+    const double baseFare = 1000.0; // تسعيرة فتح العداد الأساسية (جنيه)
+    const double perKmRate = 500.0; // تسعيرة الكيلومتر (جنيه)
+    
+    if (distanceKm <= 2.0) {
+      return baseFare; // مسافة قريبة جداً
+    }
+    
+    return baseFare + ((distanceKm - 2.0) * perKmRate);
+  }
 }

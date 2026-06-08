@@ -108,7 +108,8 @@ class UpdateService {
                     } else {
                       debugPrint('UpdateService: Cannot launch URL: $storeUrl');
                       if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
+                        final scaffoldMessenger = ScaffoldMessenger.of(context);
+                        scaffoldMessenger.showSnackBar(
                           SnackBar(
                             content: Text(
                               isArabic

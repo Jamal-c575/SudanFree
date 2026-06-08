@@ -13,6 +13,7 @@ import '../../services/firestore_service.dart';
 import '../../models/job_model.dart';
 import '../profile/profile_screen.dart';
 import '../../services/smart_guide_service.dart';
+import '../../core/utils/job_titles_utils.dart';
 
 class CachedTileProvider extends TileProvider {
   CachedTileProvider();
@@ -29,7 +30,8 @@ class CachedTileProvider extends TileProvider {
 }
 
 class MapExplorerScreen extends StatefulWidget {
-  const MapExplorerScreen({super.key});
+  final UserModel? targetUser;
+  const MapExplorerScreen({super.key, this.targetUser});
 
   @override
   State<MapExplorerScreen> createState() => _MapExplorerScreenState();
@@ -66,20 +68,69 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
   @override
   void initState() {
     super.initState();
-    _fetchUsersInBounds(_sudanBounds);
-    
-    // تحريك الخريطة لموقع المستخدم الفعلي بعد بناء الواجهة
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _locateUser();
+    if (widget.targetUser != null) {
+      // If a specific target user is provided, only show this user
+      // Check privacy setting
+      final user = widget.targetUser!;
+      double? lat = user.latitude;
+      double? lng = user.longitude;
       
-      SmartGuideService.showMicroTip(
-        context,
-        messageAr: 'اضغط على أي نقطة لرؤية تفاصيل مقدم الخدمة 📍',
-        messageEn: 'Tap any point to see provider details 📍',
-        tipId: 'map_first_use',
-        icon: Icons.map_rounded,
-      );
-    });
+      if (lat != null && lng != null) {
+        if (user.showOnMap != true) {
+          // Add a random offset for privacy (approx 2-3km)
+          // 0.02 degrees is approx 2km
+          lat += (DateTime.now().millisecond % 4 - 2) * 0.01;
+          lng += (DateTime.now().microsecond % 4 - 2) * 0.01;
+          // Set a flag to indicate it's approximate (we can use a custom property or just standard)
+        }
+        
+        // Ensure it's valid
+        if (_isValidSudanCoordinate(lat, lng)) {
+          // create a copy of the user with modified coords
+          final displayUser = user.copyWith(latitude: lat, longitude: lng);
+          _allMapUsers = [displayUser];
+          _filteredUsers = [displayUser];
+          _isLoading = false;
+        }
+      } else {
+        _isLoading = false;
+      }
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (lat != null && lng != null) {
+          _animatedMapMove(LatLng(lat, lng), 14.5);
+        }
+        
+        if (user.showOnMap != true) {
+          final scaffoldMessenger = ScaffoldMessenger.of(context);
+          scaffoldMessenger.showSnackBar(
+            SnackBar(
+              content: Text(
+                context.read<LocaleProvider>().isArabic
+                    ? 'الموقع تقريبي لحماية خصوصية المستخدم'
+                    : 'Location is approximate to protect user privacy',
+              ),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      });
+    } else {
+      _fetchUsersInBounds(_sudanBounds);
+      
+      // تحريك الخريطة لموقع المستخدم الفعلي بعد بناء الواجهة
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _locateUser();
+        
+        SmartGuideService.showMicroTip(
+          context,
+          messageAr: 'اضغط على أي نقطة لرؤية تفاصيل مقدم الخدمة 📍',
+          messageEn: 'Tap any point to see provider details 📍',
+          tipId: 'map_first_use',
+          icon: Icons.map_rounded,
+        );
+      });
+    }
   }
 
   @override
@@ -213,28 +264,13 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
   void _rebuildMarkerCache() {
     _validMarkerUsers = _filteredUsers
         .where((user) => _isValidSudanCoordinate(user.latitude, user.longitude))
+        .where((user) => widget.targetUser != null || user.showOnMap == true)
         .toList();
   }
 
   // ترجمة المسمى الوظيفي إذا كان من قائمة النظام، أو إرجاعه كما هو إذا كان مخصصاً
   String _getTranslatedSkill(String skill, bool isAr) {
-    try {
-      final category = JobCategory.values.firstWhere(
-        (c) => c.name == skill,
-      );
-      
-      // Creating a dummy job to reuse the existing translation method in JobModel
-      final dummyJob = JobModel(
-        id: '', clientId: '', clientName: '', title: '', description: '',
-        category: category, budgetMin: 0, budgetMax: 0,
-        deadline: DateTime.now(), createdAt: DateTime.now(), updatedAt: DateTime.now(),
-      );
-      
-      return dummyJob.getCategoryDisplayName(isAr ? 'ar' : 'en');
-    } catch (_) {
-      // If it's not a JobCategory enum, it's a custom job title the user typed
-      return skill;
-    }
+    return JobTitlesUtils.getLocalizedTitle(skill, isAr ? 'ar' : 'en');
   }
 
   // تحديد المهنة أو تصنيف المتجر - المسمى الوظيفي الفعلي فقط
@@ -245,7 +281,7 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
       return null;
     }
     // حرفي / تقني / خاص - المسمى الوظيفي الحقيقي فقط
-    if (user.jobTitle != null && user.jobTitle!.isNotEmpty) return user.jobTitle!;
+    if (user.jobTitle != null && user.jobTitle!.isNotEmpty) return JobTitlesUtils.getLocalizedTitle(user.jobTitle!, isAr ? 'ar' : 'en');
     if (user.skills.isNotEmpty) return _getTranslatedSkill(user.skills.first, isAr); // أخذ المسمى الذي اختاره عند التسجيل وترجمته
     return null;
   }
@@ -499,7 +535,7 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   ),
                   onPressed: () {
-                    Navigator.pop(context);
+                    if (context.mounted) Navigator.pop(context);
                     Navigator.push(
                       context,
                       MaterialPageRoute(builder: (_) => ProfileScreen(userId: user.id)),
@@ -583,7 +619,9 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
                         ),
                         title: Text(user.name, style: const TextStyle(fontWeight: FontWeight.bold)),
                         subtitle: Text(
-                          user.jobTitle ?? (user.role == UserRole.shop ? (isAr ? 'متجر' : 'Shop') : (isAr ? 'حرفي' : 'Freelancer')),
+                          user.jobTitle != null && user.jobTitle!.isNotEmpty 
+                              ? JobTitlesUtils.getLocalizedTitle(user.jobTitle!, isAr ? 'ar' : 'en') 
+                              : (user.role == UserRole.shop ? (isAr ? 'متجر' : 'Shop') : (isAr ? 'حرفي' : 'Freelancer')),
                           style: TextStyle(color: Colors.grey[600]),
                         ),
                         onTap: () {
@@ -661,7 +699,7 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: () {
-                      Navigator.pop(context);
+                      if (context.mounted) Navigator.pop(context);
                       _applyFilters();
                     },
                     style: ElevatedButton.styleFrom(
@@ -732,7 +770,8 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
                   maxZoom: 15,
                   markers: _validMarkerUsers.map((user) {
                   final isShop = user.isShop;
-                  final markerColor = isShop ? Colors.amber : Colors.cyanAccent;
+                  final isPrivacyProtected = user.showOnMap != true;
+                  final markerColor = isPrivacyProtected ? Colors.yellow : (isShop ? Colors.amber : Colors.cyanAccent);
                   return Marker(
                     key: ValueKey('marker_${user.id}'),
                     point: LatLng(user.latitude!, user.longitude!),

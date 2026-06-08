@@ -118,6 +118,7 @@ enum PostCategory {
   help,
   announcement,
   discussion,
+  barter,
 
   // ── ملبوسات وأزياء ──
   clothingMen,
@@ -244,6 +245,7 @@ enum PostCategory {
       case PostCategory.help:
       case PostCategory.announcement:
       case PostCategory.discussion:
+      case PostCategory.barter:
       case PostCategory.buySell:
         return PostCategoryGroup.general;
 
@@ -372,6 +374,7 @@ enum PostCategory {
         case PostCategory.help: return 'مساعدة';
         case PostCategory.announcement: return 'إعلان';
         case PostCategory.discussion: return 'نقاش';
+        case PostCategory.barter: return 'مقايضة وبدل';
         case PostCategory.buySell: return 'بيع/شراء';
 
         // ملبوسات وأزياء
@@ -496,6 +499,7 @@ enum PostCategory {
         case PostCategory.help: return 'Help';
         case PostCategory.announcement: return 'Announcement';
         case PostCategory.discussion: return 'Discussion';
+        case PostCategory.barter: return 'Barter & Swap';
         case PostCategory.buySell: return 'Buy/Sell';
 
         // Clothing
@@ -617,10 +621,87 @@ enum PostCategory {
 
   /// Get categories for a specific group
   static List<PostCategory> getCategoriesForGroup(PostCategoryGroup group) {
-    return PostCategory.values.where((c) => c.group == group).toList();
+    return PostCategory.values.where((c) => c.group == group && c != PostCategory.barter).toList();
   }
 } // End PostCategory Enum
 
+/// نموذج استطلاع الرأي — يُضاف داخل المنشور
+class PollOption {
+  final String text;
+  final List<String> voterIds;
+
+  PollOption({required this.text, this.voterIds = const []});
+
+  factory PollOption.fromMap(Map<String, dynamic> data) {
+    return PollOption(
+      text: data['text'] ?? '',
+      voterIds: List<String>.from(data['voterIds'] ?? []),
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+    'text': text,
+    'voterIds': voterIds,
+  };
+
+  PollOption copyWith({String? text, List<String>? voterIds}) {
+    return PollOption(
+      text: text ?? this.text,
+      voterIds: voterIds ?? this.voterIds,
+    );
+  }
+}
+
+class PollModel {
+  final String question;
+  final List<PollOption> options;
+  final DateTime? expiresAt;
+  final bool isMultipleChoice;
+
+  PollModel({
+    required this.question,
+    required this.options,
+    this.expiresAt,
+    this.isMultipleChoice = false,
+  });
+
+  factory PollModel.fromMap(Map<String, dynamic> data) {
+    return PollModel(
+      question: data['question'] ?? '',
+      options: (data['options'] as List<dynamic>? ?? [])
+          .map((o) => PollOption.fromMap(Map<String, dynamic>.from(o)))
+          .toList(),
+      expiresAt: data['expiresAt'] is Timestamp
+          ? (data['expiresAt'] as Timestamp).toDate()
+          : null,
+      isMultipleChoice: data['isMultipleChoice'] ?? false,
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+    'question': question,
+    'options': options.map((o) => o.toMap()).toList(),
+    if (expiresAt != null) 'expiresAt': Timestamp.fromDate(expiresAt!),
+    'isMultipleChoice': isMultipleChoice,
+  };
+
+  int get totalVotes => options.fold(0, (sum, o) => sum + o.voterIds.length);
+
+  bool get isExpired => expiresAt != null && DateTime.now().isAfter(expiresAt!);
+
+  /// هل صوّت هذا المستخدم؟
+  bool hasVoted(String userId) {
+    return options.any((o) => o.voterIds.contains(userId));
+  }
+
+  /// ما الخيار الذي صوّت له المستخدم؟
+  int? getUserVoteIndex(String userId) {
+    for (int i = 0; i < options.length; i++) {
+      if (options[i].voterIds.contains(userId)) return i;
+    }
+    return null;
+  }
+}
 
 
 class PostModel {
@@ -657,6 +738,10 @@ class PostModel {
   final String? linkedProductImage;    // صورة المنتج المصغرة
   final double? linkedProductPrice;    // سعر المنتج
   final int viewsCount;                // عدد المشاهدات
+  // ── Poll (استطلاع رأي) ──────────────────────────────────────
+  final PollModel? poll;
+  // ── Hashtags ────────────────────────────────────────────────
+  final List<String> hashtags;
 
   PostModel({
     required this.id,
@@ -690,6 +775,8 @@ class PostModel {
     this.linkedProductImage,
     this.linkedProductPrice,
     this.viewsCount = 0,
+    this.poll,
+    this.hashtags = const [],
   });
 
   factory PostModel.fromFirestore(DocumentSnapshot doc) {
@@ -736,6 +823,8 @@ class PostModel {
       linkedProductImage: data['linkedProductImage'],
       linkedProductPrice: (data['linkedProductPrice'] as num?)?.toDouble(),
       viewsCount: data['viewsCount'] ?? 0,
+      poll: data['poll'] != null ? PollModel.fromMap(Map<String, dynamic>.from(data['poll'])) : null,
+      hashtags: List<String>.from(data['hashtags'] ?? []),
     );
   }
 
@@ -770,6 +859,8 @@ class PostModel {
       if (linkedProductImage != null) 'linkedProductImage': linkedProductImage,
       if (linkedProductPrice != null) 'linkedProductPrice': linkedProductPrice,
       'viewsCount': viewsCount,
+      if (poll != null) 'poll': poll!.toMap(),
+      if (hashtags.isNotEmpty) 'hashtags': hashtags,
     };
     if (category != null) {
       map['category'] = category;
@@ -831,6 +922,8 @@ class PostModel {
     String? linkedProductImage,
     double? linkedProductPrice,
     int? viewsCount,
+    PollModel? poll,
+    List<String>? hashtags,
   }) {
     return PostModel(
       id: id ?? this.id,
@@ -864,6 +957,8 @@ class PostModel {
       linkedProductImage: linkedProductImage ?? this.linkedProductImage,
       linkedProductPrice: linkedProductPrice ?? this.linkedProductPrice,
       viewsCount: viewsCount ?? this.viewsCount,
+      poll: poll ?? this.poll,
+      hashtags: hashtags ?? this.hashtags,
     );
   }
 }

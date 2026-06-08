@@ -1,9 +1,13 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../models/user_model.dart';
 import '../../models/post_model.dart';
 import '../../services/firestore_service.dart';
+import '../../services/cloudinary_service.dart';
 import '../../core/constants/app_colors.dart';
 import 'product_detail_screen.dart';
 
@@ -31,6 +35,29 @@ class ShopDashboardScreen extends StatelessWidget {
           children: [
             _buildShopInfoCard(context, isDark),
             const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  l10n.localeName == 'ar' ? 'معرض المتجر' : 'Shop Gallery',
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                TextButton.icon(
+                  onPressed: () => _manageGallery(context),
+                  icon: const Icon(Icons.add_photo_alternate_outlined),
+                  label: Text(l10n.localeName == 'ar' ? 'إدارة الصور' : 'Manage Images'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            _buildGalleryPreview(context),
+            const SizedBox(height: 24),
             _buildStatsGrid(l10n, isDark),
             const SizedBox(height: 24),
             Text(
@@ -42,6 +69,53 @@ class ShopDashboardScreen extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildGalleryPreview(BuildContext context) {
+    if (shop.shopImages.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.grey.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.grey.withValues(alpha: 0.3), style: BorderStyle.solid),
+        ),
+        child: Center(
+          child: Text(
+            Localizations.localeOf(context).languageCode == 'ar' ? 'لا توجد صور في المعرض' : 'No gallery images',
+            style: const TextStyle(color: Colors.grey),
+          ),
+        ),
+      );
+    }
+    return SizedBox(
+      height: 80,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: shop.shopImages.length,
+        itemBuilder: (context, index) {
+          return Container(
+            margin: const EdgeInsets.only(right: 8),
+            width: 80,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              image: DecorationImage(
+                image: CachedNetworkImageProvider(shop.shopImages[index]),
+                fit: BoxFit.cover,
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  void _manageGallery(BuildContext context) {
+    // Navigate to a dedicated screen or open a bottom sheet
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => _ManageShopGalleryScreen(shop: shop)),
     );
   }
 
@@ -290,6 +364,152 @@ class ShopDashboardScreen extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ManageShopGalleryScreen extends StatefulWidget {
+  final UserModel shop;
+  const _ManageShopGalleryScreen({required this.shop});
+
+  @override
+  State<_ManageShopGalleryScreen> createState() => _ManageShopGalleryScreenState();
+}
+
+class _ManageShopGalleryScreenState extends State<_ManageShopGalleryScreen> {
+  final ImagePicker _picker = ImagePicker();
+  bool _isLoading = false;
+
+  Future<void> _uploadImage() async {
+    final XFile? image = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+    if (image == null) return;
+
+    setState(() => _isLoading = true);
+    try {
+      final url = await CloudinaryService().uploadImage(File(image.path), folder: 'shop_galleries');
+      if (url != null) {
+        final newImages = List<String>.from(widget.shop.shopImages)..add(url);
+        await FirebaseFirestore.instance.collection('users').doc(widget.shop.id).update({
+          'shopImages': newImages,
+        });
+        setState(() {
+          widget.shop.shopImages.add(url);
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Image uploaded successfully'), backgroundColor: Colors.green));
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to upload image'), backgroundColor: Colors.red));
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _deleteImage(String url, int index) async {
+    setState(() => _isLoading = true);
+    try {
+      final newImages = List<String>.from(widget.shop.shopImages)..removeAt(index);
+      await FirebaseFirestore.instance.collection('users').doc(widget.shop.id).update({
+        'shopImages': newImages,
+      });
+      setState(() {
+        widget.shop.shopImages.removeAt(index);
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Image deleted successfully'), backgroundColor: Colors.orange));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to delete image'), backgroundColor: Colors.red));
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final isAr = l10n.localeName == 'ar';
+    
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(isAr ? 'إدارة معرض المتجر' : 'Manage Shop Gallery'),
+      ),
+      body: Stack(
+        children: [
+          if (widget.shop.shopImages.isEmpty)
+            Center(
+              child: Text(
+                isAr ? 'المعرض فارغ. أضف بعض الصور.' : 'Gallery is empty. Add some images.',
+                style: const TextStyle(color: Colors.grey, fontSize: 16),
+              ),
+            )
+          else
+            GridView.builder(
+              padding: const EdgeInsets.all(16),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+              ),
+              itemCount: widget.shop.shopImages.length,
+              itemBuilder: (context, index) {
+                final url = widget.shop.shopImages[index];
+                return Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: CachedNetworkImage(
+                        imageUrl: url,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                    Positioned(
+                      top: 4,
+                      right: 4,
+                      child: GestureDetector(
+                        onTap: () => _deleteImage(url, index),
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.delete, color: Colors.white, size: 20),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          if (_isLoading)
+            const Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: LinearProgressIndicator(minHeight: 3),
+            ),
+          if (_isLoading)
+            Positioned.fill(
+              child: Container(
+                color: Colors.black.withValues(alpha: 0.1),
+              ),
+            ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _isLoading ? null : _uploadImage,
+        icon: const Icon(Icons.add_photo_alternate),
+        label: Text(isAr ? 'إضافة صورة' : 'Add Image'),
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
       ),
     );
   }

@@ -77,7 +77,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 password: _passwordController.text,
               );
 
-              if (mounted) Navigator.pop(context); // Close loading overlay
+              if (mounted) if (context.mounted) Navigator.pop(context); // Close loading overlay
 
               if (success && mounted) {
                 // Registration successful → let app.dart handle it
@@ -85,7 +85,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   Navigator.popUntil(context, (route) => route.isFirst);
                 }
               } else if (!success && mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
+                final scaffoldMessenger = ScaffoldMessenger.of(context);
+                scaffoldMessenger.showSnackBar(
                   SnackBar(
                     content: Text(authProvider.errorMessage ?? 'Registration failed'),
                     backgroundColor: AppColors.error,

@@ -14,7 +14,9 @@ import '../../views/profile/profile_screen.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../models/user_model.dart';
 import '../common/linkable_text.dart';
+import '../common/poll_widget.dart';
 import '../../views/posts/post_details_screen.dart';
+import '../../views/search/search_screen.dart';
 
 
 class PostCard extends StatefulWidget {
@@ -398,6 +400,10 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
             if (hasImage)
               _buildImageCarousel(widget.post.allImageUrls),
 
+            // ─── Poll Widget ──────────────────────────────────────────────
+            if (widget.post.poll != null)
+              PollWidget(post: widget.post, currentUserId: widget.currentUserId),
+
             // ─── Actions Bar ─────────────────────────────────────────────
             if (widget.showActions) ...[
               Padding(
@@ -509,7 +515,7 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
     
     final String text = widget.post.caption ?? '';
     // Use the direct download link with postId parameter
-    final String appLink = 'https://jamall123.github.io/HOME_WEB/sudan-free.html?postId=${widget.post.id}';
+    final String appLink = 'https://sudanfree.com/sudan-free.html?postId=${widget.post.id}';
     
     String shareContent = '${widget.post.userName} ${widget.locale == 'ar' ? 'شارك منشوراً على سودان فري' : 'shared a post on SudanFree'}:\n\n';
     
@@ -568,7 +574,8 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
                     showInProfile: !widget.post.showInProfile,
                   );
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    final scaffoldMessenger = ScaffoldMessenger.of(context);
+                    scaffoldMessenger.showSnackBar(
                       SnackBar(
                         content: Text(success 
                             ? (widget.locale == 'ar' ? 'تم التحديث بنجاح' : 'Updated successfully')
@@ -599,7 +606,8 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
                 Navigator.pop(ctx);
                 final success = await context.read<PostsProvider>().deletePost(widget.post.id);
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  final scaffoldMessenger = ScaffoldMessenger.of(context);
+                  scaffoldMessenger.showSnackBar(
                     SnackBar(
                       content: Text(success 
                           ? (widget.locale == 'ar' ? 'تم الحذف بنجاح' : 'Deleted successfully')
@@ -665,6 +673,24 @@ class _ExpandableCaptionState extends State<ExpandableCaption> {
                 height: 1.4,
               ),
               maxLines: _isExpanded ? null : _maxLines,
+              onHashtagTap: (hashtag) {
+                // Navigate to search screen with the hashtag
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => SearchScreen(initialQuery: hashtag),
+                  ),
+                );
+              },
+              onMentionTap: (username) {
+                // Navigate to search screen with the username, which will find the user
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => SearchScreen(initialQuery: username),
+                  ),
+                );
+              },
             ),
             if (!_isExpanded && (widget.caption.length > 150 || (widget.caption.split('\n').length > _maxLines)))
               Padding(

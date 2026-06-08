@@ -76,6 +76,14 @@ service firebase.storage {
         (isImageFile() || isAllowedDocFile());
     }
 
+    // Squads images
+    match /squads/{squadId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAuthenticated() && 
+        request.resource.size < 5 * 1024 * 1024 && // Max 5MB
+        isImageFile();
+    }
+
     // Request attachments
     match /requests/{userId}/{allPaths=**} {
       allow read: if isAuthenticated();

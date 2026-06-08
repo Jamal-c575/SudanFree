@@ -163,9 +163,19 @@ class AuthService {
 
   // Get user profile
   Future<UserModel?> getUserProfile(String userId) async {
-    final doc = await _firestore.collection('users').doc(userId).get();
-    if (doc.exists) {
-      return UserModel.fromFirestore(doc);
+    try {
+      final doc = await _firestore.collection('users').doc(userId).get().timeout(const Duration(seconds: 5));
+      if (doc.exists) {
+        return UserModel.fromFirestore(doc);
+      }
+    } catch (e) {
+      // If it times out or fails (e.g. offline), try from cache
+      try {
+        final doc = await _firestore.collection('users').doc(userId).get(const GetOptions(source: Source.cache));
+        if (doc.exists) {
+          return UserModel.fromFirestore(doc);
+        }
+      } catch (_) {}
     }
     return null;
   }

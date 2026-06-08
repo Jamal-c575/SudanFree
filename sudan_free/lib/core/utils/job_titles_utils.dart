@@ -1,3 +1,5 @@
+import '../../models/job_model.dart';
+
 class JobTitlesUtils {
   static String getLocalizedTitle(String title, String locale) {
     final Map<String, String> enToAr = {
@@ -108,12 +110,32 @@ class JobTitlesUtils {
       'dumpTruckConcrete': 'قلابات خرسانة',
     };
 
-    if (locale == 'ar') {
-      return enToAr[title] ?? title;
-    } else {
-      // Reverse mapping: Arabic to English
-      final Map<String, String> arToEn = enToAr.map((k, v) => MapEntry(v, k));
-      return arToEn[title] ?? title;
+    try {
+      final category = JobCategory.values.firstWhere((c) {
+        if (c.name == title) return true;
+        // Check if the title matches the English display name
+        final dummyJob = JobModel(
+          id: '', clientId: '', clientName: '', title: '', description: '',
+          category: c, budgetMin: 0, budgetMax: 0,
+          deadline: DateTime.now(), createdAt: DateTime.now(), updatedAt: DateTime.now(),
+        );
+        return dummyJob.getCategoryDisplayName('en').toLowerCase() == title.toLowerCase();
+      });
+      final dummyJob = JobModel(
+        id: '', clientId: '', clientName: '', title: '', description: '',
+        category: category, budgetMin: 0, budgetMax: 0,
+        deadline: DateTime.now(), createdAt: DateTime.now(), updatedAt: DateTime.now(),
+      );
+      return dummyJob.getCategoryDisplayName(locale);
+    } catch (_) {
+      // Fallback to static map
+      if (locale == 'ar') {
+        return enToAr[title] ?? title;
+      } else {
+        // Reverse mapping: Arabic to English
+        final Map<String, String> arToEn = enToAr.map((k, v) => MapEntry(v, k));
+        return arToEn[title] ?? title;
+      }
     }
   }
 }

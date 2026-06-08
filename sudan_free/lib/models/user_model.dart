@@ -73,6 +73,7 @@ class UserModel {
   final double walletBalance;
   final List<String> partnerIds; // Accepted colleagues
   final List<String> pendingPartnerIds; // Pending colleague requests
+  final List<String> pendingSquadInvites; // Pending squad join requests
   final List<String> followers; // Users who follow this shop/user
   final List<String> following; // Users/shops this user follows
   final DateTime? lastActive; // For online status tracking
@@ -86,6 +87,16 @@ class UserModel {
   final bool showOnMap; // إظهار أو إخفاء من الخريطة
   final double? latitude; // خط العرض
   final double? longitude; // خط الطول
+  
+  // Guarantor / Vouching System (نظام الضامن)
+  final List<Map<String, dynamic>> vouchedBy; // [{id, name, level, timestamp}]
+
+  // Master-Apprentice System (نظام الأسطى والصبي)
+  final String? masterId; // الخبير المسؤول عن هذا المتدرب
+  final List<String> apprenticesIds; // قائمة المتدربين تحت إشراف هذا الخبير
+  final List<String> pendingApprenticeRequests; // طلبات من صبيان للانضمام لهذا الأسطى
+  final List<String> pendingMasterRequests; // دعوات من أسطوات لهذا المستخدم ليكون صبياً لهم
+  final List<String> pendingLeaveRequests; // طلبات من صبيان لترك هذا الأسطى
 
   UserModel({
     required this.id,
@@ -128,6 +139,7 @@ class UserModel {
     this.walletBalance = 0.0,
     this.partnerIds = const [],
     this.pendingPartnerIds = const [],
+    this.pendingSquadInvites = const [],
     this.followers = const [],
     this.following = const [],
     this.lastActive,
@@ -150,6 +162,12 @@ class UserModel {
     this.showOnMap = true,
     this.latitude,
     this.longitude,
+    this.vouchedBy = const [],
+    this.masterId,
+    this.apprenticesIds = const [],
+    this.pendingApprenticeRequests = const [],
+    this.pendingMasterRequests = const [],
+    this.pendingLeaveRequests = const [],
   });
 
   factory UserModel.fromFirestore(DocumentSnapshot doc) {
@@ -218,6 +236,7 @@ class UserModel {
       walletBalance: (data['walletBalance'] as num?)?.toDouble() ?? 0.0,
       partnerIds: List<String>.from(data['partnerIds'] ?? []),
       pendingPartnerIds: List<String>.from(data['pendingPartnerIds'] ?? []),
+      pendingSquadInvites: List<String>.from(data['pendingSquadInvites'] ?? []),
       followers: List<String>.from(data['followers'] ?? []),
       following: List<String>.from(data['following'] ?? []),
       lastActive: data['lastActive'] is Timestamp
@@ -245,8 +264,14 @@ class UserModel {
       favoriteUserIds: List<String>.from(data['favoriteUserIds'] ?? []),
       favoriteProductIds: List<String>.from(data['favoriteProductIds'] ?? []),
       showOnMap: data['showOnMap'] ?? true,
-      latitude: data['latitude']?.toDouble(),
-      longitude: data['longitude']?.toDouble(),
+      latitude: (data['latitude'] as num?)?.toDouble(),
+      longitude: (data['longitude'] as num?)?.toDouble(),
+      vouchedBy: List<Map<String, dynamic>>.from(data['vouchedBy'] ?? []),
+      masterId: data['masterId'],
+      apprenticesIds: List<String>.from(data['apprenticesIds'] ?? []),
+      pendingApprenticeRequests: List<String>.from(data['pendingApprenticeRequests'] ?? []),
+      pendingMasterRequests: List<String>.from(data['pendingMasterRequests'] ?? []),
+      pendingLeaveRequests: List<String>.from(data['pendingLeaveRequests'] ?? []),
     );
   }
 
@@ -328,6 +353,7 @@ class UserModel {
       'negativeReports': negativeReports,
       'partnerIds': partnerIds,
       'pendingPartnerIds': pendingPartnerIds,
+      'pendingSquadInvites': pendingSquadInvites,
       'followers': followers,
       'following': following,
       'lastActive': lastActive != null ? Timestamp.fromDate(lastActive!) : null,
@@ -343,6 +369,12 @@ class UserModel {
       'showOnMap': showOnMap,
       if (latitude != null) 'latitude': latitude,
       if (longitude != null) 'longitude': longitude,
+      'vouchedBy': vouchedBy,
+      'masterId': masterId,
+      'apprenticesIds': apprenticesIds,
+      'pendingApprenticeRequests': pendingApprenticeRequests,
+      'pendingMasterRequests': pendingMasterRequests,
+      'pendingLeaveRequests': pendingLeaveRequests,
       'searchKeywords': generateSearchKeywords(
         name: name,
         jobTitle: jobTitle,
@@ -409,6 +441,7 @@ class UserModel {
     double? walletBalance,
     List<String>? partnerIds,
     List<String>? pendingPartnerIds,
+    List<String>? pendingSquadInvites,
     DateTime? lastActive,
     bool? isVerified,
     DateTime? verifiedAt,
@@ -423,6 +456,12 @@ class UserModel {
     bool? showOnMap,
     double? latitude,
     double? longitude,
+    List<Map<String, dynamic>>? vouchedBy,
+    String? masterId,
+    List<String>? apprenticesIds,
+    List<String>? pendingApprenticeRequests,
+    List<String>? pendingMasterRequests,
+    List<String>? pendingLeaveRequests,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -464,6 +503,7 @@ class UserModel {
       walletBalance: walletBalance ?? this.walletBalance,
       partnerIds: partnerIds ?? this.partnerIds,
       pendingPartnerIds: pendingPartnerIds ?? this.pendingPartnerIds,
+      pendingSquadInvites: pendingSquadInvites ?? this.pendingSquadInvites,
       lastActive: lastActive ?? this.lastActive,
       isVerified: isVerified ?? this.isVerified,
       verifiedAt: verifiedAt ?? this.verifiedAt,
@@ -479,6 +519,12 @@ class UserModel {
       showOnMap: showOnMap ?? this.showOnMap,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
+      vouchedBy: vouchedBy ?? this.vouchedBy,
+      masterId: masterId ?? this.masterId,
+      apprenticesIds: apprenticesIds ?? this.apprenticesIds,
+      pendingApprenticeRequests: pendingApprenticeRequests ?? this.pendingApprenticeRequests,
+      pendingMasterRequests: pendingMasterRequests ?? this.pendingMasterRequests,
+      pendingLeaveRequests: pendingLeaveRequests ?? this.pendingLeaveRequests,
     );
   }
 

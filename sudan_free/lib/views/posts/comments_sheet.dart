@@ -267,7 +267,8 @@ class _CommentsSheetState extends State<CommentsSheet> {
       if (mounted) {
         setState(() => _isSending = false);
         final errorLocale = context.read<LocaleProvider>().locale.languageCode;
-        ScaffoldMessenger.of(context).showSnackBar(
+        final scaffoldMessenger = ScaffoldMessenger.of(context);
+        scaffoldMessenger.showSnackBar(
           SnackBar(
             content: Text(errorLocale == 'ar' ? 'حدث خطأ أثناء إضافة التعليق' : 'Error adding comment'),
             backgroundColor: AppColors.error,
@@ -392,7 +393,7 @@ class _CommentsSheetState extends State<CommentsSheet> {
                         isLiked: isLiked,
                         onReply: () => _startReply(comment.id, comment.userName, comment.userId),
                         onProfileTap: () {
-                          Navigator.pop(context);
+                          if (context.mounted) Navigator.pop(context);
                           Navigator.push(context, MaterialPageRoute(builder: (_) => ProfileScreen(userId: comment.userId)));
                         },
                         onLike: currentUser != null ? () {
@@ -408,7 +409,8 @@ class _CommentsSheetState extends State<CommentsSheet> {
                           } catch (e) {
                             if (context.mounted) {
                               final localeStr = context.read<LocaleProvider>().locale.languageCode;
-                              ScaffoldMessenger.of(context).showSnackBar(
+                              final scaffoldMessenger = ScaffoldMessenger.of(context);
+                              scaffoldMessenger.showSnackBar(
                                 SnackBar(content: Text(localeStr == 'ar' ? 'حدث خطأ أثناء حذف التعليق' : 'Error deleting comment')),
                               );
                             }

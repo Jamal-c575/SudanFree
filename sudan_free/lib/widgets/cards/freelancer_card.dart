@@ -392,7 +392,7 @@ class FreelancerCard extends StatelessWidget {
                             padding: EdgeInsets.symmetric(horizontal: 4.0),
                             child: Icon(Icons.star_rounded, color: AppColors.sudanGold, size: 20),
                           ),
-                        VerificationBadge(isVerified: freelancer.effectivelyVerified, size: 16),
+                        SmartVerificationBadge(user: freelancer, size: 16),
                       ],
                     ),
                     
@@ -615,7 +615,7 @@ class FreelancerGridCard extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        VerificationBadge(isVerified: freelancer.effectivelyVerified, size: 14),
+                        SmartVerificationBadge(user: freelancer, size: 14),
                         const SizedBox(width: 4),
                         Container(
                           width: 6,
