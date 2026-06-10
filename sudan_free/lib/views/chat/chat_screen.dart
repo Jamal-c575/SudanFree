@@ -211,7 +211,15 @@ class _ChatScreenState extends State<ChatScreen> {
         final tempDir = await getTemporaryDirectory();
         final path = '${tempDir.path}/audio_${DateTime.now().millisecondsSinceEpoch}.m4a';
         
-        await _audioRecorder.start(const RecordConfig(), path: path);
+        await _audioRecorder.start(
+          const RecordConfig(
+            encoder: AudioEncoder.aacLc,
+            noiseSuppress: true,
+            echoCancel: true,
+            autoGain: true,
+          ), 
+          path: path,
+        );
         
         setState(() {
           _isRecording = true;

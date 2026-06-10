@@ -9,6 +9,7 @@ import '../../models/user_model.dart';
 import '../profile/squad_profile_screen.dart';
 import 'create_squad_screen.dart';
 import '../../widgets/buttons/smart_draggable_fab.dart';
+import '../../core/constants/sudan_locations.dart';
 
 class SquadsExplorerScreen extends StatefulWidget {
   const SquadsExplorerScreen({super.key});
@@ -150,12 +151,52 @@ class _SquadsExplorerScreenState extends State<SquadsExplorerScreen> {
                           backgroundImage: squad.squadImageUrl != null ? NetworkImage(squad.squadImageUrl!) : null,
                           child: squad.squadImageUrl == null ? const Icon(Icons.groups, color: AppColors.primary) : null,
                         ),
-                        title: Text(squad.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                        title: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(child: Text(squad.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: squad.isAvailable ? Colors.green.withValues(alpha: 0.1) : Colors.red.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.circle, size: 8, color: squad.isAvailable ? Colors.green : Colors.red),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    squad.isAvailable ? (isAr ? 'متاح' : 'Available') : (isAr ? 'مشغول' : 'Busy'),
+                                    style: TextStyle(color: squad.isAvailable ? Colors.green : Colors.red, fontSize: 10, fontWeight: FontWeight.bold),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const SizedBox(height: 6),
-                            Text(squad.category.getName(locale), style: const TextStyle(color: AppColors.secondary, fontWeight: FontWeight.bold)),
+                            Row(
+                              children: [
+                                Text(squad.category.getName(locale), style: const TextStyle(color: AppColors.secondary, fontWeight: FontWeight.bold)),
+                                if (squad.state != null) ...[
+                                  const SizedBox(width: 8),
+                                  const Icon(Icons.location_on, size: 14, color: Colors.grey),
+                                  const SizedBox(width: 2),
+                                  Expanded(
+                                    child: Text(
+                                      '${SudanLocations.getStateName(squad.state!, locale)}${squad.locality != null ? " - ${SudanLocations.getLocalityName(squad.locality!, locale)}" : ""}',
+                                      style: const TextStyle(color: Colors.grey, fontSize: 12),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
                             const SizedBox(height: 6),
                             Row(
                               children: [
@@ -186,21 +227,56 @@ class _SquadsExplorerScreenState extends State<SquadsExplorerScreen> {
         ],
       ),
       if (user != null && user.role != UserRole.client)
-        SmartDraggableFab(
-          heroTag: 'create_squad_fab',
-          icon: Icons.add,
-          label: isAr ? 'إنشاء مجموعة' : 'Create Squad',
-          locale: locale,
-          initialBottom: MediaQuery.of(context).padding.bottom + 82.0, // navBar + safe area
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const CreateSquadScreen()),
+        FutureBuilder<QuerySnapshot>(
+          future: FirebaseFirestore.instance
+              .collection('squads')
+              .where('memberIds', arrayContains: user.id)
+              .limit(1)
+              .get(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) return const SizedBox.shrink();
+            final isInSquad = snapshot.data?.docs.isNotEmpty ?? false;
+            if (isInSquad) return const SizedBox.shrink();
+            
+            return SmartDraggableFab(
+              heroTag: 'create_squad_fab',
+              icon: Icons.add,
+              label: isAr ? 'إنشاء مجموعة' : 'Create Squad',
+              locale: locale,
+              initialBottom: MediaQuery.of(context).padding.bottom + 82.0, // navBar + safe area
+              onPressed: () async {
+                if (user == null) return;
+            try {
+              final existing = await FirebaseFirestore.instance
+                  .collection('squads')
+                  .where('memberIds', arrayContains: user.id)
+                  .get();
+              if (existing.docs.isNotEmpty) {
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(isAr 
+                        ? 'عذراً، أنت بالفعل عضو في مجموعة. لا يمكنك إنشاء مجموعة أخرى.' 
+                        : 'Sorry, you are already a member of a squad. You cannot create another one.'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+                return;
+              }
+            } catch (e) {
+              // Ignore error and proceed or log it
+            }
+
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const CreateSquadScreen()),
+                );
+              },
             );
           },
         ),
-      ],
-    ),
-  );
-}
+        ],
+      ),
+    );
+  }
 }

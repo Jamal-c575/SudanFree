@@ -13,6 +13,7 @@ import '../../services/smart_search_service.dart';
 
 class SmartSearchDelegate extends SearchDelegate<UserModel?> {
   final String? initialQuery;
+  UserRole? selectedRole;
 
   SmartSearchDelegate({this.initialQuery}) : super(searchFieldLabel: 'ابحث عن مهارات، حرفيين، مواقع...');
 
@@ -62,68 +63,133 @@ class SmartSearchDelegate extends SearchDelegate<UserModel?> {
     final locale = context.read<LocaleProvider>().locale.languageCode;
     final currentUser = context.read<AuthProvider>().user;
 
-    return FutureBuilder(
-      future: searchProvider.searchFreelancers(query: query),
-      builder: (context, snapshot) {
-        return Consumer<SearchProvider>(
-          builder: (context, search, _) {
-            if (search.isLoading) return const LoadingIndicator();
-            if (search.errorMessage != null) return Center(child: Text(search.errorMessage!));
-            
-            final results = search.searchResults;
-            if (results.isEmpty) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.search_off, size: 64, color: Colors.grey[300]),
-                    const SizedBox(height: 16),
-                    Text(
-                      locale == 'ar' ? 'لا توجد نتائج لـ "$query"' : 'No results for "$query"',
-                      style: TextStyle(color: Colors.grey[600], fontSize: 16),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      locale == 'ar' ? 'جرّب كلمات أخرى أو تحقق من الإملاء' : 'Try different keywords or check spelling',
-                      style: TextStyle(color: Colors.grey[400], fontSize: 13),
-                    ),
-                  ],
-                ),
-              );
-            }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildFilters(context),
+        Expanded(
+          child: FutureBuilder(
+            future: searchProvider.searchFreelancers(query: query, role: selectedRole),
+            builder: (context, snapshot) {
+              return Consumer<SearchProvider>(
+                builder: (context, search, _) {
+                  if (search.isLoading) return const LoadingIndicator();
+                  if (search.errorMessage != null) return Center(child: Text(search.errorMessage!));
+                  
+                  final results = search.searchResults;
+                  if (results.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.search_off, size: 64, color: Colors.grey[300]),
+                          const SizedBox(height: 16),
+                          Text(
+                            locale == 'ar' ? 'لا توجد نتائج لـ "$query"' : 'No results for "$query"',
+                            style: TextStyle(color: Colors.grey[600], fontSize: 16),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            locale == 'ar' ? 'جرّب كلمات أخرى أو تحقق من الإملاء' : 'Try different keywords or check spelling',
+                            style: TextStyle(color: Colors.grey[400], fontSize: 13),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
 
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                  child: Text(
-                    locale == 'ar' ? '${results.length} نتيجة' : '${results.length} results',
-                    style: TextStyle(color: Colors.grey[600], fontSize: 13, fontWeight: FontWeight.w600),
-                  ),
-                ),
-                Expanded(
-                  child: ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: results.length,
-                    itemBuilder: (context, index) {
-                      final freelancer = results[index];
-                      return FreelancerCard(
-                        freelancer: freelancer,
-                        locale: locale,
-                        currentUserId: currentUser?.id,
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => ProfileScreen(userId: freelancer.id)),
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                        child: Text(
+                          locale == 'ar' ? '${results.length} نتيجة' : '${results.length} results',
+                          style: TextStyle(color: Colors.grey[600], fontSize: 13, fontWeight: FontWeight.w600),
                         ),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            );
-          },
+                      ),
+                      Expanded(
+                        child: ListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          itemCount: results.length,
+                          itemBuilder: (context, index) {
+                            final freelancer = results[index];
+                            return FreelancerCard(
+                              freelancer: freelancer,
+                              locale: locale,
+                              currentUserId: currentUser?.id,
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (_) => ProfileScreen(userId: freelancer.id)),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFilters(BuildContext context) {
+    final locale = context.read<LocaleProvider>().locale.languageCode;
+    final isAr = locale == 'ar';
+    
+    return StatefulBuilder(
+      builder: (context, setState) {
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            children: [
+              _buildFilterChip(context, isAr ? 'الكل' : 'All', null, Icons.all_inclusive, setState),
+              const SizedBox(width: 8),
+              _buildFilterChip(context, isAr ? 'مقدم خدمة فنية' : 'Technical Service', UserRole.freelancer, Icons.handyman, setState),
+              const SizedBox(width: 8),
+              _buildFilterChip(context, isAr ? 'مقدم خدمة تقنية' : 'Tech Service', UserRole.techService, Icons.computer, setState),
+              const SizedBox(width: 8),
+              _buildFilterChip(context, isAr ? 'مقدم خدمة خاصة' : 'Special Service', UserRole.privateService, Icons.star_outline, setState),
+              const SizedBox(width: 8),
+              _buildFilterChip(context, isAr ? 'معرض/متاجر' : 'Gallery/Stores', UserRole.shop, Icons.storefront, setState),
+            ],
+          ),
         );
+      }
+    );
+  }
+
+  Widget _buildFilterChip(BuildContext context, String label, UserRole? role, IconData icon, StateSetter setState) {
+    final isSelected = selectedRole == role;
+    return ChoiceChip(
+      avatar: Icon(icon, size: 18, color: isSelected ? Colors.white : AppColors.primary),
+      label: Text(label, style: TextStyle(
+        fontSize: 13,
+        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+        color: isSelected ? Colors.white : AppColors.textPrimary,
+      )),
+      selected: isSelected,
+      selectedColor: AppColors.primary,
+      backgroundColor: AppColors.primary.withValues(alpha: 0.08),
+      showCheckmark: false,
+      side: BorderSide(
+        color: isSelected ? AppColors.primary : AppColors.primary.withValues(alpha: 0.2),
+      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      onSelected: (selected) {
+        setState(() {
+          selectedRole = selected ? role : (role == null ? null : selectedRole);
+        });
+        if (query.isNotEmpty) {
+          showResults(context);
+        } else {
+          showSuggestions(context);
+        }
       },
     );
   }
@@ -133,21 +199,33 @@ class SmartSearchDelegate extends SearchDelegate<UserModel?> {
     final locale = context.read<LocaleProvider>().locale.languageCode;
     final isAr = locale == 'ar';
     
-    if (query.isEmpty) {
-      return _buildEmptyState(context, isAr);
-    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildFilters(context),
+        Expanded(
+          child: Builder(
+            builder: (context) {
+              if (query.isEmpty) {
+                return _buildEmptyState(context, isAr);
+              }
 
-    return _DelayedSuggestionsWidget(
-      query: query,
-      isAr: isAr,
-      onSuggestionTap: (suggestion) {
-        query = suggestion;
-        showResults(context);
-      },
-      onSearchSubmitted: (suggestion) {
-        query = suggestion;
-        showResults(context);
-      },
+              return _DelayedSuggestionsWidget(
+                query: query,
+                isAr: isAr,
+                onSuggestionTap: (suggestion) {
+                  query = suggestion;
+                  showResults(context);
+                },
+                onSearchSubmitted: (suggestion) {
+                  query = suggestion;
+                  showResults(context);
+                },
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 

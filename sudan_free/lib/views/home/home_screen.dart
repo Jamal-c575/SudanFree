@@ -45,12 +45,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   final BottomBarVisibilityProvider _visibilityProvider = BottomBarVisibilityProvider();
   
   // Track which tabs have been visited to lazy-load them and save memory
-  final List<bool> _initializedTabs = [true, false, false, false, false, false];
+  final List<bool> _initializedTabs = [true, false, false, false];
   
   // Keys for refreshing tabs
   Key _dashboardKey = UniqueKey();
-  Key _freelancersKey = UniqueKey();
-  Key _shopsKey = UniqueKey();
   Key _squadsKey = UniqueKey();
   Key _requestsKey = UniqueKey();
 
@@ -165,7 +163,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   /// Navigate to a specific tab — used by DashboardScreen
   void _navigateToTab(int index) {
-    if (index >= 0 && index <= 5) {
+    if (index >= 0 && index <= 3) {
       setState(() {
         _currentIndex = index;
         _history.remove(index);
@@ -190,11 +188,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     final screens = [
       DashboardScreen(key: _dashboardKey, onNavigateToTab: _navigateToTab),    // 0 - الرئيسية
-      BrowseFreelancersScreen(key: _freelancersKey),        // 1 - الخدمات
-      BrowseShopsScreen(key: _shopsKey),                            // 2 - المتاجر
-      const PostsFeedScreen(),                              // 3 - المجتمع (يحدث عبر الـ Provider)
-      SquadsExplorerScreen(key: _squadsKey),                // 4 - المجموعات
-      RequestsScreen(key: _requestsKey),                               // 5 - الطلبات
+      const PostsFeedScreen(),                              // 1 - المجتمع (يحدث عبر الـ Provider)
+      SquadsExplorerScreen(key: _squadsKey),                // 2 - المجموعات
+      RequestsScreen(key: _requestsKey),                               // 3 - الطلبات
     ];
 
     return PopScope(
@@ -306,20 +302,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       ),
                       _buildNavItem(
                         index: 1,
-                        icon: Icons.work_outline,
-                        activeIcon: Icons.work,
-                        label: l10n.freelancers,
-                        isDark: isDark,
-                      ),
-                      _buildNavItem(
-                        index: 2,
-                        icon: Icons.store_outlined,
-                        activeIcon: Icons.store,
-                        label: l10n.shops,
-                        isDark: isDark,
-                      ),
-                      _buildNavItem(
-                        index: 3,
                         icon: Icons.forum_outlined,
                         activeIcon: Icons.forum,
                         label: l10n.community,
@@ -327,14 +309,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         hasBadge: context.watch<PostsProvider>().hasNewPosts,
                       ),
                       _buildNavItem(
-                        index: 4,
+                        index: 2,
                         icon: Icons.groups_outlined,
                         activeIcon: Icons.groups,
                         label: locale == 'ar' ? 'المجموعات' : 'Squads',
                         isDark: isDark,
                       ),
                       _buildNavItem(
-                        index: 5,
+                        index: 3,
                         icon: Icons.assignment_outlined,
                         activeIcon: Icons.assignment,
                         label: locale == 'ar' ? 'الطلبات' : 'Requests',
@@ -387,11 +369,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       onRefresh: () {
         setState(() {
           if (index == 0) _dashboardKey = UniqueKey();
-          if (index == 1) _freelancersKey = UniqueKey();
-          if (index == 2) _shopsKey = UniqueKey();
-          if (index == 3) context.read<PostsProvider>().fetchPosts(forceRefresh: true);
-          if (index == 4) _squadsKey = UniqueKey();
-          if (index == 5) _requestsKey = UniqueKey();
+          if (index == 1) context.read<PostsProvider>().fetchPosts(forceRefresh: true);
+          if (index == 2) _squadsKey = UniqueKey();
+          if (index == 3) _requestsKey = UniqueKey();
         });
       },
     );

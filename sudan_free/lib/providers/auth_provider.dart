@@ -154,6 +154,26 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  // Toggle Favorite Squad
+  Future<void> toggleFavoriteSquad(String squadId) async {
+    if (_user == null) return;
+    try {
+      final updatedFavorites = List<String>.from(_user!.favoriteSquadIds);
+      if (updatedFavorites.contains(squadId)) {
+        updatedFavorites.remove(squadId);
+      } else {
+        updatedFavorites.add(squadId);
+      }
+      
+      _user = _user!.copyWith(favoriteSquadIds: updatedFavorites);
+      await _firestoreService.updateUserProfile(_user!.id, {'favoriteSquadIds': updatedFavorites});
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error toggling favorite squad: $e');
+      refreshUserProfile(); // rollback on error
+    }
+  }
+
   // Fetch My Partners & Followed Shops
   Future<void> fetchPartners({bool forceRefresh = false}) async {
     if (_user == null) {

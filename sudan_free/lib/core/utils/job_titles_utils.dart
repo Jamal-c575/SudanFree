@@ -112,7 +112,7 @@ class JobTitlesUtils {
 
     try {
       final category = JobCategory.values.firstWhere((c) {
-        if (c.name == title) return true;
+        if (c.name.toLowerCase() == title.toLowerCase()) return true;
         // Check if the title matches the English display name
         final dummyJob = JobModel(
           id: '', clientId: '', clientName: '', title: '', description: '',
@@ -129,12 +129,24 @@ class JobTitlesUtils {
       return dummyJob.getCategoryDisplayName(locale);
     } catch (_) {
       // Fallback to static map
+      final searchTitle = title.trim().toLowerCase();
+      // Handle camel case keys to match space-separated user input
+      final String noSpaceSearch = searchTitle.replaceAll(' ', '').replaceAll('-', '').replaceAll('/', '');
       if (locale == 'ar') {
-        return enToAr[title] ?? title;
+        final Map<String, String> lowerEnToAr = {};
+        enToAr.forEach((k, v) {
+          lowerEnToAr[k.toLowerCase()] = v;
+          lowerEnToAr[k.toLowerCase().replaceAll(' ', '').replaceAll('-', '').replaceAll('/', '')] = v;
+        });
+        return lowerEnToAr[searchTitle] ?? title;
       } else {
         // Reverse mapping: Arabic to English
-        final Map<String, String> arToEn = enToAr.map((k, v) => MapEntry(v, k));
-        return arToEn[title] ?? title;
+        final Map<String, String> arToEn = {};
+        enToAr.forEach((k, v) {
+          arToEn[v.trim().toLowerCase()] = k;
+        });
+        enToAr.forEach((k, v) => arToEn[v.trim().toLowerCase()] = k);
+        return arToEn[searchTitle] ?? title;
       }
     }
   }

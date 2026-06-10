@@ -68,6 +68,7 @@ class SearchProvider extends ChangeNotifier {
     String? locality,
     double? minRating,
     String? category,
+    UserRole? role,
   }) {
     _debounceTimer?.cancel();
     _debounceTimer = Timer(_debounceDuration, () {
@@ -77,6 +78,7 @@ class SearchProvider extends ChangeNotifier {
         locality: locality,
         minRating: minRating,
         category: category,
+        role: role,
       );
     });
   }
@@ -87,6 +89,7 @@ class SearchProvider extends ChangeNotifier {
     String? locality,
     double? minRating,
     String? category,
+    UserRole? role,
   }) async {
     _isLoading = true;
     _errorMessage = null;
@@ -149,6 +152,7 @@ class SearchProvider extends ChangeNotifier {
       if (locality != null) users = users.where((u) => u.locality == locality).toList();
       if (minRating != null) users = users.where((u) => u.rating >= minRating).toList();
       if (category != null) users = users.where((u) => u.jobTitle == category).toList();
+      if (role != null) users = users.where((u) => u.role == role).toList();
 
       _searchResults = users;
       _isLoading = false;

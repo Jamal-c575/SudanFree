@@ -459,7 +459,7 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        skill,
+                        _getTranslatedSkill(skill, isAr),
                         style: const TextStyle(color: AppColors.primary, fontSize: 11, fontWeight: FontWeight.w600),
                       ),
                     );

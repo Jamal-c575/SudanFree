@@ -12,7 +12,10 @@ import '../../providers/locale_provider.dart';
 import '../../models/user_model.dart';
 
 class CreatePortfolioProjectScreen extends StatefulWidget {
-  const CreatePortfolioProjectScreen({super.key});
+  final String? squadId;
+  final List<String>? defaultCollaboratorIds;
+
+  const CreatePortfolioProjectScreen({super.key, this.squadId, this.defaultCollaboratorIds});
 
   @override
   State<CreatePortfolioProjectScreen> createState() => _CreatePortfolioProjectScreenState();
@@ -46,6 +49,29 @@ class _CreatePortfolioProjectScreenState extends State<CreatePortfolioProjectScr
     {'key': 'carpentry', 'ar': 'نجارة', 'en': 'Carpentry', 'icon': Icons.carpenter, 'color': Color(0xFF636e72)},
     {'key': 'other', 'ar': 'أخرى', 'en': 'Other', 'icon': Icons.category, 'color': Color(0xFF74b9ff)},
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDefaultCollaborators();
+  }
+
+  Future<void> _loadDefaultCollaborators() async {
+    if (widget.defaultCollaboratorIds != null && widget.defaultCollaboratorIds!.isNotEmpty) {
+      try {
+        final members = await FirestoreService().getUsersByIds(widget.defaultCollaboratorIds!);
+        if (mounted) {
+          setState(() {
+            for (var m in members) {
+              _selectedCollaborators.add({'id': m.id, 'name': m.name, 'imageUrl': m.profileImageUrl});
+            }
+          });
+        }
+      } catch (e) {
+        debugPrint('Error loading default collaborators: $e');
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -139,7 +165,7 @@ class _CreatePortfolioProjectScreenState extends State<CreatePortfolioProjectScr
 
       final project = PortfolioProjectModel(
         id: '',
-        userId: user.id,
+        userId: widget.squadId ?? user.id,
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim(),
         category: _selectedCategory,

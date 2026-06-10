@@ -107,7 +107,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     }
 
     return DefaultTabController(
-      length: 7,
+      length: 8,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('لوحة تحكم المشرف', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -128,6 +128,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               Tab(text: 'طلبات التوثيق', icon: Icon(Icons.verified_user)),
               Tab(text: 'العقود', icon: Icon(Icons.handshake)),
               Tab(text: 'طلبات الحذف', icon: Icon(Icons.delete_sweep)),
+              Tab(text: 'إعدادات التطبيق', icon: Icon(Icons.settings)),
             ],
           ),
         ),
@@ -142,6 +143,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               _buildVerificationQueue(),
               _buildContractsLog(),
               _buildDeletionQueue(),
+              _buildAppSettings(),
             ],
           ),
         ),
@@ -1068,5 +1070,115 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   Widget _buildEmptyState(IconData icon, String msg) {
     return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(icon, size: 64, color: Colors.grey), const SizedBox(height: 16), Text(msg, style: const TextStyle(color: Colors.grey, fontSize: 16))]));
+  }
+
+  // ==========================================
+  // 8. إعدادات التطبيق (App Settings)
+  // ==========================================
+  Widget _buildAppSettings() {
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance.collection('settings').doc('app_settings').snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) return const LoadingIndicator();
+        
+        final data = snapshot.data?.data() as Map<String, dynamic>? ?? {};
+        final whatsappCtrl = TextEditingController(text: data['whatsapp'] ?? 'https://wa.me/249900578357');
+        final facebookCtrl = TextEditingController(text: data['facebook'] ?? 'https://www.facebook.com/share/18J8UXiEDe/');
+        final telegramCtrl = TextEditingController(text: data['telegram'] ?? 'https://t.me/JamalJhome');
+        final websiteCtrl = TextEditingController(text: data['website'] ?? 'https://sudanfree.com/');
+        final shareTextArCtrl = TextEditingController(text: data['share_text_ar'] ?? 'جرب تطبيق سودان فري للعثور على فرص عمل ومستقلين موثوقين! حمل التطبيق الآن: https://sudanfree.com/sudan-free.html');
+        final shareTextEnCtrl = TextEditingController(text: data['share_text_en'] ?? 'Try SudanFree to find jobs and trusted freelancers! Download now: https://sudanfree.com/sudan-free.html');
+
+        bool isSaving = false;
+
+        return StatefulBuilder(
+          builder: (context, setSettingsState) {
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Card(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('روابط التواصل والمشاركة', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 20),
+                      TextField(
+                        controller: whatsappCtrl,
+                        decoration: const InputDecoration(labelText: 'رابط واتساب', border: OutlineInputBorder(), prefixIcon: Icon(Icons.chat, color: Colors.green)),
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: facebookCtrl,
+                        decoration: const InputDecoration(labelText: 'رابط فيسبوك', border: OutlineInputBorder(), prefixIcon: Icon(Icons.facebook, color: Colors.blue)),
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: telegramCtrl,
+                        decoration: const InputDecoration(labelText: 'رابط تلجرام', border: OutlineInputBorder(), prefixIcon: Icon(Icons.send, color: Colors.blueAccent)),
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: websiteCtrl,
+                        decoration: const InputDecoration(labelText: 'الموقع الإلكتروني', border: OutlineInputBorder(), prefixIcon: Icon(Icons.language, color: Colors.purple)),
+                      ),
+                      const SizedBox(height: 24),
+                      const Text('نص المشاركة (دعوة الأصدقاء)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: shareTextArCtrl,
+                        maxLines: 3,
+                        decoration: const InputDecoration(labelText: 'النص العربي', border: OutlineInputBorder()),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: shareTextEnCtrl,
+                        maxLines: 3,
+                        decoration: const InputDecoration(labelText: 'النص الإنجليزي', border: OutlineInputBorder()),
+                      ),
+                      const SizedBox(height: 24),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: ElevatedButton.icon(
+                          icon: isSaving ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Icon(Icons.save),
+                          label: Text(isSaving ? 'جاري الحفظ...' : 'حفظ الإعدادات', style: const TextStyle(fontSize: 16)),
+                          style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
+                          onPressed: isSaving ? null : () async {
+                            setSettingsState(() => isSaving = true);
+                            try {
+                              await FirebaseFirestore.instance.collection('settings').doc('app_settings').set({
+                                'whatsapp': whatsappCtrl.text,
+                                'facebook': facebookCtrl.text,
+                                'telegram': telegramCtrl.text,
+                                'website': websiteCtrl.text,
+                                'share_text_ar': shareTextArCtrl.text,
+                                'share_text_en': shareTextEnCtrl.text,
+                                'updatedAt': FieldValue.serverTimestamp(),
+                              }, SetOptions(merge: true));
+                              
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم الحفظ بنجاح'), backgroundColor: Colors.green));
+                              }
+                            } catch (e) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('حدث خطأ: $e'), backgroundColor: Colors.red));
+                              }
+                            } finally {
+                              if (context.mounted) setSettingsState(() => isSaving = false);
+                            }
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }
+        );
+      },
+    );
   }
 }

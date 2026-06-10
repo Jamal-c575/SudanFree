@@ -272,58 +272,61 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _SectionHeader(title: locale == 'ar' ? 'تواصل معنا' : 'Connect with Us'),
           const SizedBox(height: 8),
           
-          // WhatsApp Support
-          _SettingsTile(
-            icon: Icons.chat_bubble_outline,
-            iconColor: Colors.green,
-            title: locale == 'ar' ? 'واتساب' : 'WhatsApp',
-            subtitle: locale == 'ar' ? 'تواصل مع الدعم الفني' : 'Contact Support',
-            onTap: () => _launchURL('https://wa.me/249900578357'),
-          ),
-          
-          const SizedBox(height: 8),
+          // Connect with Us section loaded from Firestore
+          StreamBuilder<DocumentSnapshot>(
+            stream: FirebaseFirestore.instance.collection('settings').doc('app_settings').snapshots(),
+            builder: (context, snapshot) {
+              final data = snapshot.data?.data() as Map<String, dynamic>? ?? {};
+              final whatsapp = data['whatsapp'] ?? 'https://wa.me/249900578357';
+              final facebook = data['facebook'] ?? 'https://www.facebook.com/share/18J8UXiEDe/';
+              final telegram = data['telegram'] ?? 'https://t.me/JamalJhome';
+              final website = data['website'] ?? 'https://sudanfree.com/';
+              final shareTextAr = data['share_text_ar'] ?? 'جرب تطبيق سودان فري للعثور على فرص عمل ومستقلين موثوقين! حمل التطبيق الآن: https://sudanfree.com/sudan-free.html';
+              final shareTextEn = data['share_text_en'] ?? 'Try SudanFree to find jobs and trusted freelancers! Download now: https://sudanfree.com/sudan-free.html';
 
-          // Facebook
-          _SettingsTile(
-            icon: Icons.facebook,
-            iconColor: Colors.blue[800],
-            title: locale == 'ar' ? 'فيسبوك' : 'Facebook',
-            onTap: () => _launchURL('https://www.facebook.com/share/18J8UXiEDe/'),
-          ),
-          
-          const SizedBox(height: 8),
-
-          // Telegram
-          _SettingsTile(
-            icon: Icons.send, // Telegram icon substitute
-            iconColor: Colors.blue[400],
-            title: locale == 'ar' ? 'تلجرام' : 'Telegram',
-            onTap: () => _launchURL('https://t.me/JamalJhome'),
-          ),
-          
-          const SizedBox(height: 8),
-
-          // Website
-          _SettingsTile(
-            icon: Icons.language,
-            iconColor: Colors.purple,
-            title: locale == 'ar' ? 'الموقع الإلكتروني' : 'Website',
-            onTap: () => _launchURL('https://sudanfree.com/'),
-          ),
-          
-          const SizedBox(height: 8),
-
-          // Share App
-          _SettingsTile(
-            icon: Icons.share,
-            iconColor: Colors.orange,
-            title: locale == 'ar' ? 'شارك التطبيق' : 'Share App',
-            onTap: () async {
-              final text = locale == 'ar' 
-                  ? 'جرب تطبيق سودان فري للعثور على فرص عمل ومستقلين موثوقين! حمل التطبيق الآن: https://sudanfree.com/sudan-free.html'
-                  : 'Try SudanFree to find jobs and trusted freelancers! Download now: https://sudanfree.com/sudan-free.html';
-              // ignore: deprecated_member_use
-              await Share.share(text);
+              return Column(
+                children: [
+                  _SettingsTile(
+                    icon: Icons.chat_bubble_outline,
+                    iconColor: Colors.green,
+                    title: locale == 'ar' ? 'واتساب' : 'WhatsApp',
+                    subtitle: locale == 'ar' ? 'تواصل مع الدعم الفني' : 'Contact Support',
+                    onTap: () => _launchURL(whatsapp),
+                  ),
+                  const SizedBox(height: 8),
+                  _SettingsTile(
+                    icon: Icons.facebook,
+                    iconColor: Colors.blue[800],
+                    title: locale == 'ar' ? 'فيسبوك' : 'Facebook',
+                    onTap: () => _launchURL(facebook),
+                  ),
+                  const SizedBox(height: 8),
+                  _SettingsTile(
+                    icon: Icons.send,
+                    iconColor: Colors.blue[400],
+                    title: locale == 'ar' ? 'تلجرام' : 'Telegram',
+                    onTap: () => _launchURL(telegram),
+                  ),
+                  const SizedBox(height: 8),
+                  _SettingsTile(
+                    icon: Icons.language,
+                    iconColor: Colors.purple,
+                    title: locale == 'ar' ? 'الموقع الإلكتروني' : 'Website',
+                    onTap: () => _launchURL(website),
+                  ),
+                  const SizedBox(height: 8),
+                  _SettingsTile(
+                    icon: Icons.share,
+                    iconColor: Colors.orange,
+                    title: locale == 'ar' ? 'شارك التطبيق' : 'Share App',
+                    onTap: () async {
+                      final text = locale == 'ar' ? shareTextAr : shareTextEn;
+                      // ignore: deprecated_member_use
+                      await Share.share(text);
+                    },
+                  ),
+                ],
+              );
             },
           ),
 

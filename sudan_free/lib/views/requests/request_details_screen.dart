@@ -11,6 +11,7 @@ import '../../core/constants/app_colors.dart';
 import '../../widgets/common/custom_text_field.dart';
 import '../../widgets/common/linkable_text.dart';
 import 'request_offers_screen.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 class RequestDetailsScreen extends StatefulWidget {
   final RequestModel request;
@@ -324,6 +325,16 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
                     text: widget.request.text,
                     style: const TextStyle(fontSize: 16, height: 1.6),
                   ),
+
+                  // ═══ Voice Recording Player ═══
+                  if (widget.request.audioUrl != null) ...[
+                    const SizedBox(height: 16),
+                    RequestAudioPlayer(
+                      audioUrl: widget.request.audioUrl!,
+                      duration: widget.request.audioDuration ?? 0,
+                    ),
+                  ],
+
                   // ═══ معرض الصور بالتمرير مع نقاط المؤشر ═══
                   if (widget.request.allImageUrls.isNotEmpty) ...[
                     const SizedBox(height: 16),
@@ -545,7 +556,7 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
                         locale == 'ar' 
                             ? 'هذا الطلب عليه ${widget.request.offersCount} عروض حالياً. كن من أوائل المتقدمين!'
                             : 'This request currently has ${widget.request.offersCount} offers. Be among the first to apply!',
-                        style: const TextStyle(color: AppColors.textPrimary, fontSize: 14, height: 1.5),
+                        style: const TextStyle(fontSize: 14, height: 1.5),
                       ),
                     ),
                   ],
@@ -686,6 +697,118 @@ class _FullScreenImageViewerState extends State<_FullScreenImageViewer> {
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+// ═══ Request Audio Player ═══
+class RequestAudioPlayer extends StatefulWidget {
+  final String audioUrl;
+  final int duration;
+
+  const RequestAudioPlayer({super.key, required this.audioUrl, required this.duration});
+
+  @override
+  State<RequestAudioPlayer> createState() => _RequestAudioPlayerState();
+}
+
+class _RequestAudioPlayerState extends State<RequestAudioPlayer> {
+  final _audioPlayer = AudioPlayer();
+  bool _isPlaying = false;
+  Duration _position = Duration.zero;
+  Duration _duration = Duration.zero;
+
+  @override
+  void initState() {
+    super.initState();
+    _duration = Duration(seconds: widget.duration);
+    _audioPlayer.onPlayerStateChanged.listen((state) {
+      if (mounted) setState(() => _isPlaying = state == PlayerState.playing);
+    });
+    _audioPlayer.onPositionChanged.listen((pos) {
+      if (mounted) setState(() => _position = pos);
+    });
+    _audioPlayer.onDurationChanged.listen((dur) {
+      if (mounted && dur > Duration.zero) setState(() => _duration = dur);
+    });
+    _audioPlayer.onPlayerComplete.listen((_) {
+      if (mounted) setState(() { _isPlaying = false; _position = Duration.zero; });
+    });
+  }
+
+  @override
+  void dispose() {
+    _audioPlayer.dispose();
+    super.dispose();
+  }
+
+  String _formatDuration(Duration d) {
+    return '${d.inMinutes}:${(d.inSeconds % 60).toString().padLeft(2, '0')}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: () async {
+              if (_isPlaying) {
+                await _audioPlayer.pause();
+              } else {
+                await _audioPlayer.play(UrlSource(widget.audioUrl));
+              }
+            },
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+              child: Icon(_isPlaying ? Icons.pause : Icons.play_arrow, color: Colors.white, size: 24),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SliderTheme(
+                  data: SliderThemeData(
+                    trackHeight: 2,
+                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                    overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
+                    activeTrackColor: AppColors.primary,
+                    inactiveTrackColor: AppColors.primary.withValues(alpha: 0.3),
+                    thumbColor: AppColors.primary,
+                  ),
+                  child: Slider(
+                    min: 0,
+                    max: _duration.inMilliseconds.toDouble() > 0 ? _duration.inMilliseconds.toDouble() : 1,
+                    value: _position.inMilliseconds.toDouble().clamp(0, _duration.inMilliseconds.toDouble()),
+                    onChanged: (val) async {
+                      await _audioPlayer.seek(Duration(milliseconds: val.toInt()));
+                    },
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(_formatDuration(_position), style: const TextStyle(fontSize: 10, color: AppColors.primary, fontWeight: FontWeight.bold)),
+                      Text(_formatDuration(_duration), style: const TextStyle(fontSize: 10, color: AppColors.primary, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

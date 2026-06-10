@@ -12,6 +12,14 @@ import '../../providers/chat_provider.dart';
 import '../chat/chat_screen.dart';
 import '../../services/firestore_service.dart';
 import '../../models/user_model.dart';
+import '../../../core/constants/sudan_locations.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+import '../../services/storage_service.dart';
+
+import '../../models/portfolio_project_model.dart';
+import 'portfolio_project_detail_screen.dart';
+import 'squad_dashboard_screen.dart';
 
 class SquadProfileScreen extends StatefulWidget {
   final SquadModel squad;
@@ -22,9 +30,37 @@ class SquadProfileScreen extends StatefulWidget {
   State<SquadProfileScreen> createState() => _SquadProfileScreenState();
 }
 
-class _SquadProfileScreenState extends State<SquadProfileScreen> {
+class _SquadProfileScreenState extends State<SquadProfileScreen> with SingleTickerProviderStateMixin {
   // Mock data for members since we don't have a direct user list yet
   // In a real scenario, we would fetch UserModels using widget.squad.memberIds
+
+  late bool _isAvailable;
+  late TabController _tabController;
+  late Stream<List<PortfolioProjectModel>> _portfolioStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _isAvailable = widget.squad.isAvailable;
+    _tabController = TabController(length: 2, vsync: this);
+    _portfolioStream = FirestoreService().getUserPortfolio(widget.squad.id);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _toggleAvailability() async {
+    final newValue = !_isAvailable;
+    setState(() => _isAvailable = newValue);
+    try {
+      await FirebaseFirestore.instance.collection('squads').doc(widget.squad.id).update({'isAvailable': newValue});
+    } catch (e) {
+      if (mounted) setState(() => _isAvailable = !newValue);
+    }
+  }
 
 
   @override
@@ -39,8 +75,9 @@ class _SquadProfileScreenState extends State<SquadProfileScreen> {
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: CustomScrollView(
-        slivers: [
+      body: NestedScrollView(
+        headerSliverBuilder: (context, innerBoxIsScrolled) {
+          return [
           // 1. App Bar & Cover Image
           SliverAppBar(
             expandedHeight: 250.0,
@@ -52,86 +89,33 @@ class _SquadProfileScreenState extends State<SquadProfileScreen> {
                   final currentUser = auth.user;
                   if (currentUser == null) return const SizedBox.shrink();
                   
-                  final isLeader = widget.squad.leaderId == currentUser.id;
-                  final isMember = widget.squad.memberIds.contains(currentUser.id);
-                  
-                  if (!isLeader && !isMember) return const SizedBox.shrink();
-                  
-                  return PopupMenuButton<String>(
-                    onSelected: (value) async {
-                      if (value == 'edit') {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => CreateSquadScreen(squadToEdit: widget.squad),
+                  final isFavorite = currentUser.favoriteSquadIds.contains(widget.squad.id);
+
+                  return Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Favorite button for non-members
+                      if (!isLeader && !isMember)
+                        IconButton(
+                          icon: Icon(
+                            isFavorite ? Icons.favorite : Icons.favorite_border,
+                            color: isFavorite ? Colors.red : Colors.white,
                           ),
-                        );
-                      } else if (value == 'manage_members') {
-                        _showManageMembersBottomSheet(context, isAr);
-                      } else if (value == 'disband') {
-                        final confirm = await showDialog<bool>(
-                          context: context,
-                          builder: (ctx) => AlertDialog(
-                            title: Text(isAr ? 'تفكيك المجموعة' : 'Disband Squad'),
-                            content: Text(isAr ? 'هل أنت متأكد؟ لا يمكن التراجع عن هذا الإجراء.' : 'Are you sure? This cannot be undone.'),
-                            actions: [
-                              TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(isAr ? 'إلغاء' : 'Cancel')),
-                              ElevatedButton(
-                                onPressed: () => Navigator.pop(ctx, true),
-                                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                                child: Text(isAr ? 'تفكيك' : 'Disband', style: const TextStyle(color: Colors.white)),
-                              ),
-                            ],
-                          ),
-                        );
-                        if (confirm == true && context.mounted) {
-                          try {
-                            await FirebaseFirestore.instance.collection('squads').doc(widget.squad.id).delete();
-                            if (context.mounted) Navigator.pop(context); // Go back after deleting
-                          } catch (e) {
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(isAr ? 'حدث خطأ: $e' : 'Error: $e')));
-                            }
-                          }
-                        }
-                      } else if (value == 'leave') {
-                        final confirm = await showDialog<bool>(
-                          context: context,
-                          builder: (ctx) => AlertDialog(
-                            title: Text(isAr ? 'مغادرة المجموعة' : 'Leave Squad'),
-                            content: Text(isAr ? 'هل أنت متأكد من رغبتك في المغادرة؟' : 'Are you sure you want to leave?'),
-                            actions: [
-                              TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(isAr ? 'إلغاء' : 'Cancel')),
-                              ElevatedButton(
-                                onPressed: () => Navigator.pop(ctx, true),
-                                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                                child: Text(isAr ? 'مغادرة' : 'Leave', style: const TextStyle(color: Colors.white)),
-                              ),
-                            ],
-                          ),
-                        );
-                        if (confirm == true && context.mounted) {
-                          try {
-                            await FirebaseFirestore.instance.collection('squads').doc(widget.squad.id).update({
-                              'memberIds': FieldValue.arrayRemove([currentUser.id])
-                            });
-                            if (context.mounted) Navigator.pop(context); // Go back after leaving
-                          } catch (e) {
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(isAr ? 'حدث خطأ: $e' : 'Error: $e')));
-                            }
-                          }
-                        }
-                      }
-                    },
-                    itemBuilder: (context) => [
-                      if (isLeader) ...[
-                        PopupMenuItem(value: 'edit', child: Text(isAr ? 'تعديل المجموعة' : 'Edit Squad')),
-                        PopupMenuItem(value: 'manage_members', child: Text(isAr ? 'إدارة الأعضاء' : 'Manage Members')),
-                        PopupMenuItem(value: 'disband', child: Text(isAr ? 'تفكيك المجموعة' : 'Disband Squad', style: const TextStyle(color: Colors.red))),
-                      ],
-                      if (!isLeader && isMember)
-                        PopupMenuItem(value: 'leave', child: Text(isAr ? 'مغادرة المجموعة' : 'Leave Squad', style: const TextStyle(color: Colors.red))),
+                          tooltip: isAr ? 'إضافة للمفضلة' : 'Add to Favorites',
+                          onPressed: () {
+                            auth.toggleFavoriteSquad(widget.squad.id);
+                          },
+                        ),
+                        
+                      // Dashboard button for leaders and members
+                      if (isLeader || isMember)
+                        IconButton(
+                          icon: const Icon(Icons.dashboard, color: Colors.white),
+                          tooltip: isAr ? 'لوحة تحكم المجموعة' : 'Squad Dashboard',
+                          onPressed: () {
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => SquadDashboardScreen(squad: widget.squad)));
+                          },
+                        ),
                     ],
                   );
                 },
@@ -174,8 +158,30 @@ class _SquadProfileScreenState extends State<SquadProfileScreen> {
             ),
           ),
           
-          // 2. Squad Information
-          SliverToBoxAdapter(
+          SliverPersistentHeader(
+            pinned: true,
+            delegate: _SliverTabBarDelegate(
+              topPadding: MediaQuery.of(context).padding.top,
+              TabBar(
+                controller: _tabController,
+                indicatorColor: AppColors.primary,
+                labelColor: AppColors.primary,
+                unselectedLabelColor: Colors.grey,
+                labelStyle: const TextStyle(fontWeight: FontWeight.bold),
+                tabs: [
+                  Tab(text: isAr ? 'معلومات المجموعة' : 'Squad Info'),
+                  Tab(text: isAr ? 'معرض الأعمال' : 'Portfolio'),
+                ],
+              ),
+            ),
+          ),
+        ];
+      },
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          // Tab 1: Squad Info
+          SingleChildScrollView(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
@@ -188,6 +194,62 @@ class _SquadProfileScreenState extends State<SquadProfileScreen> {
                       _buildStatColumn(Icons.group, widget.squad.memberIds.length.toString(), isAr ? 'أعضاء' : 'Members'),
                       _buildStatColumn(Icons.star, widget.squad.rating.toStringAsFixed(1), isAr ? 'التقييم' : 'Rating'),
                       _buildStatColumn(Icons.task_alt, widget.squad.completedJobs.toString(), isAr ? 'مشاريع' : 'Jobs'),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  
+                  // Location and Availability
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // Location
+                      if (widget.squad.state != null)
+                        Expanded(
+                          child: Row(
+                            children: [
+                              const Icon(Icons.location_on, color: AppColors.primary, size: 20),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  '${SudanLocations.getStateName(widget.squad.state!, locale)}${widget.squad.locality != null ? " - ${SudanLocations.getLocalityName(widget.squad.locality!, locale)}" : ""}',
+                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      else
+                         const Spacer(),
+                      
+                      // Availability Toggle/Badge
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: _isAvailable ? Colors.green.withValues(alpha: 0.1) : Colors.red.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: _isAvailable ? Colors.green : Colors.red),
+                        ),
+                        child: InkWell(
+                          onTap: isLeader ? () => _toggleAvailability() : null,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.circle, size: 10, color: _isAvailable ? Colors.green : Colors.red),
+                              const SizedBox(width: 6),
+                              Text(
+                                _isAvailable ? (isAr ? 'متاح للتعاقد' : 'Available for Hire') : (isAr ? 'مشغول حالياً' : 'Busy/On Project'),
+                                style: TextStyle(color: _isAvailable ? Colors.green : Colors.red, fontWeight: FontWeight.bold, fontSize: 13),
+                              ),
+                              if (isLeader) ...[
+                                const SizedBox(width: 4),
+                                Icon(Icons.edit, size: 12, color: _isAvailable ? Colors.green : Colors.red),
+                              ]
+                            ],
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 24),
@@ -236,19 +298,24 @@ class _SquadProfileScreenState extends State<SquadProfileScreen> {
                     style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: widget.squad.combinedSkills.map((skill) {
-                      return Chip(
-                        label: Text(skill, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                        backgroundColor: AppColors.sudanGold,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                        side: BorderSide.none,
-                      );
-                    }).toList(),
-                  ),
+                  if (widget.squad.combinedSkills.isNotEmpty)
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: widget.squad.combinedSkills.map((skill) {
+                        return Chip(
+                          label: Text(skill, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                          backgroundColor: AppColors.sudanGold,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                          side: BorderSide.none,
+                        );
+                      }).toList(),
+                    )
+                  else
+                    Text(isAr ? 'لم يتم تحديد مهارات بعد' : 'No skills defined yet', style: TextStyle(color: Colors.grey[600])),
                   const SizedBox(height: 32),
+
+
 
                   // Team Members Section
                   Row(
@@ -312,8 +379,12 @@ class _SquadProfileScreenState extends State<SquadProfileScreen> {
               ),
             ),
           ),
+          
+          // Tab 2: Portfolio
+          _buildProfessionalPortfolio(),
         ],
       ),
+    ),
       
       // Bottom Action Bar
       bottomNavigationBar: shouldShowHireButton ? Container(
@@ -484,7 +555,175 @@ class _SquadProfileScreenState extends State<SquadProfileScreen> {
       },
     );
   }
+  
+  Widget _buildProfessionalPortfolio() {
+    final locale = context.watch<LocaleProvider>().locale.languageCode;
+    return StreamBuilder<List<PortfolioProjectModel>>(
+      stream: _portfolioStream,
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          debugPrint('Error loading portfolio: ${snapshot.error}');
+          final errorStr = snapshot.error.toString();
+          if (errorStr.contains('permission-denied') || errorStr.contains('PERMISSION_DENIED')) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.folder_open_outlined, size: 64, color: Colors.grey[400]),
+                  const SizedBox(height: 16),
+                  Text(
+                    locale == 'ar' ? 'لا توجد مشاريع في المعرض بعد' : 'No portfolio projects yet',
+                    style: TextStyle(color: Colors.grey[600]),
+                  ),
+                ],
+              ),
+            );
+          }
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                locale == 'ar' ? 'خطأ في تحميل المعرض المهني.' : 'Error loading portfolio.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.red),
+              ),
+            ),
+          );
+        }
+        if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+        final projects = snapshot.data ?? [];
 
+        if (projects.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.folder_open_outlined, size: 64, color: Colors.grey[400]),
+                const SizedBox(height: 16),
+                Text(
+                  locale == 'ar' ? 'لا توجد مشاريع في المعرض بعد' : 'No portfolio projects yet',
+                  style: TextStyle(color: Colors.grey[600]),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: projects.length,
+          itemBuilder: (context, index) {
+            final project = projects[index];
+            return _buildProjectCard(project, locale);
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildProjectCard(PortfolioProjectModel project, String locale) {
+    final isAr = locale == 'ar';
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => PortfolioProjectDetailScreen(
+              project: project,
+              providerName: widget.squad.name,
+              providerImageUrl: widget.squad.squadImageUrl,
+            ),
+          ),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 24),
+        decoration: BoxDecoration(
+          color: theme.cardColor,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
+              blurRadius: 15,
+              offset: const Offset(0, 5),
+            ),
+          ],
+          border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (project.imageUrls.isNotEmpty)
+              Stack(
+                children: [
+                  SizedBox(
+                    height: 220,
+                    width: double.infinity,
+                    child: CachedNetworkImage(
+                      imageUrl: project.imageUrls.first,
+                      fit: BoxFit.cover,
+                      placeholder: (_, __) => Container(color: Colors.grey.withValues(alpha: 0.1), child: const Center(child: CircularProgressIndicator())),
+                      errorWidget: (_, __, ___) => Container(color: Colors.grey.withValues(alpha: 0.1), child: const Icon(Icons.broken_image, color: Colors.grey)),
+                    ),
+                  ),
+                  if (project.imageUrls.length > 1)
+                    Positioned(
+                      top: 12,
+                      right: 12,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.7),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.photo_library, size: 14, color: Colors.white),
+                            const SizedBox(width: 4),
+                            Text('${project.imageUrls.length}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          project.title,
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    project.description,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: Colors.grey[600], fontSize: 14, height: 1.5),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
   void _showManageMembersBottomSheet(BuildContext context, bool isAr) {
     showModalBottomSheet(
       context: context,
@@ -624,4 +863,36 @@ class _SquadProfileScreenState extends State<SquadProfileScreen> {
       },
     );
   }
+}
+
+class _SliverTabBarDelegate extends SliverPersistentHeaderDelegate {
+  final double topPadding;
+  final TabBar tabBar;
+
+  _SliverTabBarDelegate(this.tabBar, {required this.topPadding});
+
+  @override
+  double get minExtent => tabBar.preferredSize.height;
+  @override
+  double get maxExtent => tabBar.preferredSize.height;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return Container(
+      color: Theme.of(context).scaffoldBackgroundColor,
+      child: Column(
+        children: [
+          Container(height: 1, color: Colors.grey.withValues(alpha: 0.2)),
+          tabBar,
+        ],
+      ),
+    );
+  }
+
+  @override
+  bool shouldRebuild(_SliverTabBarDelegate oldDelegate) {
+    return tabBar != oldDelegate.tabBar || topPadding != oldDelegate.topPadding;
+  }
+
+
 }

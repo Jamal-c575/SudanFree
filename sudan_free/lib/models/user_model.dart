@@ -83,7 +83,8 @@ class UserModel {
   final List<String> shopInterests;    // أنواع المتاجر التي يهتم بها العميل
   final List<String> serviceInterests; // أنواع الخدمات التي يحتاجها العميل
   final List<String> favoriteUserIds;  // المفضلة: حرفيون أو متاجر
-  final List<String> favoriteProductIds; // المفضلة: المنتجات
+  final List<String> favoriteProductIds;
+  final List<String> favoriteSquadIds; // المفضلة: المنتجات
   final bool showOnMap; // إظهار أو إخفاء من الخريطة
   final double? latitude; // خط العرض
   final double? longitude; // خط الطول
@@ -159,6 +160,7 @@ class UserModel {
     this.serviceInterests = const [],
     this.favoriteUserIds = const [],
     this.favoriteProductIds = const [],
+    this.favoriteSquadIds = const [],
     this.showOnMap = true,
     this.latitude,
     this.longitude,
@@ -263,6 +265,7 @@ class UserModel {
       serviceInterests: List<String>.from(data['serviceInterests'] ?? []),
       favoriteUserIds: List<String>.from(data['favoriteUserIds'] ?? []),
       favoriteProductIds: List<String>.from(data['favoriteProductIds'] ?? []),
+      favoriteSquadIds: List<String>.from(data['favoriteSquadIds'] ?? []),
       showOnMap: data['showOnMap'] ?? true,
       latitude: (data['latitude'] as num?)?.toDouble(),
       longitude: (data['longitude'] as num?)?.toDouble(),
@@ -366,6 +369,7 @@ class UserModel {
       'serviceInterests': serviceInterests,
       'favoriteUserIds': favoriteUserIds,
       'favoriteProductIds': favoriteProductIds,
+      'favoriteSquadIds': favoriteSquadIds,
       'showOnMap': showOnMap,
       if (latitude != null) 'latitude': latitude,
       if (longitude != null) 'longitude': longitude,
@@ -453,6 +457,7 @@ class UserModel {
     List<String>? serviceInterests,
     List<String>? favoriteUserIds,
     List<String>? favoriteProductIds,
+    List<String>? favoriteSquadIds,
     bool? showOnMap,
     double? latitude,
     double? longitude,
@@ -516,6 +521,7 @@ class UserModel {
       serviceInterests: serviceInterests ?? this.serviceInterests,
       favoriteUserIds: favoriteUserIds ?? this.favoriteUserIds,
       favoriteProductIds: favoriteProductIds ?? this.favoriteProductIds,
+      favoriteSquadIds: favoriteSquadIds ?? this.favoriteSquadIds,
       showOnMap: showOnMap ?? this.showOnMap,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,

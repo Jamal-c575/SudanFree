@@ -9,6 +9,7 @@ import 'register_screen.dart';
 import '../settings/privacy_policy_screen.dart';
 
 import 'package:url_launcher/url_launcher.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../l10n/generated/app_localizations.dart';
 
@@ -194,9 +195,18 @@ class _LoginScreenState extends State<LoginScreen> {
               foregroundColor: Colors.white,
             ),
             onPressed: () async {
-              final url = Uri.parse('https://wa.me/249900578357');
-              if (await canLaunchUrl(url)) {
-                await launchUrl(url, mode: LaunchMode.externalApplication);
+              try {
+                final doc = await FirebaseFirestore.instance.collection('settings').doc('app_settings').get();
+                final whatsapp = doc.data()?['whatsapp'] ?? 'https://wa.me/249900578357';
+                final url = Uri.parse(whatsapp);
+                if (await canLaunchUrl(url)) {
+                  await launchUrl(url, mode: LaunchMode.externalApplication);
+                }
+              } catch (e) {
+                final url = Uri.parse('https://wa.me/249900578357');
+                if (await canLaunchUrl(url)) {
+                  await launchUrl(url, mode: LaunchMode.externalApplication);
+                }
               }
             },
           ),

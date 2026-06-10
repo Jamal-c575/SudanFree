@@ -52,6 +52,8 @@ class SquadModel {
   final SquadCategory category;
   final String? state;
   final String? locality;
+  final bool isAvailable;
+  final List<String> portfolioUrls;
 
   SquadModel({
     required this.id,
@@ -67,6 +69,8 @@ class SquadModel {
     this.category = SquadCategory.other,
     this.state,
     this.locality,
+    this.isAvailable = true,
+    this.portfolioUrls = const [],
   });
 
   factory SquadModel.fromFirestore(DocumentSnapshot doc) {
@@ -96,6 +100,8 @@ class SquadModel {
       category: parsedCategory,
       state: data['state'],
       locality: data['locality'],
+      isAvailable: data['isAvailable'] ?? true,
+      portfolioUrls: List<String>.from(data['portfolioUrls'] ?? []),
     );
   }
 
@@ -113,6 +119,8 @@ class SquadModel {
       'category': category.name,
       'state': state,
       'locality': locality,
+      'isAvailable': isAvailable,
+      'portfolioUrls': portfolioUrls,
     };
   }
 }

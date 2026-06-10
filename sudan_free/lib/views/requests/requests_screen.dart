@@ -407,17 +407,28 @@ class _RequestCard extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.local_offer_outlined, size: 18, color: AppColors.primary),
+                    Icon(
+                      Icons.local_offer_outlined, 
+                      size: 18, 
+                      color: Theme.of(context).brightness == Brightness.dark ? AppColors.primaryLight : AppColors.primary,
+                    ),
                     const SizedBox(width: 6),
                     Text(
                       '${request.offersCount} ${locale == 'ar' ? 'عروض' : 'Offers'}',
-                      style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold, 
+                        color: Theme.of(context).brightness == Brightness.dark ? AppColors.primaryLight : AppColors.primary,
+                      ),
                     ),
                   ],
                 ),
                 Text(
                   locale == 'ar' ? 'عرض التفاصيل' : 'View Details',
-                  style: TextStyle(color: Colors.blue[700], fontWeight: FontWeight.bold, fontSize: 13),
+                  style: TextStyle(
+                    color: Theme.of(context).brightness == Brightness.dark ? Colors.blue[300] : Colors.blue[700], 
+                    fontWeight: FontWeight.bold, 
+                    fontSize: 13,
+                  ),
                 ),
               ],
             ),

@@ -9,6 +9,9 @@ import 'profile_screen.dart';
 import 'product_detail_screen.dart';
 import '../posts/post_details_screen.dart';
 import '../../models/post_model.dart';
+import '../../models/squad_model.dart';
+import 'squad_profile_screen.dart';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../services/smart_guide_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -71,7 +74,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     final title = locale == 'ar' ? (!isFreelancer ? 'مفضلاتي' : 'الزملاء والمفضلة') : (!isFreelancer ? 'My Favorites' : 'Partners & Favorites');
 
     return DefaultTabController(
-      length: 3,
+      length: 4,
       child: Scaffold(
         appBar: AppBar(
           title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
@@ -83,6 +86,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
             tabs: [
               Tab(text: locale == 'ar' ? 'الزملاء' : 'Partners'),
               Tab(text: locale == 'ar' ? 'الحسابات المحفوظة' : 'Saved Accounts'),
+              Tab(text: locale == 'ar' ? 'المجموعات' : 'Squads'),
               Tab(text: locale == 'ar' ? 'المنشورات المحفوظة' : 'Saved Posts'),
             ],
           ),
@@ -91,6 +95,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
           children: [
             _buildUsersList(context, user, user.partnerIds, locale, isPartnerList: true),
             _buildUsersList(context, user, user.favoriteUserIds, locale, isPartnerList: false),
+            _buildSquadsTab(context, user, locale),
             _buildProductsTab(context, user, locale),
           ],
         ),

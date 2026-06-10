@@ -8,6 +8,8 @@ class RequestModel {
   final String text;
   final String? imageUrl; // Legacy single image
   final List<String> imageUrls; // New: up to 3 images
+  final String? audioUrl; // Voice record url
+  final int? audioDuration; // Voice record duration in seconds
   final String? category;
   final String? state; // e.g. Khartoum
   final String? locality; // e.g. Omdurman
@@ -23,6 +25,8 @@ class RequestModel {
     required this.text,
     this.imageUrl,
     this.imageUrls = const [],
+    this.audioUrl,
+    this.audioDuration,
     this.category,
     this.state,
     this.locality,
@@ -51,6 +55,8 @@ class RequestModel {
       'text': text,
       'imageUrl': imageUrl,
       'imageUrls': imageUrls,
+      'audioUrl': audioUrl,
+      'audioDuration': audioDuration,
       'category': category,
       'state': state,
       'locality': locality,
@@ -69,6 +75,8 @@ class RequestModel {
       text: map['text'] ?? '',
       imageUrl: map['imageUrl'],
       imageUrls: List<String>.from(map['imageUrls'] ?? []),
+      audioUrl: map['audioUrl'],
+      audioDuration: map['audioDuration'],
       category: map['category'],
       state: map['state'],
       locality: map['locality'],

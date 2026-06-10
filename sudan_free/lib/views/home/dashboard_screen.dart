@@ -1,3 +1,4 @@
+import "../squads/squads_explorer_screen.dart";
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -749,11 +750,9 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
         'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => FilteredProvidersScreen(filterType: FilterType.shops, title: locale == 'ar' ? 'المتاجر' : 'Shops'))),
       },
       {
-        'title': locale == 'ar' ? 'الفئات' : 'Categories',
-        'icon': Icons.category,
-        // Categories can still navigate to search/tab 1 if preferred, or open a special sheet
-        // but for consistency, we'll route it to the filtered screen for now
-        'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => FilteredProvidersScreen(filterType: FilterType.categories, title: locale == 'ar' ? 'كل الفئات' : 'All Categories'))),
+        'title': locale == 'ar' ? 'المجموعات' : 'Squads',
+        'icon': Icons.groups,
+        'action': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SquadsExplorerScreen())),
       },
     ];
 
