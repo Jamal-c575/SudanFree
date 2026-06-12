@@ -7,6 +7,8 @@ import 'package:flutter/gestures.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../models/comment_model.dart';
 import '../../core/constants/app_colors.dart';
+import 'package:any_link_preview/any_link_preview.dart';
+import '../common/internal_link_preview.dart';
 
 class CommentTile extends StatelessWidget {
   final CommentModel comment;
@@ -349,10 +351,60 @@ class CommentTile extends StatelessWidget {
       spans.add(TextSpan(text: content.substring(lastEnd)));
     }
 
+    String? firstUrl;
+    for (final match in matches) {
+      final text = match.group(0)!;
+      final bool isMention = RegExp(mentionPattern).hasMatch(text);
+      if (!isMention && firstUrl == null) {
+        firstUrl = text;
+        if (!firstUrl.startsWith('http')) {
+          firstUrl = 'https://' + firstUrl;
+        }
+      }
+    }
+
     return Padding(
       padding: const EdgeInsets.only(top: 6),
-      child: RichText(
-        text: TextSpan(style: normalStyle, children: spans),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          RichText(
+            text: TextSpan(style: normalStyle, children: spans),
+          ),
+          if (firstUrl != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: InternalLinkPreviewWidget.isInternalLink(firstUrl)
+                  ? InternalLinkPreviewWidget(url: firstUrl)
+                  : ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: AnyLinkPreview(
+                        link: firstUrl,
+                        displayDirection: UIDirection.uiDirectionHorizontal,
+                        backgroundColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey[100],
+                        errorWidget: const SizedBox.shrink(),
+                        errorImage: '',
+                        cache: const Duration(days: 7),
+                        placeholderWidget: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey[100],
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.link, color: AppColors.primary.withValues(alpha: 0.5)),
+                              const SizedBox(width: 8),
+                              Text(
+                                Theme.of(context).brightness == Brightness.dark ? 'Loading link...' : 'جاري قراءة الرابط...',
+                                style: TextStyle(color: Colors.grey, fontSize: 12),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+            ),
+        ],
       ),
     );
   }

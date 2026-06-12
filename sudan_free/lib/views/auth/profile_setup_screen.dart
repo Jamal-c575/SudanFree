@@ -31,6 +31,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _bioController = TextEditingController();
+  final _neighborhoodController = TextEditingController();
   final _phoneController = TextEditingController();
   final _hourlyRateController = TextEditingController();
   final _customSkillController = TextEditingController();
@@ -100,6 +101,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       final user = widget.existingUser!;
       _nameController.text = user.name;
       _bioController.text = user.bio ?? '';
+      _neighborhoodController.text = user.neighborhood ?? '';
       _phoneController.text = user.phoneNumber ?? '';
       _hourlyRateController.text = user.hourlyRate?.toString() ?? '';
       _openingHoursController.text = user.openingHours ?? '';
@@ -159,6 +161,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   void dispose() {
     _nameController.dispose();
     _bioController.dispose();
+    _neighborhoodController.dispose();
     _phoneController.dispose();
     _hourlyRateController.dispose();
     _customSkillController.dispose();
@@ -581,6 +584,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         'whatsappNumber': _phoneController.text.trim().isNotEmpty ? _phoneController.text.trim() : null,
         'state': _selectedState,
         'locality': _selectedLocality,
+        'neighborhood': _neighborhoodController.text.trim().isNotEmpty ? _neighborhoodController.text.trim() : null,
         if (_latitude != null) 'latitude': _latitude,
         if (_longitude != null) 'longitude': _longitude,
         'updatedAt': DateTime.now(),
@@ -597,6 +601,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           bio: _bioController.text.trim().isNotEmpty ? _bioController.text.trim() : null,
           state: _selectedState,
           locality: _selectedLocality,
+          neighborhood: _neighborhoodController.text.trim().isNotEmpty ? _neighborhoodController.text.trim() : null,
           shopCategory: _selectedShopCategory,
           role: _selectedRole,
         ),
@@ -828,6 +833,19 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                 ),
               );
               return;
+            }
+
+            if (_selectedRole == UserRole.freelancer || _selectedRole == UserRole.techService || _selectedRole == UserRole.privateService) {
+              if (_hourlyRateController.text.trim().isEmpty) {
+                final scaffoldMessenger = ScaffoldMessenger.of(context);
+                scaffoldMessenger.showSnackBar(
+                  SnackBar(
+                    content: Text(locale == 'ar' ? 'السعر بالساعة إجباري لتقديم الخدمات' : 'Hourly rate is required for service providers'),
+                    backgroundColor: AppColors.warning,
+                  ),
+                );
+                return;
+              }
             }
           }
           if (_currentStep == 2 && (_selectedRole == UserRole.freelancer || _selectedRole == UserRole.techService || _selectedRole == UserRole.privateService || _selectedRole == UserRole.shop)) {
@@ -1131,10 +1149,17 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                 maxLines: 3,
                 prefixIcon: Icons.description_outlined,
               ),
+              const SizedBox(height: 16),
+              CustomTextField(
+                label: locale == 'ar' ? 'اسم المنطقة / الحي' : 'Neighborhood / Street',
+                hint: locale == 'ar' ? 'أدخل اسم الحي لتسهيل البحث عنك...' : 'Enter your neighborhood name...',
+                controller: _neighborhoodController,
+                prefixIcon: Icons.location_city_outlined,
+              ),
               if (_selectedRole == UserRole.freelancer || _selectedRole == UserRole.techService || _selectedRole == UserRole.privateService) ...[
                 const SizedBox(height: 16),
                 CustomTextField(
-                  label: AppStrings.get(AppStrings.hourlyRate, locale),
+                  label: locale == 'ar' ? 'ما هو المبلغ الذي يرضيك للعمل المتواصل لمدة ساعة (بدون تكاليف خارجية)؟' : AppStrings.get(AppStrings.hourlyRate, locale),
                   hint: '100',
                   controller: _hourlyRateController,
                   keyboardType: TextInputType.number,

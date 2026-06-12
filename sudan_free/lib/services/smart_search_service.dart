@@ -84,6 +84,60 @@ class SmartSearchService {
     'بنشرجي': ['بتاع لساتك', 'رقعة', 'هواء', 'بنشر', 'لساتك'],
   };
 
+  /// خريطة تحويل أسماء الـ Enum الإنجليزية → كلمات عربية للبحث
+  /// هذا هو الإصلاح الجذري: المهارات مخزونة كـ "mobileDevelopment" لكن المستخدم يبحث بـ "مبرمج"
+  static const Map<String, List<String>> _skillCategoryKeywords = {
+    'webDevelopment':    ['مبرمج', 'برمجة', 'مطور', 'مطور ويب', 'تطوير ويب', 'ويب'],
+    'mobileDevelopment': ['مبرمج', 'برمجة', 'مطور', 'تطوير تطبيقات', 'مطور تطبيقات', 'تطبيقات'],
+    'design':            ['مصمم', 'تصميم', 'جرافيك', 'ديزاينر', 'مصمم جرافيك'],
+    'writing':           ['كاتب', 'كتابة', 'محتوى'],
+    'translation':       ['مترجم', 'ترجمة'],
+    'marketing':         ['تسويق', 'مسوق', 'اعلانات'],
+    'dataEntry':         ['إدخال بيانات', 'داتا', 'داتا انتري'],
+    'videoEditing':      ['مونتاج', 'مونتير', 'فيديو', 'مونتاج فيديو'],
+    'photography':       ['مصور', 'تصوير', 'فوتوغرافي'],
+    'tutoring':          ['مدرس', 'معلم', 'تدريس', 'دروس'],
+    'teaching':          ['مدرس', 'معلم', 'تدريس', 'أستاذ'],
+    'privateTutoring':   ['مدرس خصوصي', 'مدرس', 'معلم', 'دروس خصوصية'],
+    'teachingConsultant':['مستشار تدريس', 'مدرس', 'معلم'],
+    'construction':      ['بناء', 'بنّاء', 'مقاول', 'عامل بناء'],
+    'electrical':        ['كهربائي', 'كهرباء', 'فني كهرباء', 'كهربجي'],
+    'plumbing':          ['سباك', 'سباكة', 'فني صحي', 'فني مواسير'],
+    'painting':          ['دهان', 'نقاش', 'صباغ', 'فني طلاء'],
+    'carpentry':         ['نجار', 'نجارة', 'فني أثاث'],
+    'carMaintenance':    ['ميكانيكي', 'ميكانيكا', 'صيانة سيارات', 'فني سيارات'],
+    'carWash':           ['غسيل سيارات', 'غسيل عربيات'],
+    'cleaning':          ['تنظيف', 'نظافة', 'عامل نظافة'],
+    'movingServices':    ['نقل', 'نقل عفش', 'ترحيل', 'سائق'],
+    'airConditioning':   ['تكييف', 'مكيفات', 'فني تكييف', 'تبريد'],
+    'applianceRepair':   ['صيانة أجهزة', 'صيانة', 'فني صيانة', 'تصليح'],
+    'tourGuide':         ['مرشد سياحي', 'مرشد', 'سياحة'],
+    'driving':           ['سائق', 'سواق', 'شوفير'],
+    'delivery':          ['توصيل', 'ديليفري', 'دليفري'],
+    'cooking':           ['طباخ', 'طبخ', 'شيف', 'طاهي'],
+    'tailoring':         ['خياط', 'خياطة', 'ترزي', 'تفصيل'],
+    'beauty':            ['تجميل', 'كوافير', 'مكياج', 'بيوتي'],
+    'lawyer':            ['محامي', 'محاماة', 'قانوني'],
+    'chef':              ['طباخ', 'شيف', 'طبخ'],
+    'translator':        ['مترجم', 'ترجمة'],
+    'eventCatering':     ['تلبية مناسبات', 'أفراح', 'حفلات', 'ضيافة'],
+    'baker':             ['فران', 'خباز', 'خبز'],
+    'pastryChef':        ['حلويات', 'بنكجي', 'كيكة'],
+    'waiter':            ['طاولجي', 'نادل', 'خدمة طاولات'],
+    'clinicReception':   ['استقبال عيادات', 'استقبال', 'سكرتير'],
+    'appointmentBooking':['حجز مواعيد', 'حجز'],
+    'clinicInquiry':     ['استفسار عيادات', 'استفسار'],
+    'furnitureMoving':   ['نقل أثاث', 'نقل عفش', 'ترحيل'],
+    'goodsTransport':    ['نقل بضائع', 'شحن', 'نقل'],
+    'privateRides':      ['مشاوير خاصة', 'مشاوير', 'ترحيل', 'ركشة'],
+    'vacuumTruck':       ['شفط بالهواء', 'شفط', 'سحب'],
+    'buildingMaterialsTransport': ['نقل مواد بناء', 'نقل بناء'],
+    'dumpTruckDirt':     ['قلابات تراب', 'قلابة', 'تراب'],
+    'dumpTruckSand':     ['قلابات رملة', 'قلابة', 'رمل', 'رملة'],
+    'dumpTruckConcrete': ['قلابات خرسانة', 'خرسانة'],
+    'bartering':         ['مقايضة', 'بيع وشراء'],
+  };
+
   /// استخراج اقتراحات بحث محفوظة محلياً في التطبيق بناءً على الإدخال
   static List<String> getPredefinedSuggestions(String query) {
     if (query.isEmpty) return [];
@@ -281,9 +335,15 @@ class SmartSearchService {
       // البحث في نوع العمل
       if (jobTitle != null && _containsMatch(_normalizeArabic(jobTitle.toLowerCase()), q)) return true;
       
-      // البحث في المهارات
+      // البحث في المهارات (نصاً مباشراً أو عبر خريطة الـ Enum → عربي)
       for (final skill in skills) {
+        // مطابقة مباشرة (للمهارات المخصصة المكتوبة بالعربي)
         if (_containsMatch(_normalizeArabic(skill.toLowerCase()), q)) return true;
+        // *** الإصلاح الجذري: تحويل اسم الـ Enum الإنجليزي → كلمات عربية ثم مطابقة ***
+        final arabicKeywords = _skillCategoryKeywords[skill] ?? [];
+        for (final keyword in arabicKeywords) {
+          if (_containsMatch(_normalizeArabic(keyword.toLowerCase()), q)) return true;
+        }
       }
       
       // البحث في النبذة
@@ -331,13 +391,12 @@ class SmartSearchService {
     return false;
   }
 
-  /// تقسيم الاستعلام إلى مهارة + موقع
   static _ParsedQuery? _parseQuery(String query) {
+    // 1. Try explicit connecting words ("في", "ب")
     for (final keyword in _locationKeywords) {
       final normalizedKeyword = _normalizeArabic(keyword);
-      // البحث عن "في" أو "ب" ككلمة منفصلة
       final pattern = keyword.length == 1
-          ? ' $normalizedKeyword' // حرف واحد مثل "ب" → يجب أن يسبقه مسافة
+          ? ' $normalizedKeyword' // حرف واحد مثل "ب"
           : ' $normalizedKeyword '; // كلمة كاملة مثل "في"
       
       final index = query.indexOf(pattern);
@@ -349,6 +408,18 @@ class SmartSearchService {
         }
       }
     }
+
+    // 2. Try implicit composite search (e.g. "مبرمج ام درمان")
+    for (final keyword in [..._locationKeywords, ..._knownNeighborhoods]) {
+      final normalizedKeyword = _normalizeArabic(keyword);
+      if (query.length > normalizedKeyword.length && query.contains(normalizedKeyword)) {
+         final skillPart = query.replaceAll(normalizedKeyword, '').trim();
+         if (skillPart.isNotEmpty) {
+           return _ParsedQuery(skillPart: skillPart, locationPart: normalizedKeyword);
+         }
+      }
+    }
+    
     return null;
   }
 
@@ -363,7 +434,13 @@ class SmartSearchService {
       if (_containsMatch(_normalizeArabic(name.toLowerCase()), q)) return true;
       if (jobTitle != null && _containsMatch(_normalizeArabic(jobTitle.toLowerCase()), q)) return true;
       for (final skill in skills) {
+        // مطابقة مباشرة (للمهارات المخصصة المكتوبة بالعربي)
         if (_containsMatch(_normalizeArabic(skill.toLowerCase()), q)) return true;
+        // *** الإصلاح الجذري: تحويل اسم الـ Enum → عربي ***
+        final arabicKeywords = _skillCategoryKeywords[skill] ?? [];
+        for (final keyword in arabicKeywords) {
+          if (_containsMatch(_normalizeArabic(keyword.toLowerCase()), q)) return true;
+        }
       }
     }
     return false;

@@ -94,16 +94,7 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
       );
     });
     
-    // Infinite Scroll Listener with debounce to prevent duplicate fetches
-    _scrollController.addListener(() {
-      if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 300) {
-        // Debounce: only trigger once per 500ms to avoid multiple rapid requests
-        _scrollDebounceTimer?.cancel();
-        _scrollDebounceTimer = Timer(const Duration(milliseconds: 500), () {
-          context.read<PostsProvider>().fetchMorePosts();
-        });
-      }
-    });
+    // Infinite scroll is now handled via NotificationListener in the build method
   }
 
   Future<void> _loadPinnedCategory() async {
@@ -417,7 +408,19 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
 
 
                 ],
-                body: (postsProvider.isLoading && !postsProvider.hasPosts)
+                body: NotificationListener<ScrollNotification>(
+                  onNotification: (ScrollNotification scrollInfo) {
+                    if (scrollInfo.metrics.pixels >= scrollInfo.metrics.maxScrollExtent - 300) {
+                      _scrollDebounceTimer?.cancel();
+                      _scrollDebounceTimer = Timer(const Duration(milliseconds: 500), () {
+                        if (mounted && !context.read<PostsProvider>().isLoadingMore) {
+                          context.read<PostsProvider>().fetchMorePosts();
+                        }
+                      });
+                    }
+                    return false;
+                  },
+                  child: (postsProvider.isLoading && !postsProvider.hasPosts)
                     ? ListView.builder(
                         itemCount: 4,
                         padding: const EdgeInsets.all(12),
@@ -499,6 +502,7 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
                               );
                             }),
                           ),
+                  ),
               ),
             ),
           ),

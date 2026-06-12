@@ -114,6 +114,21 @@ class UserProvider extends ChangeNotifier {
     }
   }
 
+  /// حذف مستخدم من القائمة المحلية (عندما يفشل تحميل بياناته أو حسابه غير متاح)
+  void removeStaleUser(String userId) {
+    final beforeCount = _freelancers.length + _shops.length;
+    _freelancers.removeWhere((u) => u.id == userId);
+    _shops.removeWhere((u) => u.id == userId);
+    if (_freelancers.length + _shops.length < beforeCount) {
+      // تحديث الكاش بعد الحذف
+      try {
+        _cacheService.cacheFreelancers(_freelancers.map((e) => e.toJsonMap()).toList());
+      } catch (_) {}
+      notifyListeners();
+      debugPrint('UserProvider: removed stale user $userId from local list');
+    }
+  }
+
   // Stream user updates
   void streamUser(String userId) {
     _firestoreService.getUserStream(userId).listen((user) {
@@ -128,9 +143,16 @@ class UserProvider extends ChangeNotifier {
     if (_freelancers.isEmpty && !forceRefresh) {
       final cached = _cacheService.getCachedFreelancers();
       if (cached != null && cached.isNotEmpty) {
-         _freelancers = cached.map((e) => UserModel.fromMap(e)).toList();
-         _freelancersLoaded = true;
-         notifyListeners(); // Show cached data immediately
+        // تصفية الحسابات التالفة بصمت — لا نوقف تحميل كل القائمة بسبب حساب واحد
+        _freelancers = cached.map((e) {
+          try { return UserModel.fromMap(e); }
+          catch (err) {
+            debugPrint('UserProvider: Skipped corrupted cache entry ${e['id']}: $err');
+            return null;
+          }
+        }).whereType<UserModel>().toList();
+        _freelancersLoaded = true;
+        notifyListeners(); // Show cached data immediately
       }
     }
 

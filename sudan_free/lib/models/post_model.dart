@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../utils/safe_parse.dart';
 
 class PostReaction {
   static const String like = 'like';
@@ -634,8 +635,8 @@ class PollOption {
 
   factory PollOption.fromMap(Map<String, dynamic> data) {
     return PollOption(
-      text: data['text'] ?? '',
-      voterIds: List<String>.from(data['voterIds'] ?? []),
+      text: SafeParse.string(data['text']),
+      voterIds: SafeParse.stringList(data['voterIds']),
     );
   }
 
@@ -787,44 +788,41 @@ class PostModel {
 
   factory PostModel.fromMap(Map<String, dynamic> data) {
     return PostModel(
-      id: data['id'] ?? '',
-      userId: data['userId'] ?? '',
-      userName: data['userName'] ?? '',
-      userRole: data['userRole'],
-      userJobTitle: data['userJobTitle'],
-      userImageUrl: data['userImageUrl'],
-      imageUrl: data['imageUrl'],
-      imageUrls: List<String>.from(data['imageUrls'] ?? []),
-      caption: data['caption'],
-      category: data['category'],
-      mentionedUsers: List<String>.from(data['mentionedUsers'] ?? []),
-      reactions: Map<String, String>.from(data['reactions'] ?? {}),
-      commentsCount: data['commentsCount'] ?? 0,
-      sharesCount: data['sharesCount'] ?? 0,
-      showInCommunity: data['showInCommunity'] ?? true,
-      showInProfile: data['showInProfile'] ?? false,
-      isPinned: data['isPinned'] ?? false,
-      isUserVerified: data['isUserVerified'] ?? false,
-      // Handle Timestamp (Firestore) or String (JSON Cache)
-      createdAt: data['createdAt'] is Timestamp 
-          ? (data['createdAt'] as Timestamp).toDate()
-          : data['createdAt'] is String 
-              ? DateTime.parse(data['createdAt'])
-              : DateTime.now(),
-      price: (data['price'] as num?)?.toDouble(),
-      productSizes: List<String>.from(data['productSizes'] ?? []),
-      productCondition: data['productCondition'],
-      productAgeGroup: data['productAgeGroup'],
-      productColors: List<String>.from(data['productColors'] ?? []),
-      quantity: data['quantity'] as int?,
-      hasShipping: data['hasShipping'] ?? false,
-      linkedProductId: data['linkedProductId'],
-      linkedProductName: data['linkedProductName'],
-      linkedProductImage: data['linkedProductImage'],
-      linkedProductPrice: (data['linkedProductPrice'] as num?)?.toDouble(),
-      viewsCount: data['viewsCount'] ?? 0,
-      poll: data['poll'] != null ? PollModel.fromMap(Map<String, dynamic>.from(data['poll'])) : null,
-      hashtags: List<String>.from(data['hashtags'] ?? []),
+      id: SafeParse.string(data['id']),
+      userId: SafeParse.string(data['userId']),
+      userName: SafeParse.string(data['userName']),
+      userRole: SafeParse.nullableString(data['userRole']),
+      userJobTitle: SafeParse.nullableString(data['userJobTitle']),
+      userImageUrl: SafeParse.nullableString(data['userImageUrl']),
+      imageUrl: SafeParse.nullableString(data['imageUrl']),
+      imageUrls: SafeParse.stringList(data['imageUrls']),
+      caption: SafeParse.nullableString(data['caption']),
+      category: SafeParse.nullableString(data['category']),
+      mentionedUsers: SafeParse.stringList(data['mentionedUsers']),
+      reactions: SafeParse.stringMap(data['reactions']),
+      commentsCount: SafeParse.integer(data['commentsCount']),
+      sharesCount: SafeParse.integer(data['sharesCount']),
+      showInCommunity: SafeParse.boolean(data['showInCommunity'], true),
+      showInProfile: SafeParse.boolean(data['showInProfile']),
+      isPinned: SafeParse.boolean(data['isPinned']),
+      isUserVerified: SafeParse.boolean(data['isUserVerified']),
+      createdAt: SafeParse.dateTime(data['createdAt']),
+      price: SafeParse.nullableDecimal(data['price']),
+      productSizes: SafeParse.stringList(data['productSizes']),
+      productCondition: SafeParse.nullableString(data['productCondition']),
+      productAgeGroup: SafeParse.nullableString(data['productAgeGroup']),
+      productColors: SafeParse.stringList(data['productColors']),
+      quantity: data['quantity'] != null ? SafeParse.integer(data['quantity']) : null,
+      hasShipping: SafeParse.boolean(data['hasShipping']),
+      linkedProductId: SafeParse.nullableString(data['linkedProductId']),
+      linkedProductName: SafeParse.nullableString(data['linkedProductName']),
+      linkedProductImage: SafeParse.nullableString(data['linkedProductImage']),
+      linkedProductPrice: SafeParse.nullableDecimal(data['linkedProductPrice']),
+      viewsCount: SafeParse.integer(data['viewsCount']),
+      poll: data['poll'] is Map
+          ? (() { try { return PollModel.fromMap(Map<String, dynamic>.from(data['poll'] as Map)); } catch(_) { return null; } })()
+          : null,
+      hashtags: SafeParse.stringList(data['hashtags']),
     );
   }
 
@@ -872,8 +870,7 @@ class PostModel {
   Map<String, dynamic> toJsonMap() {
     final map = toFirestore();
     map['id'] = id;
-    map['createdAt'] = createdAt.toIso8601String();
-    return map;
+    return SafeParse.sanitizeForCache(map);
   }
 
   /// Returns all image URLs (merges legacy imageUrl + imageUrls list)

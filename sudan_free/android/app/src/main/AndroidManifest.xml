@@ -41,7 +41,7 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
-            <!-- App Links for sharing profiles -->
+            <!-- App Links for sharing profiles (old domain) -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -49,8 +49,26 @@
                 <data android:scheme="http" />
                 <data android:scheme="https" />
                 <data android:host="jamall123.github.io" />
-                <data android:pathPattern="/HOME_WEB/sudan-free.html" />
-                <data android:pathPrefix="/HOME_WEB/sudan-free.html" />
+                <data android:pathPattern="/HOME_WEB/sudan-free.html.*" />
+            </intent-filter>
+            <!-- App Links for sharing profiles (new custom domain) -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="http" />
+                <data android:scheme="https" />
+                <data android:host="sudanfree.com" />
+                <data android:pathPattern="/sudan-free.html.*" />
+            </intent-filter>
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="http" />
+                <data android:scheme="https" />
+                <data android:host="www.sudanfree.com" />
+                <data android:pathPattern="/sudan-free.html.*" />
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.

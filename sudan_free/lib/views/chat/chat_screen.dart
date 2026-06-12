@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
@@ -22,6 +23,8 @@ import '../../providers/job_provider.dart';
 import '../../views/jobs/active_job_tracking_screen.dart';
 import '../../widgets/common/loading_widget.dart';
 import '../../widgets/common/linkable_text.dart';
+import 'package:any_link_preview/any_link_preview.dart';
+import '../../widgets/common/internal_link_preview.dart';
 import '../../widgets/common/full_screen_image_viewer.dart';
 import '../../services/file_download_service.dart';
 import '../../services/smart_guide_service.dart';
@@ -1017,6 +1020,22 @@ class _MessageBubbleState extends State<MessageBubble> {
     );
   }
 
+  String? _extractFirstUrl(String text) {
+    final RegExp urlRegex = RegExp(
+      r'((?:https?:\/\/|www\.)[^\s؀-ۿ()<>]+|\b[a-zA-Z0-9-]+\.[a-zA-Z]{2,}(?:\/[^\s؀-ۿ()<>]*)?)',
+      caseSensitive: false,
+    );
+    final match = urlRegex.firstMatch(text);
+    if (match != null) {
+      String url = match.group(0)!;
+      if (!url.startsWith('http')) {
+        url = 'https://' + url;
+      }
+      return url;
+    }
+    return null;
+  }
+
   Widget _buildMessageContent(BuildContext context, Color textColor) {
     switch (message.type) {
       case MessageType.image:
@@ -1067,11 +1086,43 @@ class _MessageBubbleState extends State<MessageBubble> {
                   ),
               ],
             ),
-            if (message.content.isNotEmpty && message.content != '📷 صورة')
+            if (message.content.isNotEmpty && message.content != '📷 صورة') ...[
               Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: LinkableText(text: message.content, style: TextStyle(color: textColor)),
               ),
+              if (_extractFirstUrl(message.content) != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: InternalLinkPreviewWidget.isInternalLink(_extractFirstUrl(message.content)!)
+                        ? InternalLinkPreviewWidget(url: _extractFirstUrl(message.content)!)
+                        : AnyLinkPreview(
+                            link: _extractFirstUrl(message.content)!,
+                            displayDirection: UIDirection.uiDirectionHorizontal,
+                            backgroundColor: Colors.grey[200],
+                            errorWidget: const SizedBox.shrink(),
+                            errorImage: '',
+                            cache: const Duration(days: 7),
+                            placeholderWidget: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(color: Colors.grey[200]),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.link, color: Colors.grey),
+                                  const SizedBox(width: 8),
+                                  const Text(
+                                    'جاري تحميل الرابط...',
+                                    style: TextStyle(color: Colors.grey, fontSize: 12),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                  ),
+                ),
+            ],
           ],
         );
       case MessageType.audio:
@@ -1085,9 +1136,45 @@ class _MessageBubbleState extends State<MessageBubble> {
       case MessageType.contract:
         return _buildContractContent(context, textColor);
       default:
-        return LinkableText(
-          text: message.content,
-          style: TextStyle(color: textColor, fontSize: 15),
+        return Column(
+          crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          children: [
+            LinkableText(
+              text: message.content,
+              style: TextStyle(color: textColor, fontSize: 15),
+            ),
+            if (_extractFirstUrl(message.content) != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: InternalLinkPreviewWidget.isInternalLink(_extractFirstUrl(message.content)!)
+                      ? InternalLinkPreviewWidget(url: _extractFirstUrl(message.content)!)
+                      : AnyLinkPreview(
+                          link: _extractFirstUrl(message.content)!,
+                          displayDirection: UIDirection.uiDirectionHorizontal,
+                          backgroundColor: Colors.grey[200],
+                          errorWidget: const SizedBox.shrink(),
+                          errorImage: '',
+                          cache: const Duration(days: 7),
+                          placeholderWidget: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(color: Colors.grey[200]),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.link, color: Colors.grey),
+                                const SizedBox(width: 8),
+                                const Text(
+                                  'جاري تحميل الرابط...',
+                                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                ),
+              ),
+          ],
         );
     }
   }

@@ -86,12 +86,28 @@ class _SquadsExplorerScreenState extends State<SquadsExplorerScreen> {
                   final isSelected = _selectedCategory == null;
                   return Padding(
                     padding: const EdgeInsets.only(right: 8),
-                    child: FilterChip(
-                      label: Text(isAr ? 'الكل' : 'All'),
-                      selected: isSelected,
-                      onSelected: (val) => setState(() => _selectedCategory = null),
-                      selectedColor: AppColors.primary.withValues(alpha: 0.2),
-                      checkmarkColor: AppColors.primary,
+                    child: GestureDetector(
+                      onTap: () => setState(() => _selectedCategory = null),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeOutCubic,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: isSelected ? AppColors.primary.withValues(alpha: 0.12) : Colors.transparent,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: AnimatedDefaultTextStyle(
+                          duration: const Duration(milliseconds: 200),
+                          style: TextStyle(
+                            fontSize: isSelected ? 14 : 13,
+                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                            color: isSelected ? AppColors.primary : Theme.of(context).textTheme.bodyMedium?.color?.withValues(alpha: 0.6) ?? Colors.grey,
+                            fontFamily: 'Cairo',
+                          ),
+                          child: Text(isAr ? 'الكل' : 'All'),
+                        ),
+                      ),
                     ),
                   );
                 }
@@ -99,12 +115,28 @@ class _SquadsExplorerScreenState extends State<SquadsExplorerScreen> {
                 final isSelected = _selectedCategory == cat;
                 return Padding(
                   padding: const EdgeInsets.only(right: 8),
-                  child: FilterChip(
-                    label: Text(cat.getName(locale)),
-                    selected: isSelected,
-                    onSelected: (val) => setState(() => _selectedCategory = val ? cat : null),
-                    selectedColor: AppColors.primary.withValues(alpha: 0.2),
-                    checkmarkColor: AppColors.primary,
+                  child: GestureDetector(
+                    onTap: () => setState(() => _selectedCategory = isSelected ? null : cat),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeOutCubic,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: isSelected ? AppColors.primary.withValues(alpha: 0.12) : Colors.transparent,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: AnimatedDefaultTextStyle(
+                        duration: const Duration(milliseconds: 200),
+                        style: TextStyle(
+                          fontSize: isSelected ? 14 : 13,
+                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                          color: isSelected ? AppColors.primary : Theme.of(context).textTheme.bodyMedium?.color?.withValues(alpha: 0.6) ?? Colors.grey,
+                          fontFamily: 'Cairo',
+                        ),
+                        child: Text(cat.getName(locale)),
+                      ),
+                    ),
                   ),
                 );
               },
@@ -245,7 +277,6 @@ class _SquadsExplorerScreenState extends State<SquadsExplorerScreen> {
               locale: locale,
               initialBottom: MediaQuery.of(context).padding.bottom + 82.0, // navBar + safe area
               onPressed: () async {
-                if (user == null) return;
             try {
               final existing = await FirebaseFirestore.instance
                   .collection('squads')
@@ -267,6 +298,7 @@ class _SquadsExplorerScreenState extends State<SquadsExplorerScreen> {
               // Ignore error and proceed or log it
             }
 
+                if (!context.mounted) return;
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const CreateSquadScreen()),

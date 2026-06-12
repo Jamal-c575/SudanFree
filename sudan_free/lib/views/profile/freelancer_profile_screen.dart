@@ -13,10 +13,12 @@ import '../../core/routes/premium_page_route.dart';
 import '../../models/contact_log_model.dart';
 import '../../providers/user_provider.dart';
 import '../../models/post_model.dart';
+import '../../models/job_model.dart';
 import '../../models/review_model.dart';
 import '../../providers/chat_provider.dart';
 import '../chat/chat_screen.dart';
 import '../../services/firestore_service.dart';
+import '../../services/firestore/job_service.dart';
 import '../../widgets/common/adaptive_fab_padding.dart';
 import '../posts/create_post_screen.dart';
 import '../map/map_explorer_screen.dart';
@@ -608,6 +610,11 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
                             textAlign: TextAlign.center,
                             style: TextStyle(height: 1.5, color: Theme.of(context).textTheme.bodyLarge?.color?.withValues(alpha: 0.9)),
                           ),
+
+                        const SizedBox(height: 16),
+                        
+                        // Average Price Card
+                        _buildAveragePriceCard(user),
 
                         const SizedBox(height: 24),
                       ],
@@ -1593,6 +1600,106 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
           ),
         );
       },
+    );
+  }
+  Widget _buildAveragePriceCard(UserModel user) {
+    if (user.jobTitle == null) return const SizedBox();
+    
+    // Try to find the matching JobCategory
+    JobCategory? matchingCategory;
+    try {
+      matchingCategory = JobCategory.values.firstWhere(
+        (cat) => cat.name.toLowerCase() == user.jobTitle!.toLowerCase()
+      );
+    } catch (e) {
+      // Not a standard enum category, skip average calculation
+      return const SizedBox();
+    }
+
+    return FutureBuilder<double?>(
+      future: JobFirestoreService().calculateFairPrice(matchingCategory),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData || snapshot.data == null) {
+          // If no average available, maybe show their own hourly rate if they set one
+          if (user.hourlyRate != null && user.hourlyRate! > 0) {
+            return _buildPriceContainer(
+              context, 
+              title: context.read<LocaleProvider>().isArabic ? 'سعري الخاص' : 'My Rate',
+              price: user.hourlyRate!, 
+              icon: Icons.person_outline
+            );
+          }
+          return const SizedBox();
+        }
+
+        return _buildPriceContainer(
+          context, 
+          title: context.read<LocaleProvider>().isArabic ? 'متوسط السعر في السوق' : 'Market Average Price',
+          price: snapshot.data!, 
+          icon: Icons.analytics_outlined
+        );
+      },
+    );
+  }
+
+  Widget _buildPriceContainer(BuildContext context, {required String title, required double price, required IconData icon}) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.1)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: AppColors.primary, size: 24),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(context).textTheme.bodyLarge?.color?.withValues(alpha: 0.7),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      '${price.toStringAsFixed(0)} ',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    Text(
+                      context.read<LocaleProvider>().isArabic ? 'جنيه سوداني' : 'SDG',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.primary.withValues(alpha: 0.8),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

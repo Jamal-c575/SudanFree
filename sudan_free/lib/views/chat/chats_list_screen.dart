@@ -69,9 +69,7 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
 
           return RefreshIndicator(
             onRefresh: () async {
-              if (user != null) {
-                await context.read<ChatProvider>().fetchChats(user.id);
-              }
+              await context.read<ChatProvider>().fetchChats(user.id);
             },
             child: ListView.builder(
                     padding: const EdgeInsets.symmetric(vertical: 8),
@@ -101,7 +99,7 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                               ),
                             ).then((_) {
                               // تحديث القائمة عند الرجوع من المحادثة (قد يكون تم قراءة رسائل)
-                              if (context.mounted && user != null) {
+                              if (context.mounted) {
                                 context.read<ChatProvider>().fetchChats(user.id);
                               }
                             });

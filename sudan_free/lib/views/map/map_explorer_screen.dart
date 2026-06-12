@@ -49,6 +49,7 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
 
   String _selectedRoleFilter = 'all'; // 'all', 'shop', 'freelancer'
   ShopCategory? _selectedShopCategoryFilter;
+  JobCategory? _selectedFreelancerCategoryFilter;
 
   // حدود السودان التقريبية (وسعناها قليلاً لتجنب الأخطاء)
   final LatLngBounds _sudanBounds = LatLngBounds(
@@ -157,8 +158,18 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
     if (permission == LocationPermission.deniedForever) return;
 
     try {
-      Position position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high)
+      // Try to get last known position first for instant response
+      Position? position = await Geolocator.getLastKnownPosition();
+      if (position != null) {
+        _animatedMapMove(LatLng(position.latitude, position.longitude), 14.5);
+      }
+
+      // Then get current with medium accuracy (much faster than high)
+      position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
+          timeLimit: Duration(seconds: 5),
+        )
       );
       
       // التوجه إلى موقع المستخدم الفعلي بزووم قريب
@@ -243,6 +254,11 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
       if (_selectedShopCategoryFilter != null) {
         if (user.role != UserRole.shop) return false;
         if (user.shopCategory != _selectedShopCategoryFilter) return false;
+      }
+      if (_selectedFreelancerCategoryFilter != null) {
+        if (user.role != UserRole.freelancer && user.role != UserRole.techService && user.role != UserRole.privateService) return false;
+        if (user.jobTitle == null) return false;
+        if (user.jobTitle!.toLowerCase() != _selectedFreelancerCategoryFilter!.name.toLowerCase()) return false;
       }
       return true;
     }).toList();
@@ -368,7 +384,7 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        if (hasProfession) ...[
+                        if (profession != null) ...[
                           const SizedBox(height: 4),
                           // المسمى الوظيفي أو تصنيف المتجر
                           Row(
@@ -381,7 +397,7 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
                               const SizedBox(width: 4),
                               Expanded(
                                 child: Text(
-                                  profession!,
+                                  profession,
                                   style: TextStyle(color: Colors.grey[600], fontSize: 14),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -675,14 +691,14 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
                       label: Text(isAr ? 'الكل' : 'All'),
                       selected: _selectedRoleFilter == 'all',
                       onSelected: (val) {
-                        if (val) setSheetState(() { _selectedRoleFilter = 'all'; _selectedShopCategoryFilter = null; });
+                        if (val) setSheetState(() { _selectedRoleFilter = 'all'; _selectedShopCategoryFilter = null; _selectedFreelancerCategoryFilter = null; });
                       },
                     ),
                     FilterChip(
                       label: Text(isAr ? 'المتاجر' : 'Shops'),
                       selected: _selectedRoleFilter == 'shop',
                       onSelected: (val) {
-                        if (val) setSheetState(() => _selectedRoleFilter = 'shop');
+                        if (val) setSheetState(() { _selectedRoleFilter = 'shop'; _selectedFreelancerCategoryFilter = null; });
                       },
                     ),
                     FilterChip(
@@ -694,6 +710,56 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
                     ),
                   ],
                 ),
+                if (_selectedRoleFilter == 'shop') ...[
+                  const SizedBox(height: 16),
+                  Text(isAr ? 'تصنيف المتجر:' : 'Shop Category:', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    height: 45,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      children: ShopCategory.values.map((cat) {
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8.0),
+                          child: FilterChip(
+                            label: Text(UserModel.getLocalizedShopCategory(cat, isAr ? 'ar' : 'en')),
+                            selected: _selectedShopCategoryFilter == cat,
+                            onSelected: (val) {
+                              setSheetState(() {
+                                _selectedShopCategoryFilter = val ? cat : null;
+                              });
+                            },
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ],
+                if (_selectedRoleFilter == 'freelancer') ...[
+                  const SizedBox(height: 16),
+                  Text(isAr ? 'التخصص:' : 'Profession:', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    height: 45,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      children: JobCategory.values.map((cat) {
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8.0),
+                          child: FilterChip(
+                            label: Text(JobTitlesUtils.getLocalizedTitle(cat.name, isAr ? 'ar' : 'en')),
+                            selected: _selectedFreelancerCategoryFilter == cat,
+                            onSelected: (val) {
+                              setSheetState(() {
+                                _selectedFreelancerCategoryFilter = val ? cat : null;
+                              });
+                            },
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 32),
                 SizedBox(
                   width: double.infinity,

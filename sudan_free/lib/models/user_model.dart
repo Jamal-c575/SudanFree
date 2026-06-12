@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../utils/safe_parse.dart';
 
 enum UserRole { freelancer, techService, privateService, client, shop, admin }
 
@@ -50,6 +51,7 @@ class UserModel {
   // Location fields
   final String? state;      // الولاية
   final String? locality;   // المحلية
+  final String? neighborhood; // المنطقة / الحي
   // Shop fields (for role == shop)
   final ShopCategory? shopCategory;  // تصنيف المتجر
   final List<String> shopImages;      // صور المنتجات
@@ -119,6 +121,7 @@ class UserModel {
     this.hourlyRate,
     this.state,
     this.locality,
+    this.neighborhood,
     this.shopCategory,
     this.shopImages = const [],
     this.openingHours,
@@ -180,12 +183,12 @@ class UserModel {
 
   factory UserModel.fromMap(Map<String, dynamic> data) {
     return UserModel(
-      id: data['id'] ?? '',
-      email: data['email'] ?? '',
-      username: data['username'],
-      phoneNumber: data['phoneNumber'],
-      profileViews: data['profileViews'] ?? 0,
-      dailyProfileViews: data['dailyProfileViews'] ?? 0,
+      id: data['id']?.toString() ?? '',
+      email: data['email']?.toString() ?? '',
+      username: data['username']?.toString(),
+      phoneNumber: data['phoneNumber']?.toString(),
+      profileViews: (data['profileViews'] as num?)?.toInt() ?? 0,
+      dailyProfileViews: (data['dailyProfileViews'] as num?)?.toInt() ?? 0,
       lastViewReset: data['lastViewReset'] is Timestamp
           ? (data['lastViewReset'] as Timestamp).toDate()
           : data['lastViewReset'] is String
@@ -197,28 +200,36 @@ class UserModel {
       jobTitle: data['jobTitle'],
       profileImageUrl: data['profileImageUrl'],
       coverImageUrl: data['coverImageUrl'],
-      skills: List<String>.from(data['skills'] ?? []),
-      portfolioImages: List<String>.from(data['portfolioImages'] ?? []),
-      portfolioVideos: List<String>.from(data['portfolioVideos'] ?? []),
+      skills: _safeStringList(data['skills']),
+      portfolioImages: _safeStringList(data['portfolioImages']),
+      portfolioVideos: _safeStringList(data['portfolioVideos']),
       hourlyRate: (data['hourlyRate'] as num?)?.toDouble(),
-      state: data['state'],
-      locality: data['locality'],
+      state: SafeParse.nullableString(data['state']),
+      locality: SafeParse.nullableString(data['locality']),
+      neighborhood: SafeParse.nullableString(data['neighborhood']),
       shopCategory: data['shopCategory'] != null
           ? ShopCategory.values.firstWhere(
               (e) => e.name == data['shopCategory'],
               orElse: () => ShopCategory.other,
             )
           : null,
-      shopImages: List<String>.from(data['shopImages'] ?? []),
+      shopImages: _safeStringList(data['shopImages']),
       openingHours: data['openingHours'],
       closingHours: data['closingHours'],
       whatsappNumber: data['whatsappNumber'],
       rating: (data['rating'] as num?)?.toDouble() ?? 0.0,
-      reviewsCount: data['reviewsCount'] ?? 0,
-      ratingCounts: Map<String, int>.from(data['ratingCounts'] ?? {}),
-      negativeReports: data['negativeReports'] ?? 0,
-      totalJobs: data['totalJobs'] ?? 0,
-      completedJobs: data['completedJobs'] ?? 0,
+      reviewsCount: (data['reviewsCount'] as num?)?.toInt() ?? 0,
+      // إصلاح جذري: Map.from يرمي CastException إذا كانت القيم double بدل int
+      ratingCounts: (() {
+        try {
+          final raw = data['ratingCounts'];
+          if (raw == null) return <String, int>{};
+          return (raw as Map).map((k, v) => MapEntry(k.toString(), (v as num).toInt()));
+        } catch (_) { return <String, int>{}; }
+      })(),
+      negativeReports: (data['negativeReports'] as num?)?.toInt() ?? 0,
+      totalJobs: (data['totalJobs'] as num?)?.toInt() ?? 0,
+      completedJobs: (data['completedJobs'] as num?)?.toInt() ?? 0,
       // Handle both Timestamp (Firestore) and String/int (JSON Cache)
       createdAt: data['createdAt'] is Timestamp 
           ? (data['createdAt'] as Timestamp).toDate()
@@ -236,11 +247,11 @@ class UserModel {
       isBanned: data['isBanned'] ?? false,
       banReason: data['banReason'],
       walletBalance: (data['walletBalance'] as num?)?.toDouble() ?? 0.0,
-      partnerIds: List<String>.from(data['partnerIds'] ?? []),
-      pendingPartnerIds: List<String>.from(data['pendingPartnerIds'] ?? []),
-      pendingSquadInvites: List<String>.from(data['pendingSquadInvites'] ?? []),
-      followers: List<String>.from(data['followers'] ?? []),
-      following: List<String>.from(data['following'] ?? []),
+      partnerIds: _safeStringList(data['partnerIds']),
+      pendingPartnerIds: _safeStringList(data['pendingPartnerIds']),
+      pendingSquadInvites: _safeStringList(data['pendingSquadInvites']),
+      followers: _safeStringList(data['followers']),
+      following: _safeStringList(data['following']),
       lastActive: data['lastActive'] is Timestamp
           ? (data['lastActive'] as Timestamp).toDate()
           : null,
@@ -254,28 +265,47 @@ class UserModel {
       ),
       idCardUrl: data['idCardUrl'],
       verificationSelfieUrl: data['verificationSelfieUrl'],
-      notificationSettings: Map<String, bool>.from(data['notificationSettings'] ?? {
-        'chat': true,
-        'mentions': true,
-        'milestones': true,
-        'marketing': false,
-      }),
-      searchKeywords: List<String>.from(data['searchKeywords'] ?? []),
-      shopInterests: List<String>.from(data['shopInterests'] ?? []),
-      serviceInterests: List<String>.from(data['serviceInterests'] ?? []),
-      favoriteUserIds: List<String>.from(data['favoriteUserIds'] ?? []),
-      favoriteProductIds: List<String>.from(data['favoriteProductIds'] ?? []),
-      favoriteSquadIds: List<String>.from(data['favoriteSquadIds'] ?? []),
+      // إصلاح جذري: Map.from يرمي CastException إذا كانت القيم ليست bool صريحة
+      notificationSettings: (() {
+        try {
+          final raw = data['notificationSettings'];
+          if (raw == null) return {'chat': true, 'mentions': true, 'milestones': true, 'marketing': false};
+          return (raw as Map).map((k, v) => MapEntry(k.toString(), v == true));
+        } catch (_) {
+          return {'chat': true, 'mentions': true, 'milestones': true, 'marketing': false};
+        }
+      })(),
+      searchKeywords: _safeStringList(data['searchKeywords']),
+      shopInterests: _safeStringList(data['shopInterests']),
+      serviceInterests: _safeStringList(data['serviceInterests']),
+      favoriteUserIds: _safeStringList(data['favoriteUserIds']),
+      favoriteProductIds: _safeStringList(data['favoriteProductIds']),
+      favoriteSquadIds: _safeStringList(data['favoriteSquadIds']),
       showOnMap: data['showOnMap'] ?? true,
       latitude: (data['latitude'] as num?)?.toDouble(),
       longitude: (data['longitude'] as num?)?.toDouble(),
-      vouchedBy: List<Map<String, dynamic>>.from(data['vouchedBy'] ?? []),
+      // إصلاح جذري: List.from يرمي CastException إذا كانت القوائم الداخلية Map<dynamic,dynamic>
+      vouchedBy: (() {
+        try {
+          final raw = data['vouchedBy'];
+          if (raw == null) return <Map<String, dynamic>>[];
+          return (raw as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        } catch (_) { return <Map<String, dynamic>>[]; }
+      })(),
       masterId: data['masterId'],
-      apprenticesIds: List<String>.from(data['apprenticesIds'] ?? []),
-      pendingApprenticeRequests: List<String>.from(data['pendingApprenticeRequests'] ?? []),
-      pendingMasterRequests: List<String>.from(data['pendingMasterRequests'] ?? []),
-      pendingLeaveRequests: List<String>.from(data['pendingLeaveRequests'] ?? []),
+      apprenticesIds: _safeStringList(data['apprenticesIds']),
+      pendingApprenticeRequests: _safeStringList(data['pendingApprenticeRequests']),
+      pendingMasterRequests: _safeStringList(data['pendingMasterRequests']),
+      pendingLeaveRequests: _safeStringList(data['pendingLeaveRequests']),
     );
+  }
+
+  static List<String> _safeStringList(dynamic raw) {
+    if (raw == null) return [];
+    if (raw is List) {
+      return raw.map((e) => e.toString()).toList();
+    }
+    return [];
   }
 
   static UserRole _parseRole(dynamic rawRole) {
@@ -335,6 +365,7 @@ class UserModel {
       'hourlyRate': hourlyRate,
       'state': state,
       'locality': locality,
+      'neighborhood': neighborhood,
       'shopCategory': shopCategory?.name,
       'shopImages': shopImages,
       'openingHours': openingHours,
@@ -386,6 +417,7 @@ class UserModel {
         bio: bio,
         state: state,
         locality: locality,
+        neighborhood: neighborhood,
         shopCategory: shopCategory,
         role: role,
       ),
@@ -396,9 +428,8 @@ class UserModel {
   Map<String, dynamic> toJsonMap() {
     final map = toFirestore();
     map['id'] = id;
-    map['createdAt'] = createdAt.toIso8601String();
-    map['updatedAt'] = updatedAt.toIso8601String();
-    return map;
+    // SafeParse.sanitizeForCache recursively converts ALL Timestamps → ISO strings
+    return SafeParse.sanitizeForCache(map);
   }
 
   // Calculated getter for total stars (Ranking Score)
@@ -424,6 +455,7 @@ class UserModel {
     double? hourlyRate,
     String? state,
     String? locality,
+    String? neighborhood,
     ShopCategory? shopCategory,
     List<String>? shopImages,
     String? openingHours,
@@ -488,6 +520,7 @@ class UserModel {
       hourlyRate: hourlyRate ?? this.hourlyRate,
       state: state ?? this.state,
       locality: locality ?? this.locality,
+      neighborhood: neighborhood ?? this.neighborhood,
       shopCategory: shopCategory ?? this.shopCategory,
       shopImages: shopImages ?? this.shopImages,
       openingHours: openingHours ?? this.openingHours,
@@ -575,8 +608,11 @@ class UserModel {
   
   String get locationDisplay {
     if (state == null) return '';
-    if (locality != null) return '$locality، $state';
-    return state!;
+    final parts = <String>[];
+    if (neighborhood != null) parts.add(neighborhood!);
+    if (locality != null) parts.add(locality!);
+    parts.add(state!);
+    return parts.join('، ');
   }
   
   String get ratingDisplay => rating.toStringAsFixed(1);
@@ -587,10 +623,7 @@ class UserModel {
     return DateTime.now().difference(lastActive!).inMinutes < 5;
   }
   
-  // Helper to get shop category display name
-  String getShopCategoryName(String locale) {
-    if (shopCategory == null) return '';
-    
+  static String getLocalizedShopCategory(ShopCategory cat, String locale) {
     final names = {
       'ar': {
         ShopCategory.electronics: 'إلكترونيات',
@@ -619,11 +652,11 @@ class UserModel {
         ShopCategory.restaurant: 'Restaurant',
         ShopCategory.supermarket: 'Supermarket',
         ShopCategory.pharmacy: 'Pharmacy',
-        ShopCategory.beauty: 'Beauty',
-        ShopCategory.automotive: 'Automotive',
+        ShopCategory.beauty: 'Beauty & Cosmetics',
+        ShopCategory.automotive: 'Auto Parts',
         ShopCategory.building: 'Building Materials',
         ShopCategory.jewelry: 'Jewelry',
-        ShopCategory.mobile: 'Mobile',
+        ShopCategory.mobile: 'Mobiles & Accessories',
         ShopCategory.bookstore: 'Bookstore',
         ShopCategory.sports: 'Sports',
         ShopCategory.toys: 'Toys',
@@ -631,12 +664,16 @@ class UserModel {
         ShopCategory.other: 'Other',
       }
     };
-    
+    return names[locale]?[cat] ?? cat.name;
+  }
+
+  // Helper to get shop category display name
+  String getShopCategoryName(String locale) {
+    if (shopCategory == null) return '';
     if (shopCategory == ShopCategory.other && jobTitle != null && jobTitle!.isNotEmpty) {
       return jobTitle!;
     }
-    
-    return names[locale]?[shopCategory] ?? (locale == 'ar' ? 'أخرى' : 'Other');
+    return getLocalizedShopCategory(shopCategory!, locale);
   }
 
   String getRoleDisplayName(String locale) {
@@ -670,6 +707,7 @@ class UserModel {
     String? bio,
     String? state,
     String? locality,
+    String? neighborhood,
     ShopCategory? shopCategory,
     UserRole? role,
   }) {
@@ -709,6 +747,7 @@ class UserModel {
     // Location
     addWords(state);
     addWords(locality);
+    addWords(neighborhood);
     
     // Shop Category (Arabic names)
     if (shopCategory != null) {

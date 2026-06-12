@@ -9,18 +9,37 @@ class UserFirestoreService {
 
   // Get user by ID
   Future<UserModel?> getUser(String userId) async {
-    final doc = await _firestore.collection('users').doc(userId).get();
-    if (doc.exists) {
-      return UserModel.fromFirestore(doc);
+    if (userId.isEmpty) return null;
+    try {
+      final doc = await _firestore.collection('users').doc(userId).get();
+      if (doc.exists) {
+        try {
+          return UserModel.fromFirestore(doc);
+        } catch (parseError) {
+          // الخطأ الحقيقي - حقل بيانات غير متوافق في وثيقة المستخدم
+          print('=== USER PARSE ERROR for $userId ===');
+          print('Error: $parseError');
+          print('Doc data keys: ${doc.data()?.keys.toList()}');
+          rethrow; // نعيد رمي الخطأ ليظهر في شاشة الخطأ
+        }
+      }
+      return null;
+    } catch (e) {
+      print('getUser($userId) error: $e');
+      rethrow;
     }
-    return null;
   }
 
   // Get user stream
   Stream<UserModel?> getUserStream(String userId) {
     return _firestore.collection('users').doc(userId).snapshots().map((doc) {
       if (doc.exists) {
-        return UserModel.fromFirestore(doc);
+        try {
+          return UserModel.fromFirestore(doc);
+        } catch (e) {
+          print('getUserStream parse error for $userId: $e');
+          return null;
+        }
       }
       return null;
     });
@@ -30,6 +49,55 @@ class UserFirestoreService {
   Future<void> updateUserProfile(String userId, Map<String, dynamic> data) async {
     final updates = Map<String, dynamic>.from(data);
     updates['updatedAt'] = Timestamp.now();
+
+    try {
+      // Regenerate searchKeywords using existing data merged with incoming updates
+      final userRef = _firestore.collection('users').doc(userId);
+      final doc = await userRef.get();
+      UserModel? existing;
+      if (doc.exists) {
+        existing = UserModel.fromFirestore(doc);
+      }
+
+      final nameForKeywords = updates['name'] ?? existing?.name ?? '';
+      final jobTitleForKeywords = updates['jobTitle'] ?? existing?.jobTitle;
+      final skillsForKeywords = updates['skills'] != null
+          ? List<String>.from(updates['skills'])
+          : existing?.skills ?? <String>[];
+      final bioForKeywords = updates['bio'] ?? existing?.bio;
+      final stateForKeywords = updates['state'] ?? existing?.state;
+      final localityForKeywords = updates['locality'] ?? existing?.locality;
+
+      // Attempt to resolve shopCategory if provided as string
+      ShopCategory? shopCat = existing?.shopCategory;
+      if (updates.containsKey('shopCategory') && updates['shopCategory'] is String) {
+        try {
+          shopCat = ShopCategory.values.firstWhere((e) => e.name == updates['shopCategory']);
+        } catch (_) {
+          // ignore and keep existing
+        }
+      }
+
+      // Role: if not resolvable from incoming update, use existing role for keyword generation
+      UserRole? roleForKeywords = existing?.role;
+
+      final newKeywords = UserModel.generateSearchKeywords(
+        name: nameForKeywords,
+        jobTitle: jobTitleForKeywords,
+        skills: skillsForKeywords,
+        bio: bioForKeywords,
+        state: stateForKeywords,
+        locality: localityForKeywords,
+        shopCategory: shopCat,
+        role: roleForKeywords,
+      );
+
+      updates['searchKeywords'] = newKeywords;
+    } catch (e) {
+      // If anything fails here, we still proceed with the provided updates
+      print('UserFirestoreService.updateUserProfile: failed to regenerate keywords: $e');
+    }
+
     await _firestore.collection('users').doc(userId).update(updates);
   }
 
@@ -338,9 +406,14 @@ class UserFirestoreService {
     }
 
     final snapshot = await query.get();
-    final users = snapshot.docs
-        .map((doc) => UserModel.fromFirestore(doc))
-        .toList();
+    final List<UserModel> users = [];
+    for (var doc in snapshot.docs) {
+      try {
+        users.add(UserModel.fromFirestore(doc));
+      } catch (e) {
+        print('Error mapping freelancer ${doc.id}: $e');
+      }
+    }
 
     trace.incrementMetric('result_count', users.length);
     trace.stop();
@@ -379,9 +452,14 @@ class UserFirestoreService {
     }
 
     final snapshot = await query.get();
-    final shops = snapshot.docs
-        .map((doc) => UserModel.fromFirestore(doc))
-        .toList();
+    final List<UserModel> shops = [];
+    for (var doc in snapshot.docs) {
+      try {
+        shops.add(UserModel.fromFirestore(doc));
+      } catch (e) {
+        print('Error mapping shop ${doc.id}: $e');
+      }
+    }
 
     return {
       'users': shops,
@@ -413,9 +491,14 @@ class UserFirestoreService {
     }
 
     final snapshot = await query.get();
-    final users = snapshot.docs
-        .map((doc) => UserModel.fromFirestore(doc))
-        .toList();
+    final List<UserModel> users = [];
+    for (var doc in snapshot.docs) {
+      try {
+        users.add(UserModel.fromFirestore(doc));
+      } catch (e) {
+        print('Error mapping provider ${doc.id}: $e');
+      }
+    }
 
     trace.incrementMetric('result_count', users.length);
     trace.stop();

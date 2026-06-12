@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../utils/safe_parse.dart';
 
 enum MessageType { text, image, file, audio, contract }
 
@@ -185,17 +186,25 @@ class ChatModel {
     final data = doc.data() as Map<String, dynamic>;
     return ChatModel(
       id: doc.id,
-      participants: List<String>.from(data['participants'] ?? []),
-      participantNames: Map<String, String>.from(data['participantNames'] ?? {}),
-      participantImages: Map<String, String?>.from(data['participantImages'] ?? {}),
-      lastMessage: data['lastMessage'],
-      lastMessageTime: (data['lastMessageTime'] as Timestamp?)?.toDate(),
-      lastSenderId: data['lastSenderId'],
-      unreadCount: Map<String, int>.from(data['unreadCount'] ?? {}),
-      jobId: data['jobId'],
-      jobTitle: data['jobTitle'],
-      typingStatus: Map<String, bool>.from(data['typingStatus'] ?? {}),
-      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      participants: SafeParse.stringList(data['participants']),
+      participantNames: SafeParse.stringMap(data['participantNames']),
+      participantImages: (() {
+        try {
+          final raw = data['participantImages'];
+          if (raw is! Map) return <String, String?>{};
+          return Map.fromEntries(
+            raw.entries.map((e) => MapEntry(e.key.toString(), e.value?.toString())),
+          );
+        } catch (_) { return <String, String?>{}; }
+      })(),
+      lastMessage: SafeParse.nullableString(data['lastMessage']),
+      lastMessageTime: SafeParse.nullableDateTime(data['lastMessageTime']),
+      lastSenderId: SafeParse.nullableString(data['lastSenderId']),
+      unreadCount: SafeParse.intMap(data['unreadCount']),
+      jobId: SafeParse.nullableString(data['jobId']),
+      jobTitle: SafeParse.nullableString(data['jobTitle']),
+      typingStatus: SafeParse.boolMap(data['typingStatus']),
+      createdAt: SafeParse.dateTime(data['createdAt']),
     );
   }
 

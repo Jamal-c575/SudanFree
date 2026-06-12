@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/rendering.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
@@ -358,6 +359,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       isProminent: isProminent,
       onTap: () {
         if (_currentIndex != index) {
+          HapticFeedback.selectionClick();
           setState(() {
             _currentIndex = index;
             _history.remove(index);

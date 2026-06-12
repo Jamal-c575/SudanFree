@@ -23,11 +23,13 @@ class SquadDashboardScreen extends StatefulWidget {
 class _SquadDashboardScreenState extends State<SquadDashboardScreen> {
   late SquadModel _squad;
   bool _isLoading = false;
+  late Future<List<UserModel>> _membersFuture;
 
   @override
   void initState() {
     super.initState();
     _squad = widget.squad;
+    _membersFuture = FirestoreService().getUsersByIds(_squad.memberIds);
   }
 
   Future<void> _refreshSquad() async {
@@ -36,6 +38,7 @@ class _SquadDashboardScreenState extends State<SquadDashboardScreen> {
       if (doc.exists && mounted) {
         setState(() {
           _squad = SquadModel.fromFirestore(doc);
+          _membersFuture = FirestoreService().getUsersByIds(_squad.memberIds);
         });
       }
     } catch (e) {
@@ -245,6 +248,47 @@ class _SquadDashboardScreenState extends State<SquadDashboardScreen> {
                   ),
                   const SizedBox(height: 12),
                   
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).cardColor,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: _squad.isAvailable ? Colors.green.withValues(alpha: 0.5) : Colors.red.withValues(alpha: 0.5)),
+                    ),
+                    child: SwitchListTile(
+                      title: Text(isAr ? 'متاح للتعاقد' : 'Available for hire', style: TextStyle(fontWeight: FontWeight.bold, color: _squad.isAvailable ? Colors.green : Colors.red)),
+                      subtitle: Text(
+                        _squad.isAvailable 
+                          ? (isAr ? 'المجموعة متاحة لتلقي طلبات وعروض جديدة' : 'Squad is available for new requests')
+                          : (isAr ? 'المجموعة مشغولة حالياً' : 'Squad is currently busy'),
+                      ),
+                      value: _squad.isAvailable,
+                      activeColor: Colors.green,
+                      inactiveThumbColor: Colors.red,
+                      inactiveTrackColor: Colors.red.withValues(alpha: 0.2),
+                      secondary: Icon(
+                        _squad.isAvailable ? Icons.check_circle : Icons.do_not_disturb_on, 
+                        color: _squad.isAvailable ? Colors.green : Colors.red
+                      ),
+                      onChanged: (val) {
+                        setState(() {
+                          _squad = _squad.copyWith(isAvailable: val);
+                        });
+                        FirebaseFirestore.instance.collection('squads').doc(_squad.id).update({
+                          'isAvailable': val,
+                        }).catchError((error) {
+                          // Revert on error
+                          if (mounted) {
+                            setState(() {
+                              _squad = _squad.copyWith(isAvailable: !val);
+                            });
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(isAr ? 'حدث خطأ' : 'An error occurred')));
+                          }
+                        });
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  
                   _buildActionCard(
                     icon: Icons.upload_file,
                     title: isAr ? 'إضافة مشروع للمعرض' : 'Add Project to Portfolio',
@@ -270,7 +314,7 @@ class _SquadDashboardScreenState extends State<SquadDashboardScreen> {
                       border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
                     ),
                     child: FutureBuilder<List<UserModel>>(
-                      future: FirestoreService().getUsersByIds(_squad.memberIds),
+                      future: _membersFuture,
                       builder: (context, snapshot) {
                         if (snapshot.connectionState == ConnectionState.waiting) return const Padding(padding: EdgeInsets.all(20), child: Center(child: CircularProgressIndicator()));
                         if (!snapshot.hasData || snapshot.data!.isEmpty) return const SizedBox();
@@ -310,9 +354,6 @@ class _SquadDashboardScreenState extends State<SquadDashboardScreen> {
                   ),
 
                   const SizedBox(height: 32),
-                  // Danger Zone
-                  Text(isAr ? 'منطقة الخطر' : 'Danger Zone', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.red)),
-                  const SizedBox(height: 16),
                   _buildActionCard(
                     icon: Icons.warning_amber_rounded,
                     title: isAr ? 'تفكيك المجموعة' : 'Disband Squad',

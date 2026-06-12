@@ -457,4 +457,75 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
       },
     );
   }
+
+  Widget _buildSquadsTab(BuildContext context, UserModel user, String locale) {
+    if (user.favoriteSquadIds.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.groups, size: 60, color: Colors.grey),
+            const SizedBox(height: 16),
+            Text(
+              locale == 'ar' ? 'لا توجد مجموعات مفضلة بعد' : 'No favorite squads yet',
+              style: TextStyle(color: Colors.grey[600]),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return FutureBuilder<QuerySnapshot>(
+      future: FirebaseFirestore.instance.collection('squads').where(FieldPath.documentId, whereIn: user.favoriteSquadIds).get(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return Center(child: Text(locale == 'ar' ? 'حدث خطأ' : 'An error occurred'));
+        }
+
+        final docs = snapshot.data?.docs ?? [];
+        if (docs.isEmpty) return const SizedBox.shrink();
+
+        return ListView.separated(
+          padding: const EdgeInsets.all(16),
+          itemCount: docs.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 12),
+          itemBuilder: (context, index) {
+            final doc = docs[index];
+            final data = doc.data() as Map<String, dynamic>;
+            final squadName = data['squadName'] ?? '';
+            final bio = data['bio'] ?? '';
+            
+            return Card(
+              elevation: 4,
+              shadowColor: Colors.black26,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              child: ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                onTap: () {
+                  // Navigate to SquadProfileScreen
+                },
+                leading: CircleAvatar(
+                  radius: 28,
+                  backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                  child: const Icon(Icons.groups, color: AppColors.primary),
+                ),
+                title: Text(squadName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                subtitle: Text(bio, style: TextStyle(color: Colors.grey[600]), maxLines: 1, overflow: TextOverflow.ellipsis),
+                trailing: IconButton(
+                  icon: const Icon(Icons.favorite, color: Colors.red),
+                  onPressed: () {
+                    context.read<AuthProvider>().toggleFavoriteSquad(doc.id);
+                    setState(() {});
+                  },
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
 }

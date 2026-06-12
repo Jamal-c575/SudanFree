@@ -10,6 +10,8 @@ import '../profile/profile_screen.dart';
 import '../../providers/auth_provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../services/smart_search_service.dart';
+import '../freelancers/browse_freelancers_screen.dart';
+import '../shops/browse_shops_screen.dart';
 
 class SmartSearchDelegate extends SearchDelegate<UserModel?> {
   final String? initialQuery;
@@ -109,21 +111,10 @@ class SmartSearchDelegate extends SearchDelegate<UserModel?> {
                         ),
                       ),
                       Expanded(
-                        child: ListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          itemCount: results.length,
-                          itemBuilder: (context, index) {
-                            final freelancer = results[index];
-                            return FreelancerCard(
-                              freelancer: freelancer,
-                              locale: locale,
-                              currentUserId: currentUser?.id,
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (_) => ProfileScreen(userId: freelancer.id)),
-                              ),
-                            );
-                          },
+                        child: _SearchResultsList(
+                          results: results,
+                          locale: locale,
+                          currentUserId: currentUser?.id,
                         ),
                       ),
                     ],
@@ -141,56 +132,43 @@ class SmartSearchDelegate extends SearchDelegate<UserModel?> {
     final locale = context.read<LocaleProvider>().locale.languageCode;
     final isAr = locale == 'ar';
     
-    return StatefulBuilder(
-      builder: (context, setState) {
-        return SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Row(
-            children: [
-              _buildFilterChip(context, isAr ? 'الكل' : 'All', null, Icons.all_inclusive, setState),
-              const SizedBox(width: 8),
-              _buildFilterChip(context, isAr ? 'مقدم خدمة فنية' : 'Technical Service', UserRole.freelancer, Icons.handyman, setState),
-              const SizedBox(width: 8),
-              _buildFilterChip(context, isAr ? 'مقدم خدمة تقنية' : 'Tech Service', UserRole.techService, Icons.computer, setState),
-              const SizedBox(width: 8),
-              _buildFilterChip(context, isAr ? 'مقدم خدمة خاصة' : 'Special Service', UserRole.privateService, Icons.star_outline, setState),
-              const SizedBox(width: 8),
-              _buildFilterChip(context, isAr ? 'معرض/متاجر' : 'Gallery/Stores', UserRole.shop, Icons.storefront, setState),
-            ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          Expanded(
+            child: ElevatedButton.icon(
+              onPressed: () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const BrowseFreelancersScreen()));
+              },
+              icon: const Icon(Icons.handyman, size: 18),
+              label: Text(isAr ? 'الحرفيين' : 'Freelancers', style: const TextStyle(fontWeight: FontWeight.bold)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
           ),
-        );
-      }
-    );
-  }
-
-  Widget _buildFilterChip(BuildContext context, String label, UserRole? role, IconData icon, StateSetter setState) {
-    final isSelected = selectedRole == role;
-    return ChoiceChip(
-      avatar: Icon(icon, size: 18, color: isSelected ? Colors.white : AppColors.primary),
-      label: Text(label, style: TextStyle(
-        fontSize: 13,
-        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-        color: isSelected ? Colors.white : AppColors.textPrimary,
-      )),
-      selected: isSelected,
-      selectedColor: AppColors.primary,
-      backgroundColor: AppColors.primary.withValues(alpha: 0.08),
-      showCheckmark: false,
-      side: BorderSide(
-        color: isSelected ? AppColors.primary : AppColors.primary.withValues(alpha: 0.2),
+          const SizedBox(width: 12),
+          Expanded(
+            child: ElevatedButton.icon(
+              onPressed: () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const BrowseShopsScreen()));
+              },
+              icon: const Icon(Icons.storefront, size: 18),
+              label: Text(isAr ? 'المتاجر' : 'Shops', style: const TextStyle(fontWeight: FontWeight.bold)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.secondary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ),
+        ],
       ),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      onSelected: (selected) {
-        setState(() {
-          selectedRole = selected ? role : (role == null ? null : selectedRole);
-        });
-        if (query.isNotEmpty) {
-          showResults(context);
-        } else {
-          showSuggestions(context);
-        }
-      },
     );
   }
 
@@ -206,8 +184,12 @@ class SmartSearchDelegate extends SearchDelegate<UserModel?> {
         Expanded(
           child: Builder(
             builder: (context) {
-              if (query.isEmpty) {
+              if (query.isEmpty && selectedRole == null) {
                 return _buildEmptyState(context, isAr);
+              }
+
+              if (query.isEmpty && selectedRole != null) {
+                return buildResults(context);
               }
 
               return _DelayedSuggestionsWidget(
@@ -523,6 +505,76 @@ class _DelayedSuggestionsWidgetState extends State<_DelayedSuggestionsWidget> {
       itemBuilder: (context, index) {
         final suggestion = _suggestions[index];
         return _buildSuggestionTile(context, suggestion, widget.query);
+      },
+    );
+  }
+}
+
+class _SearchResultsList extends StatefulWidget {
+  final List<UserModel> results;
+  final String locale;
+  final String? currentUserId;
+
+  const _SearchResultsList({
+    required this.results,
+    required this.locale,
+    this.currentUserId,
+  });
+
+  @override
+  State<_SearchResultsList> createState() => _SearchResultsListState();
+}
+
+class _SearchResultsListState extends State<_SearchResultsList> {
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+      final searchProvider = context.read<SearchProvider>();
+      if (!searchProvider.isLoadingMore && searchProvider.hasMore) {
+        searchProvider.loadMore();
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final searchProvider = context.watch<SearchProvider>();
+    
+    return ListView.builder(
+      controller: _scrollController,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      itemCount: widget.results.length + (searchProvider.isLoadingMore ? 1 : 0),
+      itemBuilder: (context, index) {
+        if (index == widget.results.length) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 20),
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+        
+        final freelancer = widget.results[index];
+        return FreelancerCard(
+          freelancer: freelancer,
+          locale: widget.locale,
+          currentUserId: widget.currentUserId,
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => ProfileScreen(userId: freelancer.id)),
+          ),
+        );
       },
     );
   }

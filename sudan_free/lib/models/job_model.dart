@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../utils/safe_parse.dart';
 
 enum JobStatus { open, inProgress, completed, cancelled }
 
@@ -158,33 +159,36 @@ class JobModel {
     final data = doc.data() as Map<String, dynamic>;
     return JobModel(
       id: doc.id,
-      clientId: data['clientId'] ?? '',
-      clientName: data['clientName'] ?? '',
-      clientImageUrl: data['clientImageUrl'],
-      title: data['title'] ?? '',
-      description: data['description'] ?? '',
-      category: JobCategory.values.firstWhere(
-        (e) => e.name == data['category'],
-        orElse: () => JobCategory.other,
-      ),
-      budgetMin: (data['budgetMin'] as num?)?.toDouble() ?? 0,
-      budgetMax: (data['budgetMax'] as num?)?.toDouble() ?? 0,
-      currency: data['currency'] ?? 'SDG',
-      deadline: (data['deadline'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      isUrgent: data['isUrgent'] ?? false,
-      status: JobStatus.values.firstWhere(
-        (e) => e.name == data['status'],
-        orElse: () => JobStatus.open,
-      ),
-      assignedFreelancerId: data['assignedFreelancerId'],
-      assignedFreelancerName: data['assignedFreelancerName'],
-      proposalsCount: data['proposalsCount'] ?? 0,
-      requiredSkills: List<String>.from(data['requiredSkills'] ?? []),
-      attachments: List<String>.from(data['attachments'] ?? []),
-      milestones: (data['milestones'] as List? ?? []).map((m) => MilestoneModel.fromMap(m)).toList(),
-      contractUrl: data['contractUrl'],
-      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      clientId: SafeParse.string(data['clientId']),
+      clientName: SafeParse.string(data['clientName']),
+      clientImageUrl: SafeParse.nullableString(data['clientImageUrl']),
+      title: SafeParse.string(data['title']),
+      description: SafeParse.string(data['description']),
+      category: SafeParse.enumValue(JobCategory.values, data['category'], JobCategory.other),
+      budgetMin: SafeParse.decimal(data['budgetMin']),
+      budgetMax: SafeParse.decimal(data['budgetMax']),
+      currency: SafeParse.string(data['currency'], 'SDG'),
+      deadline: SafeParse.dateTime(data['deadline']),
+      isUrgent: SafeParse.boolean(data['isUrgent']),
+      status: SafeParse.enumValue(JobStatus.values, data['status'], JobStatus.open),
+      assignedFreelancerId: SafeParse.nullableString(data['assignedFreelancerId']),
+      assignedFreelancerName: SafeParse.nullableString(data['assignedFreelancerName']),
+      proposalsCount: SafeParse.integer(data['proposalsCount']),
+      requiredSkills: SafeParse.stringList(data['requiredSkills']),
+      attachments: SafeParse.stringList(data['attachments']),
+      milestones: (() {
+        try {
+          final raw = data['milestones'];
+          if (raw is! List) return <MilestoneModel>[];
+          return raw.map((m) {
+            try { return MilestoneModel.fromMap(Map<String, dynamic>.from(m as Map)); }
+            catch (_) { return null; }
+          }).whereType<MilestoneModel>().toList();
+        } catch (_) { return <MilestoneModel>[]; }
+      })(),
+      contractUrl: SafeParse.nullableString(data['contractUrl']),
+      createdAt: SafeParse.dateTime(data['createdAt']),
+      updatedAt: SafeParse.dateTime(data['updatedAt']),
     );
   }
 

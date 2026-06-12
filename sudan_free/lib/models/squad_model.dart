@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../utils/safe_parse.dart';
 
 enum SquadCategory {
   construction,
@@ -75,33 +76,22 @@ class SquadModel {
 
   factory SquadModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
-    
-    // Safety parse for category
-    SquadCategory parsedCategory = SquadCategory.other;
-    if (data['category'] != null) {
-      final String catStr = data['category'] as String;
-      parsedCategory = SquadCategory.values.firstWhere(
-        (e) => e.name == catStr, 
-        orElse: () => SquadCategory.other
-      );
-    }
-    
     return SquadModel(
       id: doc.id,
-      name: data['name'] ?? '',
-      description: data['description'] ?? '',
-      leaderId: data['leaderId'] ?? '',
-      memberIds: List<String>.from(data['memberIds'] ?? []),
-      squadImageUrl: data['squadImageUrl'],
-      combinedSkills: List<String>.from(data['combinedSkills'] ?? []),
-      completedJobs: data['completedJobs'] ?? 0,
-      rating: (data['rating'] as num?)?.toDouble() ?? 0.0,
-      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      category: parsedCategory,
-      state: data['state'],
-      locality: data['locality'],
-      isAvailable: data['isAvailable'] ?? true,
-      portfolioUrls: List<String>.from(data['portfolioUrls'] ?? []),
+      name: SafeParse.string(data['name']),
+      description: SafeParse.string(data['description']),
+      leaderId: SafeParse.string(data['leaderId']),
+      memberIds: SafeParse.stringList(data['memberIds']),
+      squadImageUrl: SafeParse.nullableString(data['squadImageUrl']),
+      combinedSkills: SafeParse.stringList(data['combinedSkills']),
+      completedJobs: SafeParse.integer(data['completedJobs']),
+      rating: SafeParse.decimal(data['rating']),
+      createdAt: SafeParse.dateTime(data['createdAt']),
+      category: SafeParse.enumValue(SquadCategory.values, data['category'], SquadCategory.other),
+      state: SafeParse.nullableString(data['state']),
+      locality: SafeParse.nullableString(data['locality']),
+      isAvailable: SafeParse.boolean(data['isAvailable'], true),
+      portfolioUrls: SafeParse.stringList(data['portfolioUrls']),
     );
   }
 
@@ -122,5 +112,41 @@ class SquadModel {
       'isAvailable': isAvailable,
       'portfolioUrls': portfolioUrls,
     };
+  }
+
+  SquadModel copyWith({
+    String? id,
+    String? name,
+    String? description,
+    String? leaderId,
+    List<String>? memberIds,
+    String? squadImageUrl,
+    List<String>? combinedSkills,
+    int? completedJobs,
+    double? rating,
+    DateTime? createdAt,
+    SquadCategory? category,
+    String? state,
+    String? locality,
+    bool? isAvailable,
+    List<String>? portfolioUrls,
+  }) {
+    return SquadModel(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      leaderId: leaderId ?? this.leaderId,
+      memberIds: memberIds ?? this.memberIds,
+      squadImageUrl: squadImageUrl ?? this.squadImageUrl,
+      combinedSkills: combinedSkills ?? this.combinedSkills,
+      completedJobs: completedJobs ?? this.completedJobs,
+      rating: rating ?? this.rating,
+      createdAt: createdAt ?? this.createdAt,
+      category: category ?? this.category,
+      state: state ?? this.state,
+      locality: locality ?? this.locality,
+      isAvailable: isAvailable ?? this.isAvailable,
+      portfolioUrls: portfolioUrls ?? this.portfolioUrls,
+    );
   }
 }

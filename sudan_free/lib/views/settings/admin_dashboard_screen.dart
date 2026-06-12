@@ -1046,19 +1046,78 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text('حذف $name نهائياً؟'),
-        content: const Text('لا يمكن التراجع عن هذه العملية.'),
+        content: const Text(
+          'سيتم حذف:\n• بيانات الحساب\n• جميع المنشورات\n• التقييمات والبلاغات\n• الإشعارات\n• طلب الحذف\n\nلا يمكن التراجع عن هذه العملية.',
+        ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
             onPressed: () async {
               Navigator.pop(ctx);
+              // نعرض مؤشر تحميل
+              if (!mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('جاري حذف الحساب...'), duration: Duration(seconds: 60)),
+              );
               try {
-                final callable = FirebaseFunctions.instance.httpsCallable('deleteUserAccount');
-                await callable.call({'userId': userId, 'requestId': reqId});
-                if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم الحذف بنجاح')));
+                final db = FirebaseFirestore.instance;
+                // نحذف دفعات باستخدام WriteBatch لضمان الاتساق
+                // ─── 1. حذف المنشورات ───
+                final posts = await db.collection('posts').where('userId', isEqualTo: userId).get();
+                for (final post in posts.docs) {
+                  await post.reference.delete();
+                }
+                // ─── 2. حذف التقييمات (كمُقيِّم أو مُقيَّم) ───
+                final reviewsBy = await db.collection('reviews').where('reviewerId', isEqualTo: userId).get();
+                final reviewsFor = await db.collection('reviews').where('freelancerId', isEqualTo: userId).get();
+                for (final r in [...reviewsBy.docs, ...reviewsFor.docs]) {
+                  await r.reference.delete();
+                }
+                // ─── 3. حذف الإشعارات ───
+                final notifs = await db.collection('notifications').where('userId', isEqualTo: userId).get();
+                for (final n in notifs.docs) {
+                  await n.reference.delete();
+                }
+                // ─── 4. حذف البلاغات المقدمة من المستخدم ───
+                final reports = await db.collection('reports').where('reporterId', isEqualTo: userId).get();
+                for (final r in reports.docs) {
+                  await r.reference.delete();
+                }
+                // ─── 5. حذف العروض (Proposals) ───
+                final proposals = await db.collection('proposals').where('freelancerId', isEqualTo: userId).get();
+                for (final p in proposals.docs) {
+                  await p.reference.delete();
+                }
+                // ─── 6. تحديث طلب الحذف إلى "تم التنفيذ" ───
+                await db.collection('deletion_requests').doc(reqId).update({
+                  'status': 'completed',
+                  'completedAt': FieldValue.serverTimestamp(),
+                });
+                // ─── 7. حذف وثيقة المستخدم الرئيسية ───
+                await db.collection('users').doc(userId).delete();
+
+                if (mounted) {
+                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('✅ تم حذف حساب $name بالكامل'),
+                      backgroundColor: Colors.green,
+                      duration: const Duration(seconds: 4),
+                    ),
+                  );
+                }
               } catch (e) {
-                if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ: $e')));
+                if (mounted) {
+                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('خطأ أثناء الحذف: $e'),
+                      backgroundColor: Colors.red,
+                      duration: const Duration(seconds: 6),
+                    ),
+                  );
+                }
               }
             },
             child: const Text('تأكيد الحذف'),
@@ -1085,7 +1144,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         final whatsappCtrl = TextEditingController(text: data['whatsapp'] ?? 'https://wa.me/249900578357');
         final facebookCtrl = TextEditingController(text: data['facebook'] ?? 'https://www.facebook.com/share/18J8UXiEDe/');
         final telegramCtrl = TextEditingController(text: data['telegram'] ?? 'https://t.me/JamalJhome');
-        final websiteCtrl = TextEditingController(text: data['website'] ?? 'https://sudanfree.com/');
+        final websiteCtrl = TextEditingController(text: data['website'] ?? 'https://sudanfree.com/sudan-free.html/');
         final shareTextArCtrl = TextEditingController(text: data['share_text_ar'] ?? 'جرب تطبيق سودان فري للعثور على فرص عمل ومستقلين موثوقين! حمل التطبيق الآن: https://sudanfree.com/sudan-free.html');
         final shareTextEnCtrl = TextEditingController(text: data['share_text_en'] ?? 'Try SudanFree to find jobs and trusted freelancers! Download now: https://sudanfree.com/sudan-free.html');
 

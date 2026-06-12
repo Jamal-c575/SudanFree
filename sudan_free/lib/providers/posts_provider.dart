@@ -395,6 +395,7 @@ class PostsProvider extends ChangeNotifier {
           // Send all notifications in parallel
           Future.wait(futures).catchError((e) {
             debugPrint('PostsProvider: Error notifying followers: $e');
+            return <void>[];
           });
         }
       }

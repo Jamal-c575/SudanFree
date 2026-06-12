@@ -23,6 +23,8 @@ import '../settings/settings_screen.dart';
 import '../../core/utils/job_titles_utils.dart';
 import 'ad_details_screen.dart';
 import 'filtered_providers_screen.dart';
+import '../freelancers/browse_freelancers_screen.dart';
+import '../shops/browse_shops_screen.dart';
 import '../map/map_explorer_screen.dart';
 import '../../widgets/guide/guide_controller.dart';
 import '../../services/smart_guide_service.dart';
@@ -413,7 +415,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                     icon: Icons.handyman,
                     title: locale == 'ar' ? 'خدمات في منطقتك' : 'Services Near You',
                     iconColor: AppColors.secondary,
-                    onSeeAll: () => widget.onNavigateToTab?.call(1),
+                    onSeeAll: () => Navigator.push(context, MaterialPageRoute(builder: (_) => FilteredProvidersScreen(filterType: FilterType.freelancersNearYou, title: locale == 'ar' ? 'حرفيين في منطقتك' : 'Freelancers Near You'))),
                     locale: locale,
                   ),
                 ),
@@ -437,7 +439,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                   icon: Icons.storefront,
                   title: locale == 'ar' ? 'متاجر في منطقتك' : 'Shops Near You',
                   iconColor: AppColors.desertOrange,
-                  onSeeAll: () => widget.onNavigateToTab?.call(2),
+                  onSeeAll: () => Navigator.push(context, MaterialPageRoute(builder: (_) => FilteredProvidersScreen(filterType: FilterType.shopsNearYou, title: locale == 'ar' ? 'متاجر في منطقتك' : 'Shops Near You'))),
                   locale: locale,
                 ),
               ),

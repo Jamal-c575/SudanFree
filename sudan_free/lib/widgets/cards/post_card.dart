@@ -17,6 +17,8 @@ import '../common/linkable_text.dart';
 import '../common/poll_widget.dart';
 import '../../views/posts/post_details_screen.dart';
 import '../../views/search/search_screen.dart';
+import 'package:any_link_preview/any_link_preview.dart';
+import '../common/internal_link_preview.dart';
 
 
 class PostCard extends StatefulWidget {
@@ -692,6 +694,41 @@ class _ExpandableCaptionState extends State<ExpandableCaption> {
                 );
               },
             ),
+            
+            if (_extractFirstUrl(widget.caption) != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: InternalLinkPreviewWidget.isInternalLink(_extractFirstUrl(widget.caption)!)
+                    ? InternalLinkPreviewWidget(url: _extractFirstUrl(widget.caption)!)
+                    : ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: AnyLinkPreview(
+                          link: _extractFirstUrl(widget.caption)!,
+                          displayDirection: UIDirection.uiDirectionHorizontal,
+                          backgroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.white.withValues(alpha: 0.05) : Colors.grey[100],
+                          errorWidget: const SizedBox.shrink(),
+                          errorImage: '',
+                          cache: const Duration(days: 7),
+                          placeholderWidget: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).brightness == Brightness.dark ? Colors.white.withValues(alpha: 0.05) : Colors.grey[100],
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.link, color: AppColors.primary.withValues(alpha: 0.5)),
+                                const SizedBox(width: 8),
+                                Text(
+                                  Theme.of(context).brightness == Brightness.dark ? 'Loading link...' : 'جاري قراءة الرابط...',
+                                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+              ),
+
             if (!_isExpanded && (widget.caption.length > 150 || (widget.caption.split('\n').length > _maxLines)))
               Padding(
                 padding: const EdgeInsets.only(top: 4.0),
@@ -708,6 +745,22 @@ class _ExpandableCaptionState extends State<ExpandableCaption> {
         ),
       ),
     );
+  }
+
+  String? _extractFirstUrl(String text) {
+    final RegExp urlPattern = RegExp(
+      r'(https?:\/\/[^\s]+)|(www\.[^\s]+)',
+      caseSensitive: false,
+    );
+    final match = urlPattern.firstMatch(text);
+    if (match != null) {
+      String url = match.group(0)!;
+      if (!url.startsWith('http')) {
+        url = 'https://$url';
+      }
+      return url;
+    }
+    return null;
   }
 }
 

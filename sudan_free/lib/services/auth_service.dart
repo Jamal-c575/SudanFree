@@ -182,8 +182,8 @@ class AuthService {
 
   // Update user profile
   Future<void> updateUserProfile(String userId, Map<String, dynamic> data) async {
-    data['updatedAt'] = Timestamp.now();
-    await _firestore.collection('users').doc(userId).update(data);
+    // Delegate to centralized FirestoreService which will regenerate search keywords
+    await FirestoreService().updateUserProfile(userId, data);
   }
 
   // Check if user profile exists

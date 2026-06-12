@@ -408,7 +408,7 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
                                           Text(
-                                            '${widget.user.followers.length}',
+                                          '${user.followers.length}',
                                             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                                           ),
                                           Text(
@@ -420,7 +420,7 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
                                       Container(width: 1, height: 24, color: Colors.grey[300]),
                                       Consumer<AuthProvider>(
                                         builder: (context, auth, _) {
-                                          final isFollowing = widget.user.followers.contains(auth.user?.id);
+                                          final isFollowing = user.followers.contains(auth.user?.id);
                                           return _buildContactButton(
                                             isFollowing ? Icons.check : Icons.person_add_alt_1,
                                             isFollowing ? (l10n.localeName == 'ar' ? 'أُتابع' : 'Following') : (l10n.localeName == 'ar' ? 'متابعة' : 'Follow'),
@@ -428,12 +428,13 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
                                             () async {
                                               if (auth.user == null) return;
                                               try {
-                                                await FirestoreService().toggleFollow(auth.user!.id, widget.user.id, isFollowing);
+                                                await FirestoreService().toggleFollow(auth.user!.id, user.id, isFollowing);
+                                                // Optimistic update
                                                 setState(() {
                                                   if (isFollowing) {
-                                                    widget.user.followers.remove(auth.user!.id);
+                                                    user.followers.remove(auth.user!.id);
                                                   } else {
-                                                    widget.user.followers.add(auth.user!.id);
+                                                    user.followers.add(auth.user!.id);
                                                   }
                                                 });
                                               } catch (_) {}
@@ -651,7 +652,7 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
           return const Center(child: CircularProgressIndicator());
         }
 
-        final products = (snapshot.data ?? []).where((p) => p.showInProfile).toList();
+        final products = (snapshot.data ?? []).where((p) => widget.isMe || p.showInProfile).toList();
 
         // Sort: Pinned first, then by date (descending)
         products.sort((a, b) {
@@ -727,23 +728,65 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
                             Positioned(
                               top: 8,
                               right: 8,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withValues(alpha: 0.6),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(Icons.remove_red_eye, size: 12, color: Colors.white),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      '${product.viewsCount}',
-                                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withValues(alpha: 0.6),
+                                      borderRadius: BorderRadius.circular(8),
                                     ),
-                                  ],
-                                ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(Icons.remove_red_eye, size: 12, color: Colors.white),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          '${product.viewsCount}',
+                                          style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  _buildActionIcon(
+                                    icon: Icons.edit,
+                                    onTap: () {
+                                      Navigator.push(context, MaterialPageRoute(builder: (_) => CreateProductScreen(product: product)));
+                                    },
+                                  ),
+                                  const SizedBox(width: 4),
+                                  _buildActionIcon(
+                                    icon: product.showInProfile ? Icons.visibility : Icons.visibility_off,
+                                    color: product.showInProfile ? Colors.white : Colors.grey,
+                                    onTap: () async {
+                                      await FirestoreService().updatePost(product.id, {'showInProfile': !product.showInProfile});
+                                    },
+                                  ),
+                                  const SizedBox(width: 4),
+                                  _buildActionIcon(
+                                    icon: Icons.delete,
+                                    color: Colors.redAccent,
+                                    onTap: () async {
+                                      final l10n = AppLocalizations.of(context)!;
+                                      final confirm = await showDialog<bool>(
+                                        context: context,
+                                        builder: (ctx) => AlertDialog(
+                                          title: Text(l10n.localeName == 'ar' ? 'حذف المنتج' : 'Delete Product'),
+                                          content: Text(l10n.localeName == 'ar' ? 'هل أنت متأكد من حذف هذا المنتج؟' : 'Are you sure you want to delete this product?'),
+                                          actions: [
+                                            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l10n.cancel)),
+                                            TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(l10n.localeName == 'ar' ? 'حذف' : 'Delete', style: const TextStyle(color: Colors.red))),
+                                          ]
+                                        )
+                                      );
+                                      if (confirm == true) {
+                                        await FirestoreService().deletePost(product.id);
+                                      }
+                                    },
+                                  ),
+                                ],
                               ),
                             ),
                         ],
@@ -856,6 +899,20 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
         const SizedBox(height: 12),
         _buildReviewsList(),
       ],
+    );
+  }
+
+  Widget _buildActionIcon({required IconData icon, Color color = Colors.white, required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.6),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icon, size: 14, color: color),
+      ),
     );
   }
 
@@ -1349,6 +1406,6 @@ class _SliverTabBarDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   bool shouldRebuild(_SliverTabBarDelegate oldDelegate) {
-    return true;
+    return oldDelegate._tabBar != _tabBar || oldDelegate.topPadding != topPadding;
   }
 }

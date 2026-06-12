@@ -495,6 +495,27 @@ class FreelancerCard extends StatelessWidget {
                           ),
                         ],
                       ),
+
+                    if (freelancer.hourlyRate != null && freelancer.hourlyRate! > 0)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.payments_outlined, size: 12, color: AppColors.success),
+                            const SizedBox(width: 4),
+                            Text(
+                              locale == 'ar' 
+                                  ? 'متوسط السعر: ${freelancer.hourlyRate} SDG/ساعة'
+                                  : 'Avg Price: ${freelancer.hourlyRate} SDG/hr',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.success,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -638,6 +659,24 @@ class FreelancerGridCard extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
+                      
+                    if (freelancer.hourlyRate != null && freelancer.hourlyRate! > 0)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          locale == 'ar' 
+                              ? '💰 متوسط: ${freelancer.hourlyRate} SDG/س'
+                              : '💰 Avg: ${freelancer.hourlyRate} SDG/h',
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.success,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      
                     const Spacer(),
                     // Rank/Rating (Hidden Stars)
                     Row(

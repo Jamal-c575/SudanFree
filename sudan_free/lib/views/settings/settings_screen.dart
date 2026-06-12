@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart'; // Added
 import 'package:share_plus/share_plus.dart'; // Added
@@ -280,7 +281,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               final whatsapp = data['whatsapp'] ?? 'https://wa.me/249900578357';
               final facebook = data['facebook'] ?? 'https://www.facebook.com/share/18J8UXiEDe/';
               final telegram = data['telegram'] ?? 'https://t.me/JamalJhome';
-              final website = data['website'] ?? 'https://sudanfree.com/';
+              final website = data['website'] ?? 'https://sudanfree.com/sudan-free.html/';
               final shareTextAr = data['share_text_ar'] ?? 'جرب تطبيق سودان فري للعثور على فرص عمل ومستقلين موثوقين! حمل التطبيق الآن: https://sudanfree.com/sudan-free.html';
               final shareTextEn = data['share_text_en'] ?? 'Try SudanFree to find jobs and trusted freelancers! Download now: https://sudanfree.com/sudan-free.html';
 

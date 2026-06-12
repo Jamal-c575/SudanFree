@@ -107,14 +107,21 @@ class _SquadProfileScreenState extends State<SquadProfileScreen> with SingleTick
                           },
                         ),
                         
-                      // Dashboard button for leaders and members
-                      if (isLeader || isMember)
-                        IconButton(
-                          icon: const Icon(Icons.dashboard, color: Colors.white),
-                          tooltip: isAr ? 'لوحة تحكم المجموعة' : 'Squad Dashboard',
-                          onPressed: () {
-                            Navigator.push(context, MaterialPageRoute(builder: (_) => SquadDashboardScreen(squad: widget.squad)));
-                          },
+                      // Dashboard icon for leader
+                      if (isLeader)
+                        Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.3),
+                            shape: BoxShape.circle,
+                          ),
+                          child: IconButton(
+                            icon: const Icon(Icons.dashboard, color: Colors.white),
+                            tooltip: isAr ? 'لوحة تحكم المجموعة' : 'Squad Dashboard',
+                            onPressed: () {
+                              Navigator.push(context, MaterialPageRoute(builder: (_) => SquadDashboardScreen(squad: widget.squad)));
+                            },
+                          ),
                         ),
                     ],
                   );
@@ -222,34 +229,6 @@ class _SquadProfileScreenState extends State<SquadProfileScreen> with SingleTick
                         )
                       else
                          const Spacer(),
-                      
-                      // Availability Toggle/Badge
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: _isAvailable ? Colors.green.withValues(alpha: 0.1) : Colors.red.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: _isAvailable ? Colors.green : Colors.red),
-                        ),
-                        child: InkWell(
-                          onTap: isLeader ? () => _toggleAvailability() : null,
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.circle, size: 10, color: _isAvailable ? Colors.green : Colors.red),
-                              const SizedBox(width: 6),
-                              Text(
-                                _isAvailable ? (isAr ? 'متاح للتعاقد' : 'Available for Hire') : (isAr ? 'مشغول حالياً' : 'Busy/On Project'),
-                                style: TextStyle(color: _isAvailable ? Colors.green : Colors.red, fontWeight: FontWeight.bold, fontSize: 13),
-                              ),
-                              if (isLeader) ...[
-                                const SizedBox(width: 4),
-                                Icon(Icons.edit, size: 12, color: _isAvailable ? Colors.green : Colors.red),
-                              ]
-                            ],
-                          ),
-                        ),
-                      ),
                     ],
                   ),
                   const SizedBox(height: 24),

@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/user_provider.dart';
 import '../../services/firestore_service.dart';
 import '../../services/storage_service.dart';
 import '../../models/user_model.dart';
@@ -28,7 +29,8 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   UserModel? _user;
-  bool _isLoading = false;
+  bool _isLoading = true;
+  String? _loadError; // سبب الخطأ الحقيقي لعرضه للتشخيص
 
   @override
   void initState() {
@@ -50,10 +52,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
 
     // Case 2: Viewing someone else
-    setState(() => _isLoading = true);
+    setState(() { _isLoading = true; _loadError = null; });
     try {
       final fetchedUser = await FirestoreService().getUser(widget.userId!);
       if (mounted) {
+        if (fetchedUser == null) {
+          context.read<UserProvider>().removeStaleUser(widget.userId!);
+        }
         setState(() {
           _user = fetchedUser;
           _isLoading = false;
@@ -61,8 +66,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _isLoading = false);
-        // Could show error snackbar here
+        setState(() {
+          _isLoading = false;
+          _loadError = e.toString(); // نحفظ الخطأ الحقيقي
+        });
       }
     }
   }
@@ -116,7 +123,62 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
 
     if (_isLoading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    if (_user == null) return const Scaffold(body: Center(child: Text("المستخدم غير موجود")));
+    if (_user == null) {
+      final errorLocale = Localizations.localeOf(context).languageCode;
+      return Scaffold(
+        appBar: AppBar(leading: const BackButton()),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.person_off_rounded, size: 64, color: Colors.grey.shade400),
+                const SizedBox(height: 16),
+                Text(
+                  errorLocale == 'ar' ? 'تعذّر تحميل هذا الحساب' : 'Could not load this account',
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: 16, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
+                ),
+                if (_loadError != null) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.red.shade200),
+                    ),
+                    child: SelectableText(
+                      _loadError!,
+                      style: TextStyle(color: Colors.red.shade700, fontSize: 11),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.arrow_back),
+                      label: Text(errorLocale == 'ar' ? 'الرجوع' : 'Go Back'),
+                    ),
+                    const SizedBox(width: 12),
+                    ElevatedButton.icon(
+                      onPressed: _loadUser,
+                      icon: const Icon(Icons.refresh),
+                      label: Text(errorLocale == 'ar' ? 'إعادة المحاولة' : 'Retry'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     final isMe = authUser?.id == _user!.id;
 
