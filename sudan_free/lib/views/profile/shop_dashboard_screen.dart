@@ -9,7 +9,7 @@ import '../../models/post_model.dart';
 import '../../services/firestore_service.dart';
 import '../../services/cloudinary_service.dart';
 import '../../core/constants/app_colors.dart';
-import 'product_detail_screen.dart';
+import 'create_product_screen.dart';
 
 class ShopDashboardScreen extends StatelessWidget {
   final UserModel shop;
@@ -246,20 +246,22 @@ class ShopDashboardScreen extends StatelessWidget {
           return const Center(child: Padding(padding: EdgeInsets.all(20.0), child: CircularProgressIndicator()));
         }
 
-        final products = (snapshot.data ?? []).where((p) => p.showInProfile).toList();
+        // لوحة التحكم تعرض كل المنتجات (المرئية والمخفية معاً)
+        final products = snapshot.data ?? [];
 
         // Sort by viewsCount descending, then by date
-        products.sort((a, b) {
+        final sorted = List<PostModel>.from(products);
+        sorted.sort((a, b) {
           if (a.viewsCount != b.viewsCount) return b.viewsCount.compareTo(a.viewsCount);
           return b.createdAt.compareTo(a.createdAt);
         });
 
-        if (products.isEmpty) {
+        if (sorted.isEmpty) {
           return Center(
             child: Padding(
               padding: const EdgeInsets.all(40.0),
               child: Text(
-                l10n.localeName == 'ar' ? 'لا توجد منتجات لعرض إحصائياتها' : 'No products to show insights for.',
+                l10n.localeName == 'ar' ? 'لا توجد منتجات بعد' : 'No products yet.',
                 style: const TextStyle(color: Colors.grey),
               ),
             ),
@@ -269,98 +271,222 @@ class ShopDashboardScreen extends StatelessWidget {
         return ListView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          itemCount: products.length,
+          itemCount: sorted.length,
           itemBuilder: (context, index) {
-            final product = products[index];
-            return _buildProductCompactTile(context, product, isDark);
+            final product = sorted[index];
+            return _buildProductManagementTile(context, product, isDark, l10n);
           },
         );
       },
     );
   }
 
-  Widget _buildProductCompactTile(BuildContext context, PostModel product, bool isDark) {
+  Widget _buildProductManagementTile(BuildContext context, PostModel product, bool isDark, AppLocalizations l10n) {
+    final isAr = l10n.localeName == 'ar';
     final imageUrl = product.allImageUrls.isNotEmpty ? product.allImageUrls.first : null;
-    final caption = product.caption ?? 'منتج بدون وصف';
-    final title = caption.split('\n').first;
+    final title = (product.caption ?? (isAr ? 'منتج بدون وصف' : 'No description')).split('\n').first;
+    final isHidden = !product.showInProfile;
 
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => ProductDetailScreen(product: product)),
-        );
-      },
+    return Opacity(
+      opacity: isHidden ? 0.6 : 1.0,
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
           color: isDark ? Colors.grey[900] : Colors.white,
           borderRadius: BorderRadius.circular(16),
+          border: isHidden
+              ? Border.all(color: Colors.orange.withValues(alpha: 0.5), width: 1.5)
+              : null,
           boxShadow: [
             BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 2)),
           ],
         ),
-        child: Row(
+        child: Column(
           children: [
-            // Image
-            ClipRRect(
-              borderRadius: const BorderRadius.horizontal(left: Radius.circular(16), right: Radius.circular(0)), // Adjust for RTL if needed, but horizontal works fine usually. Actually, let's use all corners slightly.
-              child: imageUrl != null
-                  ? CachedNetworkImage(
-                      imageUrl: imageUrl,
-                      width: 90,
-                      height: 90,
-                      fit: BoxFit.cover,
-                      placeholder: (_, __) => Container(color: Colors.grey[200], width: 90, height: 90),
-                      errorWidget: (_, __, ___) => Container(color: Colors.grey[200], width: 90, height: 90, child: const Icon(Icons.broken_image)),
-                    )
-                  : Container(
-                      width: 90,
-                      height: 90,
-                      color: Colors.grey[200],
-                      child: const Center(child: Icon(Icons.image, color: Colors.grey)),
-                    ),
-            ),
-            const SizedBox(width: 12),
-            // Details
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+            // ── الصف العلوي: صورة + معلومات + شارة المشاهدات ──
+            Row(
+              children: [
+                // صورة المنتج
+                ClipRRect(
+                  borderRadius: const BorderRadius.horizontal(left: Radius.circular(16)),
+                  child: imageUrl != null
+                      ? CachedNetworkImage(
+                          imageUrl: imageUrl,
+                          width: 90,
+                          height: 90,
+                          fit: BoxFit.cover,
+                          placeholder: (_, __) => Container(color: Colors.grey[200], width: 90, height: 90),
+                          errorWidget: (_, __, ___) => Container(color: Colors.grey[200], width: 90, height: 90, child: const Icon(Icons.broken_image)),
+                        )
+                      : Container(
+                          width: 90,
+                          height: 90,
+                          color: Colors.grey[200],
+                          child: const Center(child: Icon(Icons.image, color: Colors.grey)),
+                        ),
+                ),
+                const SizedBox(width: 12),
+                // معلومات المنتج
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // شارة المخفي إن وجدت
+                      if (isHidden)
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: Colors.orange.withValues(alpha: 0.4)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.visibility_off, size: 12, color: Colors.orange),
+                              const SizedBox(width: 4),
+                              Text(
+                                isAr ? 'مخفي من المتجر والمفضلة' : 'Hidden from store & favorites',
+                                style: const TextStyle(fontSize: 10, color: Colors.orange, fontWeight: FontWeight.w600),
+                              ),
+                            ],
+                          ),
+                        ),
+                      Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                      ),
+                      const SizedBox(height: 4),
+                      if (product.price != null)
+                        Text(
+                          '${product.price} SDG',
+                          style: const TextStyle(color: AppColors.secondary, fontWeight: FontWeight.w600, fontSize: 13),
+                        ),
+                    ],
                   ),
-                  const SizedBox(height: 4),
-                  if (product.price != null)
-                    Text(
-                      '${product.price} SDG',
-                      style: const TextStyle(color: AppColors.secondary, fontWeight: FontWeight.w600, fontSize: 13),
-                    ),
-                ],
-              ),
+                ),
+                // شارة المشاهدات
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  margin: const EdgeInsets.symmetric(horizontal: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.purple.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.remove_red_eye_rounded, color: Colors.purple, size: 18),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${product.viewsCount}',
+                        style: const TextStyle(color: Colors.purple, fontWeight: FontWeight.bold, fontSize: 14),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            // Views Badge
+            // ── شريط أزرار التحكم ──
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              margin: const EdgeInsets.symmetric(horizontal: 12),
               decoration: BoxDecoration(
-                color: Colors.purple.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
+                color: (isDark ? Colors.grey[800] : Colors.grey[50]),
+                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
+              child: Row(
                 children: [
-                  const Icon(Icons.remove_red_eye_rounded, color: Colors.purple, size: 18),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${product.viewsCount}',
-                    style: const TextStyle(color: Colors.purple, fontWeight: FontWeight.bold, fontSize: 14),
+                  // زر إخفاء / إظهار
+                  Expanded(
+                    child: _DashboardActionButton(
+                      icon: isHidden ? Icons.visibility : Icons.visibility_off,
+                      label: isHidden ? (isAr ? 'إظهار' : 'Show') : (isAr ? 'إخفاء' : 'Hide'),
+                      color: isHidden ? AppColors.success : Colors.orange,
+                      onTap: () async {
+                        await FirestoreService().updatePost(product.id, {'showInProfile': !product.showInProfile});
+                      },
+                    ),
+                  ),
+                  Container(width: 1, height: 36, color: Colors.grey.withValues(alpha: 0.2)),
+                  // زر التعديل
+                  Expanded(
+                    child: _DashboardActionButton(
+                      icon: Icons.edit_outlined,
+                      label: isAr ? 'تعديل' : 'Edit',
+                      color: AppColors.primary,
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => CreateProductScreen(product: product)),
+                      ),
+                    ),
+                  ),
+                  Container(width: 1, height: 36, color: Colors.grey.withValues(alpha: 0.2)),
+                  // زر الحذف
+                  Expanded(
+                    child: _DashboardActionButton(
+                      icon: Icons.delete_outline,
+                      label: isAr ? 'حذف' : 'Delete',
+                      color: Colors.redAccent,
+                      onTap: () async {
+                        final confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: Text(isAr ? 'حذف المنتج' : 'Delete Product'),
+                            content: Text(isAr ? 'هل أنت متأكد من حذف هذا المنتج؟' : 'Are you sure?'),
+                            actions: [
+                              TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(isAr ? 'تراجع' : 'Cancel')),
+                              TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(isAr ? 'حذف' : 'Delete', style: const TextStyle(color: Colors.red))),
+                            ],
+                          ),
+                        );
+                        if (confirm == true) {
+                          await FirestoreService().deletePost(product.id);
+                        }
+                      },
+                    ),
                   ),
                 ],
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// زر التحكم في لوحة إدارة المنتجات
+// ─────────────────────────────────────────────────────────────────────────────
+class _DashboardActionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _DashboardActionButton({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: 18),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600),
             ),
           ],
         ),

@@ -344,7 +344,13 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
           return Center(child: Text(locale == 'ar' ? 'حدث خطأ' : 'An error occurred'));
         }
 
-        final products = snapshot.data?.whereType<PostModel>().toList() ?? [];
+        // فلترة المنتجات المخفية (showInProfile == false) من المفضلة
+        // عندما يخفي صاحب المتجر منتجاً، يختفي من مفضلة الجميع تلقائياً
+        final products = snapshot.data
+                ?.whereType<PostModel>()
+                .where((p) => p.showInProfile)
+                .toList() ??
+            [];
         if (products.isEmpty) {
           return Center(
             child: Text(

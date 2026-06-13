@@ -652,7 +652,11 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
           return const Center(child: CircularProgressIndicator());
         }
 
-        final products = (snapshot.data ?? []).where((p) => widget.isMe || p.showInProfile).toList();
+        // المالك يرى كل المنتجات (المرئية والمخفية) — المخفية تحمل شارة "مخفي"
+        // المشاهد يرى فقط المنتجات المنشورة (showInProfile == true)
+        final products = (snapshot.data ?? [])
+            .where((p) => widget.isMe ? true : p.showInProfile)
+            .toList();
 
         // Sort: Pinned first, then by date (descending)
         products.sort((a, b) {
@@ -724,69 +728,29 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
                                   color: Colors.grey[200],
                                   child: const Center(child: Icon(Icons.image, color: Colors.grey)),
                                 ),
-                          if (widget.isMe)
+                          // ── للمالك: أظهر شارة "مخفي" فقط إذا كان المنتج مخفياً ──
+                          // أزرار التحكم انتقلت بالكامل إلى لوحة التحكم (ShopDashboard)
+                          if (widget.isMe && !product.showInProfile)
                             Positioned(
                               top: 8,
-                              right: 8,
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: Colors.black.withValues(alpha: 0.6),
-                                      borderRadius: BorderRadius.circular(8),
+                              left: 8,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.7),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.visibility_off, size: 12, color: Colors.white54),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      Localizations.localeOf(context).languageCode == 'ar' ? 'مخفي' : 'Hidden',
+                                      style: const TextStyle(color: Colors.white54, fontSize: 10, fontWeight: FontWeight.bold),
                                     ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        const Icon(Icons.remove_red_eye, size: 12, color: Colors.white),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          '${product.viewsCount}',
-                                          style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  _buildActionIcon(
-                                    icon: Icons.edit,
-                                    onTap: () {
-                                      Navigator.push(context, MaterialPageRoute(builder: (_) => CreateProductScreen(product: product)));
-                                    },
-                                  ),
-                                  const SizedBox(width: 4),
-                                  _buildActionIcon(
-                                    icon: product.showInProfile ? Icons.visibility : Icons.visibility_off,
-                                    color: product.showInProfile ? Colors.white : Colors.grey,
-                                    onTap: () async {
-                                      await FirestoreService().updatePost(product.id, {'showInProfile': !product.showInProfile});
-                                    },
-                                  ),
-                                  const SizedBox(width: 4),
-                                  _buildActionIcon(
-                                    icon: Icons.delete,
-                                    color: Colors.redAccent,
-                                    onTap: () async {
-                                      final l10n = AppLocalizations.of(context)!;
-                                      final confirm = await showDialog<bool>(
-                                        context: context,
-                                        builder: (ctx) => AlertDialog(
-                                          title: Text(l10n.localeName == 'ar' ? 'حذف المنتج' : 'Delete Product'),
-                                          content: Text(l10n.localeName == 'ar' ? 'هل أنت متأكد من حذف هذا المنتج؟' : 'Are you sure you want to delete this product?'),
-                                          actions: [
-                                            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l10n.cancel)),
-                                            TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(l10n.localeName == 'ar' ? 'حذف' : 'Delete', style: const TextStyle(color: Colors.red))),
-                                          ]
-                                        )
-                                      );
-                                      if (confirm == true) {
-                                        await FirestoreService().deletePost(product.id);
-                                      }
-                                    },
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ),
                         ],
@@ -902,19 +866,6 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
     );
   }
 
-  Widget _buildActionIcon({required IconData icon, Color color = Colors.white, required VoidCallback onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(6),
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.6),
-          shape: BoxShape.circle,
-        ),
-        child: Icon(icon, size: 14, color: color),
-      ),
-    );
-  }
 
   Widget _buildReviewsList() {
     return StreamBuilder<List<ReviewModel>>(
