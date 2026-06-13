@@ -145,6 +145,23 @@ class JobFirestoreService {
     await batch.commit();
   }
 
+  // Assign Job to Apprentice
+  Future<void> assignJobToApprentice({
+    required String jobId,
+    required String apprenticeId,
+    required String apprenticeName,
+    required String masterId,
+    required String masterName,
+  }) async {
+    await _firestore.collection('jobs').doc(jobId).update({
+      'assignedFreelancerId': apprenticeId,
+      'assignedFreelancerName': apprenticeName,
+      'supervisorId': masterId,
+      'supervisorName': masterName,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
   // Complete Job
   Future<void> completeJob(String jobId, String freelancerId) async {
     await _firestore.collection('jobs').doc(jobId).update({
@@ -161,13 +178,18 @@ class JobFirestoreService {
     });
   }
 
-  // Get Freelancer Jobs
+  // Get Freelancer Jobs (Including supervised jobs)
   Stream<List<JobModel>> getFreelancerJobs(String freelancerId) {
     return _firestore.collection('jobs')
-        .where('assignedFreelancerId', isEqualTo: freelancerId)
-        .orderBy('createdAt', descending: true)
-        .snapshots().map((snapshot) =>
-            snapshot.docs.map((doc) => JobModel.fromFirestore(doc)).toList());
+        .where(Filter.or(
+            Filter('assignedFreelancerId', isEqualTo: freelancerId),
+            Filter('supervisorId', isEqualTo: freelancerId),
+        ))
+        .snapshots().map((snapshot) {
+          final jobs = snapshot.docs.map((doc) => JobModel.fromFirestore(doc)).toList();
+          jobs.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          return jobs;
+        });
   }
 
   // Get Client Jobs

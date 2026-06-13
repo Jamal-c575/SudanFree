@@ -7,6 +7,9 @@ import '../../core/constants/app_colors.dart';
 import '../../models/user_model.dart';
 import '../../services/firestore_service.dart';
 import '../../services/firestore/user_service.dart';
+import '../../providers/job_provider.dart';
+import '../../models/job_model.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class ApprenticesDashboardScreen extends StatefulWidget {
   const ApprenticesDashboardScreen({super.key});
@@ -126,7 +129,7 @@ class _ApprenticesDashboardScreenState extends State<ApprenticesDashboardScreen>
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                             ),
                             onPressed: () {
-                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(isAr ? 'قريباً: إسناد مهمة مباشرة!' : 'Coming soon: Assign Task!')));
+                              _showAssignTaskBottomSheet(context, user, apprentice, isAr);
                             },
                             icon: const Icon(Icons.assignment),
                             label: Text(isAr ? 'إسناد طلب' : 'Assign Task'),
@@ -246,6 +249,121 @@ class _ApprenticesDashboardScreenState extends State<ApprenticesDashboardScreen>
           height: 140,
           decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
         ),
+      ),
+    );
+  }
+
+  void _showAssignTaskBottomSheet(BuildContext context, UserModel master, UserModel apprentice, bool isAr) {
+    // Ensure we have jobs fetched
+    context.read<JobProvider>().fetchFreelancerJobs(master.id);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Consumer<JobProvider>(
+        builder: (context, jobProvider, child) {
+          // Find jobs assigned to the master that are in progress
+          final myActiveJobs = jobProvider.freelancerJobs.where((j) => j.status == JobStatus.inProgress && j.assignedFreelancerId == master.id).toList();
+
+          return Container(
+            height: MediaQuery.of(context).size.height * 0.7,
+            decoration: BoxDecoration(
+              color: Theme.of(context).scaffoldBackgroundColor,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                  ),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        backgroundImage: apprentice.profileImageUrl != null ? NetworkImage(apprentice.profileImageUrl!) : null,
+                        child: apprentice.profileImageUrl == null ? const Icon(Icons.person) : null,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(isAr ? 'إسناد طلب' : 'Assign Request', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+                            Text(isAr ? 'إلى: ${apprentice.name}' : 'To: ${apprentice.name}', style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 14)),
+                          ],
+                        ),
+                      ),
+                      IconButton(icon: const Icon(Icons.close, color: Colors.white), onPressed: () => Navigator.pop(ctx)),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: myActiveJobs.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.assignment_turned_in_outlined, size: 64, color: Colors.grey[400]),
+                              const SizedBox(height: 16),
+                              Text(isAr ? 'لا توجد طلبات نشطة لديك لإسنادها' : 'No active requests available to assign', style: TextStyle(color: Colors.grey[600])),
+                            ],
+                          ),
+                        )
+                      : ListView.separated(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: myActiveJobs.length,
+                          separatorBuilder: (_, __) => const SizedBox(height: 12),
+                          itemBuilder: (ctx, index) {
+                            final job = myActiveJobs[index];
+                            return Card(
+                              elevation: 2,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              child: ListTile(
+                                contentPadding: const EdgeInsets.all(16),
+                                leading: const CircleAvatar(
+                                  backgroundColor: AppColors.sudanGold,
+                                  child: Icon(Icons.work, color: Colors.white),
+                                ),
+                                title: Text(job.title, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const SizedBox(height: 4),
+                                    Text(isAr ? 'العميل: ${job.clientName}' : 'Client: ${job.clientName}'),
+                                    Text('${job.budgetMax} SDG', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+                                  ],
+                                ),
+                                trailing: ElevatedButton(
+                                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
+                                  onPressed: () async {
+                                    final success = await jobProvider.assignJobToApprentice(
+                                      jobId: job.id,
+                                      apprenticeId: apprentice.id,
+                                      apprenticeName: apprentice.name,
+                                      masterId: master.id,
+                                      masterName: master.name,
+                                    );
+                                    if (success) {
+                                      Navigator.pop(ctx);
+                                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(isAr ? 'تم إسناد الطلب بنجاح! سيتم إشعار العميل.' : 'Request assigned successfully! Client will be notified.'), backgroundColor: Colors.green));
+                                    } else {
+                                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(isAr ? 'حدث خطأ أثناء الإسناد' : 'Error assigning task'), backgroundColor: Colors.red));
+                                    }
+                                  },
+                                  child: Text(isAr ? 'إسناد' : 'Assign'),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }

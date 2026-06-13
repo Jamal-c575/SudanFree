@@ -384,6 +384,46 @@ class JobProvider extends ChangeNotifier {
     }
   }
 
+  // Assign job to an apprentice
+  Future<bool> assignJobToApprentice({
+    required String jobId,
+    required String apprenticeId,
+    required String apprenticeName,
+    required String masterId,
+    required String masterName,
+  }) async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      await _firestoreService.assignJobToApprentice(
+        jobId: jobId,
+        apprenticeId: apprenticeId,
+        apprenticeName: apprenticeName,
+        masterId: masterId,
+        masterName: masterName,
+      );
+      
+      // Update local state if needed
+      if (_selectedJob != null && _selectedJob!.id == jobId) {
+        _selectedJob = _selectedJob!.copyWith(
+          assignedFreelancerId: apprenticeId,
+          assignedFreelancerName: apprenticeName,
+          supervisorId: masterId,
+          supervisorName: masterName,
+        );
+      }
+      
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
   // Reject proposal
   Future<bool> rejectProposal(String proposalId) async {
     try {

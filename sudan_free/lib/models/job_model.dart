@@ -122,6 +122,8 @@ class JobModel {
   final JobStatus status;
   final String? assignedFreelancerId;
   final String? assignedFreelancerName;
+  final String? supervisorId;
+  final String? supervisorName;
   final int proposalsCount;
   final List<String> requiredSkills;
   final List<String> attachments;
@@ -146,6 +148,8 @@ class JobModel {
     this.status = JobStatus.open,
     this.assignedFreelancerId,
     this.assignedFreelancerName,
+    this.supervisorId,
+    this.supervisorName,
     this.proposalsCount = 0,
     this.requiredSkills = const [],
     this.attachments = const [],
@@ -173,6 +177,8 @@ class JobModel {
       status: SafeParse.enumValue(JobStatus.values, data['status'], JobStatus.open),
       assignedFreelancerId: SafeParse.nullableString(data['assignedFreelancerId']),
       assignedFreelancerName: SafeParse.nullableString(data['assignedFreelancerName']),
+      supervisorId: SafeParse.nullableString(data['supervisorId']),
+      supervisorName: SafeParse.nullableString(data['supervisorName']),
       proposalsCount: SafeParse.integer(data['proposalsCount']),
       requiredSkills: SafeParse.stringList(data['requiredSkills']),
       attachments: SafeParse.stringList(data['attachments']),
@@ -208,6 +214,8 @@ class JobModel {
       'status': status.name,
       'assignedFreelancerId': assignedFreelancerId,
       'assignedFreelancerName': assignedFreelancerName,
+      'supervisorId': supervisorId,
+      'supervisorName': supervisorName,
       'proposalsCount': proposalsCount,
       'requiredSkills': requiredSkills,
       'attachments': attachments,
@@ -234,6 +242,8 @@ class JobModel {
     JobStatus? status,
     String? assignedFreelancerId,
     String? assignedFreelancerName,
+    String? supervisorId,
+    String? supervisorName,
     int? proposalsCount,
     List<String>? requiredSkills,
     List<String>? attachments,
@@ -257,6 +267,8 @@ class JobModel {
       status: status ?? this.status,
       assignedFreelancerId: assignedFreelancerId ?? this.assignedFreelancerId,
       assignedFreelancerName: assignedFreelancerName ?? this.assignedFreelancerName,
+      supervisorId: supervisorId ?? this.supervisorId,
+      supervisorName: supervisorName ?? this.supervisorName,
       proposalsCount: proposalsCount ?? this.proposalsCount,
       requiredSkills: requiredSkills ?? this.requiredSkills,
       attachments: attachments ?? this.attachments,
