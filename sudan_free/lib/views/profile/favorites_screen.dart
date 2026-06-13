@@ -109,13 +109,25 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(isPartnerList ? Icons.group_off : Icons.favorite_border, size: 60, color: Colors.grey),
-            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.05),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(isPartnerList ? Icons.group_off : Icons.favorite_border, size: 60, color: AppColors.primary.withValues(alpha: 0.5)),
+            ),
+            const SizedBox(height: 24),
             Text(
               locale == 'ar' 
                   ? (isPartnerList ? 'لا يوجد زملاء حالياً' : 'لا توجد حسابات مفضلة بعد') 
                   : (isPartnerList ? 'No partners yet' : 'No favorite accounts yet'),
-              style: TextStyle(color: Colors.grey[600]),
+              style: TextStyle(color: Colors.grey[600], fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              locale == 'ar' ? 'قم بإضافة حسابات من ملفاتهم الشخصية' : 'Add accounts from their profiles',
+              style: TextStyle(color: Colors.grey[400], fontSize: 13),
             ),
           ],
         ),
@@ -138,78 +150,161 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
         return ListView.separated(
           padding: const EdgeInsets.all(16),
           itemCount: users.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 12),
+          separatorBuilder: (_, __) => const SizedBox(height: 16),
           itemBuilder: (context, index) {
             final targetUser = users[index];
             final isFavorite = user.favoriteUserIds.contains(targetUser.id);
             final isPartner = user.partnerIds.contains(targetUser.id);
+            final isDark = Theme.of(context).brightness == Brightness.dark;
             
+            // شروط الإجراءات
+            final bool canInviteToSquad = _mySquadId != null && user.role != UserRole.client && user.role != UserRole.shop && targetUser.role != UserRole.client && targetUser.role != UserRole.shop;
+            final bool canCancelApprenticeship = user.masterId == targetUser.id || user.apprenticesIds.contains(targetUser.id);
+            final bool canRequestApprenticeship = !canCancelApprenticeship && user.masterId == null && user.role != UserRole.shop && user.role != UserRole.client && targetUser.role != UserRole.shop && targetUser.role != UserRole.client;
+
             return Card(
-              elevation: 4,
-              shadowColor: Colors.black26,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              child: ListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProfileScreen(userId: targetUser.id))),
-                leading: CircleAvatar(
-                  radius: 28,
-                  backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                  backgroundImage: targetUser.profileImageUrl != null ? NetworkImage(targetUser.profileImageUrl!) : null,
-                  child: targetUser.profileImageUrl == null ? Icon(targetUser.role == UserRole.shop ? Icons.store : Icons.person, color: AppColors.primary) : null,
-                ),
-                title: Text(targetUser.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                subtitle: Text(targetUser.jobTitle ?? (locale == 'ar' ? 'حساب في سودان فري' : 'SudanFree Account'), style: TextStyle(color: Colors.grey[600])),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (!isPartnerList)
-                      IconButton(
-                        icon: Icon(
-                          isFavorite ? Icons.favorite : Icons.favorite_border,
-                          color: isFavorite ? Colors.red : Colors.grey,
-                        ),
-                        onPressed: () {
-                          context.read<AuthProvider>().toggleFavoriteUser(targetUser.id);
-                          setState(() {});
-                        },
+              elevation: 0,
+              color: isDark ? Colors.grey[900] : Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+                side: BorderSide(color: isDark ? Colors.grey[800]! : Colors.grey[200]!),
+              ),
+              child: Column(
+                children: [
+                  // ── معلومات الحساب ──
+                  ListTile(
+                    contentPadding: const EdgeInsets.only(left: 16, right: 16, top: 12, bottom: 4),
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProfileScreen(userId: targetUser.id))),
+                    leading: Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2), width: 2),
                       ),
-                    PopupMenuButton<String>(
-                      icon: const Icon(Icons.more_vert),
-                      onSelected: (val) => _handleMenuAction(val, targetUser, user, locale),
-                      itemBuilder: (context) => [
-                        if (isPartner)
-                          PopupMenuItem(
-                            value: 'remove_partner',
-                            child: Row(children: [const Icon(Icons.person_remove, color: Colors.red, size: 20), const SizedBox(width: 8), Text(locale == 'ar' ? 'إلغاء الزمالة' : 'Remove Partner', style: const TextStyle(color: Colors.red))]),
-                          ),
-                        PopupMenuItem(
-                          value: 'vouch',
-                          child: Row(children: [const Icon(Icons.verified, color: AppColors.sudanGold, size: 20), const SizedBox(width: 8), Text(locale == 'ar' ? 'تزكية الحرفي' : 'Recommend Pro')]),
-                        ),
-                        if (_mySquadId != null && user.role != UserRole.client && user.role != UserRole.shop && targetUser.role != UserRole.client && targetUser.role != UserRole.shop)
-                          PopupMenuItem(
-                            value: 'invite_squad',
-                            child: Row(children: [const Icon(Icons.groups, color: AppColors.primary, size: 20), const SizedBox(width: 8), Text(locale == 'ar' ? 'دعوة للمجموعة' : 'Invite to Squad')]),
-                          ),
-                        if (user.masterId == targetUser.id || user.apprenticesIds.contains(targetUser.id))
-                          PopupMenuItem(
-                            value: 'cancel_apprenticeship',
-                            child: Row(children: [const Icon(Icons.handshake_rounded, color: Colors.red, size: 20), const SizedBox(width: 8), Text(locale == 'ar' ? 'إلغاء التتلمذ' : 'Cancel Apprenticeship', style: const TextStyle(color: Colors.red))]),
-                          )
-                        else if (user.masterId == null && user.role != UserRole.shop && user.role != UserRole.client && targetUser.role != UserRole.shop && targetUser.role != UserRole.client) // Cannot request if I am already an apprentice, or if either is shop/client
-                          PopupMenuItem(
-                            value: 'request_apprenticeship',
-                            child: Row(children: [const Icon(Icons.engineering, color: Colors.teal, size: 20), const SizedBox(width: 8), Text(locale == 'ar' ? 'طلب تتلمذ' : 'Apprenticeship Request')]),
-                          ),
-                      ],
+                      child: CircleAvatar(
+                        radius: 26,
+                        backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                        backgroundImage: targetUser.profileImageUrl != null ? NetworkImage(targetUser.profileImageUrl!) : null,
+                        child: targetUser.profileImageUrl == null ? Icon(targetUser.role == UserRole.shop ? Icons.store : Icons.person, color: AppColors.primary) : null,
+                      ),
                     ),
-                  ],
-                ),
+                    title: Text(targetUser.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    subtitle: Text(
+                      targetUser.jobTitle ?? (locale == 'ar' ? 'حساب في سودان فري' : 'SudanFree Account'), 
+                      style: TextStyle(color: Colors.grey[500], fontSize: 13),
+                    ),
+                    trailing: !isPartnerList
+                        ? IconButton(
+                            icon: Icon(
+                              isFavorite ? Icons.favorite : Icons.favorite_border,
+                              color: isFavorite ? Colors.red : Colors.grey[400],
+                            ),
+                            onPressed: () {
+                              context.read<AuthProvider>().toggleFavoriteUser(targetUser.id);
+                              setState(() {});
+                            },
+                          )
+                        : null,
+                  ),
+                  
+                  Divider(color: isDark ? Colors.grey[800] : Colors.grey[100], height: 1),
+                  
+                  // ── أزرار الإجراءات المعبرة (تظهر بشكل واضح بدلاً من القائمة المخفية) ──
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        alignment: WrapAlignment.start,
+                        children: [
+                          // زر التزكية
+                          _buildExpressiveActionButton(
+                            locale == 'ar' ? 'تزكية' : 'Vouch', 
+                            Icons.verified, 
+                            AppColors.sudanGold,
+                            () => _handleMenuAction('vouch', targetUser, user, locale),
+                            isDark,
+                          ),
+                          
+                          // زر دعوة للمجموعة
+                          if (canInviteToSquad)
+                            _buildExpressiveActionButton(
+                              locale == 'ar' ? 'دعوة للمجموعة' : 'Invite Squad', 
+                              Icons.group_add_rounded, 
+                              AppColors.primary,
+                              () => _handleMenuAction('invite_squad', targetUser, user, locale),
+                              isDark,
+                            ),
+                            
+                          // زر طلب تتلمذ
+                          if (canRequestApprenticeship)
+                            _buildExpressiveActionButton(
+                              locale == 'ar' ? 'طلب تتلمذ' : 'Request Apprenticeship', 
+                              Icons.engineering, 
+                              Colors.teal,
+                              () => _handleMenuAction('request_apprenticeship', targetUser, user, locale),
+                              isDark,
+                            ),
+                            
+                          // زر إلغاء التتلمذ
+                          if (canCancelApprenticeship)
+                            _buildExpressiveActionButton(
+                              locale == 'ar' ? 'إلغاء التتلمذ' : 'Cancel Apprenticeship', 
+                              Icons.handshake_rounded, 
+                              Colors.redAccent,
+                              () => _handleMenuAction('cancel_apprenticeship', targetUser, user, locale),
+                              isDark,
+                            ),
+                            
+                          // زر إلغاء الزمالة
+                          if (isPartner)
+                            _buildExpressiveActionButton(
+                              locale == 'ar' ? 'إلغاء الزمالة' : 'Remove Partner', 
+                              Icons.person_remove_rounded, 
+                              Colors.redAccent,
+                              () => _handleMenuAction('remove_partner', targetUser, user, locale),
+                              isDark,
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             );
           },
         );
       },
+    );
+  }
+
+  Widget _buildExpressiveActionButton(String label, IconData icon, Color color, VoidCallback onTap, bool isDark) {
+    return Material(
+      color: color.withValues(alpha: 0.1),
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 16, color: color),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  color: color,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
