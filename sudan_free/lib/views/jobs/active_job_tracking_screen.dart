@@ -454,6 +454,7 @@ class _ActiveJobTrackingScreenState extends State<ActiveJobTrackingScreen> {
             ),
             Expanded(
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
@@ -485,6 +486,7 @@ class _ActiveJobTrackingScreenState extends State<ActiveJobTrackingScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(20)),
                 child: const Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(Icons.check_circle, color: Colors.green, size: 16),
                     SizedBox(width: 4),
@@ -509,6 +511,7 @@ class _ActiveJobTrackingScreenState extends State<ActiveJobTrackingScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(20)),
                 child: const Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(Icons.pending_actions, color: Colors.orange, size: 16),
                     SizedBox(width: 4),
