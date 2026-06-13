@@ -11,6 +11,7 @@ import '../posts/post_details_screen.dart';
 import '../../models/post_model.dart';
 import '../../models/squad_model.dart';
 import 'squad_profile_screen.dart';
+import 'apprentices_dashboard_screen.dart';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../services/smart_guide_service.dart';
@@ -260,8 +261,9 @@ class _UsersTabState extends State<_UsersTab> with AutomaticKeepAliveClientMixin
     super.build(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    Widget content;
     if (widget.userIds.isEmpty) {
-      return Center(
+      content = Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -280,84 +282,126 @@ class _UsersTabState extends State<_UsersTab> with AutomaticKeepAliveClientMixin
           ],
         ),
       );
-    }
+    } else {
+      content = FutureBuilder<List<UserModel>>(
+        future: _usersFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) return _buildShimmer(isDark);
+          if (snapshot.hasError) return Center(child: Text(widget.locale == 'ar' ? 'حدث خطأ' : 'An error occurred'));
 
-    return FutureBuilder<List<UserModel>>(
-      future: _usersFuture,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) return _buildShimmer(isDark);
-        if (snapshot.hasError) return Center(child: Text(widget.locale == 'ar' ? 'حدث خطأ' : 'An error occurred'));
+          final users = snapshot.data ?? [];
+          if (users.isEmpty) return const SizedBox.shrink();
 
-        final users = snapshot.data ?? [];
-        if (users.isEmpty) return const SizedBox.shrink();
+          return ListView.separated(
+            padding: const EdgeInsets.all(16),
+            itemCount: users.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 16),
+            itemBuilder: (context, index) {
+              final targetUser = users[index];
+              final isFavorite = widget.user.favoriteUserIds.contains(targetUser.id);
+              final isPartner = widget.user.partnerIds.contains(targetUser.id);
+              
+              final bool canInviteToSquad = widget.mySquadId != null && widget.user.role != UserRole.client && widget.user.role != UserRole.shop && targetUser.role != UserRole.client && targetUser.role != UserRole.shop;
+              final bool canCancelApprenticeship = widget.user.masterId == targetUser.id || widget.user.apprenticesIds.contains(targetUser.id);
+              final bool canRequestApprenticeship = !canCancelApprenticeship && widget.user.masterId == null && widget.user.role != UserRole.shop && widget.user.role != UserRole.client && targetUser.role != UserRole.shop && targetUser.role != UserRole.client;
 
-        return ListView.separated(
-          padding: const EdgeInsets.all(16),
-          itemCount: users.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 16),
-          itemBuilder: (context, index) {
-            final targetUser = users[index];
-            final isFavorite = widget.user.favoriteUserIds.contains(targetUser.id);
-            final isPartner = widget.user.partnerIds.contains(targetUser.id);
-            
-            final bool canInviteToSquad = widget.mySquadId != null && widget.user.role != UserRole.client && widget.user.role != UserRole.shop && targetUser.role != UserRole.client && targetUser.role != UserRole.shop;
-            final bool canCancelApprenticeship = widget.user.masterId == targetUser.id || widget.user.apprenticesIds.contains(targetUser.id);
-            final bool canRequestApprenticeship = !canCancelApprenticeship && widget.user.masterId == null && widget.user.role != UserRole.shop && widget.user.role != UserRole.client && targetUser.role != UserRole.shop && targetUser.role != UserRole.client;
-
-            return Card(
-              elevation: 0,
-              color: isDark ? Colors.grey[900] : Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: isDark ? Colors.grey[800]! : Colors.grey[200]!)),
-              child: Column(
-                children: [
-                  ListTile(
-                    contentPadding: const EdgeInsets.only(left: 16, right: 16, top: 12, bottom: 4),
-                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProfileScreen(userId: targetUser.id))),
-                    leading: Container(
-                      decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: AppColors.primary.withValues(alpha: 0.2), width: 2)),
-                      child: CircleAvatar(
-                        radius: 26,
-                        backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                        backgroundImage: targetUser.profileImageUrl != null ? NetworkImage(targetUser.profileImageUrl!) : null,
-                        child: targetUser.profileImageUrl == null ? Icon(targetUser.role == UserRole.shop ? Icons.store : Icons.person, color: AppColors.primary) : null,
+              return Card(
+                elevation: 0,
+                color: isDark ? Colors.grey[900] : Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: isDark ? Colors.grey[800]! : Colors.grey[200]!)),
+                child: Column(
+                  children: [
+                    ListTile(
+                      contentPadding: const EdgeInsets.only(left: 16, right: 16, top: 12, bottom: 4),
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProfileScreen(userId: targetUser.id))),
+                      leading: Container(
+                        decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: AppColors.primary.withValues(alpha: 0.2), width: 2)),
+                        child: CircleAvatar(
+                          radius: 26,
+                          backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                          backgroundImage: targetUser.profileImageUrl != null ? NetworkImage(targetUser.profileImageUrl!) : null,
+                          child: targetUser.profileImageUrl == null ? Icon(targetUser.role == UserRole.shop ? Icons.store : Icons.person, color: AppColors.primary) : null,
+                        ),
+                      ),
+                      title: Text(targetUser.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      subtitle: Text(targetUser.jobTitle ?? (widget.locale == 'ar' ? 'حساب في سودان فري' : 'SudanFree Account'), style: TextStyle(color: Colors.grey[500], fontSize: 13)),
+                      trailing: !widget.isPartnerList
+                          ? IconButton(
+                              icon: Icon(isFavorite ? Icons.favorite : Icons.favorite_border, color: isFavorite ? Colors.red : Colors.grey[400]),
+                              onPressed: () {
+                                context.read<AuthProvider>().toggleFavoriteUser(targetUser.id);
+                              },
+                            )
+                          : null,
+                    ),
+                    Divider(color: isDark ? Colors.grey[800] : Colors.grey[100], height: 1),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          alignment: WrapAlignment.start,
+                          children: [
+                            _buildExpressiveActionButton(widget.locale == 'ar' ? 'تزكية' : 'Vouch', Icons.verified, AppColors.sudanGold, () => _handleMenuAction('vouch', targetUser, widget.user, widget.locale), isDark),
+                            if (canInviteToSquad) _buildExpressiveActionButton(widget.locale == 'ar' ? 'دعوة للمجموعة' : 'Invite Squad', Icons.group_add_rounded, AppColors.primary, () => _handleMenuAction('invite_squad', targetUser, widget.user, widget.locale), isDark),
+                            if (canRequestApprenticeship) _buildExpressiveActionButton(widget.locale == 'ar' ? 'طلب تتلمذ' : 'Request Apprenticeship', Icons.engineering, Colors.teal, () => _handleMenuAction('request_apprenticeship', targetUser, widget.user, widget.locale), isDark),
+                            if (canCancelApprenticeship) _buildExpressiveActionButton(widget.locale == 'ar' ? 'إلغاء التتلمذ' : 'Cancel Apprenticeship', Icons.handshake_rounded, Colors.redAccent, () => _handleMenuAction('cancel_apprenticeship', targetUser, widget.user, widget.locale), isDark),
+                            if (widget.isPartnerList) _buildExpressiveActionButton(widget.locale == 'ar' ? 'إلغاء الزمالة' : 'Remove Partner', Icons.person_remove_rounded, Colors.redAccent, () => _handleMenuAction('remove_partner', targetUser, widget.user, widget.locale), isDark),
+                          ],
+                        ),
                       ),
                     ),
-                    title: Text(targetUser.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                    subtitle: Text(targetUser.jobTitle ?? (widget.locale == 'ar' ? 'حساب في سودان فري' : 'SudanFree Account'), style: TextStyle(color: Colors.grey[500], fontSize: 13)),
-                    trailing: !widget.isPartnerList
-                        ? IconButton(
-                            icon: Icon(isFavorite ? Icons.favorite : Icons.favorite_border, color: isFavorite ? Colors.red : Colors.grey[400]),
-                            onPressed: () {
-                              context.read<AuthProvider>().toggleFavoriteUser(targetUser.id);
-                            },
-                          )
-                        : null,
-                  ),
-                  Divider(color: isDark ? Colors.grey[800] : Colors.grey[100], height: 1),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        alignment: WrapAlignment.start,
+                  ],
+                ),
+              );
+            },
+          );
+        },
+      );
+    }
+
+    return Column(
+      children: [
+        if (widget.isPartnerList && widget.user.apprenticesIds.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(left: 16, right: 16, top: 16),
+            child: InkWell(
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ApprenticesDashboardScreen())),
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: [AppColors.primary, AppColors.primary.withValues(alpha: 0.8)]),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [BoxShadow(color: AppColors.primary.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 4))],
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), shape: BoxShape.circle),
+                      child: const Icon(Icons.admin_panel_settings, color: Colors.white),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildExpressiveActionButton(widget.locale == 'ar' ? 'تزكية' : 'Vouch', Icons.verified, AppColors.sudanGold, () => _handleMenuAction('vouch', targetUser, widget.user, widget.locale), isDark),
-                          if (canInviteToSquad) _buildExpressiveActionButton(widget.locale == 'ar' ? 'دعوة للمجموعة' : 'Invite Squad', Icons.group_add_rounded, AppColors.primary, () => _handleMenuAction('invite_squad', targetUser, widget.user, widget.locale), isDark),
-                          if (canRequestApprenticeship) _buildExpressiveActionButton(widget.locale == 'ar' ? 'طلب تتلمذ' : 'Request Apprenticeship', Icons.engineering, Colors.teal, () => _handleMenuAction('request_apprenticeship', targetUser, widget.user, widget.locale), isDark),
-                          if (canCancelApprenticeship) _buildExpressiveActionButton(widget.locale == 'ar' ? 'إلغاء التتلمذ' : 'Cancel Apprenticeship', Icons.handshake_rounded, Colors.redAccent, () => _handleMenuAction('cancel_apprenticeship', targetUser, widget.user, widget.locale), isDark),
-                          if (widget.isPartnerList) _buildExpressiveActionButton(widget.locale == 'ar' ? 'إلغاء الزمالة' : 'Remove Partner', Icons.person_remove_rounded, Colors.redAccent, () => _handleMenuAction('remove_partner', targetUser, widget.user, widget.locale), isDark),
+                          Text(widget.locale == 'ar' ? 'لوحة تحكم المعلم' : 'Master Dashboard', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                          Text(widget.locale == 'ar' ? 'إدارة فريقك والصبيان (${widget.user.apprenticesIds.length})' : 'Manage your team & apprentices (${widget.user.apprenticesIds.length})', style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 13)),
                         ],
                       ),
                     ),
-                  ),
-                ],
+                    const Icon(Icons.arrow_forward_ios, color: Colors.white, size: 16),
+                  ],
+                ),
               ),
-            );
-          },
-        );
-      },
+            ),
+          ),
+        Expanded(child: content),
+      ],
     );
   }
 }
