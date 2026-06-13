@@ -23,8 +23,6 @@ import '../../views/widgets/ad_widget.dart';
 import '../../views/home/ad_details_screen.dart';
 import '../../widgets/inputs/smart_search_field.dart';
 import '../../services/smart_search_service.dart';
-import '../home/home_screen.dart';
-import '../../widgets/common/adaptive_fab_padding.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'post_details_screen.dart';
@@ -410,10 +408,16 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
                 ],
                 body: NotificationListener<ScrollNotification>(
                   onNotification: (ScrollNotification scrollInfo) {
-                    if (scrollInfo.metrics.pixels >= scrollInfo.metrics.maxScrollExtent - 300) {
+                    // ── التحميل المبكر: يبدأ قبل 800px من النهاية ──
+                    // يضمن أن البيانات تكون جاهزة قبل أن يصل المستخدم للحافة
+                    if (scrollInfo.metrics.pixels >=
+                        scrollInfo.metrics.maxScrollExtent - 800) {
                       _scrollDebounceTimer?.cancel();
-                      _scrollDebounceTimer = Timer(const Duration(milliseconds: 500), () {
-                        if (mounted && !context.read<PostsProvider>().isLoadingMore) {
+                      _scrollDebounceTimer =
+                          Timer(const Duration(milliseconds: 200), () {
+                        if (mounted &&
+                            !context.read<PostsProvider>().isLoadingMore &&
+                            context.read<PostsProvider>().hasMore) {
                           context.read<PostsProvider>().fetchMorePosts();
                         }
                       });
@@ -434,24 +438,50 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
                             ? const Column(children: [LinearProgressIndicator(), SizedBox(height: 10)])
                             : RefreshIndicator(
                             onRefresh: () async {
-                              setState(() => _isFirstLoad = false); // بعد التحديث اليدوي لا يثبت الإعلان في الأعلى
+                              setState(() => _isFirstLoad = false);
                               _fetchAds();
                               return postsProvider.fetchPosts(forceRefresh: true);
                             },
                             child: Builder(builder: (context) {
                               final promotedIds = context.read<UserProvider>().promotedUserIds;
                               final mixedFeed = _buildMixedFeed(posts, promotedIds);
-                              // 3. منع تداخل المحتوى مع شريط التنقل (padding سفلي للمحتوى الرئيسي)
                               final bottomInset = MediaQuery.of(context).padding.bottom;
                               final navBarMargin = bottomInset > 30 ? bottomInset + 8 : bottomInset + 14;
-                              final navBarHeight = 62.0;
+                              const navBarHeight = 62.0;
                               final navBarTop = navBarMargin + navBarHeight;
-                              
+
                               return ListView.builder(
                                 padding: EdgeInsets.only(top: 6, bottom: navBarTop + 80),
-                                cacheExtent: 800,
-                                itemCount: mixedFeed.length,
+                                cacheExtent: 1200, // زيادة العمق المخزَّن للتمرير السلس
+                                itemCount: mixedFeed.length + 1, // +1 للـ footer
                                 itemBuilder: (context, index) {
+                                  // ── Footer: مؤشر التحميل في الأسفل فقط ──
+                                  // يظهر تحت آخر منشور بدون أي layout shift
+                                  if (index == mixedFeed.length) {
+                                    return postsProvider.isLoadingMore
+                                        ? const Padding(
+                                            padding: EdgeInsets.symmetric(vertical: 24),
+                                            child: Center(
+                                              child: SizedBox(
+                                                width: 28,
+                                                height: 28,
+                                                child: CircularProgressIndicator(strokeWidth: 2.5),
+                                              ),
+                                            ),
+                                          )
+                                        : postsProvider.hasMore
+                                            ? const SizedBox(height: 8)
+                                            : Padding(
+                                                padding: const EdgeInsets.symmetric(vertical: 20),
+                                                child: Center(
+                                                  child: Text(
+                                                    '',
+                                                    style: TextStyle(color: Colors.grey[400], fontSize: 12),
+                                                  ),
+                                                ),
+                                              );
+                                  }
+
                                   final item = mixedFeed[index];
 
                                   if (item is AdModel) {
@@ -470,7 +500,6 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
                                     );
                                   }
 
-                                  // ─ عرض منشور ─
                                   final post = item as PostModel;
                                   final postIndex = mixedFeed
                                       .sublist(0, index)
@@ -491,11 +520,6 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
                                         ),
                                       ),
                                       const SizedBox(height: 8),
-                                      if (postIndex == posts.length - 1 && postsProvider.isLoadingMore)
-                                        const Padding(
-                                          padding: EdgeInsets.symmetric(vertical: 20),
-                                          child: Center(child: CircularProgressIndicator()),
-                                        ),
                                     ],
                                   );
                                 },
