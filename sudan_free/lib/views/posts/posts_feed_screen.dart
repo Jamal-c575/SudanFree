@@ -82,11 +82,11 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
       SmartGuideService.showMicroTip(
         context,
         messageAr: isClient 
-            ? 'تصفح أحدث الأعمال وتفاعل مع مقدمي الخدمات ✨'
-            : 'شارك أعمالك وتفاعل مع المجتمع ✨',
+            ? 'استلهم أفكاراً جديدة من أحدث الأعمال، وتفاعل مع المبدعين ✨'
+            : 'اجعل أعمالك تتحدث عنك! شارك إبداعاتك لتلفت انتباه العملاء 🚀',
         messageEn: isClient
-            ? 'Browse latest work and interact with service providers ✨'
-            : 'Share your work and interact with the community ✨',
+            ? 'Get inspired by the latest work and interact with creators ✨'
+            : 'Let your work speak for you! Share your creations to attract clients 🚀',
         tipId: 'community_first_visit',
         icon: Icons.forum_rounded,
       );

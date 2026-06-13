@@ -57,8 +57,8 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       SmartGuideService.showMicroTip(
         context,
-        messageAr: 'أضف تفاصيل واضحة وصور جذابة لمنتجك 📸',
-        messageEn: 'Add clear details and attractive photos 📸',
+        messageAr: 'الصورة الجذابة والوصف الدقيق هما مفتاحك لمبيعات أسرع 📸',
+        messageEn: 'Great photos and clear descriptions are the key to faster sales 📸',
         tipId: 'product_create_tip',
         icon: Icons.add_photo_alternate_rounded,
       );

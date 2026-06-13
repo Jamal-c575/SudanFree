@@ -36,11 +36,11 @@ class _RequestsScreenState extends State<RequestsScreen> {
       SmartGuideService.showMicroTip(
         context,
         messageAr: isClient
-            ? 'أضف طلبك هنا ودع مقدمي الخدمات يقدمون عروضهم 📋'
-            : 'هنا تجد طلبات العملاء، اضغط لتقديم عرضك 📋',
+            ? 'اطرح ما تحتاجه هنا، ودع أفضل المتخصصين يتنافسون لخدمتك 🎯'
+            : 'فرص عمل جديدة بانتظارك! تصفح طلبات العملاء وقدم عرضك الآن 💼',
         messageEn: isClient
-            ? 'Add your request here and let service providers submit offers 📋'
-            : 'Find client requests here and submit your offer 📋',
+            ? 'Post what you need here and let the best professionals compete 🎯'
+            : 'New jobs await! Browse client requests and submit your offer now 💼',
         tipId: 'requests_first_visit',
         icon: Icons.assignment_rounded,
       );

@@ -42,8 +42,8 @@ class _BrowseFreelancersScreenState extends State<BrowseFreelancersScreen>
       context.read<UserProvider>().fetchFreelancers();
       SmartGuideService.showMicroTip(
         context,
-        messageAr: 'اضغط على أي مزود خدمة للتواصل معه 📱',
-        messageEn: 'Tap any provider to contact them 📱',
+        messageAr: 'استكشف نخبة الحرفيين واضغط على أي ملف لبدء التواصل فوراً 📱',
+        messageEn: 'Explore top professionals and tap any profile to connect instantly 📱',
         tipId: 'freelancers_first_visit',
         icon: Icons.touch_app_rounded,
       );

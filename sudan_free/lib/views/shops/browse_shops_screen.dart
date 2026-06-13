@@ -41,8 +41,8 @@ class _BrowseShopsScreenState extends State<BrowseShopsScreen>
       context.read<UserProvider>().fetchShops();
       SmartGuideService.showMicroTip(
         context,
-        messageAr: 'تصفح المتاجر واضغط على أي متجر لمشاهدة منتجاته 🛍️',
-        messageEn: 'Browse shops and tap any to see products 🛍️',
+        messageAr: 'اكتشف أفضل المتاجر المحلية وتصفح أحدث عروضها ومنتجاتها 🛍️',
+        messageEn: 'Discover local shops and browse their latest products and offers 🛍️',
         tipId: 'shops_first_visit',
         icon: Icons.storefront_rounded,
       );

@@ -60,8 +60,8 @@ class _ChatScreenState extends State<ChatScreen> {
       }
       SmartGuideService.showMicroTip(
         context,
-        messageAr: 'يمكنك إنشاء اتفاق رسمي من أيقونة المصافحة في الأعلى 🤝',
-        messageEn: 'Create an official contract from the handshake icon above 🤝',
+        messageAr: 'لضمان حقوقك، وثّق عملك بإنشاء "اتفاق رسمي" عبر أيقونة المصافحة بالأعلى 🤝',
+        messageEn: 'Protect your rights by creating an "Official Agreement" via the handshake icon 🤝',
         tipId: 'chat_contract_tip',
         icon: Icons.handshake_rounded,
       );

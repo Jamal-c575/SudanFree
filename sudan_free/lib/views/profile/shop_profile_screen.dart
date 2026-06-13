@@ -96,16 +96,16 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
       
       SmartGuideService.showMicroTip(
         context,
-        messageAr: 'استكشف منتجات المتجر واقرأ آراء العملاء السابقين 🛍️',
-        messageEn: 'Explore shop products and read customer reviews 🛍️',
+        messageAr: 'تصفح المنتجات المميزة هنا واطلع على آراء وتقييمات المتسوقين 🛒',
+        messageEn: 'Browse featured products here and check out shopper reviews 🛒',
         tipId: 'shop_profile_visit',
         icon: Icons.storefront_rounded,
       );
     } else {
       SmartGuideService.showMicroTip(
         context,
-        messageAr: 'أضف منتجات جديدة وتابع إحصائيات متجرك من هنا 📊',
-        messageEn: 'Add new products and track your shop stats here 📊',
+        messageAr: 'أدر متجرك بذكاء! أضف منتجاتك وراقب إحصائيات المشاهدات لحظة بلحظة 📊',
+        messageEn: 'Manage your shop smartly! Add products and track views in real-time 📊',
         tipId: 'shop_owner_visit',
         icon: Icons.dashboard_customize_rounded,
       );

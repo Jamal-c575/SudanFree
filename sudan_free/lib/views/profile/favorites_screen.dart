@@ -34,8 +34,8 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       SmartGuideService.showMicroTip(
         context,
-        messageAr: 'هنا تجد كل ما قمت بحفظه للرجوع إليه لاحقاً 🔖',
-        messageEn: 'Here you find everything you saved for later 🔖',
+        messageAr: 'مساحتك الخاصة! هنا تُحفظ الحسابات والمنشورات التي لفتت انتباهك للرجوع إليها 🔖',
+        messageEn: 'Your personal space! Saved accounts and posts live here for quick access 🔖',
         tipId: 'favorites_tip',
         icon: Icons.favorite_rounded,
       );

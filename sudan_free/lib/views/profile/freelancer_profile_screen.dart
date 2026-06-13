@@ -105,16 +105,16 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
       
       SmartGuideService.showMicroTip(
         context,
-        messageAr: 'تصفح معرض الأعمال واقرأ تقييمات العملاء السابقين ⭐',
-        messageEn: 'Browse the portfolio and read past client reviews ⭐',
+        messageAr: 'ألقِ نظرة على سابقة الأعمال واقرأ تجارب من تعاملوا معه سابقاً ⭐',
+        messageEn: 'Take a look at past work and read experiences of previous clients ⭐',
         tipId: 'profile_first_visit',
         icon: Icons.person_search_rounded,
       );
     } else {
       SmartGuideService.showMicroTip(
         context,
-        messageAr: 'أضف أعمالاً جديدة لمعرضك لزيادة فرصك في العمل 💼',
-        messageEn: 'Add new work to your portfolio to increase job chances 💼',
+        messageAr: 'معرضك هو واجهتك! أضف صور أعمالك الجديدة لمضاعفة طلباتك 📈',
+        messageEn: 'Your portfolio is your storefront! Add recent work to double your requests 📈',
         tipId: 'portfolio_first_visit',
         icon: Icons.add_photo_alternate_rounded,
       );

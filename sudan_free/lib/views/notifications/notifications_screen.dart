@@ -36,8 +36,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       SmartGuideService.showMicroTip(
         context,
-        messageAr: 'تابع تحديثات طلباتك ورسائلك من هنا 🔔',
-        messageEn: 'Track your requests and messages updates here 🔔',
+        messageAr: 'ابقَ على اطلاع دائم! هنا تجد أحدث التنبيهات لطلباتك ورسائلك المهمة 🔔',
+        messageEn: 'Stay in the loop! Find the latest updates on your requests and messages here 🔔',
         tipId: 'notifications_tip',
         icon: Icons.notifications_active_rounded,
       );
