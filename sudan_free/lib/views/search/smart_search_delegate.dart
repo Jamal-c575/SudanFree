@@ -17,10 +17,17 @@ class SmartSearchDelegate extends SearchDelegate<UserModel?> {
   final String? initialQuery;
   UserRole? selectedRole;
 
-  SmartSearchDelegate({this.initialQuery}) : super(searchFieldLabel: 'ابحث عن مهارات، حرفيين، مواقع...');
+  // ─── Cache to prevent re-fetch when returning from a profile ───
+  List<UserModel>? _cachedResults;
+  String? _cachedQuery;
+  UserRole? _cachedRole;
+
+  SmartSearchDelegate({this.initialQuery})
+      : super(searchFieldLabel: 'ابحث عن مهارات، حرفيين، مواقع...');
 
   @override
-  String get searchFieldLabel => super.searchFieldLabel ?? 'ابحث عن مهارات، حرفيين، مواقع...';
+  String get searchFieldLabel =>
+      super.searchFieldLabel ?? 'ابحث عن مهارات، حرفيين، مواقع...';
 
   @override
   ThemeData appBarTheme(BuildContext context) {
@@ -45,6 +52,7 @@ class SmartSearchDelegate extends SearchDelegate<UserModel?> {
           icon: const Icon(Icons.clear),
           onPressed: () {
             query = '';
+            _cachedResults = null;
             showSuggestions(context);
           },
         ),
@@ -59,11 +67,27 @@ class SmartSearchDelegate extends SearchDelegate<UserModel?> {
     );
   }
 
+  bool get _isSameSearch =>
+      _cachedResults != null &&
+      _cachedQuery == query &&
+      _cachedRole == selectedRole;
+
   @override
   Widget buildResults(BuildContext context) {
     final searchProvider = context.read<SearchProvider>();
     final locale = context.read<LocaleProvider>().locale.languageCode;
     final currentUser = context.read<AuthProvider>().user;
+
+    // ── Use cached results if query/role hasn't changed ──
+    if (_isSameSearch) {
+      return _buildResultsBody(
+        context: context,
+        results: _cachedResults!,
+        locale: locale,
+        currentUserId: currentUser?.id,
+        searchProvider: searchProvider,
+      );
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -71,53 +95,27 @@ class SmartSearchDelegate extends SearchDelegate<UserModel?> {
         _buildFilters(context),
         Expanded(
           child: FutureBuilder(
-            future: searchProvider.searchFreelancers(query: query, role: selectedRole),
+            future: searchProvider
+                .searchFreelancers(query: query, role: selectedRole)
+                .then((_) {
+              _cachedResults = List.from(searchProvider.searchResults);
+              _cachedQuery = query;
+              _cachedRole = selectedRole;
+            }),
             builder: (context, snapshot) {
               return Consumer<SearchProvider>(
                 builder: (context, search, _) {
                   if (search.isLoading) return const LoadingIndicator();
-                  if (search.errorMessage != null) return Center(child: Text(search.errorMessage!));
-                  
-                  final results = search.searchResults;
-                  if (results.isEmpty) {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.search_off, size: 64, color: Colors.grey[300]),
-                          const SizedBox(height: 16),
-                          Text(
-                            locale == 'ar' ? 'لا توجد نتائج لـ "$query"' : 'No results for "$query"',
-                            style: TextStyle(color: Colors.grey[600], fontSize: 16),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            locale == 'ar' ? 'جرّب كلمات أخرى أو تحقق من الإملاء' : 'Try different keywords or check spelling',
-                            style: TextStyle(color: Colors.grey[400], fontSize: 13),
-                          ),
-                        ],
-                      ),
-                    );
+                  if (search.errorMessage != null) {
+                    return Center(child: Text(search.errorMessage!));
                   }
-
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                        child: Text(
-                          locale == 'ar' ? '${results.length} نتيجة' : '${results.length} results',
-                          style: TextStyle(color: Colors.grey[600], fontSize: 13, fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                      Expanded(
-                        child: _SearchResultsList(
-                          results: results,
-                          locale: locale,
-                          currentUserId: currentUser?.id,
-                        ),
-                      ),
-                    ],
+                  final results = _cachedResults ?? search.searchResults;
+                  return _buildResultsBody(
+                    context: context,
+                    results: results,
+                    locale: locale,
+                    currentUserId: currentUser?.id,
+                    searchProvider: search,
                   );
                 },
               );
@@ -128,42 +126,109 @@ class SmartSearchDelegate extends SearchDelegate<UserModel?> {
     );
   }
 
+  Widget _buildResultsBody({
+    required BuildContext context,
+    required List<UserModel> results,
+    required String locale,
+    required String? currentUserId,
+    required SearchProvider searchProvider,
+  }) {
+    final isAr = locale == 'ar';
+
+    if (results.isEmpty) {
+      return Column(
+        children: [
+          _buildFilters(context),
+          Expanded(
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.search_off, size: 64, color: Colors.grey[300]),
+                  const SizedBox(height: 16),
+                  Text(
+                    isAr ? 'لا توجد نتائج لـ "$query"' : 'No results for "$query"',
+                    style: TextStyle(color: Colors.grey[600], fontSize: 16),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    isAr
+                        ? 'جرّب كلمات أخرى أو تحقق من الإملاء'
+                        : 'Try different keywords or check spelling',
+                    style: TextStyle(color: Colors.grey[400], fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildFilters(context),
+        // ── Pinned average price card ──
+        _MarketPriceCard(results: results, query: query, locale: locale),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+          child: Text(
+            isAr ? '${results.length} نتيجة' : '${results.length} results',
+            style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 13,
+                fontWeight: FontWeight.w600),
+          ),
+        ),
+        Expanded(
+          child: _SearchResultsList(
+            results: results,
+            locale: locale,
+            currentUserId: currentUserId,
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildFilters(BuildContext context) {
     final locale = context.read<LocaleProvider>().locale.languageCode;
     final isAr = locale == 'ar';
-    
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
           Expanded(
             child: ElevatedButton.icon(
-              onPressed: () {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const BrowseFreelancersScreen()));
-              },
+              onPressed: () => Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const BrowseFreelancersScreen())),
               icon: const Icon(Icons.handyman, size: 18),
-              label: Text(isAr ? 'الحرفيين' : 'Freelancers', style: const TextStyle(fontWeight: FontWeight.bold)),
+              label: Text(isAr ? 'الحرفيين' : 'Freelancers',
+                  style: const TextStyle(fontWeight: FontWeight.bold)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
               ),
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: ElevatedButton.icon(
-              onPressed: () {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const BrowseShopsScreen()));
-              },
+              onPressed: () => Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const BrowseShopsScreen())),
               icon: const Icon(Icons.storefront, size: 18),
-              label: Text(isAr ? 'المتاجر' : 'Shops', style: const TextStyle(fontWeight: FontWeight.bold)),
+              label: Text(isAr ? 'المتاجر' : 'Shops',
+                  style: const TextStyle(fontWeight: FontWeight.bold)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.secondary,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
               ),
             ),
           ),
@@ -176,43 +241,38 @@ class SmartSearchDelegate extends SearchDelegate<UserModel?> {
   Widget buildSuggestions(BuildContext context) {
     final locale = context.read<LocaleProvider>().locale.languageCode;
     final isAr = locale == 'ar';
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildFilters(context),
         Expanded(
-          child: Builder(
-            builder: (context) {
-              if (query.isEmpty && selectedRole == null) {
-                return _buildEmptyState(context, isAr);
-              }
-
-              if (query.isEmpty && selectedRole != null) {
-                return buildResults(context);
-              }
-
-              return _DelayedSuggestionsWidget(
-                query: query,
-                isAr: isAr,
-                onSuggestionTap: (suggestion) {
-                  query = suggestion;
-                  showResults(context);
-                },
-                onSearchSubmitted: (suggestion) {
-                  query = suggestion;
-                  showResults(context);
-                },
-              );
-            },
-          ),
+          child: Builder(builder: (context) {
+            if (query.isEmpty && selectedRole == null) {
+              return _buildEmptyState(context, isAr);
+            }
+            if (query.isEmpty && selectedRole != null) {
+              return buildResults(context);
+            }
+            return _DelayedSuggestionsWidget(
+              query: query,
+              isAr: isAr,
+              onSuggestionTap: (s) {
+                query = s;
+                showResults(context);
+              },
+              onSearchSubmitted: (s) {
+                query = s;
+                showResults(context);
+              },
+            );
+          }),
         ),
       ],
     );
   }
 
   Widget _buildEmptyState(BuildContext context, bool isAr) {
-    // Popular search categories
     final quickSearches = [
       {'label': isAr ? 'سباك' : 'Plumber', 'icon': Icons.plumbing},
       {'label': isAr ? 'كهربائي' : 'Electrician', 'icon': Icons.electrical_services},
@@ -231,24 +291,22 @@ class SmartSearchDelegate extends SearchDelegate<UserModel?> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
           Center(
             child: Column(
               children: [
                 Icon(Icons.search, size: 56, color: Colors.grey[300]),
                 const SizedBox(height: 12),
                 Text(
-                  isAr ? 'ابحث عن أفضل الحرفيين والخدمات' : 'Find the best professionals & services',
+                  isAr
+                      ? 'ابحث عن أفضل الحرفيين والخدمات'
+                      : 'Find the best professionals & services',
                   style: TextStyle(color: Colors.grey[600], fontSize: 15),
                   textAlign: TextAlign.center,
                 ),
               ],
             ),
           ),
-
           const SizedBox(height: 32),
-
-          // Quick Searches
           Text(
             isAr ? '🔥 بحث سريع' : '🔥 Quick Search',
             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
@@ -259,14 +317,16 @@ class SmartSearchDelegate extends SearchDelegate<UserModel?> {
             runSpacing: 8,
             children: quickSearches.map((item) {
               return ActionChip(
-                avatar: Icon(item['icon'] as IconData, size: 18, color: AppColors.primary),
-                label: Text(
-                  item['label'] as String,
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-                ),
+                avatar: Icon(item['icon'] as IconData,
+                    size: 18, color: AppColors.primary),
+                label: Text(item['label'] as String,
+                    style: const TextStyle(
+                        fontSize: 13, fontWeight: FontWeight.w500)),
                 backgroundColor: AppColors.primary.withValues(alpha: 0.08),
-                side: BorderSide(color: AppColors.primary.withValues(alpha: 0.2)),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                side: BorderSide(
+                    color: AppColors.primary.withValues(alpha: 0.2)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20)),
                 onPressed: () {
                   query = item['label'] as String;
                   showResults(context);
@@ -274,27 +334,29 @@ class SmartSearchDelegate extends SearchDelegate<UserModel?> {
               );
             }).toList(),
           ),
-          
           const SizedBox(height: 24),
-          
-          // Tips
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: AppColors.primary.withValues(alpha: 0.05),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.primary.withValues(alpha: 0.1)),
+              border: Border.all(
+                  color: AppColors.primary.withValues(alpha: 0.1)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.tips_and_updates, color: AppColors.primary, size: 20),
+                    const Icon(Icons.tips_and_updates,
+                        color: AppColors.primary, size: 20),
                     const SizedBox(width: 8),
                     Text(
                       isAr ? 'نصائح البحث' : 'Search Tips',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.primary),
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          color: AppColors.primary),
                     ),
                   ],
                 ),
@@ -303,7 +365,8 @@ class SmartSearchDelegate extends SearchDelegate<UserModel?> {
                   isAr
                       ? '• ابحث بالاسم أو المهنة أو الموقع\n• جرّب "سباك في أم درمان" للبحث المركب\n• يمكنك كتابة اسم الحي أو الولاية'
                       : '• Search by name, profession, or location\n• Try "plumber in Omdurman" for combined search\n• You can type a neighborhood or state name',
-                  style: TextStyle(color: Colors.grey[600], fontSize: 13, height: 1.6),
+                  style: TextStyle(
+                      color: Colors.grey[600], fontSize: 13, height: 1.6),
                 ),
               ],
             ),
@@ -312,23 +375,216 @@ class SmartSearchDelegate extends SearchDelegate<UserModel?> {
       ),
     );
   }
+}
 
-  IconData _getSuggestionIcon(String suggestion) {
-    // Try to match with known categories
-    final lower = suggestion.toLowerCase();
-    if (lower.contains('سباك') || lower.contains('plumb')) return Icons.plumbing;
-    if (lower.contains('كهرب') || lower.contains('electr')) return Icons.electrical_services;
-    if (lower.contains('نجار') || lower.contains('carpen')) return Icons.carpenter;
-    if (lower.contains('دهان') || lower.contains('paint')) return Icons.format_paint;
-    if (lower.contains('ميكانيك') || lower.contains('mechan')) return Icons.build;
-    if (lower.contains('مصمم') || lower.contains('design')) return Icons.design_services;
-    if (lower.contains('مبرمج') || lower.contains('develop')) return Icons.code;
-    if (lower.contains('مطعم') || lower.contains('restau')) return Icons.restaurant;
-    if (lower.contains('متجر') || lower.contains('shop') || lower.contains('معرض')) return Icons.store;
-    return Icons.search;
+// ─────────────────────────────────────────────────────────────────────────────
+// Pinned Market Average Price Card
+// ─────────────────────────────────────────────────────────────────────────────
+class _MarketPriceCard extends StatelessWidget {
+  final List<UserModel> results;
+  final String query;
+  final String locale;
+
+  const _MarketPriceCard({
+    required this.results,
+    required this.query,
+    required this.locale,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isAr = locale == 'ar';
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // ── Compute stats from fetched results only ──
+    final withRate = results
+        .where((u) => u.hourlyRate != null && u.hourlyRate! > 0)
+        .toList();
+
+    if (withRate.isEmpty) return const SizedBox.shrink();
+
+    final rates = withRate.map((u) => u.hourlyRate!).toList()..sort();
+    final avg = rates.reduce((a, b) => a + b) / rates.length;
+    final min = rates.first;
+    final max = rates.last;
+
+    // Most common locality among results
+    final localityCounts = <String, int>{};
+    for (final u in withRate) {
+      if (u.locality != null) {
+        localityCounts[u.locality!] = (localityCounts[u.locality!] ?? 0) + 1;
+      }
+    }
+    String? topLocality;
+    if (localityCounts.isNotEmpty) {
+      topLocality = localityCounts.entries
+          .reduce((a, b) => a.value >= b.value ? a : b)
+          .key;
+    }
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: isDark
+              ? [
+                  AppColors.primary.withValues(alpha: 0.25),
+                  AppColors.success.withValues(alpha: 0.15),
+                ]
+              : [
+                  AppColors.primary.withValues(alpha: 0.08),
+                  AppColors.success.withValues(alpha: 0.05),
+                ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppColors.primary.withValues(alpha: isDark ? 0.4 : 0.2),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Header row ──
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.trending_up,
+                    color: AppColors.primary, size: 18),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isAr
+                          ? 'متوسط سعر السوق${topLocality != null ? " · $topLocality" : ""}'
+                          : 'Market Average${topLocality != null ? " · $topLocality" : ""}',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                    Text(
+                      isAr
+                          ? 'بناءً على ${withRate.length} حرفي في نتائج البحث'
+                          : 'Based on ${withRate.length} professionals in results',
+                      style: TextStyle(
+                          fontSize: 11, color: Colors.grey[500]),
+                    ),
+                  ],
+                ),
+              ),
+              // ── Big average price badge ──
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.success,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '${avg.toStringAsFixed(0)} SDG',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          // ── Stats row: min / avg / max ──
+          Row(
+            children: [
+              _StatChip(
+                label: isAr ? 'الأدنى' : 'Min',
+                value: '${min.toStringAsFixed(0)} SDG',
+                color: Colors.blue,
+              ),
+              const SizedBox(width: 8),
+              _StatChip(
+                label: isAr ? 'المتوسط' : 'Avg',
+                value: '${avg.toStringAsFixed(0)} SDG',
+                color: AppColors.success,
+                highlight: true,
+              ),
+              const SizedBox(width: 8),
+              _StatChip(
+                label: isAr ? 'الأعلى' : 'Max',
+                value: '${max.toStringAsFixed(0)} SDG',
+                color: Colors.orange,
+              ),
+              const Spacer(),
+              Text(
+                isAr ? 'لكل ساعة' : 'per hour',
+                style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.grey[500],
+                    fontStyle: FontStyle.italic),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 }
 
+class _StatChip extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+  final bool highlight;
+
+  const _StatChip({
+    required this.label,
+    required this.value,
+    required this.color,
+    this.highlight = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: highlight ? 0.15 : 0.08),
+        borderRadius: BorderRadius.circular(8),
+        border: highlight
+            ? Border.all(color: color.withValues(alpha: 0.4))
+            : null,
+      ),
+      child: Column(
+        children: [
+          Text(label,
+              style: TextStyle(
+                  fontSize: 10, color: Colors.grey[500])),
+          Text(value,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: color,
+              )),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Delayed Suggestions
+// ─────────────────────────────────────────────────────────────────────────────
 class _DelayedSuggestionsWidget extends StatefulWidget {
   final String query;
   final bool isAr;
@@ -336,18 +592,19 @@ class _DelayedSuggestionsWidget extends StatefulWidget {
   final Function(String) onSearchSubmitted;
 
   const _DelayedSuggestionsWidget({
-    Key? key,
     required this.query,
     required this.isAr,
     required this.onSuggestionTap,
     required this.onSearchSubmitted,
-  }) : super(key: key);
+  });
 
   @override
-  _DelayedSuggestionsWidgetState createState() => _DelayedSuggestionsWidgetState();
+  _DelayedSuggestionsWidgetState createState() =>
+      _DelayedSuggestionsWidgetState();
 }
 
-class _DelayedSuggestionsWidgetState extends State<_DelayedSuggestionsWidget> {
+class _DelayedSuggestionsWidgetState
+    extends State<_DelayedSuggestionsWidget> {
   List<String> _suggestions = [];
   bool _showEmptyState = false;
   Timer? _emptyStateTimer;
@@ -367,8 +624,8 @@ class _DelayedSuggestionsWidgetState extends State<_DelayedSuggestionsWidget> {
   }
 
   void _updateSuggestions(String newQuery, {bool instant = false}) {
-    final newSuggestions = SmartSearchService.getPredefinedSuggestions(newQuery);
-    
+    final newSuggestions =
+        SmartSearchService.getPredefinedSuggestions(newQuery);
     if (newSuggestions.isNotEmpty) {
       _emptyStateTimer?.cancel();
       setState(() {
@@ -382,9 +639,9 @@ class _DelayedSuggestionsWidgetState extends State<_DelayedSuggestionsWidget> {
           _showEmptyState = true;
         });
       } else {
-        // تأخير اختفاء القائمة كما طلب المستخدم (Delay list disappearance)
         _emptyStateTimer?.cancel();
-        _emptyStateTimer = Timer(const Duration(milliseconds: 800), () {
+        _emptyStateTimer =
+            Timer(const Duration(milliseconds: 800), () {
           if (mounted) {
             setState(() {
               _suggestions = [];
@@ -402,99 +659,36 @@ class _DelayedSuggestionsWidgetState extends State<_DelayedSuggestionsWidget> {
     super.dispose();
   }
 
-  IconData _getSuggestionIcon(String suggestion) {
-    final lower = suggestion.toLowerCase();
-    if (lower.contains('سباك') || lower.contains('plumb')) return Icons.plumbing;
-    if (lower.contains('كهرب') || lower.contains('electr')) return Icons.electrical_services;
-    if (lower.contains('نجار') || lower.contains('carpen')) return Icons.carpenter;
-    if (lower.contains('دهان') || lower.contains('paint')) return Icons.format_paint;
-    if (lower.contains('ميكانيك') || lower.contains('mechan')) return Icons.build;
-    if (lower.contains('مصمم') || lower.contains('design')) return Icons.design_services;
-    if (lower.contains('مبرمج') || lower.contains('develop')) return Icons.code;
-    if (lower.contains('مطعم') || lower.contains('restau')) return Icons.restaurant;
-    if (lower.contains('متجر') || lower.contains('shop') || lower.contains('معرض')) return Icons.store;
+  IconData _icon(String s) {
+    final l = s.toLowerCase();
+    if (l.contains('سباك') || l.contains('plumb')) return Icons.plumbing;
+    if (l.contains('كهرب') || l.contains('electr')) return Icons.electrical_services;
+    if (l.contains('نجار') || l.contains('carpen')) return Icons.carpenter;
+    if (l.contains('دهان') || l.contains('paint')) return Icons.format_paint;
+    if (l.contains('ميكانيك') || l.contains('mechan')) return Icons.build;
+    if (l.contains('مصمم') || l.contains('design')) return Icons.design_services;
+    if (l.contains('مبرمج') || l.contains('develop')) return Icons.code;
+    if (l.contains('مطعم') || l.contains('restau')) return Icons.restaurant;
+    if (l.contains('متجر') || l.contains('shop')) return Icons.store;
     return Icons.search;
-  }
-
-  Widget _buildSuggestionTile(BuildContext context, String suggestion, String query) {
-    final lowerSuggestion = suggestion.toLowerCase();
-    final lowerQuery = query.toLowerCase();
-    
-    List<TextSpan> spans = [];
-    int start = 0;
-    
-    while (start < suggestion.length) {
-      final index = lowerSuggestion.indexOf(lowerQuery, start);
-      if (index == -1) {
-        spans.add(TextSpan(text: suggestion.substring(start)));
-        break;
-      }
-      
-      if (index > start) {
-        spans.add(TextSpan(text: suggestion.substring(start, index)));
-      }
-      
-      final end = index + query.length;
-      spans.add(TextSpan(
-        text: suggestion.substring(index, end),
-        style: const TextStyle(
-          fontWeight: FontWeight.bold,
-          color: AppColors.primary,
-        ),
-      ));
-      
-      start = end;
-    }
-
-    return ListTile(
-      leading: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: AppColors.primary.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Icon(
-          _getSuggestionIcon(suggestion),
-          color: AppColors.primary,
-          size: 20,
-        ),
-      ),
-      title: RichText(
-        text: TextSpan(
-          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: Colors.black),
-          children: spans,
-        ),
-      ),
-      trailing: IconButton(
-        icon: Icon(Icons.north_west, size: 16, color: Colors.grey[400]),
-        onPressed: () {
-          widget.onSuggestionTap(suggestion);
-        },
-      ),
-      onTap: () {
-        widget.onSuggestionTap(suggestion);
-      },
-    );
   }
 
   @override
   Widget build(BuildContext context) {
     if (_showEmptyState) {
-      return AnimatedOpacity(
-        opacity: 1.0,
-        duration: const Duration(milliseconds: 200),
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.search, size: 48, color: Colors.grey[300]),
-              const SizedBox(height: 12),
-              Text(
-                widget.isAr ? 'اضغط بحث للعرض الكامل' : 'Press search for full results',
-                style: TextStyle(color: Colors.grey[500], fontSize: 14),
-              ),
-            ],
-          ),
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.search, size: 48, color: Colors.grey[300]),
+            const SizedBox(height: 12),
+            Text(
+              widget.isAr
+                  ? 'اضغط بحث للعرض الكامل'
+                  : 'Press search for full results',
+              style: TextStyle(color: Colors.grey[500], fontSize: 14),
+            ),
+          ],
         ),
       );
     }
@@ -503,13 +697,33 @@ class _DelayedSuggestionsWidgetState extends State<_DelayedSuggestionsWidget> {
       padding: const EdgeInsets.symmetric(vertical: 8),
       itemCount: _suggestions.length,
       itemBuilder: (context, index) {
-        final suggestion = _suggestions[index];
-        return _buildSuggestionTile(context, suggestion, widget.query);
+        final s = _suggestions[index];
+        return ListTile(
+          leading: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(_icon(s), color: AppColors.primary, size: 20),
+          ),
+          title: Text(s,
+              style: const TextStyle(
+                  fontSize: 15, fontWeight: FontWeight.w500)),
+          trailing: IconButton(
+            icon: Icon(Icons.north_west, size: 16, color: Colors.grey[400]),
+            onPressed: () => widget.onSuggestionTap(s),
+          ),
+          onTap: () => widget.onSuggestionTap(s),
+        );
       },
     );
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Search Results List — navigates without re-triggering search
+// ─────────────────────────────────────────────────────────────────────────────
 class _SearchResultsList extends StatefulWidget {
   final List<UserModel> results;
   final String locale;
@@ -541,22 +755,21 @@ class _SearchResultsListState extends State<_SearchResultsList> {
   }
 
   void _onScroll() {
-    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
-      final searchProvider = context.read<SearchProvider>();
-      if (!searchProvider.isLoadingMore && searchProvider.hasMore) {
-        searchProvider.loadMore();
-      }
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      final search = context.read<SearchProvider>();
+      if (!search.isLoadingMore && search.hasMore) search.loadMore();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final searchProvider = context.watch<SearchProvider>();
-    
+    final search = context.watch<SearchProvider>();
     return ListView.builder(
       controller: _scrollController,
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      itemCount: widget.results.length + (searchProvider.isLoadingMore ? 1 : 0),
+      itemCount:
+          widget.results.length + (search.isLoadingMore ? 1 : 0),
       itemBuilder: (context, index) {
         if (index == widget.results.length) {
           return const Padding(
@@ -564,7 +777,6 @@ class _SearchResultsListState extends State<_SearchResultsList> {
             child: Center(child: CircularProgressIndicator()),
           );
         }
-        
         final freelancer = widget.results[index];
         return FreelancerCard(
           freelancer: freelancer,
@@ -572,7 +784,9 @@ class _SearchResultsListState extends State<_SearchResultsList> {
           currentUserId: widget.currentUserId,
           onTap: () => Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => ProfileScreen(userId: freelancer.id)),
+            MaterialPageRoute(
+                builder: (_) => ProfileScreen(userId: freelancer.id)),
+            // ← No await here intentionally: we don't re-search on pop
           ),
         );
       },
