@@ -15,6 +15,7 @@ import 'squad_profile_screen.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../services/smart_guide_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shimmer/shimmer.dart';
 import '../../services/firestore/user_service.dart';
 
 class FavoritesScreen extends StatefulWidget {
@@ -93,216 +94,61 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
         ),
         body: TabBarView(
           children: [
-            _buildUsersList(context, user, user.partnerIds, locale, isPartnerList: true),
-            _buildUsersList(context, user, user.favoriteUserIds, locale, isPartnerList: false),
-            _buildSquadsTab(context, user, locale),
-            _buildProductsTab(context, user, locale),
+            _UsersTab(user: user, userIds: user.partnerIds, locale: locale, isPartnerList: true, mySquadId: _mySquadId),
+            _UsersTab(user: user, userIds: user.favoriteUserIds, locale: locale, isPartnerList: false, mySquadId: _mySquadId),
+            _SquadsTab(user: user, favoriteSquadIds: user.favoriteSquadIds, locale: locale),
+            _ProductsTab(user: user, favoriteProductIds: user.favoriteProductIds, locale: locale),
           ],
         ),
       ),
     );
   }
+}
 
-  Widget _buildUsersList(BuildContext context, UserModel user, List<String> userIds, String locale, {required bool isPartnerList}) {
-    if (userIds.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.05),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(isPartnerList ? Icons.group_off : Icons.favorite_border, size: 60, color: AppColors.primary.withValues(alpha: 0.5)),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              locale == 'ar' 
-                  ? (isPartnerList ? 'لا يوجد زملاء حالياً' : 'لا توجد حسابات مفضلة بعد') 
-                  : (isPartnerList ? 'No partners yet' : 'No favorite accounts yet'),
-              style: TextStyle(color: Colors.grey[600], fontSize: 16, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              locale == 'ar' ? 'قم بإضافة حسابات من ملفاتهم الشخصية' : 'Add accounts from their profiles',
-              style: TextStyle(color: Colors.grey[400], fontSize: 13),
-            ),
-          ],
-        ),
-      );
-    }
+class _UsersTab extends StatefulWidget {
+  final UserModel user;
+  final List<String> userIds;
+  final String locale;
+  final bool isPartnerList;
+  final String? mySquadId;
 
-    return FutureBuilder<List<UserModel>>(
-      future: FirestoreService().getUsersByIds(userIds),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (snapshot.hasError) {
-          return Center(child: Text(locale == 'ar' ? 'حدث خطأ' : 'An error occurred'));
-        }
+  const _UsersTab({required this.user, required this.userIds, required this.locale, required this.isPartnerList, this.mySquadId});
 
-        final users = snapshot.data ?? [];
-        if (users.isEmpty) return const SizedBox.shrink();
+  @override
+  State<_UsersTab> createState() => _UsersTabState();
+}
 
-        return ListView.separated(
-          padding: const EdgeInsets.all(16),
-          itemCount: users.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 16),
-          itemBuilder: (context, index) {
-            final targetUser = users[index];
-            final isFavorite = user.favoriteUserIds.contains(targetUser.id);
-            final isPartner = user.partnerIds.contains(targetUser.id);
-            final isDark = Theme.of(context).brightness == Brightness.dark;
-            
-            // شروط الإجراءات
-            final bool canInviteToSquad = _mySquadId != null && user.role != UserRole.client && user.role != UserRole.shop && targetUser.role != UserRole.client && targetUser.role != UserRole.shop;
-            final bool canCancelApprenticeship = user.masterId == targetUser.id || user.apprenticesIds.contains(targetUser.id);
-            final bool canRequestApprenticeship = !canCancelApprenticeship && user.masterId == null && user.role != UserRole.shop && user.role != UserRole.client && targetUser.role != UserRole.shop && targetUser.role != UserRole.client;
+class _UsersTabState extends State<_UsersTab> with AutomaticKeepAliveClientMixin {
+  late Future<List<UserModel>> _usersFuture;
 
-            return Card(
-              elevation: 0,
-              color: isDark ? Colors.grey[900] : Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-                side: BorderSide(color: isDark ? Colors.grey[800]! : Colors.grey[200]!),
-              ),
-              child: Column(
-                children: [
-                  // ── معلومات الحساب ──
-                  ListTile(
-                    contentPadding: const EdgeInsets.only(left: 16, right: 16, top: 12, bottom: 4),
-                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProfileScreen(userId: targetUser.id))),
-                    leading: Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2), width: 2),
-                      ),
-                      child: CircleAvatar(
-                        radius: 26,
-                        backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                        backgroundImage: targetUser.profileImageUrl != null ? NetworkImage(targetUser.profileImageUrl!) : null,
-                        child: targetUser.profileImageUrl == null ? Icon(targetUser.role == UserRole.shop ? Icons.store : Icons.person, color: AppColors.primary) : null,
-                      ),
-                    ),
-                    title: Text(targetUser.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                    subtitle: Text(
-                      targetUser.jobTitle ?? (locale == 'ar' ? 'حساب في سودان فري' : 'SudanFree Account'), 
-                      style: TextStyle(color: Colors.grey[500], fontSize: 13),
-                    ),
-                    trailing: !isPartnerList
-                        ? IconButton(
-                            icon: Icon(
-                              isFavorite ? Icons.favorite : Icons.favorite_border,
-                              color: isFavorite ? Colors.red : Colors.grey[400],
-                            ),
-                            onPressed: () {
-                              context.read<AuthProvider>().toggleFavoriteUser(targetUser.id);
-                              setState(() {});
-                            },
-                          )
-                        : null,
-                  ),
-                  
-                  Divider(color: isDark ? Colors.grey[800] : Colors.grey[100], height: 1),
-                  
-                  // ── أزرار الإجراءات المعبرة (تظهر بشكل واضح بدلاً من القائمة المخفية) ──
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        alignment: WrapAlignment.start,
-                        children: [
-                          // زر التزكية
-                          _buildExpressiveActionButton(
-                            locale == 'ar' ? 'تزكية' : 'Vouch', 
-                            Icons.verified, 
-                            AppColors.sudanGold,
-                            () => _handleMenuAction('vouch', targetUser, user, locale),
-                            isDark,
-                          ),
-                          
-                          // زر دعوة للمجموعة
-                          if (canInviteToSquad)
-                            _buildExpressiveActionButton(
-                              locale == 'ar' ? 'دعوة للمجموعة' : 'Invite Squad', 
-                              Icons.group_add_rounded, 
-                              AppColors.primary,
-                              () => _handleMenuAction('invite_squad', targetUser, user, locale),
-                              isDark,
-                            ),
-                            
-                          // زر طلب تتلمذ
-                          if (canRequestApprenticeship)
-                            _buildExpressiveActionButton(
-                              locale == 'ar' ? 'طلب تتلمذ' : 'Request Apprenticeship', 
-                              Icons.engineering, 
-                              Colors.teal,
-                              () => _handleMenuAction('request_apprenticeship', targetUser, user, locale),
-                              isDark,
-                            ),
-                            
-                          // زر إلغاء التتلمذ
-                          if (canCancelApprenticeship)
-                            _buildExpressiveActionButton(
-                              locale == 'ar' ? 'إلغاء التتلمذ' : 'Cancel Apprenticeship', 
-                              Icons.handshake_rounded, 
-                              Colors.redAccent,
-                              () => _handleMenuAction('cancel_apprenticeship', targetUser, user, locale),
-                              isDark,
-                            ),
-                            
-                          // زر إلغاء الزمالة
-                          if (isPartner)
-                            _buildExpressiveActionButton(
-                              locale == 'ar' ? 'إلغاء الزمالة' : 'Remove Partner', 
-                              Icons.person_remove_rounded, 
-                              Colors.redAccent,
-                              () => _handleMenuAction('remove_partner', targetUser, user, locale),
-                              isDark,
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  void initState() {
+    super.initState();
+    _usersFuture = FirestoreService().getUsersByIds(widget.userIds);
   }
 
-  Widget _buildExpressiveActionButton(String label, IconData icon, Color color, VoidCallback onTap, bool isDark) {
-    return Material(
-      color: color.withValues(alpha: 0.1),
-      borderRadius: BorderRadius.circular(10),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 16, color: color),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: TextStyle(
-                  color: color,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ),
+  @override
+  void didUpdateWidget(_UsersTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.userIds.length != oldWidget.userIds.length || !widget.userIds.every((e) => oldWidget.userIds.contains(e))) {
+      _usersFuture = FirestoreService().getUsersByIds(widget.userIds);
+    }
+  }
+
+  Widget _buildShimmer(bool isDark) {
+    return ListView.separated(
+      padding: const EdgeInsets.all(16),
+      itemCount: 4,
+      separatorBuilder: (_, __) => const SizedBox(height: 16),
+      itemBuilder: (_, __) => Shimmer.fromColors(
+        baseColor: isDark ? Colors.grey[800]! : Colors.grey[300]!,
+        highlightColor: isDark ? Colors.grey[700]! : Colors.grey[100]!,
+        child: Container(
+          height: 140,
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
         ),
       ),
     );
@@ -328,7 +174,6 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
         await context.read<AuthProvider>().handlePartnerRequest(targetUser.id, false);
         if (!mounted) return;
         context.read<AuthProvider>().fetchPartners(forceRefresh: true);
-        setState(() {});
       }
     } else if (action == 'vouch') {
       try {
@@ -338,21 +183,16 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
         scaffoldMessenger.showSnackBar(SnackBar(content: Text(isAr ? 'حدث خطأ أثناء التزكية، قد تكون زكيته مسبقاً.' : 'Error sending recommendation, you may have already vouched.'), backgroundColor: Colors.red));
       }
     } else if (action == 'invite_squad') {
-      if (_mySquadId == null) return;
-      
+      if (widget.mySquadId == null) return;
       try {
-        // Check if user is already in a squad
         final isLeaderSnap = await FirebaseFirestore.instance.collection('squads').where('leaderId', isEqualTo: targetUser.id).get();
         final isMemberSnap = await FirebaseFirestore.instance.collection('squads').where('memberIds', arrayContains: targetUser.id).get();
-        
         if (isLeaderSnap.docs.isNotEmpty || isMemberSnap.docs.isNotEmpty) {
           scaffoldMessenger.showSnackBar(SnackBar(content: Text(isAr ? 'هذا المستخدم منضم لمجموعة بالفعل ولا يمكنه الدخول في مجموعة أخرى.' : 'This user is already in a squad and cannot join another.'), backgroundColor: Colors.red));
           return;
         }
-        
-        // Send invite
         await FirebaseFirestore.instance.collection('users').doc(targetUser.id).update({
-          'pendingSquadInvites': FieldValue.arrayUnion([_mySquadId])
+          'pendingSquadInvites': FieldValue.arrayUnion([widget.mySquadId])
         });
         scaffoldMessenger.showSnackBar(SnackBar(content: Text(isAr ? 'تم إرسال دعوة المجموعة بنجاح!' : 'Squad invite sent successfully!'), backgroundColor: Colors.green));
       } catch (e) {
@@ -380,15 +220,12 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
       if (confirm == true) {
         try {
           if (currentUser.apprenticesIds.contains(targetUser.id)) {
-            // Master firing apprentice
             await UserFirestoreService().terminateApprentice(currentUser.id, targetUser.id);
             scaffoldMessenger.showSnackBar(SnackBar(content: Text(isAr ? 'تم إلغاء التتلمذ بنجاح' : 'Apprenticeship canceled'), backgroundColor: Colors.green));
           } else if (currentUser.masterId == targetUser.id) {
-            // Apprentice requesting to leave
             await UserFirestoreService().sendLeaveRequest(currentUser.id, targetUser.id);
             scaffoldMessenger.showSnackBar(SnackBar(content: Text(isAr ? 'تم إرسال طلب الموافقة على ترك التتلمذ' : 'Leave request sent to master'), backgroundColor: Colors.green));
           }
-          setState(() {});
         } catch (e) {
           scaffoldMessenger.showSnackBar(SnackBar(content: Text(isAr ? 'حدث خطأ' : 'Error occurred'), backgroundColor: Colors.red));
         }
@@ -396,161 +233,126 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     }
   }
 
-  Widget _buildProductsTab(BuildContext context, UserModel user, String locale) {
-    if (user.favoriteProductIds.isEmpty) {
+  Widget _buildExpressiveActionButton(String label, IconData icon, Color color, VoidCallback onTap, bool isDark) {
+    return Material(
+      color: color.withValues(alpha: 0.1),
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 16, color: color),
+              const SizedBox(width: 6),
+              Text(label, style: TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 12)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    if (widget.userIds.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.bookmark_border, size: 60, color: Colors.grey),
-            const SizedBox(height: 16),
-            Text(
-              locale == 'ar' ? 'لا توجد منشورات أو منتجات محفوظة' : 'No saved posts or products',
-              style: TextStyle(color: Colors.grey[600]),
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.05), shape: BoxShape.circle),
+              child: Icon(widget.isPartnerList ? Icons.group_off : Icons.favorite_border, size: 60, color: AppColors.primary.withValues(alpha: 0.5)),
             ),
+            const SizedBox(height: 24),
+            Text(
+              widget.locale == 'ar' ? (widget.isPartnerList ? 'لا يوجد زملاء حالياً' : 'لا توجد حسابات مفضلة بعد') : (widget.isPartnerList ? 'No partners yet' : 'No favorite accounts yet'),
+              style: TextStyle(color: Colors.grey[600], fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            Text(widget.locale == 'ar' ? 'قم بإضافة حسابات من ملفاتهم الشخصية' : 'Add accounts from their profiles', style: TextStyle(color: Colors.grey[400], fontSize: 13)),
           ],
         ),
       );
     }
-    
-    return FutureBuilder<List<PostModel?>>(
-      future: Future.wait(user.favoriteProductIds.map((id) async {
-        try {
-          final post = await FirestoreService().getPost(id);
-          if (post == null) {
-            // Auto-clean silently in background
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              context.read<AuthProvider>().toggleFavoriteProduct(id);
-            });
-          }
-          return post;
-        } catch (e) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            context.read<AuthProvider>().toggleFavoriteProduct(id);
-          });
-          return null;
-        }
-      })),
+
+    return FutureBuilder<List<UserModel>>(
+      future: _usersFuture,
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (snapshot.hasError) {
-          return Center(child: Text(locale == 'ar' ? 'حدث خطأ' : 'An error occurred'));
-        }
+        if (snapshot.connectionState == ConnectionState.waiting) return _buildShimmer(isDark);
+        if (snapshot.hasError) return Center(child: Text(widget.locale == 'ar' ? 'حدث خطأ' : 'An error occurred'));
 
-        // فلترة المنتجات المخفية (showInProfile == false) من المفضلة
-        // عندما يخفي صاحب المتجر منتجاً، يختفي من مفضلة الجميع تلقائياً
-        final products = snapshot.data
-                ?.whereType<PostModel>()
-                .where((p) => p.showInProfile)
-                .toList() ??
-            [];
-        if (products.isEmpty) {
-          return Center(
-            child: Text(
-              locale == 'ar' ? 'لا توجد منشورات أو منتجات محفوظة' : 'No saved posts or products',
-              style: TextStyle(color: Colors.grey[600]),
-            ),
-          );
-        }
+        final users = snapshot.data ?? [];
+        if (users.isEmpty) return const SizedBox.shrink();
 
-        return GridView.builder(
+        return ListView.separated(
           padding: const EdgeInsets.all(16),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            childAspectRatio: 0.65,
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
-          ),
-          itemCount: products.length,
+          itemCount: users.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 16),
           itemBuilder: (context, index) {
-            final product = products[index];
-            final imageUrl = product.allImageUrls.isNotEmpty ? product.allImageUrls.first : null;
+            final targetUser = users[index];
+            final isFavorite = widget.user.favoriteUserIds.contains(targetUser.id);
+            final isPartner = widget.user.partnerIds.contains(targetUser.id);
             
-            return GestureDetector(
-              onTap: () {
-                if (product.price != null) {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => ProductDetailScreen(product: product)),
-                  );
-                } else {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => PostDetailsScreen(post: product)),
-                  );
-                }
-              },
-              child: Card(
-                clipBehavior: Clip.antiAlias,
-                elevation: 2,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      flex: 4,
-                      child: Stack(
-                        fit: StackFit.expand,
+            final bool canInviteToSquad = widget.mySquadId != null && widget.user.role != UserRole.client && widget.user.role != UserRole.shop && targetUser.role != UserRole.client && targetUser.role != UserRole.shop;
+            final bool canCancelApprenticeship = widget.user.masterId == targetUser.id || widget.user.apprenticesIds.contains(targetUser.id);
+            final bool canRequestApprenticeship = !canCancelApprenticeship && widget.user.masterId == null && widget.user.role != UserRole.shop && widget.user.role != UserRole.client && targetUser.role != UserRole.shop && targetUser.role != UserRole.client;
+
+            return Card(
+              elevation: 0,
+              color: isDark ? Colors.grey[900] : Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: isDark ? Colors.grey[800]! : Colors.grey[200]!)),
+              child: Column(
+                children: [
+                  ListTile(
+                    contentPadding: const EdgeInsets.only(left: 16, right: 16, top: 12, bottom: 4),
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProfileScreen(userId: targetUser.id))),
+                    leading: Container(
+                      decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: AppColors.primary.withValues(alpha: 0.2), width: 2)),
+                      child: CircleAvatar(
+                        radius: 26,
+                        backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                        backgroundImage: targetUser.profileImageUrl != null ? NetworkImage(targetUser.profileImageUrl!) : null,
+                        child: targetUser.profileImageUrl == null ? Icon(targetUser.role == UserRole.shop ? Icons.store : Icons.person, color: AppColors.primary) : null,
+                      ),
+                    ),
+                    title: Text(targetUser.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    subtitle: Text(targetUser.jobTitle ?? (widget.locale == 'ar' ? 'حساب في سودان فري' : 'SudanFree Account'), style: TextStyle(color: Colors.grey[500], fontSize: 13)),
+                    trailing: !widget.isPartnerList
+                        ? IconButton(
+                            icon: Icon(isFavorite ? Icons.favorite : Icons.favorite_border, color: isFavorite ? Colors.red : Colors.grey[400]),
+                            onPressed: () {
+                              context.read<AuthProvider>().toggleFavoriteUser(targetUser.id);
+                            },
+                          )
+                        : null,
+                  ),
+                  Divider(color: isDark ? Colors.grey[800] : Colors.grey[100], height: 1),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        alignment: WrapAlignment.start,
                         children: [
-                          if (imageUrl != null)
-                            CachedNetworkImage(
-                              imageUrl: imageUrl,
-                              fit: BoxFit.cover,
-                              placeholder: (_, __) => Container(color: Colors.grey[200]),
-                              errorWidget: (_, __, ___) => const Icon(Icons.broken_image),
-                            )
-                          else
-                            Container(color: Colors.grey[200], child: const Icon(Icons.image, color: Colors.grey)),
-                          
-                          Positioned(
-                            top: 8,
-                            right: 8,
-                            child: CircleAvatar(
-                              radius: 16,
-                              backgroundColor: Colors.white,
-                              child: IconButton(
-                                padding: EdgeInsets.zero,
-                                icon: const Icon(Icons.favorite, color: Colors.red, size: 20),
-                                onPressed: () {
-                                  context.read<AuthProvider>().toggleFavoriteProduct(product.id);
-                                },
-                              ),
-                            ),
-                          ),
+                          _buildExpressiveActionButton(widget.locale == 'ar' ? 'تزكية' : 'Vouch', Icons.verified, AppColors.sudanGold, () => _handleMenuAction('vouch', targetUser, widget.user, widget.locale), isDark),
+                          if (canInviteToSquad) _buildExpressiveActionButton(widget.locale == 'ar' ? 'دعوة للمجموعة' : 'Invite Squad', Icons.group_add_rounded, AppColors.primary, () => _handleMenuAction('invite_squad', targetUser, widget.user, widget.locale), isDark),
+                          if (canRequestApprenticeship) _buildExpressiveActionButton(widget.locale == 'ar' ? 'طلب تتلمذ' : 'Request Apprenticeship', Icons.engineering, Colors.teal, () => _handleMenuAction('request_apprenticeship', targetUser, widget.user, widget.locale), isDark),
+                          if (canCancelApprenticeship) _buildExpressiveActionButton(widget.locale == 'ar' ? 'إلغاء التتلمذ' : 'Cancel Apprenticeship', Icons.handshake_rounded, Colors.redAccent, () => _handleMenuAction('cancel_apprenticeship', targetUser, widget.user, widget.locale), isDark),
+                          if (widget.isPartnerList) _buildExpressiveActionButton(widget.locale == 'ar' ? 'إلغاء الزمالة' : 'Remove Partner', Icons.person_remove_rounded, Colors.redAccent, () => _handleMenuAction('remove_partner', targetUser, widget.user, widget.locale), isDark),
                         ],
                       ),
                     ),
-                    Expanded(
-                      flex: 2,
-                      child: Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              product.caption ?? '',
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                            ),
-                            if (product.price != null && product.price! > 0)
-                              Text(
-                                '${product.price} ${locale == 'ar' ? 'ج.س' : 'SDG'}',
-                                style: const TextStyle(
-                                  color: AppColors.primary,
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 14,
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             );
           },
@@ -558,33 +360,77 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
       },
     );
   }
+}
 
-  Widget _buildSquadsTab(BuildContext context, UserModel user, String locale) {
-    if (user.favoriteSquadIds.isEmpty) {
+class _SquadsTab extends StatefulWidget {
+  final UserModel user;
+  final List<String> favoriteSquadIds;
+  final String locale;
+  const _SquadsTab({required this.user, required this.favoriteSquadIds, required this.locale});
+  @override
+  State<_SquadsTab> createState() => _SquadsTabState();
+}
+
+class _SquadsTabState extends State<_SquadsTab> with AutomaticKeepAliveClientMixin {
+  late Future<QuerySnapshot> _squadsFuture;
+
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchSquads();
+  }
+
+  void _fetchSquads() {
+    _squadsFuture = FirebaseFirestore.instance.collection('squads').where(FieldPath.documentId, whereIn: widget.favoriteSquadIds.isNotEmpty ? widget.favoriteSquadIds : ['dummy']).get();
+  }
+
+  @override
+  void didUpdateWidget(_SquadsTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.favoriteSquadIds.length != oldWidget.favoriteSquadIds.length || !widget.favoriteSquadIds.every((e) => oldWidget.favoriteSquadIds.contains(e))) {
+      _fetchSquads();
+    }
+  }
+
+  Widget _buildShimmer(bool isDark) {
+    return ListView.separated(
+      padding: const EdgeInsets.all(16),
+      itemCount: 4,
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemBuilder: (_, __) => Shimmer.fromColors(
+        baseColor: isDark ? Colors.grey[800]! : Colors.grey[300]!,
+        highlightColor: isDark ? Colors.grey[700]! : Colors.grey[100]!,
+        child: Container(height: 80, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16))),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    if (widget.favoriteSquadIds.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Icon(Icons.groups, size: 60, color: Colors.grey),
             const SizedBox(height: 16),
-            Text(
-              locale == 'ar' ? 'لا توجد مجموعات مفضلة بعد' : 'No favorite squads yet',
-              style: TextStyle(color: Colors.grey[600]),
-            ),
+            Text(widget.locale == 'ar' ? 'لا توجد مجموعات مفضلة بعد' : 'No favorite squads yet', style: TextStyle(color: Colors.grey[600])),
           ],
         ),
       );
     }
 
     return FutureBuilder<QuerySnapshot>(
-      future: FirebaseFirestore.instance.collection('squads').where(FieldPath.documentId, whereIn: user.favoriteSquadIds).get(),
+      future: _squadsFuture,
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (snapshot.hasError) {
-          return Center(child: Text(locale == 'ar' ? 'حدث خطأ' : 'An error occurred'));
-        }
+        if (snapshot.connectionState == ConnectionState.waiting) return _buildShimmer(isDark);
+        if (snapshot.hasError) return Center(child: Text(widget.locale == 'ar' ? 'حدث خطأ' : 'An error occurred'));
 
         final docs = snapshot.data?.docs ?? [];
         if (docs.isEmpty) return const SizedBox.shrink();
@@ -605,9 +451,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               child: ListTile(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                onTap: () {
-                  // Navigate to SquadProfileScreen
-                },
+                onTap: () {},
                 leading: CircleAvatar(
                   radius: 28,
                   backgroundColor: AppColors.primary.withValues(alpha: 0.1),
@@ -617,10 +461,163 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                 subtitle: Text(bio, style: TextStyle(color: Colors.grey[600]), maxLines: 1, overflow: TextOverflow.ellipsis),
                 trailing: IconButton(
                   icon: const Icon(Icons.favorite, color: Colors.red),
-                  onPressed: () {
-                    context.read<AuthProvider>().toggleFavoriteSquad(doc.id);
-                    setState(() {});
-                  },
+                  onPressed: () => context.read<AuthProvider>().toggleFavoriteSquad(doc.id),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _ProductsTab extends StatefulWidget {
+  final UserModel user;
+  final List<String> favoriteProductIds;
+  final String locale;
+  const _ProductsTab({required this.user, required this.favoriteProductIds, required this.locale});
+  @override
+  State<_ProductsTab> createState() => _ProductsTabState();
+}
+
+class _ProductsTabState extends State<_ProductsTab> with AutomaticKeepAliveClientMixin {
+  late Future<List<PostModel?>> _productsFuture;
+
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchProducts();
+  }
+
+  void _fetchProducts() {
+    if (widget.favoriteProductIds.isEmpty) {
+      _productsFuture = Future.value([]);
+      return;
+    }
+    _productsFuture = Future.wait(widget.favoriteProductIds.map((id) async {
+      try {
+        final post = await FirestoreService().getPost(id);
+        if (post == null) WidgetsBinding.instance.addPostFrameCallback((_) => context.read<AuthProvider>().toggleFavoriteProduct(id));
+        return post;
+      } catch (e) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => context.read<AuthProvider>().toggleFavoriteProduct(id));
+        return null;
+      }
+    }));
+  }
+
+  @override
+  void didUpdateWidget(_ProductsTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.favoriteProductIds.length != oldWidget.favoriteProductIds.length || !widget.favoriteProductIds.every((e) => oldWidget.favoriteProductIds.contains(e))) {
+      _fetchProducts();
+    }
+  }
+
+  Widget _buildShimmer(bool isDark) {
+    return GridView.builder(
+      padding: const EdgeInsets.all(16),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, childAspectRatio: 0.65, crossAxisSpacing: 16, mainAxisSpacing: 16),
+      itemCount: 4,
+      itemBuilder: (_, __) => Shimmer.fromColors(
+        baseColor: isDark ? Colors.grey[800]! : Colors.grey[300]!,
+        highlightColor: isDark ? Colors.grey[700]! : Colors.grey[100]!,
+        child: Container(decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12))),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    if (widget.favoriteProductIds.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.bookmark_border, size: 60, color: Colors.grey),
+            const SizedBox(height: 16),
+            Text(widget.locale == 'ar' ? 'لا توجد منشورات أو منتجات محفوظة' : 'No saved posts or products', style: TextStyle(color: Colors.grey[600])),
+          ],
+        ),
+      );
+    }
+    
+    return FutureBuilder<List<PostModel?>>(
+      future: _productsFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) return _buildShimmer(isDark);
+        if (snapshot.hasError) return Center(child: Text(widget.locale == 'ar' ? 'حدث خطأ' : 'An error occurred'));
+
+        final products = snapshot.data?.whereType<PostModel>().where((p) => p.showInProfile).toList() ?? [];
+        if (products.isEmpty) {
+          return Center(child: Text(widget.locale == 'ar' ? 'لا توجد منشورات أو منتجات محفوظة' : 'No saved posts or products', style: TextStyle(color: Colors.grey[600])));
+        }
+
+        return GridView.builder(
+          padding: const EdgeInsets.all(16),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, childAspectRatio: 0.65, crossAxisSpacing: 16, mainAxisSpacing: 16),
+          itemCount: products.length,
+          itemBuilder: (context, index) {
+            final product = products[index];
+            final imageUrl = product.allImageUrls.isNotEmpty ? product.allImageUrls.first : null;
+            
+            return GestureDetector(
+              onTap: () {
+                if (product.price != null) {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => ProductDetailScreen(product: product)));
+                } else {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => PostDetailsScreen(post: product)));
+                }
+              },
+              child: Card(
+                clipBehavior: Clip.antiAlias,
+                elevation: 2,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 4,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          if (imageUrl != null)
+                            CachedNetworkImage(imageUrl: imageUrl, fit: BoxFit.cover, placeholder: (_, __) => Container(color: Colors.grey[200]), errorWidget: (_, __, ___) => const Icon(Icons.broken_image))
+                          else
+                            Container(color: Colors.grey[200], child: const Icon(Icons.image, color: Colors.grey)),
+                          Positioned(
+                            top: 8, right: 8,
+                            child: CircleAvatar(
+                              radius: 16, backgroundColor: Colors.white,
+                              child: IconButton(padding: EdgeInsets.zero, icon: const Icon(Icons.favorite, color: Colors.red, size: 20), onPressed: () => context.read<AuthProvider>().toggleFavoriteProduct(product.id)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      flex: 2,
+                      child: Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(product.caption ?? '', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                            if (product.price != null && product.price! > 0)
+                              Text('${product.price} ${widget.locale == 'ar' ? 'ج.س' : 'SDG'}', style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w900, fontSize: 14)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             );
