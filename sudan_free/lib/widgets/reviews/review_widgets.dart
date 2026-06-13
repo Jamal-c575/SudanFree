@@ -5,6 +5,7 @@ import '../../core/constants/app_colors.dart';
 import '../../models/review_model.dart';
 import '../../providers/locale_provider.dart';
 import '../../views/profile/profile_screen.dart';
+import '../common/glass_container.dart';
 
 class AddReviewDialog extends StatefulWidget {
   final String freelancerId;
@@ -283,14 +284,14 @@ class ReviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return GlassContainer(
       margin: const EdgeInsets.only(bottom: 12),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      // Color is automatically picked from CardTheme in AppTheme
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
+      blur: 15,
+      opacity: Theme.of(context).brightness == Brightness.dark ? 0.3 : 0.6,
+      borderRadius: BorderRadius.circular(16),
+      color: Theme.of(context).cardColor,
+      padding: const EdgeInsets.all(16),
+      child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
@@ -396,7 +397,6 @@ class ReviewCard extends StatelessWidget {
             ],
           ],
         ),
-      ),
     );
   }
 
@@ -433,14 +433,13 @@ class ReviewStatsWidget extends StatelessWidget {
       }
     }
 
-    return Container(
+    return GlassContainer(
       margin: const EdgeInsets.only(bottom: 24),
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
-      ),
+      blur: 15,
+      opacity: Theme.of(context).brightness == Brightness.dark ? 0.3 : 0.6,
+      borderRadius: BorderRadius.circular(16),
+      color: Theme.of(context).cardColor,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [

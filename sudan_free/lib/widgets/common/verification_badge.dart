@@ -47,6 +47,10 @@ class SmartVerificationBadge extends StatelessWidget {
   });
 
   _BadgeLevel get _level {
+    // Level 4 — Premium (الحساب المميز / المتجر الملكي)
+    if (user.isPremium) {
+      return _BadgeLevel.premium;
+    }
     // Level 3 — Top Pro: موثق + تقييم 4.5+ وأكثر من 20 عمل مكتمل
     if (user.isVerified && user.rating >= 4.5 && user.completedJobs >= 20) {
       return _BadgeLevel.topPro;
@@ -82,6 +86,8 @@ class SmartVerificationBadge extends StatelessWidget {
 
   Widget _buildBadge(_BadgeLevel level) {
     switch (level) {
+      case _BadgeLevel.premium:
+        return _PremiumBadge(size: size);
       case _BadgeLevel.topPro:
         return _TopProBadge(size: size);
       case _BadgeLevel.identityVerified:
@@ -109,6 +115,8 @@ class SmartVerificationBadge extends StatelessWidget {
 
   String _getTooltipText(_BadgeLevel level, bool isAr) {
     switch (level) {
+      case _BadgeLevel.premium:
+        return isAr ? '👑 حساب مميز — متجر موثق وملكي' : '👑 Premium — Verified Royal Account';
       case _BadgeLevel.topPro:
         return isAr ? '⭐ محترف متميز — موثق وذو تقييم عالٍ' : '⭐ Top Pro — Verified with excellent ratings';
       case _BadgeLevel.identityVerified:
@@ -183,7 +191,38 @@ class _TopProBadgeState extends State<_TopProBadge> with SingleTickerProviderSta
   }
 }
 
-enum _BadgeLevel { none, phoneVerified, identityVerified, topPro }
+/// شارة حساب مميز - شكل ملكي وتاج
+class _PremiumBadge extends StatelessWidget {
+  final double size;
+  const _PremiumBadge({required this.size});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4.0),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Icon(
+            Icons.verified,
+            color: const Color(0xFFFFD700), // Gold
+            size: size,
+          ),
+          Positioned(
+            bottom: size * 0.1,
+            child: Icon(
+              Icons.star,
+              color: Colors.white,
+              size: size * 0.4,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+enum _BadgeLevel { none, phoneVerified, identityVerified, topPro, premium }
 
 /// شريط نقاط السمعة الدائري
 class ReputationScoreWidget extends StatelessWidget {

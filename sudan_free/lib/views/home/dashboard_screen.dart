@@ -28,6 +28,7 @@ import '../shops/browse_shops_screen.dart';
 import '../map/map_explorer_screen.dart';
 import '../../widgets/guide/guide_controller.dart';
 import '../../services/smart_guide_service.dart';
+import '../auth/profile_setup_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   /// Callback to switch to a specific tab in the parent HomeScreen
@@ -195,13 +196,38 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     ];
 
 
+    int getLocationScore(UserModel u) {
+      if (currentUser.state == null) return 0;
+      int score = 0;
+      if (u.state == currentUser.state) score += 1;
+      if (u.locality != null && currentUser.locality != null && u.locality == currentUser.locality) score += 2;
+      
+      if (u.neighborhood != null && currentUser.neighborhood != null) {
+        final uNeigh = u.neighborhood!.toLowerCase().replaceAll(' ', '');
+        final cNeigh = currentUser.neighborhood!.toLowerCase().replaceAll(' ', '');
+        if (uNeigh == cNeigh) {
+          score += 5;
+        } else if (uNeigh.isNotEmpty && cNeigh.isNotEmpty && (uNeigh.contains(cNeigh) || cNeigh.contains(uNeigh))) {
+          score += 4; 
+        }
+      }
+      return score;
+    }
+
     // Shops from user's region
     final nearbyShops = userProvider.shops.where((s) {
       if (currentUser.state == null) return true;
-      return s.state == currentUser.state || s.state == null;
+      return s.state == currentUser.state;
     }).toList();
 
-    // Freelancers from user's region (prioritizing essential services)
+    nearbyShops.sort((a, b) {
+      final aScore = getLocationScore(a);
+      final bScore = getLocationScore(b);
+      if (aScore != bScore) return bScore.compareTo(aScore);
+      return b.rating.compareTo(a.rating);
+    });
+
+    // Freelancers from user's region
     final nearbyFreelancers = List<UserModel>.from(userProvider.freelancers).where((f) {
       if (currentUser.state == null) return true;
       return f.state == currentUser.state;
@@ -209,6 +235,10 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
 
     final essentialKeywords = ['كهربائي', 'كهرباء', 'سباك', 'سباكة', 'ترحيل', 'نقل', 'ميكانيكي', 'صيانة', 'سيارات'];
     nearbyFreelancers.sort((a, b) {
+      final aScore = getLocationScore(a);
+      final bScore = getLocationScore(b);
+      if (aScore != bScore) return bScore.compareTo(aScore);
+
       final aBio = '${a.jobTitle ?? ''} ${a.skills.join(' ')} ${a.bio ?? ''}'.toLowerCase();
       final bBio = '${b.jobTitle ?? ''} ${b.skills.join(' ')} ${b.bio ?? ''}'.toLowerCase();
       
@@ -217,7 +247,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
 
       if (aEssential && !bEssential) return -1;
       if (!aEssential && bEssential) return 1;
-      return b.rating.compareTo(a.rating); // Then by rating
+      return b.rating.compareTo(a.rating);
     });
 
     return Scaffold(
@@ -367,6 +397,12 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                 ),
               ),
 
+              // ═══════════ PROFILE COMPLETION GAMIFICATION ═══════════
+              if (currentUser != null && _calculateProfileCompletion(currentUser) < 100)
+                SliverToBoxAdapter(
+                  child: _buildProfileCompletion(context, currentUser, locale, isDark),
+                ),
+
               // ═══════════ STORIES (PARTNERS) ═══════════
               if (storyUsers.isNotEmpty)
                 SliverToBoxAdapter(
@@ -454,6 +490,98 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  // ────────────── Profile Completion Gamification ──────────────
+  int _calculateProfileCompletion(UserModel user) {
+    int score = 0;
+    if (user.profileImageUrl != null) score += 20;
+    if (user.name.isNotEmpty) score += 20;
+    if (user.bio != null && user.bio!.isNotEmpty) score += 20;
+    if (user.state != null) score += 20;
+    
+    // Role-specific additions
+    if (user.role == UserRole.client) {
+       score += 20; // Client doesn't need to fill out skills or category
+    } else if (user.role == UserRole.shop) {
+       if (user.shopCategory != null) score += 20;
+    } else {
+       if (user.skills.isNotEmpty || user.jobTitle != null) score += 20;
+    }
+    
+    return score.clamp(0, 100);
+  }
+
+  Widget _buildProfileCompletion(BuildContext context, UserModel user, String locale, bool isDark) {
+    final completion = _calculateProfileCompletion(user);
+    if (completion == 100) return const SizedBox.shrink();
+
+    final isAr = locale == 'ar';
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  isAr ? 'أكمل ملفك الشخصي لزيادة فرصك!' : 'Complete your profile to increase chances!',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                ),
+              ),
+              Text(
+                '$completion%',
+                style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary, fontSize: 14),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: LinearProgressIndicator(
+              value: completion / 100.0,
+              minHeight: 8,
+              backgroundColor: isDark ? Colors.grey[800] : Colors.grey[300],
+              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Align(
+            alignment: isAr ? Alignment.centerLeft : Alignment.centerRight,
+            child: TextButton(
+              onPressed: () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => ProfileSetupScreen(existingUser: user)));
+              },
+              style: TextButton.styleFrom(
+                backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: Text(
+                isAr ? 'إكمال الآن' : 'Complete Now',
+                style: TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

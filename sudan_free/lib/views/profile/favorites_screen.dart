@@ -172,7 +172,7 @@ class _UsersTabState extends State<_UsersTab> with AutomaticKeepAliveClientMixin
         ),
       );
       if (confirm == true) {
-        await context.read<AuthProvider>().handlePartnerRequest(targetUser.id, false);
+        await context.read<AuthProvider>().removePartner(targetUser.id);
         if (!mounted) return;
         context.read<AuthProvider>().fetchPartners(forceRefresh: true);
       }

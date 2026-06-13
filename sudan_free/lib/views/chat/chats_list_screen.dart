@@ -9,6 +9,7 @@ import 'chat_screen.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import '../../widgets/common/empty_state_widget.dart';
 import '../../models/message_model.dart';
+import '../../widgets/common/glass_container.dart';
 
 class ChatsListScreen extends StatefulWidget {
   const ChatsListScreen({super.key});
@@ -81,15 +82,15 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                       final unreadCount = chat.getUnreadCount(user.id);
                       final isDark = Theme.of(context).brightness == Brightness.dark;
 
-                      return Container(
+                      return GlassContainer(
                         key: ValueKey('chat_${chat.id}'),
                         margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: unreadCount > 0
-                              ? AppColors.primary.withValues(alpha: isDark ? 0.12 : 0.06)
-                              : Theme.of(context).cardColor,
-                          borderRadius: BorderRadius.circular(14),
-                        ),
+                        blur: 15,
+                        opacity: isDark ? 0.3 : 0.6,
+                        color: unreadCount > 0
+                            ? AppColors.primary.withValues(alpha: isDark ? 0.2 : 0.1)
+                            : Theme.of(context).cardColor,
+                        borderRadius: BorderRadius.circular(14),
                         child: InkWell(
                           onTap: () {
                             Navigator.push(

@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart'; // Added
 import 'package:share_plus/share_plus.dart'; // Added
+import 'package:flutter/services.dart';
 import '../../core/constants/app_colors.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/locale_provider.dart';
@@ -124,6 +125,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
           ),
           
+          // Glassmorphism Toggle
+          _SettingsTile(
+            icon: Icons.blur_on,
+            iconColor: themeProvider.isGlassmorphismEnabled ? AppColors.primary : Colors.grey,
+            title: locale == 'ar' ? 'الواجهة الزجاجية (توفير الأداء)' : 'Glassmorphism (Performance)',
+            subtitle: themeProvider.isGlassmorphismEnabled
+                ? (locale == 'ar' ? 'مفعلة (سيتم إغلاق التطبيق لتطبيق التغيير)' : 'Enabled (App will close to apply changes)')
+                : (locale == 'ar' ? 'متوقفة (سيتم إغلاق التطبيق لتطبيق التغيير)' : 'Disabled (App will close to apply changes)'),
+            trailing: Switch(
+              value: themeProvider.isGlassmorphismEnabled,
+              onChanged: (value) {
+                themeProvider.toggleGlassmorphism();
+                Future.delayed(const Duration(milliseconds: 400), () {
+                  SystemNavigator.pop();
+                });
+              },
+              activeThumbColor: AppColors.primary,
+            ),
+          ),
+          const SizedBox(height: 8),
+
           // Language Toggle
           _SettingsTile(
             icon: Icons.language,

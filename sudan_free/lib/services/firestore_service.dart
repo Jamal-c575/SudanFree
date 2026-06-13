@@ -81,11 +81,13 @@ class FirestoreService {
   Future<void> updateLastActive(String userId) => _users.updateLastActive(userId);
   Future<void> sendPartnerRequest(String requesterId, String requesterName, String targetId) => _users.sendPartnerRequest(requesterId, requesterName, targetId);
   Future<void> handlePartnerRequest(String userId, String responderName, String requesterId, bool accept) => _users.handlePartnerRequest(userId, responderName, requesterId, accept);
+  Future<void> removePartner(String userId, String targetId) => _users.removePartner(userId, targetId);
   Future<List<UserModel>> getUsersByIds(List<String> ids) => _users.getUsersByIds(ids);
   Future<List<UserModel>> getUsersForMap() => _users.getUsersForMap();
   Future<List<UserModel>> getUsersInMapBounds(double minLat, double maxLat, double minLng, double maxLng) => 
       _users.getUsersInMapBounds(minLat, maxLat, minLng, maxLng);
-  Future<void> toggleFollow(String followerId, String targetId, bool isFollowing) => _users.toggleFollow(followerId, targetId, isFollowing);
+  Future<void> toggleFollow(String followerId, String targetId, bool isFollowing, [String? followerName]) => _users.toggleFollow(followerId, targetId, isFollowing, followerName);
+  Future<void> toggleBlock(String currentUserId, String targetUserId, bool isBlocked) => _users.toggleBlock(currentUserId, targetUserId, isBlocked);
   Future<void> incrementProfileViews(String userId, [String? viewerId]) => _users.incrementProfileViews(userId, viewerId);
   
   Future<Map<String, dynamic>> getFreelancersPaginated({DocumentSnapshot? startAfterDoc, int limit = 15, String? state}) => 
@@ -103,6 +105,7 @@ class FirestoreService {
   Future<Map<String, dynamic>> getFeedPostsPaginated({DocumentSnapshot? startAfterDoc, int limit = 15, PostCategoryGroup? categoryGroup}) => 
       _posts.getFeedPostsPaginated(startAfterDoc: startAfterDoc, limit: limit, categoryGroup: categoryGroup);
   Stream<List<PostModel>> getUserPosts(String userId) => _posts.getUserPosts(userId);
+  Stream<List<PostModel>> getDashboardUserPosts(String userId) => _posts.getDashboardUserPosts(userId);
   Future<void> reactToPost(String postId, String userId, String reactionType) => _posts.reactToPost(postId, userId, reactionType);
   Future<void> removeReaction(String postId, String userId) => _posts.removeReaction(postId, userId);
   Future<void> deletePost(String postId) => _posts.deletePost(postId);

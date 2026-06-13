@@ -20,6 +20,7 @@ import '../../services/storage_service.dart';
 import '../../models/portfolio_project_model.dart';
 import 'portfolio_project_detail_screen.dart';
 import 'squad_dashboard_screen.dart';
+import '../../widgets/common/glass_container.dart';
 
 class SquadProfileScreen extends StatefulWidget {
   final SquadModel squad;
@@ -366,12 +367,12 @@ class _SquadProfileScreenState extends State<SquadProfileScreen> with SingleTick
     ),
       
       // Bottom Action Bar
-      bottomNavigationBar: shouldShowHireButton ? Container(
+      bottomNavigationBar: shouldShowHireButton ? GlassContainer(
+        blur: 15,
+        opacity: Theme.of(context).brightness == Brightness.dark ? 0.4 : 0.8,
+        color: Theme.of(context).cardColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, -2))],
-        ),
         child: SafeArea(
           child: ElevatedButton.icon(
             icon: const Icon(Icons.handshake),
@@ -618,21 +619,12 @@ class _SquadProfileScreenState extends State<SquadProfileScreen> with SingleTick
           ),
         );
       },
-      child: Container(
+      child: GlassContainer(
         margin: const EdgeInsets.only(bottom: 24),
-        decoration: BoxDecoration(
-          color: theme.cardColor,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
-              blurRadius: 15,
-              offset: const Offset(0, 5),
-            ),
-          ],
-          border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
-        ),
-        clipBehavior: Clip.antiAlias,
+        blur: 15,
+        opacity: isDark ? 0.3 : 0.6,
+        borderRadius: BorderRadius.circular(20),
+        color: theme.cardColor,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -857,8 +849,11 @@ class _SliverTabBarDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return Container(
+    return GlassContainer(
+      blur: 20,
+      opacity: Theme.of(context).brightness == Brightness.dark ? 0.4 : 0.8,
       color: Theme.of(context).scaffoldBackgroundColor,
+      borderRadius: BorderRadius.zero,
       child: Column(
         children: [
           Container(height: 1, color: Colors.grey.withValues(alpha: 0.2)),

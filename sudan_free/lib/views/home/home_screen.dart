@@ -19,6 +19,7 @@ import '../../l10n/generated/app_localizations.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../services/firestore_service.dart';
+import '../../widgets/common/glass_container.dart';
 import 'dashboard_screen.dart';
 
 class BottomBarVisibilityProvider extends ChangeNotifier {
@@ -259,40 +260,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             
             return Container(
               margin: EdgeInsets.fromLTRB(20, 0, 20, bottomMargin),
-              child: ClipRRect(
+              child: GlassContainer(
+                blur: 20,
+                opacity: isDark ? 0.4 : 0.7,
                 borderRadius: BorderRadius.circular(24),
-                child: Container(
-                  height: 62,
-                  decoration: BoxDecoration(
-                    color: isDark 
-                        ? const Color(0xFF1A2332).withValues(alpha: 0.95)
-                        : Colors.white.withValues(alpha: 0.95),
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(
-                      color: isDark 
-                          ? Colors.white.withValues(alpha: 0.08)
-                          : Colors.black.withValues(alpha: 0.06),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: isDark
-                            ? Colors.black.withValues(alpha: 0.4)
-                            : AppColors.primary.withValues(alpha: 0.08),
-                        blurRadius: 24,
-                        offset: const Offset(0, 8),
-                        spreadRadius: 0,
-                      ),
-                      BoxShadow(
-                        color: isDark
-                            ? Colors.black.withValues(alpha: 0.2)
-                            : Colors.black.withValues(alpha: 0.04),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                color: isDark ? const Color(0xFF121212) : Colors.white,
+                border: Border.all(
+                  color: isDark 
+                      ? Colors.white.withValues(alpha: 0.1)
+                      : Colors.white.withValues(alpha: 0.4),
+                  width: 1.5,
+                ),
+                height: 62,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
                       _buildNavItem(
                         index: 0,
@@ -325,16 +306,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         hasBadge: false, // Could be hooked to a provider if needed
                       ),
                     ],
-                  ),
-                ),
-              ),
-            );
-          },
-        ),
-      ),
-    ),
-  ),
-);
+                  ), // End Row
+                ), // End GlassContainer
+            ); // End Container
+          }, // End builder
+        ), // End Builder
+      ), // End Consumer
+    ), // End Scaffold
+  ), // End ChangeNotifierProvider
+); // End PopScope
 }
 
   Widget _buildNavItem({

@@ -8,6 +8,9 @@ import '../../core/constants/app_colors.dart';
 import '../../providers/locale_provider.dart';
 import '../../widgets/common/linkable_text.dart';
 import 'profile_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../models/squad_model.dart';
+import 'squad_profile_screen.dart';
 
 class PortfolioProjectDetailScreen extends StatefulWidget {
   final PortfolioProjectModel project;
@@ -373,10 +376,27 @@ class _PortfolioProjectDetailScreenState extends State<PortfolioProjectDetailScr
     final canNavigate = userId != null && userId.isNotEmpty;
     return GestureDetector(
       onTap: canNavigate
-          ? () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => ProfileScreen(userId: userId)),
-              )
+          ? () async {
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (_) => const Center(child: CircularProgressIndicator()),
+              );
+              try {
+                final squadDoc = await FirebaseFirestore.instance.collection('squads').doc(userId).get();
+                if (!context.mounted) return;
+                Navigator.pop(context); // close dialog
+                
+                if (squadDoc.exists) {
+                   final squad = SquadModel.fromFirestore(squadDoc);
+                   Navigator.push(context, MaterialPageRoute(builder: (_) => SquadProfileScreen(squad: squad)));
+                } else {
+                   Navigator.push(context, MaterialPageRoute(builder: (_) => ProfileScreen(userId: userId!)));
+                }
+              } catch (e) {
+                if (context.mounted) Navigator.pop(context);
+              }
+            }
           : null,
       child: Container(
         width: 80,

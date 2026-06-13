@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-enum NotificationType { like, comment, rating, message, follow, mention, fraudWarning, reviewRequest, system, offer, partnerRequest }
+enum NotificationType { like, comment, rating, message, follow, mention, fraudWarning, reviewRequest, system, offer, partnerRequest, assignment }
 
 class NotificationModel {
   final String id;

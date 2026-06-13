@@ -21,6 +21,7 @@ import '../requests/request_details_screen.dart';
 import '../chat/chats_list_screen.dart';
 import '../../providers/chat_provider.dart';
 import '../../services/smart_guide_service.dart';
+import '../../widgets/common/glass_container.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -264,6 +265,8 @@ class _SimpleNotificationTileState extends State<_SimpleNotificationTile> {
         return Icons.rate_review_rounded;
       case NotificationType.system:
         return Icons.campaign_rounded;
+      case NotificationType.assignment:
+        return Icons.assignment_ind_rounded;
     }
   }
 
@@ -292,6 +295,8 @@ class _SimpleNotificationTileState extends State<_SimpleNotificationTile> {
         return Colors.amber.shade700;
       case NotificationType.system:
         return AppColors.primary;
+      case NotificationType.assignment:
+        return Colors.indigoAccent;
     }
   }
 
@@ -322,6 +327,8 @@ class _SimpleNotificationTileState extends State<_SimpleNotificationTile> {
         return locale == 'ar' ? 'كيف كانت تجربتك؟' : 'Rate your experience';
       case NotificationType.system:
         return locale == 'ar' ? 'سودان فري' : 'SudanFree';
+      case NotificationType.assignment:
+        return locale == 'ar' ? 'مهمة جديدة' : 'New Assignment';
     }
   }
 
@@ -345,17 +352,19 @@ class _SimpleNotificationTileState extends State<_SimpleNotificationTile> {
     final isDark = theme.brightness == Brightness.dark;
     final isFraud = notification.type == NotificationType.fraudWarning;
 
-    return Container(
+    return GlassContainer(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      decoration: BoxDecoration(
-        color: notification.isRead
-            ? theme.cardColor
-            : (isFraud
-                ? Colors.red.withValues(alpha: isDark ? 0.15 : 0.06)
-                : AppColors.primary.withValues(alpha: isDark ? 0.12 : 0.06)),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: InkWell(
+      color: notification.isRead
+          ? theme.cardColor
+          : (isFraud
+              ? Colors.red.withValues(alpha: isDark ? 0.15 : 0.06)
+              : AppColors.primary.withValues(alpha: isDark ? 0.12 : 0.06)),
+      borderRadius: BorderRadius.circular(14),
+      blur: 15,
+      opacity: isDark ? 0.3 : 0.6,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
         onTap: _isNavigating ? null : () => _onTap(context),
         onLongPress: () => _onLongPress(context),
         borderRadius: BorderRadius.circular(14),
@@ -435,6 +444,7 @@ class _SimpleNotificationTileState extends State<_SimpleNotificationTile> {
             ],
           ),
         ),
+      ),
       ),
     );
   }
@@ -516,6 +526,11 @@ class _SimpleNotificationTileState extends State<_SimpleNotificationTile> {
           // If relatedId is a userId, navigate to profile
           if (notification.relatedId != null) {
             await _navigateToProfile(context, notification.relatedId!);
+          }
+          break;
+        case NotificationType.assignment:
+          if (notification.relatedId != null) {
+            await _navigateToRequest(context, notification.relatedId!);
           }
           break;
       }

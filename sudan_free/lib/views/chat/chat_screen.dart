@@ -28,6 +28,7 @@ import '../../widgets/common/internal_link_preview.dart';
 import '../../widgets/common/full_screen_image_viewer.dart';
 import '../../services/file_download_service.dart';
 import '../../services/smart_guide_service.dart';
+import '../../widgets/common/glass_container.dart';
 
 
 class ChatScreen extends StatefulWidget {
@@ -49,6 +50,8 @@ class _ChatScreenState extends State<ChatScreen> {
   DateTime? _recordStartTime;
   Timer? _typingTimer;
   bool _isMeTyping = false;
+
+  MessageModel? _replyingTo;
 
   @override
   void initState() {
@@ -105,8 +108,8 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _sendMessage() async {
-    final content = _messageController.text.trim();
-    if (content.isEmpty) return;
+    final text = _messageController.text.trim();
+    if (text.isEmpty) return;
 
     final auth = context.read<AuthProvider>();
     final user = auth.user;
@@ -117,11 +120,21 @@ class _ChatScreenState extends State<ChatScreen> {
     _messageController.clear();
     _onTypingChanged('');
 
+    String finalContent = text;
+    if (_replyingTo != null) {
+      final isRtl = Directionality.of(context) == TextDirection.rtl;
+      String quote = _replyingTo!.content.replaceAll('\n', ' ');
+      if (quote.length > 50) quote = '${quote.substring(0, 50)}...';
+      final replyPrefix = isRtl ? '╭ الرد على ' : '╭ Replying to ';
+      finalContent = '$replyPrefix${_replyingTo!.senderName}\n│ $quote\n╰───────────────\n$text';
+      setState(() => _replyingTo = null);
+    }
+
     await context.read<ChatProvider>().sendMessage(
       senderId: user.id,
       senderName: user.name,
       receiverId: otherId,
-      content: content,
+      content: finalContent,
     );
   }
 
@@ -349,10 +362,16 @@ class _ChatScreenState extends State<ChatScreen> {
                     itemBuilder: (context, index) {
                       final message = messages[index];
                       final isMe = message.senderId == user?.id;
-                      return MessageBubble(message: message, isMe: isMe, chat: widget.chat);
+                      return MessageBubble(
+                        message: message, 
+                        isMe: isMe, 
+                        chat: widget.chat,
+                        onReply: (msg) => setState(() => _replyingTo = msg),
+                      );
                     },
                   ),
           ),
+          if (isOtherTyping) _buildTypingIndicatorBubble(otherImage),
           if (chatProvider.isSending)
             const LinearProgressIndicator(minHeight: 2),
           _buildInputArea(),
@@ -361,19 +380,95 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildInputArea() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            offset: const Offset(0, -1),
-            blurRadius: 5,
+  Widget _buildTypingIndicatorBubble(String? imageUrl) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          CircleAvatar(
+            radius: 14,
+            backgroundImage: imageUrl != null ? CachedNetworkImageProvider(imageUrl) : null,
+            child: imageUrl == null ? const Icon(Icons.person, size: 16) : null,
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Theme.of(context).cardColor,
+              borderRadius: BorderRadius.circular(16).copyWith(bottomRight: Radius.zero),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: const [
+                _TypingDot(delay: 0),
+                SizedBox(width: 4),
+                _TypingDot(delay: 150),
+                SizedBox(width: 4),
+                _TypingDot(delay: 300),
+              ],
+            ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildInputArea() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (_replyingTo != null)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: Theme.of(context).cardColor,
+              border: Border(top: BorderSide(color: Colors.grey.withValues(alpha: 0.2))),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.reply, color: AppColors.primary, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        Directionality.of(context) == TextDirection.rtl 
+                            ? 'الرد على ${_replyingTo!.senderName}' 
+                            : 'Replying to ${_replyingTo!.senderName}', 
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.primary)
+                      ),
+                      Text(
+                        _replyingTo!.content.replaceAll('\n', ' '), 
+                        maxLines: 1, 
+                        overflow: TextOverflow.ellipsis, 
+                        style: const TextStyle(fontSize: 12, color: Colors.grey)
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close, size: 20),
+                  onPressed: () => setState(() => _replyingTo = null),
+                ),
+              ],
+            ),
+          ),
+        GlassContainer(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          blur: 20,
+          opacity: Theme.of(context).brightness == Brightness.dark ? 0.3 : 0.8,
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.zero,
       child: SafeArea(
         child: Row(
           children: [
@@ -447,6 +542,8 @@ class _ChatScreenState extends State<ChatScreen> {
           ],
         ),
       ),
+    ),
+    ],
     );
   }
 
@@ -491,7 +588,13 @@ class _ChatScreenState extends State<ChatScreen> {
   void _showAttachmentOptions() {
     showModalBottomSheet(
       context: context,
-      builder: (ctx) => SafeArea(
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => GlassContainer(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        color: Theme.of(context).cardColor,
+        blur: 15,
+        opacity: Theme.of(context).brightness == Brightness.dark ? 0.3 : 0.6,
+        child: SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -513,6 +616,7 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ],
         ),
+      ),
       ),
     );
   }
@@ -551,11 +655,11 @@ class _ChatScreenState extends State<ChatScreen> {
         initialChildSize: 0.85,
         minChildSize: 0.5,
         maxChildSize: 0.95,
-        builder: (_, scrollController) => Container(
-          decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF1A2332) : Colors.white,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          ),
+        builder: (_, scrollController) => GlassContainer(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          color: Theme.of(context).cardColor,
+          blur: 15,
+          opacity: isDark ? 0.3 : 0.6,
           child: Column(children: [
             // Handle
             Container(width: 40, height: 4, margin: const EdgeInsets.only(top: 12, bottom: 8),
@@ -735,8 +839,15 @@ class MessageBubble extends StatefulWidget {
   final MessageModel message;
   final bool isMe;
   final ChatModel chat;
+  final void Function(MessageModel)? onReply;
 
-  const MessageBubble({super.key, required this.message, required this.isMe, required this.chat});
+  const MessageBubble({
+    super.key, 
+    required this.message, 
+    required this.isMe, 
+    required this.chat,
+    this.onReply,
+  });
 
   @override
   State<MessageBubble> createState() => _MessageBubbleState();
@@ -770,18 +881,34 @@ class _MessageBubbleState extends State<MessageBubble> {
         onLongPress: () {
           showDialog(
             context: context,
-            builder: (ctx) => AlertDialog(
-              title: Text(isRtl ? 'خيارات الرسالة' : 'Message Options'),
-              content: ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  setState(() => _isHidden = false);
-                },
-                icon: const Icon(Icons.visibility, color: Colors.white),
-                label: Text(isRtl ? 'إظهار الرسالة' : 'Show Message'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
+            builder: (ctx) => Dialog(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              child: GlassContainer(
+                borderRadius: BorderRadius.circular(20),
+                blur: 15,
+                opacity: Theme.of(context).brightness == Brightness.dark ? 0.3 : 0.6,
+                color: Theme.of(context).cardColor,
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(isRtl ? 'خيارات الرسالة' : 'Message Options', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 16),
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        setState(() => _isHidden = false);
+                      },
+                      icon: const Icon(Icons.visibility, color: Colors.white),
+                      label: Text(isRtl ? 'إظهار الرسالة' : 'Show Message'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -790,7 +917,7 @@ class _MessageBubbleState extends State<MessageBubble> {
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 4),
           child: Align(
-            alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+            alignment: isMe ? AlignmentDirectional.centerEnd : AlignmentDirectional.centerStart,
             child: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -804,127 +931,157 @@ class _MessageBubbleState extends State<MessageBubble> {
       );
     }
 
-    return GestureDetector(
+    return Dismissible(
+      key: ValueKey('swipe_${message.id}'),
+      direction: isMe ? DismissDirection.endToStart : DismissDirection.startToEnd,
+      background: Container(
+        alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        color: Colors.transparent,
+        child: const Icon(Icons.reply, color: AppColors.primary),
+      ),
+      confirmDismiss: (direction) async {
+        if (widget.onReply != null) {
+          widget.onReply!(message);
+        }
+        return false; // Prevent actual dismissal
+      },
+      child: GestureDetector(
       onLongPress: () {
-        showDialog(
+        showModalBottomSheet(
           context: context,
-          builder: (ctx) => AlertDialog(
-            title: Text(isRtl ? 'خيارات الرسالة' : 'Message Options'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (isMe && message.type == MessageType.text)
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.pop(ctx);
-                      _showEditMessageDialog(context, isRtl);
-                    },
-                    icon: const Icon(Icons.edit),
-                    label: Text(isRtl ? 'تعديل الرسالة' : 'Edit Message'),
-                    style: ElevatedButton.styleFrom(
-                      alignment: isRtl ? Alignment.centerRight : Alignment.centerLeft,
+          backgroundColor: Colors.transparent,
+          builder: (ctx) => GlassContainer(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            color: Theme.of(context).cardColor,
+            blur: 15,
+            opacity: Theme.of(context).brightness == Brightness.dark ? 0.3 : 0.6,
+            child: SafeArea(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    margin: const EdgeInsets.symmetric(vertical: 8),
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                if (isMe && message.type == MessageType.text)
-                  const SizedBox(height: 8),
-                if (isMe)
-                  ElevatedButton.icon(
-                    onPressed: () async {
+                  ListTile(
+                    leading: const Icon(Icons.reply, color: AppColors.primary),
+                    title: Text(isRtl ? 'رد' : 'Reply'),
+                    onTap: () {
                       Navigator.pop(ctx);
-                      final scaffoldMessenger = ScaffoldMessenger.of(context);
-                      try {
-                        await context.read<ChatProvider>().deleteMessage(
-                              message.id,
-                              chatId: chat.id,
-                            );
-                        if (!mounted) return;
-                        scaffoldMessenger.showSnackBar(
-                          SnackBar(
-                            content: Text(isRtl ? 'تم حذف الرسالة' : 'Message deleted'),
-                            duration: const Duration(seconds: 2),
-                          ),
-                        );
-                      } catch (e) {
-                        debugPrint('Error deleting message: $e');
-                        if (!mounted) return;
-                        scaffoldMessenger.showSnackBar(
-                          SnackBar(
-                            content: Text(isRtl ? 'فشل حذف الرسالة' : 'Failed to delete message'),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
+                      if (widget.onReply != null) {
+                        widget.onReply!(message);
                       }
                     },
-                    icon: const Icon(Icons.delete, color: Colors.white),
-                    label: Text(isRtl ? 'حذف الرسالة' : 'Delete Message'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
-                      foregroundColor: Colors.white,
-                      alignment: isRtl ? Alignment.centerRight : Alignment.centerLeft,
+                  ),
+                  if (message.type == MessageType.text)
+                    ListTile(
+                      leading: const Icon(Icons.copy, color: Colors.blue),
+                      title: Text(isRtl ? 'نسخ النص' : 'Copy Text'),
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        Clipboard.setData(ClipboardData(text: message.content));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(isRtl ? 'تم النسخ إلى الحافظة' : 'Copied to clipboard'), duration: const Duration(seconds: 1)),
+                        );
+                      },
                     ),
-                  ),
-                if (isMe)
-                  const SizedBox(height: 8),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.pop(ctx);
-                    setState(() => _isHidden = true);
-                  },
-                  icon: const Icon(Icons.visibility_off, color: Colors.white),
-                  label: Text(isRtl ? 'إخفاء الرسالة' : 'Hide Message'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.grey[700],
-                    foregroundColor: Colors.white,
-                    alignment: isRtl ? Alignment.centerRight : Alignment.centerLeft,
-                  ),
-                ),
-                if (message.type == MessageType.file || message.type == MessageType.image) ...[
-                  const SizedBox(height: 8),
-                  ElevatedButton.icon(
-                    onPressed: () {
+                  if (message.type == MessageType.file || message.type == MessageType.image)
+                    ListTile(
+                      leading: const Icon(Icons.download, color: Colors.green),
+                      title: Text(isRtl ? 'تنزيل المرفق' : 'Download Attachment'),
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        if (message.type == MessageType.file && message.attachmentUrl != null) {
+                          FileDownloadService.downloadAndOpen(
+                            context: context,
+                            url: message.attachmentUrl!,
+                            fileName: message.attachmentName ?? 'ملف',
+                          );
+                        } else if (message.type == MessageType.image && message.attachmentUrl != null) {
+                          FileDownloadService.downloadAndOpen(
+                            context: context,
+                            url: message.attachmentUrl!,
+                            fileName: 'image_${message.id}.jpg',
+                          );
+                        }
+                      },
+                    ),
+                  if (isMe && message.type == MessageType.text)
+                    ListTile(
+                      leading: const Icon(Icons.edit, color: Colors.orange),
+                      title: Text(isRtl ? 'تعديل' : 'Edit'),
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        _showEditMessageDialog(context, isRtl);
+                      },
+                    ),
+                  ListTile(
+                    leading: const Icon(Icons.visibility_off, color: Colors.grey),
+                    title: Text(isRtl ? 'إخفاء لدي' : 'Hide for me'),
+                    onTap: () {
                       Navigator.pop(ctx);
-                      if (message.type == MessageType.file && message.attachmentUrl != null) {
-                        FileDownloadService.downloadAndOpen(
-                          context: context,
-                          url: message.attachmentUrl!,
-                          fileName: message.attachmentName ?? 'ملف',
-                        );
-                      } else if (message.type == MessageType.image && message.attachmentUrl != null) {
-                        FileDownloadService.downloadAndOpen(
-                          context: context,
-                          url: message.attachmentUrl!,
-                          fileName: 'image_${message.id}.jpg',
-                        );
-                      }
+                      setState(() => _isHidden = true);
                     },
-                    icon: const Icon(Icons.download, color: Colors.white),
-                    label: Text(isRtl ? 'إعادة التنزيل' : 'Redownload'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      alignment: isRtl ? Alignment.centerRight : Alignment.centerLeft,
-                    ),
                   ),
+                  if (isMe)
+                    ListTile(
+                      leading: const Icon(Icons.delete, color: Colors.red),
+                      title: Text(isRtl ? 'حذف' : 'Delete', style: const TextStyle(color: Colors.red)),
+                      onTap: () async {
+                        Navigator.pop(ctx);
+                        final scaffoldMessenger = ScaffoldMessenger.of(context);
+                        try {
+                          await context.read<ChatProvider>().deleteMessage(
+                                message.id,
+                                chatId: chat.id,
+                              );
+                          if (!mounted) return;
+                          scaffoldMessenger.showSnackBar(
+                            SnackBar(
+                              content: Text(isRtl ? 'تم حذف الرسالة' : 'Message deleted'),
+                              duration: const Duration(seconds: 2),
+                            ),
+                          );
+                        } catch (e) {
+                          debugPrint('Error deleting message: $e');
+                          if (!mounted) return;
+                          scaffoldMessenger.showSnackBar(
+                            SnackBar(
+                              content: Text(isRtl ? 'فشل حذف الرسالة' : 'Failed to delete message'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      },
+                    ),
                 ],
-              ],
+              ),
             ),
           ),
         );
       },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Column(
-          crossAxisAlignment: alignment,
-          children: [
-            Container(
+      child: Align(
+        alignment: isMe ? AlignmentDirectional.centerEnd : AlignmentDirectional.centerStart,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Column(
+            crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+            children: [
+            ConstrainedBox(
               constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
+              child: GlassContainer(
+                padding: const EdgeInsets.all(12),
+                blur: 15,
+                opacity: isMe ? 0.9 : (Theme.of(context).brightness == Brightness.dark ? 0.3 : 0.6),
                 color: color,
                 borderRadius: borderRadius,
-              ),
-              child: Stack(
+                child: Stack(
                 clipBehavior: Clip.none,
                 children: [
                   _buildMessageContent(context, textColor),
@@ -951,6 +1108,7 @@ class _MessageBubbleState extends State<MessageBubble> {
                 ],
               ),
             ),
+            ),
             Padding(
               padding: const EdgeInsets.only(top: 2, left: 4, right: 4),
               child: Row(
@@ -973,12 +1131,22 @@ class _MessageBubbleState extends State<MessageBubble> {
                       style: const TextStyle(fontSize: 10, color: Colors.grey, fontStyle: FontStyle.italic),
                     ),
                   ],
+                  if (isMe && !message.isUploading) ...[
+                    const SizedBox(width: 4),
+                    Icon(
+                      message.isRead ? Icons.done_all : Icons.done,
+                      size: 14,
+                      color: message.isRead ? Colors.blue : Colors.grey,
+                    ),
+                  ],
                 ],
               ),
             ),
           ],
         ),
       ),
+    ),
+    ),
     );
   }
 
@@ -986,36 +1154,60 @@ class _MessageBubbleState extends State<MessageBubble> {
     final controller = TextEditingController(text: message.content);
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(isRtl ? 'تعديل الرسالة' : 'Edit Message'),
-        content: TextField(
-          controller: controller,
-          maxLines: null,
-          decoration: InputDecoration(
-            hintText: isRtl ? 'اكتب رسالتك هنا...' : 'Type your message...',
-            border: const OutlineInputBorder(),
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        child: GlassContainer(
+          borderRadius: BorderRadius.circular(20),
+          blur: 15,
+          opacity: Theme.of(context).brightness == Brightness.dark ? 0.3 : 0.6,
+          color: Theme.of(context).cardColor,
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(isRtl ? 'تعديل الرسالة' : 'Edit Message', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              TextField(
+                controller: controller,
+                maxLines: null,
+                decoration: InputDecoration(
+                  hintText: isRtl ? 'اكتب رسالتك هنا...' : 'Type your message...',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(onPressed: () => Navigator.pop(ctx), child: Text(isRtl ? 'إلغاء' : 'Cancel')),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: () async {
+                      final chatProvider = context.read<ChatProvider>();
+                      final newText = controller.text.trim();
+                      final currentContext = context;
+                      if (newText.isNotEmpty && newText != message.content) {
+                        await chatProvider.editMessage(
+                              message.id,
+                              newText,
+                              chatId: chat.id,
+                            );
+                      }
+                      if (!mounted) return;
+                        Navigator.pop(currentContext);
+                    },
+                    child: Text(isRtl ? 'حفظ' : 'Save'),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(isRtl ? 'إلغاء' : 'Cancel')),
-          ElevatedButton(
-            onPressed: () async {
-              final chatProvider = context.read<ChatProvider>();
-              final newText = controller.text.trim();
-              final currentContext = context;
-              if (newText.isNotEmpty && newText != message.content) {
-                await chatProvider.editMessage(
-                      message.id,
-                      newText,
-                      chatId: chat.id,
-                    );
-              }
-              if (!mounted) return;
-                Navigator.pop(currentContext);
-            },
-            child: Text(isRtl ? 'حفظ' : 'Save'),
-          ),
-        ],
       ),
     );
   }
@@ -1187,11 +1379,11 @@ class _MessageBubbleState extends State<MessageBubble> {
     if (message.contractStatus == 'accepted') {
       statusIcon = Icons.check_circle;
       statusColor = Colors.green;
-      statusText = 'مقبول';
+      statusText = 'مقبول وبدأ العمل';
     } else if (message.contractStatus == 'rejected') {
       statusIcon = Icons.cancel;
       statusColor = Colors.red;
-      statusText = 'مرفوض';
+      statusText = 'تم الرفض';
     } else if (message.contractStatus == 'cancel_requested') {
       statusIcon = Icons.warning_amber_rounded;
       statusColor = Colors.deepOrange;
@@ -1199,169 +1391,269 @@ class _MessageBubbleState extends State<MessageBubble> {
     } else if (message.contractStatus == 'cancelled') {
       statusIcon = Icons.cancel_schedule_send;
       statusColor = Colors.grey;
-      statusText = 'ملغى';
+      statusText = 'تم الإلغاء';
     }
 
     final currentUserId = context.read<AuthProvider>().user?.id;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      width: 250,
-      padding: const EdgeInsets.all(12),
+      width: 280,
+      margin: const EdgeInsets.only(top: 4, bottom: 4),
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: statusColor, width: 2),
+        color: isDark ? const Color(0xFF1E2736) : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(color: statusColor.withValues(alpha: 0.5), width: 1.5),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              Icon(Icons.handshake, color: AppColors.primary, size: 24),
-              const SizedBox(width: 8),
-              const Text('إدارة الاتفاق', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87)),
-            ],
-          ),
-          const Divider(),
-          LinkableText(text: 'الوصف: ${message.contractDetails}', style: const TextStyle(color: Colors.black87)),
-          const SizedBox(height: 8),
-          Text('السعر: ${message.contractPrice} SDG', style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.secondary)),
-          const Divider(),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Icon(statusIcon, color: statusColor, size: 16),
-                  const SizedBox(width: 4),
-                  Text(statusText, style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 12)),
-                ],
+          // Header (Gradient)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [AppColors.primary, AppColors.primary.withValues(alpha: 0.8)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
-              if (!isMe && message.contractStatus == 'pending')
-                ElevatedButton(
-                  onPressed: () async {
-                    // Show a simple loading indicator dialog
-                    showDialog(
-                      context: context,
-                      barrierDismissible: false,
-                      builder: (ctx) => const Center(child: CircularProgressIndicator()),
-                    );
-
-                    try {
-                      // Extract details for the job
-                      final freelancerId = message.senderId;
-                      final freelancerName = chat.participantNames[freelancerId] ?? 'مستقل';
-                      
-                      final clientId = currentUserId ?? '';
-                      final clientName = chat.participantNames[clientId] ?? 'عميل';
-                      final clientImageUrl = chat.participantImages[clientId];
-
-                      // 1. Start the Project
-                      final jobProvider = context.read<JobProvider>();
-                      final chatProvider = context.read<ChatProvider>();
-                      final jobId = await jobProvider.startProject(
-                        clientId: clientId,
-                        clientName: clientName,
-                        clientImageUrl: clientImageUrl,
-                        title: 'اتفاق عمل مع $freelancerName',
-                        description: message.contractDetails ?? 'تم إنشاء الاتفاق عبر الدردشة',
-                        price: message.contractPrice ?? 0.0,
-                        freelancerId: freelancerId,
-                        freelancerName: freelancerName,
-                      );
-
-                      if (jobId != null) {
-                        // 2. Update the contract status with the new job ID
-                        await chatProvider.updateContractStatus(message.id, 'accepted', jobId: jobId);
-                        if (!context.mounted) return;
-                        if (context.mounted) Navigator.pop(context); // Close loading dialog
-                        final scaffoldMessenger = ScaffoldMessenger.of(context);
-                        scaffoldMessenger.showSnackBar(
-                          const SnackBar(content: Text('تم إنشاء المشروع بنجاح!'), backgroundColor: Colors.green),
-                        );
-                      } else {
-                        if (!context.mounted) return;
-                        if (context.mounted) Navigator.pop(context); // Close loading dialog
-                        final scaffoldMessenger = ScaffoldMessenger.of(context);
-                        scaffoldMessenger.showSnackBar(
-                          const SnackBar(content: Text('حدث خطأ أثناء إنشاء المشروع'), backgroundColor: Colors.red),
-                        );
-                      }
-                    } catch (e) {
-                      if (context.mounted) if (context.mounted) Navigator.pop(context); // Close loading dialog
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
-                    minimumSize: const Size(0, 30),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), shape: BoxShape.circle),
+                  child: const Icon(Icons.handshake_rounded, color: Colors.white, size: 20),
+                ),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Text('عقد عمل ذكي', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
+                ),
+                Icon(statusIcon, color: Colors.white, size: 20),
+              ],
+            ),
+          ),
+          
+          // Body
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Description
+                Text('تفاصيل المهمة:', style: TextStyle(fontSize: 12, color: Colors.grey[600], fontWeight: FontWeight.bold)),
+                const SizedBox(height: 4),
+                LinkableText(text: message.contractDetails ?? '', style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 14, height: 1.5)),
+                
+                const SizedBox(height: 16),
+                
+                // Price Box
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppColors.secondary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.secondary.withValues(alpha: 0.3)),
                   ),
-                  child: const Text('موافقة', style: TextStyle(color: Colors.white, fontSize: 12)),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('المبلغ المتفق عليه:', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.secondary)),
+                      Text('${message.contractPrice} SDG', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppColors.secondary)),
+                    ],
+                  ),
                 ),
-            ],
-          ),
-          // Additional Actions
-          if (message.contractStatus == 'pending') ...[
-            const SizedBox(height: 8),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton(
-                onPressed: () => _showEditContractDialog(context),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 0),
-                  minimumSize: const Size(0, 30),
-                ),
-                child: const Text('طلب تعديل الاتفاق', style: TextStyle(fontSize: 12)),
-              ),
-            ),
-          ],
-          if (message.contractStatus == 'accepted') ...[
-            const SizedBox(height: 8),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  final jobId = message.jobId;
-                  if (jobId != null && context.mounted) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ActiveJobTrackingScreen(jobId: jobId),
+                
+                const SizedBox(height: 16),
+                
+                // Status line
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: statusColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(20),
                       ),
-                    );
-                  } else {
-                    final scaffoldMessenger = ScaffoldMessenger.of(context);
-                    scaffoldMessenger.showSnackBar(
-                      const SnackBar(content: Text('لم يتم العثور على المشروع')),
-                    );
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  padding: const EdgeInsets.symmetric(vertical: 0),
-                  minimumSize: const Size(0, 30),
+                      child: Text(statusText, style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 12)),
+                    ),
+                  ],
                 ),
-                child: const Text('إدارة المشروع', style: TextStyle(color: Colors.white, fontSize: 12)),
-              ),
+                
+                // Action Buttons
+                if (!isMe && message.contractStatus == 'pending') ...[
+                  const SizedBox(height: 16),
+                  const Divider(height: 1),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () async {
+                             await context.read<ChatProvider>().updateContractStatus(message.id, 'rejected');
+                          },
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.red,
+                            side: const BorderSide(color: Colors.red),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                          child: const Text('رفض', style: TextStyle(fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        flex: 2,
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            // Show a simple loading indicator dialog
+                            showDialog(
+                              context: context,
+                              barrierDismissible: false,
+                              builder: (ctx) => const Center(child: CircularProgressIndicator(color: Colors.white)),
+                            );
+
+                            try {
+                              // Extract details for the job
+                              final freelancerId = message.senderId;
+                              final freelancerName = chat.participantNames[freelancerId] ?? 'مستقل';
+                              
+                              final clientId = currentUserId ?? '';
+                              final clientName = chat.participantNames[clientId] ?? 'عميل';
+                              final clientImageUrl = chat.participantImages[clientId];
+
+                              // 1. Start the Project
+                              final jobProvider = context.read<JobProvider>();
+                              final chatProvider = context.read<ChatProvider>();
+                              final jobId = await jobProvider.startProject(
+                                clientId: clientId,
+                                clientName: clientName,
+                                clientImageUrl: clientImageUrl,
+                                title: 'عقد عمل مع $freelancerName',
+                                description: message.contractDetails ?? 'تم إنشاء الاتفاق عبر الدردشة',
+                                price: message.contractPrice ?? 0.0,
+                                freelancerId: freelancerId,
+                                freelancerName: freelancerName,
+                              );
+
+                              if (jobId != null) {
+                                // 2. Update the contract status with the new job ID
+                                await chatProvider.updateContractStatus(message.id, 'accepted', jobId: jobId);
+                                if (!context.mounted) return;
+                                Navigator.pop(context); // Close loading dialog
+                                final scaffoldMessenger = ScaffoldMessenger.of(context);
+                                scaffoldMessenger.showSnackBar(
+                                  const SnackBar(content: Text('تم توقيع العقد وبدء المشروع بنجاح! 🎉'), backgroundColor: Colors.green),
+                                );
+                              } else {
+                                if (!context.mounted) return;
+                                Navigator.pop(context); // Close loading dialog
+                                final scaffoldMessenger = ScaffoldMessenger.of(context);
+                                scaffoldMessenger.showSnackBar(
+                                  const SnackBar(content: Text('حدث خطأ أثناء إنشاء المشروع'), backgroundColor: Colors.red),
+                                );
+                              }
+                            } catch (e) {
+                              if (context.mounted) Navigator.pop(context); // Close loading dialog
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            elevation: 2,
+                          ),
+                          child: const Text('موافقة وبدء العمل', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+
+                // Additional Actions
+                if (message.contractStatus == 'pending') ...[
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: () => _showEditContractDialog(context),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      child: const Text('طلب تعديل الاتفاق', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ],
+                if (message.contractStatus == 'accepted') ...[
+                  const SizedBox(height: 16),
+                  const Divider(height: 1),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        final jobId = message.jobId;
+                        if (jobId != null && context.mounted) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ActiveJobTrackingScreen(jobId: jobId),
+                            ),
+                          );
+                        } else {
+                          final scaffoldMessenger = ScaffoldMessenger.of(context);
+                          scaffoldMessenger.showSnackBar(
+                            const SnackBar(content: Text('لم يتم العثور على المشروع')),
+                          );
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        elevation: 2,
+                      ),
+                      icon: const Icon(Icons.dashboard_customize, size: 18),
+                      label: const Text('متابعة مسار المشروع', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ],
+                if (message.contractStatus == 'cancel_requested' && message.cancelRequesterId != currentUserId) ...[
+                  const SizedBox(height: 16),
+                  const Divider(height: 1),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        context.read<ChatProvider>().updateContractStatus(message.id, 'cancelled');
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      icon: const Icon(Icons.cancel_schedule_send, size: 18),
+                      label: const Text('الموافقة على الإلغاء', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ]
+              ],
             ),
-          ],
-          if (message.contractStatus == 'cancel_requested' && message.cancelRequesterId != currentUserId) ...[
-            const SizedBox(height: 8),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  context.read<ChatProvider>().updateContractStatus(message.id, 'cancelled');
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  padding: const EdgeInsets.symmetric(vertical: 0),
-                  minimumSize: const Size(0, 30),
-                ),
-                child: const Text('الموافقة على الإلغاء', style: TextStyle(color: Colors.white, fontSize: 12)),
-              ),
-            ),
-          ]
+          ),
         ],
       ),
     );
@@ -1890,6 +2182,51 @@ class _FileMessageWidgetState extends State<_FileMessageWidget> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TypingDot extends StatefulWidget {
+  final int delay;
+  const _TypingDot({required this.delay});
+
+  @override
+  State<_TypingDot> createState() => _TypingDotState();
+}
+
+class _TypingDotState extends State<_TypingDot> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
+    Future.delayed(Duration(milliseconds: widget.delay), () {
+      if (mounted) _controller.repeat(reverse: true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: Tween<double>(begin: 0.2, end: 1.0).animate(_controller),
+      child: ScaleTransition(
+        scale: Tween<double>(begin: 0.8, end: 1.2).animate(_controller),
+        child: Container(
+          width: 6,
+          height: 6,
+          decoration: const BoxDecoration(
+            color: AppColors.primary,
+            shape: BoxShape.circle,
+          ),
         ),
       ),
     );

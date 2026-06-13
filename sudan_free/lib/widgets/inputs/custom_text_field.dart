@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
+import '../common/glass_container.dart';
 
 class CustomTextField extends StatelessWidget {
   final String? label;
@@ -67,25 +68,37 @@ class CustomTextField extends StatelessWidget {
           ),
           const SizedBox(height: 8),
         ],
-        TextFormField(
-          controller: controller,
-          validator: validator,
-          keyboardType: keyboardType,
-          obscureText: obscureText,
-          readOnly: readOnly,
-          maxLines: maxLines,
-          maxLength: maxLength,
-          onTap: onTap,
-          onChanged: onChanged,
-          onFieldSubmitted: onSubmitted,
-          textInputAction: textInputAction,
-          focusNode: focusNode,
-          autofocus: autofocus,
-          textDirection: textDirection,
-          decoration: InputDecoration(
-            hintText: hint,
-            prefixIcon: prefixIcon != null ? Icon(prefixIcon) : null,
-            suffixIcon: suffixIcon,
+        GlassContainer(
+          blur: 15,
+          opacity: Theme.of(context).brightness == Brightness.dark ? 0.2 : 0.05,
+          borderRadius: BorderRadius.circular(12),
+          child: TextFormField(
+            controller: controller,
+            validator: validator,
+            keyboardType: keyboardType,
+            obscureText: obscureText,
+            readOnly: readOnly,
+            maxLines: maxLines,
+            maxLength: maxLength,
+            onTap: onTap,
+            onChanged: onChanged,
+            onFieldSubmitted: onSubmitted,
+            textInputAction: textInputAction,
+            focusNode: focusNode,
+            autofocus: autofocus,
+            textDirection: textDirection,
+            decoration: InputDecoration(
+              hintText: hint,
+              prefixIcon: prefixIcon != null ? Icon(prefixIcon) : null,
+              suffixIcon: suffixIcon,
+              border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            ),
           ),
         ),
       ],
@@ -163,29 +176,36 @@ class SearchTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      onChanged: onChanged,
-      onSubmitted: onSubmitted,
-      decoration: InputDecoration(
-        hintText: hint ?? (Localizations.localeOf(context).languageCode == 'ar' ? 'بحث...' : 'Search...'),
-        prefixIcon: const Icon(Icons.search),
-        suffixIcon: controller?.text.isNotEmpty == true
-            ? IconButton(
-                icon: const Icon(Icons.clear),
-                onPressed: () {
-                  controller?.clear();
-                  onClear?.call();
-                },
-              )
-            : null,
-        filled: true,
-        fillColor: AppColors.background,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadius.full),
-          borderSide: BorderSide.none,
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return GlassContainer(
+      blur: 15,
+      opacity: isDark ? 0.2 : 0.05,
+      borderRadius: BorderRadius.circular(AppRadius.full),
+      child: TextField(
+        controller: controller,
+        onChanged: onChanged,
+        onSubmitted: onSubmitted,
+        decoration: InputDecoration(
+          hintText: hint ?? (Localizations.localeOf(context).languageCode == 'ar' ? 'بحث...' : 'Search...'),
+          prefixIcon: const Icon(Icons.search),
+          suffixIcon: controller?.text.isNotEmpty == true
+              ? IconButton(
+                  icon: const Icon(Icons.clear),
+                  onPressed: () {
+                    controller?.clear();
+                    onClear?.call();
+                  },
+                )
+              : null,
+          filled: false,
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppRadius.full),
+            borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+          ),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       ),
     );
   }

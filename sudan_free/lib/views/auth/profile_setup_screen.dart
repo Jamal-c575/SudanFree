@@ -18,6 +18,8 @@ import '../../widgets/inputs/custom_text_field.dart';
 import '../settings/privacy_policy_screen.dart';
 
 import 'identity_verification_screen.dart';
+import '../../widgets/common/glass_container.dart';
+import '../../providers/theme_provider.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
   final UserModel? existingUser;
@@ -762,11 +764,34 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
               : (locale == 'ar' ? 'إكمال الملف الشخصي' : 'Complete Profile')
         ),
         automaticallyImplyLeading: isEditing,
+        flexibleSpace: context.watch<ThemeProvider>().isGlassmorphismEnabled ? Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: Theme.of(context).brightness == Brightness.dark 
+                  ? [const Color(0xFF1A1A2E), const Color(0xFF16213E), const Color(0xFF0F3460)]
+                  : [const Color(0xFFE3FDFD), const Color(0xFFCBF1F5), const Color(0xFFA6E3E9)],
+            ),
+          ),
+        ) : null,
+        backgroundColor: Colors.transparent,
       ),
-      body: SafeArea(
-        child: Stepper(
-          type: StepperType.vertical,
-          currentStep: _currentStep.clamp(0, _totalSteps - 1), 
+      extendBodyBehindAppBar: true,
+      body: Container(
+        decoration: context.watch<ThemeProvider>().isGlassmorphismEnabled ? BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: Theme.of(context).brightness == Brightness.dark 
+                ? [const Color(0xFF1A1A2E), const Color(0xFF16213E), const Color(0xFF0F3460)]
+                : [const Color(0xFFE3FDFD), const Color(0xFFCBF1F5), const Color(0xFFA6E3E9)],
+          ),
+        ) : null,
+        child: SafeArea(
+          child: Stepper(
+            type: StepperType.vertical,
+            currentStep: _currentStep.clamp(0, _totalSteps - 1), 
           onStepTapped: (step) {
             // Apply validation before allowing jump forward
             if (step > _currentStep) {
@@ -928,6 +953,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           );
         },
         steps: _buildSteps(locale),
+          ),
         ),
       ),
     );
@@ -1943,15 +1969,15 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       borderRadius: BorderRadius.circular(AppRadius.md),
       child: Opacity(
         opacity: comingSoon ? 0.55 : 1.0,
-        child: Container(
+        child: GlassContainer(
           padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: isSelected ? color.withValues(alpha: 0.1) : null,
-            borderRadius: BorderRadius.circular(AppRadius.md),
-            border: Border.all(
-              color: isSelected ? color : AppColors.border,
-              width: isSelected ? 2 : 1,
-            ),
+          blur: 15,
+          opacity: isSelected ? 0.15 : 0.05,
+          color: isSelected ? color : Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(
+            color: isSelected ? color : AppColors.border.withValues(alpha: 0.3),
+            width: isSelected ? 2 : 1,
           ),
           child: Row(
             children: [

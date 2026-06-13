@@ -114,6 +114,32 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  // Remove Partner (Cancel Request / Remove Colleague)
+  Future<void> removePartner(String targetId) async {
+    if (_user == null) return;
+    try {
+      await _firestoreService.removePartner(_user!.id, targetId);
+
+      final updatedPartners = List<String>.from(_user!.partnerIds);
+      updatedPartners.remove(targetId);
+      
+      final updatedPending = List<String>.from(_user!.pendingPartnerIds);
+      updatedPending.remove(targetId);
+
+      _user = _user!.copyWith(
+        partnerIds: updatedPartners,
+        pendingPartnerIds: updatedPending,
+      );
+
+      _partners.removeWhere((p) => p.id == targetId);
+      
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error removing partner: $e');
+      rethrow;
+    }
+  }
+
   // Toggle Favorite User
   Future<void> toggleFavoriteUser(String targetUserId) async {
     if (_user == null) return;

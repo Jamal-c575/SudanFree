@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../models/user_model.dart';
 import '../../providers/search_provider.dart';
@@ -12,6 +13,7 @@ import '../../core/constants/app_colors.dart';
 import '../../services/smart_search_service.dart';
 import '../freelancers/browse_freelancers_screen.dart';
 import '../shops/browse_shops_screen.dart';
+import '../../widgets/common/glass_container.dart';
 
 class SmartSearchDelegate extends SearchDelegate<UserModel?> {
   final String? initialQuery;
@@ -80,12 +82,20 @@ class SmartSearchDelegate extends SearchDelegate<UserModel?> {
 
     // ── Use cached results if query/role hasn't changed ──
     if (_isSameSearch) {
-      return _buildResultsBody(
-        context: context,
-        results: _cachedResults!,
-        locale: locale,
-        currentUserId: currentUser?.id,
-        searchProvider: searchProvider,
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildFilters(context),
+          Expanded(
+            child: _buildResultsBody(
+              context: context,
+              results: _cachedResults!,
+              locale: locale,
+              currentUserId: currentUser?.id,
+              searchProvider: searchProvider,
+            ),
+          ),
+        ],
       );
     }
 
@@ -136,39 +146,31 @@ class SmartSearchDelegate extends SearchDelegate<UserModel?> {
     final isAr = locale == 'ar';
 
     if (results.isEmpty) {
-      return Column(
-        children: [
-          _buildFilters(context),
-          Expanded(
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.search_off, size: 64, color: Colors.grey[300]),
-                  const SizedBox(height: 16),
-                  Text(
-                    isAr ? 'لا توجد نتائج لـ "$query"' : 'No results for "$query"',
-                    style: TextStyle(color: Colors.grey[600], fontSize: 16),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    isAr
-                        ? 'جرّب كلمات أخرى أو تحقق من الإملاء'
-                        : 'Try different keywords or check spelling',
-                    style: TextStyle(color: Colors.grey[400], fontSize: 13),
-                  ),
-                ],
-              ),
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.search_off, size: 64, color: Colors.grey[300]),
+            const SizedBox(height: 16),
+            Text(
+              isAr ? 'لا توجد نتائج لـ "$query"' : 'No results for "$query"',
+              style: TextStyle(color: Colors.grey[600], fontSize: 16),
             ),
-          ),
-        ],
+            const SizedBox(height: 8),
+            Text(
+              isAr
+                  ? 'جرّب كلمات أخرى أو تحقق من الإملاء'
+                  : 'Try different keywords or check spelling',
+              style: TextStyle(color: Colors.grey[400], fontSize: 13),
+            ),
+          ],
+        ),
       );
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildFilters(context),
         // ── Pinned average price card ──
         _MarketPriceCard(results: results, query: query, locale: locale),
         Padding(
@@ -200,35 +202,59 @@ class SmartSearchDelegate extends SearchDelegate<UserModel?> {
       child: Row(
         children: [
           Expanded(
-            child: ElevatedButton.icon(
-              onPressed: () => Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => const BrowseFreelancersScreen())),
-              icon: const Icon(Icons.handyman, size: 18),
-              label: Text(isAr ? 'الحرفيين' : 'Freelancers',
-                  style: const TextStyle(fontWeight: FontWeight.bold)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
+            child: GlassContainer(
+              borderRadius: BorderRadius.circular(12),
+              color: AppColors.primary,
+              opacity: 0.15,
+              blur: 15,
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => Navigator.push(context,
+                      MaterialPageRoute(builder: (_) => const BrowseFreelancersScreen())),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.handyman, size: 18, color: AppColors.primary),
+                        const SizedBox(width: 8),
+                        Text(isAr ? 'الحرفيين' : 'Freelancers',
+                            style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary)),
+                      ],
+                    ),
+                  ),
+                ),
               ),
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: ElevatedButton.icon(
-              onPressed: () => Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => const BrowseShopsScreen())),
-              icon: const Icon(Icons.storefront, size: 18),
-              label: Text(isAr ? 'المتاجر' : 'Shops',
-                  style: const TextStyle(fontWeight: FontWeight.bold)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.secondary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
+            child: GlassContainer(
+              borderRadius: BorderRadius.circular(12),
+              color: AppColors.secondary,
+              opacity: 0.15,
+              blur: 15,
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => Navigator.push(context,
+                      MaterialPageRoute(builder: (_) => const BrowseShopsScreen())),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.storefront, size: 18, color: AppColors.secondary),
+                        const SizedBox(width: 8),
+                        Text(isAr ? 'المتاجر' : 'Shops',
+                            style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.secondary)),
+                      ],
+                    ),
+                  ),
+                ),
               ),
             ),
           ),
@@ -242,6 +268,10 @@ class SmartSearchDelegate extends SearchDelegate<UserModel?> {
     final locale = context.read<LocaleProvider>().locale.languageCode;
     final isAr = locale == 'ar';
 
+    if (query.isEmpty && selectedRole != null) {
+      return buildResults(context);
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -250,9 +280,6 @@ class SmartSearchDelegate extends SearchDelegate<UserModel?> {
           child: Builder(builder: (context) {
             if (query.isEmpty && selectedRole == null) {
               return _buildEmptyState(context, isAr);
-            }
-            if (query.isEmpty && selectedRole != null) {
-              return buildResults(context);
             }
             return _DelayedSuggestionsWidget(
               query: query,
@@ -422,27 +449,15 @@ class _MarketPriceCard extends StatelessWidget {
           .key;
     }
 
-    return Container(
+    return GlassContainer(
       margin: const EdgeInsets.fromLTRB(16, 4, 16, 4),
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: isDark
-              ? [
-                  AppColors.primary.withValues(alpha: 0.25),
-                  AppColors.success.withValues(alpha: 0.15),
-                ]
-              : [
-                  AppColors.primary.withValues(alpha: 0.08),
-                  AppColors.success.withValues(alpha: 0.05),
-                ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppColors.primary.withValues(alpha: isDark ? 0.4 : 0.2),
-        ),
+      borderRadius: BorderRadius.circular(16),
+      blur: 15,
+      opacity: isDark ? 0.25 : 0.08,
+      color: AppColors.primary,
+      border: Border.all(
+        color: AppColors.primary.withValues(alpha: isDark ? 0.4 : 0.2),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -493,7 +508,7 @@ class _MarketPriceCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  '${avg.toStringAsFixed(0)} SDG',
+                  '${NumberFormat('#,##0').format(avg)} SDG',
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -509,20 +524,20 @@ class _MarketPriceCard extends StatelessWidget {
             children: [
               _StatChip(
                 label: isAr ? 'الأدنى' : 'Min',
-                value: '${min.toStringAsFixed(0)} SDG',
+                value: '${NumberFormat('#,##0').format(min)} SDG',
                 color: Colors.blue,
               ),
               const SizedBox(width: 8),
               _StatChip(
                 label: isAr ? 'المتوسط' : 'Avg',
-                value: '${avg.toStringAsFixed(0)} SDG',
+                value: '${NumberFormat('#,##0').format(avg)} SDG',
                 color: AppColors.success,
                 highlight: true,
               ),
               const SizedBox(width: 8),
               _StatChip(
                 label: isAr ? 'الأعلى' : 'Max',
-                value: '${max.toStringAsFixed(0)} SDG',
+                value: '${NumberFormat('#,##0').format(max)} SDG',
                 color: Colors.orange,
               ),
               const Spacer(),

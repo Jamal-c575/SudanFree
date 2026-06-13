@@ -28,6 +28,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'post_details_screen.dart';
 import '../../services/smart_guide_service.dart';
 import '../../widgets/buttons/smart_draggable_fab.dart';
+import '../../widgets/common/glass_container.dart';
 
 class PostsFeedScreen extends StatefulWidget {
   const PostsFeedScreen({super.key});
@@ -248,11 +249,10 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
   }
 
   List<PostModel> _filterPosts(List<PostModel> posts) {
-    if (_searchQuery.isEmpty && _selectedGroup == null) {
-      return List<PostModel>.from(posts)
-        ..sort((a, b) => _sortScore(b).compareTo(_sortScore(a)));
-    }
+    final blockedUsers = context.read<AuthProvider>().user?.blockedUsers ?? [];
+    
     final filtered = posts.where((post) {
+      if (blockedUsers.contains(post.userId)) return false;
       if (_searchQuery.isNotEmpty) {
         final query = SmartSearchService.normalizeArabic(_searchQuery.toLowerCase());
         final postCaption = post.caption != null
@@ -434,9 +434,7 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
                         ? _searchQuery.isNotEmpty || _selectedGroup != null
                             ? _buildNoSearchResults(context, locale)
                             : _buildEmptyState(context, locale, canPost)
-                        : postsProvider.isLoading && posts.isNotEmpty 
-                            ? const Column(children: [LinearProgressIndicator(), SizedBox(height: 10)])
-                            : RefreshIndicator(
+                        : RefreshIndicator(
                             onRefresh: () async {
                               setState(() => _isFirstLoad = false);
                               _fetchAds();
@@ -451,6 +449,7 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
                               final navBarTop = navBarMargin + navBarHeight;
 
                               return ListView.builder(
+                                key: const PageStorageKey('posts_feed_list'),
                                 padding: EdgeInsets.only(top: 6, bottom: navBarTop + 80),
                                 cacheExtent: 1200, // زيادة العمق المخزَّن للتمرير السلس
                                 itemCount: mixedFeed.length + 1, // +1 للـ footer
@@ -561,26 +560,13 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
       child: GestureDetector(
         onTap: onTap,
         onLongPress: onLongPress,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOutBack,
+        child: GlassContainer(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-          decoration: BoxDecoration(
-            color: isSelected ? AppColors.primary : Colors.transparent,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: isSelected ? AppColors.primary : AppColors.border,
-            ),
-            boxShadow: isSelected
-                ? [
-                    BoxShadow(
-                      color: AppColors.primary.withValues(alpha: 0.3),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    )
-                  ]
-                : [],
-          ),
+          borderRadius: BorderRadius.circular(20),
+          blur: 15,
+          opacity: isSelected ? (Theme.of(context).brightness == Brightness.dark ? 0.3 : 0.4) : (Theme.of(context).brightness == Brightness.dark ? 0.1 : 0.2),
+          color: isSelected ? AppColors.primary : Theme.of(context).cardColor,
+          border: Border.all(color: AppColors.primary.withValues(alpha: isSelected ? 0.5 : 0.1)),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [

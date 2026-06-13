@@ -14,7 +14,7 @@ initializeApp();
 const db = getFirestore();
 const authAdmin = getAuth();
 const storage = getStorage();
-const getBucket = () => storage.bucket('sudanfree-d04fc.appspot.com');
+const getBucket = () => storage.bucket('sudanfree-d04fc.firebasestorage.app');
 const messaging = getMessaging();
 
 // Development flag: set IS_PRODUCTION=true in prod env

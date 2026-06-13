@@ -10,6 +10,7 @@ import '../profile/squad_profile_screen.dart';
 import 'create_squad_screen.dart';
 import '../../widgets/buttons/smart_draggable_fab.dart';
 import '../../core/constants/sudan_locations.dart';
+import '../../widgets/common/glass_container.dart';
 
 class SquadsExplorerScreen extends StatefulWidget {
   const SquadsExplorerScreen({super.key});
@@ -48,30 +49,33 @@ class _SquadsExplorerScreenState extends State<SquadsExplorerScreen> {
               // Search Bar
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                child: TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    hintText: isAr ? 'ابحث عن مجموعة...' : 'Search squads...',
-                    prefixIcon: const Icon(Icons.search),
-                    suffixIcon: _searchQuery.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear),
-                            onPressed: () {
-                              _searchController.clear();
-                              setState(() => _searchQuery = '');
-                            },
-                          )
-                        : null,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
+                child: GlassContainer(
+                  borderRadius: BorderRadius.circular(12),
+                  blur: 15,
+                  opacity: Theme.of(context).brightness == Brightness.dark ? 0.3 : 0.6,
+                  color: Theme.of(context).cardColor,
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      hintText: isAr ? 'ابحث عن مجموعة...' : 'Search squads...',
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: _searchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() => _searchQuery = '');
+                              },
+                            )
+                          : null,
+                      border: InputBorder.none,
+                      filled: true,
+                      fillColor: Colors.transparent,
                     ),
-                    filled: true,
-                    fillColor: Theme.of(context).cardColor,
+                    onChanged: (value) {
+                      setState(() => _searchQuery = value);
+                    },
                   ),
-                  onChanged: (value) {
-                    setState(() => _searchQuery = value);
-                  },
                 ),
               ),
               // Category Filter
@@ -88,15 +92,13 @@ class _SquadsExplorerScreenState extends State<SquadsExplorerScreen> {
                     padding: const EdgeInsets.only(right: 8),
                     child: GestureDetector(
                       onTap: () => setState(() => _selectedCategory = null),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeOutCubic,
+                      child: GlassContainer(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: isSelected ? AppColors.primary.withValues(alpha: 0.12) : Colors.transparent,
-                          borderRadius: BorderRadius.circular(16),
-                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        blur: 15,
+                        opacity: isSelected ? (Theme.of(context).brightness == Brightness.dark ? 0.3 : 0.4) : (Theme.of(context).brightness == Brightness.dark ? 0.1 : 0.2),
+                        color: isSelected ? AppColors.primary : Theme.of(context).cardColor,
+                        border: Border.all(color: AppColors.primary.withValues(alpha: isSelected ? 0.5 : 0.1)),
                         child: AnimatedDefaultTextStyle(
                           duration: const Duration(milliseconds: 200),
                           style: TextStyle(
@@ -105,7 +107,7 @@ class _SquadsExplorerScreenState extends State<SquadsExplorerScreen> {
                             color: isSelected ? AppColors.primary : Theme.of(context).textTheme.bodyMedium?.color?.withValues(alpha: 0.6) ?? Colors.grey,
                             fontFamily: 'Cairo',
                           ),
-                          child: Text(isAr ? 'الكل' : 'All'),
+                          child: Center(child: Text(isAr ? 'الكل' : 'All')),
                         ),
                       ),
                     ),
@@ -117,15 +119,13 @@ class _SquadsExplorerScreenState extends State<SquadsExplorerScreen> {
                   padding: const EdgeInsets.only(right: 8),
                   child: GestureDetector(
                     onTap: () => setState(() => _selectedCategory = isSelected ? null : cat),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeOutCubic,
+                    child: GlassContainer(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: isSelected ? AppColors.primary.withValues(alpha: 0.12) : Colors.transparent,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      blur: 15,
+                      opacity: isSelected ? (Theme.of(context).brightness == Brightness.dark ? 0.3 : 0.4) : (Theme.of(context).brightness == Brightness.dark ? 0.1 : 0.2),
+                      color: isSelected ? AppColors.primary : Theme.of(context).cardColor,
+                      border: Border.all(color: AppColors.primary.withValues(alpha: isSelected ? 0.5 : 0.1)),
                       child: AnimatedDefaultTextStyle(
                         duration: const Duration(milliseconds: 200),
                         style: TextStyle(
@@ -134,7 +134,7 @@ class _SquadsExplorerScreenState extends State<SquadsExplorerScreen> {
                           color: isSelected ? AppColors.primary : Theme.of(context).textTheme.bodyMedium?.color?.withValues(alpha: 0.6) ?? Colors.grey,
                           fontFamily: 'Cairo',
                         ),
-                        child: Text(cat.getName(locale)),
+                        child: Center(child: Text(cat.getName(locale))),
                       ),
                     ),
                   ),
@@ -170,11 +170,12 @@ class _SquadsExplorerScreenState extends State<SquadsExplorerScreen> {
                   itemCount: filteredDocs.length,
                   itemBuilder: (context, index) {
                     final squad = SquadModel.fromFirestore(filteredDocs[index]);
-                    return Card(
+                    return GlassContainer(
                       margin: const EdgeInsets.only(bottom: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      elevation: 4,
-                      shadowColor: Colors.black26,
+                      blur: 15,
+                      opacity: Theme.of(context).brightness == Brightness.dark ? 0.3 : 0.6,
+                      borderRadius: BorderRadius.circular(16),
+                      color: Theme.of(context).cardColor,
                       child: ListTile(
                         contentPadding: const EdgeInsets.all(16),
                         leading: CircleAvatar(
@@ -258,7 +259,7 @@ class _SquadsExplorerScreenState extends State<SquadsExplorerScreen> {
           ),
         ],
       ),
-      if (user != null && user.role != UserRole.client)
+      if (user != null && user.role != UserRole.client && user.role != UserRole.shop)
         FutureBuilder<QuerySnapshot>(
           future: FirebaseFirestore.instance
               .collection('squads')

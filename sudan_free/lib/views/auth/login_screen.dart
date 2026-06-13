@@ -7,6 +7,7 @@ import '../../widgets/buttons/primary_button.dart';
 import '../../widgets/inputs/custom_text_field.dart';
 import 'register_screen.dart';
 import '../settings/privacy_policy_screen.dart';
+import '../../widgets/common/glass_container.dart';
 
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -498,20 +499,13 @@ class _GoogleSignInButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF2D2D2D) : Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isDark ? Colors.white12 : Colors.grey.shade300,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.06),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
+    return GlassContainer(
+      blur: 15,
+      opacity: isDark ? 0.2 : 0.05,
+      color: isDark ? const Color(0xFF2D2D2D) : Colors.white,
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(
+        color: isDark ? Colors.white12 : Colors.grey.shade300,
       ),
       child: Material(
         color: Colors.transparent,
@@ -616,17 +610,13 @@ class _FacebookSignInButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Opacity(
       opacity: 0.7,
-      child: Container(
-        decoration: BoxDecoration(
-          color: const Color(0xFF1877F2), // Facebook Blue
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF1877F2).withValues(alpha: 0.3),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-            ),
-          ],
+      child: GlassContainer(
+        blur: 15,
+        opacity: 0.2,
+        color: const Color(0xFF1877F2), // Facebook Blue
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: const Color(0xFF1877F2).withValues(alpha: 0.5),
         ),
         child: Material(
           color: Colors.transparent,

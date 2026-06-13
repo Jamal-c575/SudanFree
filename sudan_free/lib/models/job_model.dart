@@ -72,6 +72,7 @@ class MilestoneModel {
   final double amount;
   final bool isPaid;
   final bool isCompleted;
+  final bool isConfirmed; // Freelancer confirms receiving payment
   final DateTime? completedAt;
 
   MilestoneModel({
@@ -80,6 +81,7 @@ class MilestoneModel {
     required this.amount,
     this.isPaid = false,
     this.isCompleted = false,
+    this.isConfirmed = false,
     this.completedAt,
   });
 
@@ -90,6 +92,7 @@ class MilestoneModel {
       amount: (map['amount'] as num?)?.toDouble() ?? 0,
       isPaid: map['isPaid'] ?? false,
       isCompleted: map['isCompleted'] ?? false,
+      isConfirmed: map['isConfirmed'] ?? false,
       completedAt: (map['completedAt'] as Timestamp?)?.toDate(),
     );
   }
@@ -101,6 +104,7 @@ class MilestoneModel {
       'amount': amount,
       'isPaid': isPaid,
       'isCompleted': isCompleted,
+      'isConfirmed': isConfirmed,
       'completedAt': completedAt != null ? Timestamp.fromDate(completedAt!) : null,
     };
   }

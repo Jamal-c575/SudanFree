@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../services/smart_search_service.dart';
+import '../common/glass_container.dart';
 
 /// حقل بحث ذكي مع اقتراحات تلقائية بأسلوب جوجل
 /// يعمل مع صفحات الحرفيين والمتاجر والمجتمع
@@ -262,14 +263,15 @@ class _SmartSearchFieldState extends State<SmartSearchField> {
                 constraints: BoxConstraints(
                   maxHeight: _suggestions.length * 52.0 + 16,
                 ),
-                decoration: BoxDecoration(
+                child: GlassContainer(
                   color: Theme.of(context).cardColor,
+                  opacity: Theme.of(context).brightness == Brightness.dark ? 0.3 : 0.6,
+                  blur: 15,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color: accent.withValues(alpha: 0.15),
                   ),
-                ),
-                child: ClipRRect(
+                  child: ClipRRect(
                   borderRadius: BorderRadius.circular(12),
                   child: ListView.builder(
                     padding: const EdgeInsets.symmetric(vertical: 8),
@@ -341,6 +343,7 @@ class _SmartSearchFieldState extends State<SmartSearchField> {
               ),
             ),
           ),
+          ),
         ),
       ),
     );
@@ -365,8 +368,16 @@ class _SmartSearchFieldState extends State<SmartSearchField> {
       },
       child: CompositedTransformTarget(
         link: _layerLink,
-        child: SizedBox(
+        child: GlassContainer(
           height: 40,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: _hasFocus ? accent : AppColors.border.withValues(alpha: 0.3),
+            width: _hasFocus ? 1.5 : 1.0,
+          ),
+          color: Theme.of(context).cardColor,
+          opacity: Theme.of(context).brightness == Brightness.dark ? 0.3 : 0.6,
+          blur: 15,
           child: TextField(
             controller: _controller,
             focusNode: _focusNode,
@@ -385,18 +396,9 @@ class _SmartSearchFieldState extends State<SmartSearchField> {
                 color: AppColors.textSecondary.withValues(alpha: 0.6),
               ),
               prefixIcon: Icon(Icons.search, size: 20, color: _hasFocus ? accent : AppColors.textSecondary),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: AppColors.border.withValues(alpha: 0.3)),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: AppColors.border.withValues(alpha: 0.3)),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: accent, width: 1.5),
-              ),
+              border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
               isDense: true,
               contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
               suffixIcon: _controller.text.isNotEmpty

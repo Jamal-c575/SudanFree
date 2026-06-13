@@ -345,6 +345,7 @@ class _ApprenticesDashboardScreenState extends State<ApprenticesDashboardScreen>
                                       apprenticeName: apprentice.name,
                                       masterId: master.id,
                                       masterName: master.name,
+                                      clientId: job.clientId,
                                     );
                                     if (success) {
                                       Navigator.pop(ctx);

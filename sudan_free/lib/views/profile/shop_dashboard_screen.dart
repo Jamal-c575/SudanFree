@@ -146,11 +146,32 @@ class ShopDashboardScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  shop.name,
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        shop.name,
+                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(
+                        shop.isPremium ? Icons.workspace_premium : Icons.workspace_premium_outlined,
+                        color: shop.isPremium ? const Color(0xFFD4AF37) : Colors.grey,
+                        size: 28,
+                      ),
+                      onPressed: () {
+                        if (!shop.isPremium) {
+                          _showPremiumUpgradeBottomSheet(context, AppLocalizations.of(context)!);
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(AppLocalizations.of(context)!.localeName == 'ar' ? 'أنت تستمتع بكافة الميزات الملكية 👑' : 'You are enjoying all royal features 👑'))
+                          );
+                        }
+                      },
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 4),
                 Text(
                   shop.getShopCategoryName(AppLocalizations.of(context)!.localeName),
                   style: TextStyle(color: Colors.grey[600], fontSize: 14),
@@ -204,6 +225,170 @@ class ShopDashboardScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildPremiumPromotionCard(BuildContext context, AppLocalizations l10n, bool isDark) {
+    if (shop.isPremium) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFFD4AF37), Color(0xFFF9E596)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.star, color: Colors.white, size: 40),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    l10n.localeName == 'ar' ? 'متجرك مميز! 👑' : 'Premium Store! 👑',
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    l10n.localeName == 'ar' ? 'أنت تستمتع الآن بكافة الميزات الملكية' : 'You are enjoying all royal features',
+                    style: const TextStyle(color: Colors.white70, fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.grey[850] : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFD4AF37).withValues(alpha: 0.5), width: 1.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.workspace_premium, color: Color(0xFFD4AF37), size: 28),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  l10n.localeName == 'ar' ? 'قم بترقية متجرك (Premium)' : 'Upgrade to Premium Store',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            l10n.localeName == 'ar' 
+              ? 'احصل على الشارة الذهبية، مظهر ملكي، وظهور دائم في أعلى نتائج البحث!' 
+              : 'Get the gold badge, royal UI, and always rank first in search results!',
+            style: const TextStyle(fontSize: 13, color: Colors.grey),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFD4AF37),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: () {
+                _showPremiumUpgradeBottomSheet(context, l10n);
+              },
+              child: Text(l10n.localeName == 'ar' ? 'ترقية الآن' : 'Upgrade Now'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showPremiumUpgradeBottomSheet(BuildContext context, AppLocalizations l10n) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) {
+        return Container(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 60,
+                  height: 6,
+                  decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  const Icon(Icons.workspace_premium, color: Color(0xFFD4AF37), size: 32),
+                  const SizedBox(width: 12),
+                  Text(
+                    l10n.localeName == 'ar' ? 'الترقية للمتجر المميز' : 'Upgrade to Premium',
+                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              _buildFeatureRow(Icons.check_circle, l10n.localeName == 'ar' ? 'شارة التوثيق الذهبية الملكية' : 'Royal Golden Verification Badge'),
+              const SizedBox(height: 12),
+              _buildFeatureRow(Icons.check_circle, l10n.localeName == 'ar' ? 'أولوية الظهور في نتائج البحث والتصفية' : 'Priority ranking in search and filters'),
+              const SizedBox(height: 12),
+              _buildFeatureRow(Icons.check_circle, l10n.localeName == 'ar' ? 'مظهر متجر مخصص وجذاب للعملاء' : 'Customized and attractive store UI'),
+              const SizedBox(height: 12),
+              _buildFeatureRow(Icons.check_circle, l10n.localeName == 'ar' ? 'تثبيت منتجاتك المميزة في الأعلى' : 'Pin your best products at the top'),
+              const SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFD4AF37),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(l10n.localeName == 'ar' ? 'نحن نعمل على بناء هذه الميزة 🛠️' : 'We are working on building this feature 🛠️'))
+                    );
+                  },
+                  child: Text(
+                    l10n.localeName == 'ar' ? 'اشترك الآن بـ 5000 ج.س/شهرياً' : 'Subscribe Now for 5000 SDG/month',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildFeatureRow(IconData icon, String text) {
+    return Row(
+      children: [
+        Icon(icon, color: const Color(0xFFD4AF37), size: 20),
+        const SizedBox(width: 12),
+        Expanded(child: Text(text, style: const TextStyle(fontSize: 15))),
+      ],
+    );
+  }
+
   Widget _buildStatCard({required IconData icon, required Color color, required String value, required String title, required bool isDark}) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
@@ -240,7 +425,7 @@ class ShopDashboardScreen extends StatelessWidget {
 
   Widget _buildProductsList(AppLocalizations l10n, bool isDark) {
     return StreamBuilder<List<PostModel>>(
-      stream: FirestoreService().getUserPosts(shop.id),
+      stream: FirestoreService().getDashboardUserPosts(shop.id),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: Padding(padding: EdgeInsets.all(20.0), child: CircularProgressIndicator()));

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../providers/theme_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:intl/intl.dart';
 
 import 'create_portfolio_project_screen.dart';
 import 'portfolio_project_detail_screen.dart';
@@ -46,6 +48,7 @@ import '../../models/portfolio_project_model.dart';
 import '../../core/utils/app_error_handler.dart';
 import 'favorites_screen.dart';
 import '../../services/smart_guide_service.dart';
+import '../../widgets/common/glass_container.dart';
 
 class FreelancerProfileScreen extends StatefulWidget {
   final UserModel user;
@@ -190,14 +193,78 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
                                     ProfileSetupScreen(existingUser: user))),
                       ),
                     ] else ...[
-                      IconButton(
-                        icon: const Icon(Icons.flag_outlined, color: Colors.white),
-                        tooltip: l10n.reportStore,
-                        onPressed: () {
-                          showDialog(
-                            context: context,
-                            builder: (_) => ReportDialog(reportedUser: user),
-                          );
+                      PopupMenuButton<String>(
+                        icon: const Icon(Icons.more_vert, color: Colors.white),
+                        onSelected: (value) async {
+                          if (value == 'report') {
+                            showDialog(
+                                context: context,
+                                builder: (_) => ReportDialog(reportedUser: user));
+                          } else if (value == 'block') {
+                            final auth = context.read<AuthProvider>();
+                            if (auth.user == null) return;
+                            final isBlocked = auth.user!.blockedUsers.contains(user.id);
+                            
+                            final isRtl = Localizations.localeOf(context).languageCode == 'ar';
+                            final confirm = await showDialog<bool>(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                title: Text(isRtl ? (isBlocked ? 'إلغاء حظر المستخدم؟' : 'حظر المستخدم؟') : (isBlocked ? 'Unblock User?' : 'Block User?')),
+                                content: Text(isRtl 
+                                  ? (isBlocked ? 'هل أنت متأكد من إلغاء حظر هذا المستخدم؟' : 'لن تتمكن من رؤية منشورات أو التعليقات من هذا المستخدم. وسيتم إلغاء متابعتك له إذا كنت تتابعه.')
+                                  : (isBlocked ? 'Are you sure you want to unblock this user?' : 'You will no longer see posts or comments from this user. You will also unfollow them.')),
+                                actions: [
+                                  TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(isRtl ? 'إلغاء' : 'Cancel')),
+                                  ElevatedButton(
+                                    onPressed: () => Navigator.pop(ctx, true), 
+                                    style: ElevatedButton.styleFrom(backgroundColor: isBlocked ? Colors.green : Colors.red),
+                                    child: Text(isRtl ? (isBlocked ? 'إلغاء الحظر' : 'حظر') : (isBlocked ? 'Unblock' : 'Block'), style: const TextStyle(color: Colors.white)),
+                                  ),
+                                ],
+                              ),
+                            );
+                            
+                            if (confirm == true) {
+                              await FirestoreService().toggleBlock(auth.user!.id, user.id, isBlocked);
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text(isRtl ? (isBlocked ? 'تم إلغاء الحظر' : 'تم الحظر') : (isBlocked ? 'Unblocked' : 'Blocked'))),
+                                );
+                                auth.refreshUserProfile();
+                                if (!isBlocked) {
+                                  Navigator.pop(context); // Leave profile if blocked
+                                }
+                              }
+                            }
+                          }
+                        },
+                        itemBuilder: (BuildContext context) {
+                          final auth = context.read<AuthProvider>();
+                          final isBlocked = auth.user?.blockedUsers.contains(user.id) ?? false;
+                          final isRtl = Localizations.localeOf(context).languageCode == 'ar';
+                          
+                          return [
+                            PopupMenuItem<String>(
+                              value: 'report',
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.flag_outlined, color: Colors.orange),
+                                  const SizedBox(width: 8),
+                                  Text(user.isShop ? l10n.reportStore : (isRtl ? 'الإبلاغ عن الحرفي' : 'Report Freelancer'), style: const TextStyle(color: Colors.orange)),
+                                ],
+                              ),
+                            ),
+                            PopupMenuItem<String>(
+                              value: 'block',
+                              child: Row(
+                                children: [
+                                  Icon(isBlocked ? Icons.check_circle_outline : Icons.block, color: Colors.red),
+                                  const SizedBox(width: 8),
+                                  Text(isRtl ? (isBlocked ? 'إلغاء الحظر' : 'حظر') : (isBlocked ? 'Unblock' : 'Block'), style: const TextStyle(color: Colors.red)),
+                                ],
+                              ),
+                            ),
+                          ];
                         },
                       ),
                     ]
@@ -333,10 +400,12 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Text(
-                              user.name,
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 24),
-                              textAlign: TextAlign.center,
+                            Flexible(
+                              child: Text(
+                                user.name,
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 24),
+                                textAlign: TextAlign.center,
+                              ),
                             ),
                             SmartVerificationBadge(user: user, size: 24),
                           ],
@@ -373,19 +442,12 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
                         const SizedBox(height: 16),
                         
                         // Stats Row
-                        Container(
+                        GlassContainer(
+                          blur: 15,
+                          opacity: Theme.of(context).brightness == Brightness.dark ? 0.3 : 0.7,
                           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).cardColor,
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.05),
-                                blurRadius: 10,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
+                          borderRadius: BorderRadius.circular(16),
+                          color: Theme.of(context).cardColor,
                           child: Row(
                             children: [
                                Expanded(child: _buildStatItem(l10n.reviews, '${user.totalStars.round()}', Icons.star, Colors.amber)),
@@ -447,17 +509,28 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
                                        titleText,
                                        iconData,
                                        iconColor,
-                                       onTap: (isPartner || isPending) ? null : () {
-                                         auth.sendPartnerRequest(user.id);
+                                       onTap: () {
                                          final scaffoldMessenger = ScaffoldMessenger.of(context);
-                                         scaffoldMessenger.showSnackBar(
-                                           SnackBar(
-                                             content: Text(context.read<LocaleProvider>().isArabic 
-                                                 ? 'تم إرسال طلب الزمالة بنجاح!' 
-                                                 : 'Partner request sent successfully!'),
-                                             backgroundColor: Colors.green,
-                                           ),
-                                         );
+                                         final isAr = context.read<LocaleProvider>().isArabic;
+                                         if (isPartner || isPending) {
+                                           auth.removePartner(user.id);
+                                           scaffoldMessenger.showSnackBar(
+                                             SnackBar(
+                                               content: Text(isAr ? 'تم إلغاء العلاقة / الطلب' : 'Relationship / Request cancelled'),
+                                               backgroundColor: Colors.grey,
+                                             ),
+                                           );
+                                         } else {
+                                           auth.sendPartnerRequest(user.id);
+                                           scaffoldMessenger.showSnackBar(
+                                             SnackBar(
+                                               content: Text(isAr 
+                                                   ? 'تم إرسال طلب الزمالة بنجاح!' 
+                                                   : 'Partner request sent successfully!'),
+                                               backgroundColor: Colors.green,
+                                             ),
+                                           );
+                                         }
                                        },
                                      );
                                    },
@@ -471,18 +544,11 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
 
                         // Reputation Score & Vouchers
                         if (user.completedJobs > 0 || user.reviewsCount > 0 || user.vouchedBy.isNotEmpty)
-                          Container(
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).cardColor,
-                              borderRadius: BorderRadius.circular(16),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.05),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
+                          GlassContainer(
+                            blur: 15,
+                            opacity: Theme.of(context).brightness == Brightness.dark ? 0.3 : 0.7,
+                            borderRadius: BorderRadius.circular(16),
+                            color: Theme.of(context).cardColor,
                             child: Row(
                               children: [
                                 // Part 1: Reputation Score
@@ -688,84 +754,143 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
             ),
         ],
       ),
-      floatingActionButton: widget.isMe 
-          ? ((_tabController.index == 0 || _tabController.index == 1)
-              ? AdaptiveFabPadding(
-                  child: FloatingActionButton(
-                    heroTag: 'add_portfolio_fab',
-                    onPressed: () {
-                      if (_tabController.index == 0) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const CreatePostScreen()),
-                        );
-                      } else {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const CreatePortfolioProjectScreen()),
-                        );
-                      }
-                    },
-                    backgroundColor: AppColors.primary,
-                    mini: true,
-                    child: Icon(
-                      _tabController.index == 0 ? Icons.add_photo_alternate_outlined : Icons.create_new_folder_outlined, 
-                      color: Colors.white, 
-                      size: 22
-                    ),
-                  ),
-                )
-              : null)
-          : AdaptiveFabPadding(
-              child: Consumer<AuthProvider>(
-                builder: (context, auth, _) {
-                  final isAr = Localizations.localeOf(context).languageCode == 'ar';
+      floatingActionButton: Consumer<ThemeProvider>(
+        builder: (context, themeProvider, _) {
+          final isGlass = themeProvider.isGlassmorphismEnabled;
+          final isAr = Localizations.localeOf(context).languageCode == 'ar';
 
-                  return Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      FloatingActionButton.small(
+          if (widget.isMe) {
+            if (_tabController.index == 0 || _tabController.index == 1) {
+              return AdaptiveFabPadding(
+                child: isGlass
+                    ? GlassContainer(
+                        borderRadius: BorderRadius.circular(28),
+                        blur: 15,
+                        opacity: 0.4,
+                        color: AppColors.primary,
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(28),
+                          onTap: () {
+                            if (_tabController.index == 0) {
+                              Navigator.push(context, MaterialPageRoute(builder: (_) => const CreatePostScreen()));
+                            } else {
+                              Navigator.push(context, MaterialPageRoute(builder: (_) => const CreatePortfolioProjectScreen()));
+                            }
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Icon(
+                              _tabController.index == 0 ? Icons.add_photo_alternate_outlined : Icons.create_new_folder_outlined,
+                              color: Colors.white,
+                              size: 22,
+                            ),
+                          ),
+                        ),
+                      )
+                    : FloatingActionButton(
+                        heroTag: 'add_portfolio_fab',
+                        onPressed: () {
+                          if (_tabController.index == 0) {
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => const CreatePostScreen()));
+                          } else {
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => const CreatePortfolioProjectScreen()));
+                          }
+                        },
+                        backgroundColor: AppColors.primary,
+                        mini: true,
+                        child: Icon(
+                          _tabController.index == 0 ? Icons.add_photo_alternate_outlined : Icons.create_new_folder_outlined,
+                          color: Colors.white,
+                          size: 22,
+                        ),
+                      ),
+              );
+            }
+            return const SizedBox.shrink();
+          }
+
+          return AdaptiveFabPadding(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                isGlass
+                    ? GlassContainer(
+                        borderRadius: BorderRadius.circular(28),
+                        blur: 15,
+                        opacity: 0.4,
+                        color: Colors.white.withValues(alpha: 0.2),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.5)),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(28),
+                          onTap: () {
+                            if (widget.user.latitude == null || widget.user.longitude == null) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(isAr ? 'الموقع غير متوفر لهذا المستخدم' : 'Location not available for this user'), backgroundColor: Colors.red),
+                              );
+                              return;
+                            }
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => MapExplorerScreen(targetUser: widget.user)));
+                          },
+                          child: const Padding(
+                            padding: EdgeInsets.all(12),
+                            child: Icon(Icons.location_on_outlined, color: AppColors.primary),
+                          ),
+                        ),
+                      )
+                    : FloatingActionButton.small(
                         heroTag: 'freelancer_location_btn',
                         onPressed: () {
                           if (widget.user.latitude == null || widget.user.longitude == null) {
-                            final scaffoldMessenger = ScaffoldMessenger.of(context);
-                            scaffoldMessenger.showSnackBar(
-                              SnackBar(
-                                content: Text(isAr ? 'الموقع غير متوفر لهذا المستخدم' : 'Location not available for this user'),
-                                backgroundColor: Colors.red,
-                              ),
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(isAr ? 'الموقع غير متوفر لهذا المستخدم' : 'Location not available for this user'), backgroundColor: Colors.red),
                             );
                             return;
                           }
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => MapExplorerScreen(targetUser: widget.user),
-                            ),
-                          );
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => MapExplorerScreen(targetUser: widget.user)));
                         },
                         backgroundColor: Colors.white,
                         foregroundColor: AppColors.primary,
                         child: const Icon(Icons.location_on_outlined),
                       ),
-                      const SizedBox(height: 12),
-                      FloatingActionButton.extended(
+                const SizedBox(height: 12),
+                isGlass
+                    ? GlassContainer(
+                        borderRadius: BorderRadius.circular(28),
+                        blur: 15,
+                        opacity: 0.4,
+                        color: AppColors.primary,
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(28),
+                          onTap: () => _showContactMenu(context, widget.user),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.support_agent, size: 22, color: Colors.white),
+                                const SizedBox(width: 8),
+                                Text(isAr ? 'تواصل معي' : 'Contact Me', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                              ],
+                            ),
+                          ),
+                        ),
+                      )
+                    : FloatingActionButton.extended(
                         heroTag: 'freelancer_contact_btn',
                         onPressed: () => _showContactMenu(context, widget.user),
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
                         icon: const Icon(Icons.support_agent, size: 22),
-                        label: Text(
-                          isAr ? 'تواصل معي' : 'Contact Me',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
+                        label: Text(isAr ? 'تواصل معي' : 'Contact Me', style: const TextStyle(fontWeight: FontWeight.bold)),
                       ),
-                    ],
-                  );
-                },
-              ),
+              ],
             ),
+          );
+        },
+      ),
     );
   }
 
@@ -1678,7 +1803,7 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      '${price.toStringAsFixed(0)} ',
+                      '${NumberFormat('#,##0').format(price)} ',
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -1716,9 +1841,11 @@ class _SliverTabBarDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return Material(
+    return GlassContainer(
+      blur: 20,
+      opacity: Theme.of(context).brightness == Brightness.dark ? 0.4 : 0.8,
       color: Theme.of(context).scaffoldBackgroundColor,
-      elevation: overlapsContent ? 2 : 0,
+      borderRadius: BorderRadius.zero,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [

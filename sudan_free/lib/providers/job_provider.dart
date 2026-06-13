@@ -391,17 +391,17 @@ class JobProvider extends ChangeNotifier {
     required String apprenticeName,
     required String masterId,
     required String masterName,
+    required String clientId,
   }) async {
     _isLoading = true;
     notifyListeners();
     try {
-      await _firestoreService.assignJobToApprentice(
-        jobId: jobId,
-        apprenticeId: apprenticeId,
-        apprenticeName: apprenticeName,
-        masterId: masterId,
-        masterName: masterName,
-      );
+      await _firestoreService.updateJob(jobId, {
+        'assignedFreelancerId': apprenticeId,
+        'assignedFreelancerName': apprenticeName,
+        'supervisorId': masterId,
+        'supervisorName': masterName,
+      });
       
       // Update local state if needed
       if (_selectedJob != null && _selectedJob!.id == jobId) {
@@ -413,6 +413,30 @@ class JobProvider extends ChangeNotifier {
         );
       }
       
+      // Send Notification to Apprentice
+      final apprenticeNotification = NotificationModel(
+        id: '',
+        userId: apprenticeId,
+        type: NotificationType.assignment,
+        title: 'مهمة جديدة! 🛠️',
+        message: 'لقد كلفك المعلم $masterName بمهمة جديدة، قم بمراجعتها الآن.',
+        createdAt: Timestamp.now(),
+        relatedId: jobId,
+      );
+      _firestoreService.sendNotification(apprenticeNotification);
+
+      // Send Notification to Client
+      final clientNotification = NotificationModel(
+        id: '',
+        userId: clientId,
+        type: NotificationType.assignment,
+        title: 'تحديث في المهمة 🔄',
+        message: 'قام المعلم $masterName بتكليف الفني $apprenticeName لتنفيذ مهمتك تحت إشرافه.',
+        createdAt: Timestamp.now(),
+        relatedId: jobId,
+      );
+      _firestoreService.sendNotification(clientNotification);
+
       _isLoading = false;
       notifyListeners();
       return true;

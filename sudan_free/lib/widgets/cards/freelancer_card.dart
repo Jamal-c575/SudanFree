@@ -16,6 +16,7 @@ import '../../views/chat/chat_screen.dart';
 import '../../providers/chat_provider.dart';
 import '../common/verification_badge.dart';
 import '../../../../l10n/generated/app_localizations.dart';
+import '../common/glass_container.dart';
 
 /// Modern Freelancer Card with rectangular design
 class FreelancerCard extends StatelessWidget {
@@ -26,6 +27,7 @@ class FreelancerCard extends StatelessWidget {
   final String? currentUserId;
   final String? currentUserName;
   final bool isPromoted;
+  final bool showContactButton;
 
   const FreelancerCard({
     super.key,
@@ -36,6 +38,7 @@ class FreelancerCard extends StatelessWidget {
     this.currentUserId,
     this.currentUserName,
     this.isPromoted = false,
+    this.showContactButton = true,
   });
 
   Future<void> _openWhatsApp(BuildContext context) async {
@@ -261,40 +264,17 @@ class FreelancerCard extends StatelessWidget {
     final bool isRanked = rankInfo != null;
     final rankColor = rankInfo?.color ?? AppColors.sudanGold;
     
-    return Container(
+    return GlassContainer(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        gradient: (isRanked || isPromoted) 
-            ? LinearGradient(
-                colors: [
-                  isPromoted ? AppColors.sudanGold.withValues(alpha: 0.15) : rankColor.withValues(alpha: 0.1),
-                  AppColors.primary.withValues(alpha: 0.05),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              )
-            : null,
-        color: (isRanked || isPromoted) ? null : Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isPromoted 
-              ? AppColors.sudanGold.withValues(alpha: 0.8)
-              : isRanked 
-                  ? rankColor.withValues(alpha: 0.4) 
-                  : Theme.of(context).colorScheme.outline.withValues(alpha: 0.2), 
-          width: isPromoted ? 2.0 : (isRanked ? 1.5 : 1.0),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: isRanked 
-                ? rankColor.withValues(alpha: 0.15)
-                : Colors.black.withValues(alpha: 0.1),
-            blurRadius: 20,
-            offset: const Offset(0, 6),
-            spreadRadius: isRanked ? 0 : 1,
-          ),
-        ],
-      ),
+      blur: 15,
+      opacity: (isRanked || isPromoted) ? 0.15 : (Theme.of(context).brightness == Brightness.dark ? 0.3 : 0.6),
+      color: (isRanked || isPromoted) ? rankColor : Theme.of(context).cardColor,
+      borderRadius: BorderRadius.circular(20),
+      border: isPromoted 
+          ? Border.all(color: AppColors.sudanGold.withValues(alpha: 0.8), width: 2.0)
+          : isRanked 
+              ? Border.all(color: rankColor.withValues(alpha: 0.4), width: 1.5)
+              : Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2), width: 1.0),
       child: InkWell(
         onTap: onTap ?? () => Navigator.push(
           context,
@@ -503,31 +483,32 @@ class FreelancerCard extends StatelessWidget {
               
               const SizedBox(width: 8),
               
-              // Unified Contact Button
-              Container(
-                decoration: BoxDecoration(
-                  color: AppColors.primary,
-                  borderRadius: BorderRadius.circular(14),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primary.withValues(alpha: 0.3),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () => _showContactMenu(context),
+              if (showContactButton)
+                // Unified Contact Button
+                Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
                     borderRadius: BorderRadius.circular(14),
-                    child: const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                      child: Icon(Icons.support_agent, color: Colors.white, size: 22),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primary.withValues(alpha: 0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () => _showContactMenu(context),
+                      borderRadius: BorderRadius.circular(14),
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        child: Icon(Icons.support_agent, color: Colors.white, size: 22),
+                      ),
                     ),
                   ),
                 ),
-              ),
             ],
           ),
         ),
@@ -558,18 +539,11 @@ class FreelancerGridCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+    return GlassContainer(
+      blur: 15,
+      opacity: Theme.of(context).brightness == Brightness.dark ? 0.3 : 0.6,
+      color: Theme.of(context).cardColor,
+      borderRadius: BorderRadius.circular(16),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../providers/theme_provider.dart';
 import 'product_detail_screen.dart';
 import '../../widgets/common/linkable_text.dart';
 
@@ -42,6 +43,7 @@ import 'package:share_plus/share_plus.dart';
 import 'dart:io';
 import 'favorites_screen.dart';
 import '../../services/smart_guide_service.dart';
+import '../../widgets/common/glass_container.dart';
 
 class ShopProfileScreen extends StatefulWidget {
   final UserModel user;
@@ -234,17 +236,19 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
                                     children: [
                                       Row(
                                         children: [
-                                          Text(
-                                            user.name,
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 22,
-                                              fontWeight: FontWeight.bold,
-                                              shadows: [
-                                                Shadow(
-                                                    color: Colors.black,
-                                                    blurRadius: 4)
-                                              ],
+                                          Flexible(
+                                            child: Text(
+                                              user.name,
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 22,
+                                                fontWeight: FontWeight.bold,
+                                                shadows: [
+                                                  Shadow(
+                                                      color: Colors.black,
+                                                      blurRadius: 4)
+                                                ],
+                                              ),
                                             ),
                                           ),
                                           SmartVerificationBadge(user: user, size: 22),
@@ -316,16 +320,80 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
                                       ProfileSetupScreen(existingUser: user))),
                         ),
                       ] else ...[
-                        // VISITOR ACTIONS: Report
-                        IconButton(
-                          icon: const Icon(Icons.flag_outlined,
-                              color: Colors.white),
-                          tooltip: l10n.reportStore,
-                          onPressed: () {
-                            showDialog(
+                        // VISITOR ACTIONS: Report & Block
+                        PopupMenuButton<String>(
+                          icon: const Icon(Icons.more_vert, color: Colors.white),
+                          onSelected: (value) async {
+                            if (value == 'report') {
+                              showDialog(
+                                  context: context,
+                                  builder: (_) =>
+                                      ReportDialog(reportedUser: user));
+                            } else if (value == 'block') {
+                              final auth = context.read<AuthProvider>();
+                              if (auth.user == null) return;
+                              final isBlocked = auth.user!.blockedUsers.contains(user.id);
+                              
+                              final isRtl = Localizations.localeOf(context).languageCode == 'ar';
+                              final confirm = await showDialog<bool>(
                                 context: context,
-                                builder: (_) =>
-                                    ReportDialog(reportedUser: user));
+                                builder: (ctx) => AlertDialog(
+                                  title: Text(isRtl ? (isBlocked ? 'إلغاء حظر المستخدم؟' : 'حظر المستخدم؟') : (isBlocked ? 'Unblock User?' : 'Block User?')),
+                                  content: Text(isRtl 
+                                    ? (isBlocked ? 'هل أنت متأكد من إلغاء حظر هذا المستخدم؟' : 'لن تتمكن من رؤية منشورات أو التعليقات من هذا المستخدم. وسيتم إلغاء متابعتك له إذا كنت تتابعه.')
+                                    : (isBlocked ? 'Are you sure you want to unblock this user?' : 'You will no longer see posts or comments from this user. You will also unfollow them.')),
+                                  actions: [
+                                    TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(isRtl ? 'إلغاء' : 'Cancel')),
+                                    ElevatedButton(
+                                      onPressed: () => Navigator.pop(ctx, true), 
+                                      style: ElevatedButton.styleFrom(backgroundColor: isBlocked ? Colors.green : Colors.red),
+                                      child: Text(isRtl ? (isBlocked ? 'إلغاء الحظر' : 'حظر') : (isBlocked ? 'Unblock' : 'Block'), style: const TextStyle(color: Colors.white)),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              
+                              if (confirm == true) {
+                                await FirestoreService().toggleBlock(auth.user!.id, user.id, isBlocked);
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(isRtl ? (isBlocked ? 'تم إلغاء الحظر' : 'تم الحظر') : (isBlocked ? 'Unblocked' : 'Blocked'))),
+                                  );
+                                  auth.refreshUserProfile();
+                                  if (!isBlocked) {
+                                    Navigator.pop(context); // Leave profile if blocked
+                                  }
+                                }
+                              }
+                            }
+                          },
+                          itemBuilder: (BuildContext context) {
+                            final auth = context.read<AuthProvider>();
+                            final isBlocked = auth.user?.blockedUsers.contains(user.id) ?? false;
+                            final isRtl = Localizations.localeOf(context).languageCode == 'ar';
+                            
+                            return [
+                              PopupMenuItem<String>(
+                                value: 'report',
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.flag_outlined, color: Colors.orange),
+                                    const SizedBox(width: 8),
+                                    Text(l10n.reportStore, style: const TextStyle(color: Colors.orange)),
+                                  ],
+                                ),
+                              ),
+                              PopupMenuItem<String>(
+                                value: 'block',
+                                child: Row(
+                                  children: [
+                                    Icon(isBlocked ? Icons.check_circle_outline : Icons.block, color: Colors.red),
+                                    const SizedBox(width: 8),
+                                    Text(isRtl ? (isBlocked ? 'إلغاء الحظر' : 'حظر') : (isBlocked ? 'Unblock' : 'Block'), style: const TextStyle(color: Colors.red)),
+                                  ],
+                                ),
+                              ),
+                            ];
                           },
                         ),
                       ]
@@ -334,7 +402,9 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
 
                   // 2. Action Bar
                   SliverToBoxAdapter(
-                    child: Container(
+                    child: GlassContainer(
+                      blur: 15,
+                      opacity: Theme.of(context).brightness == Brightness.dark ? 0.3 : 0.7,
                       color: Theme.of(context).cardColor,
                       padding: const EdgeInsets.symmetric(
                           vertical: 12, horizontal: 16),
@@ -428,7 +498,7 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
                                             () async {
                                               if (auth.user == null) return;
                                               try {
-                                                await FirestoreService().toggleFollow(auth.user!.id, user.id, isFollowing);
+                                                await FirestoreService().toggleFollow(auth.user!.id, user.id, isFollowing, auth.user!.name);
                                                 // Optimistic update
                                                 setState(() {
                                                   if (isFollowing) {
@@ -481,72 +551,154 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
               ),
             );
           }),
-      floatingActionButton: widget.isMe 
-        ? AdaptiveFabPadding(
-            child: FloatingActionButton.extended(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const CreateProductScreen()),
-              ),
-              backgroundColor: AppColors.secondary,
-              foregroundColor: Colors.white,
-              icon: const Icon(Icons.shopping_bag_outlined, size: 22),
-              label: Text(
-                Localizations.localeOf(context).languageCode == 'ar' ? 'إضافة منتج' : 'Add Product',
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
-          )
-        : (widget.user.role == UserRole.shop || widget.user.role == UserRole.techService || widget.user.role == UserRole.privateService)
-            ? AdaptiveFabPadding(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    FloatingActionButton.small(
-                      heroTag: 'shop_location_btn',
-                      onPressed: () {
-                        if (widget.user.latitude == null || widget.user.longitude == null) {
-                          final scaffoldMessenger = ScaffoldMessenger.of(context);
-                          scaffoldMessenger.showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                Localizations.localeOf(context).languageCode == 'ar'
-                                    ? 'الموقع غير متوفر لهذا المستخدم'
-                                    : 'Location not available for this user',
-                              ),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
-                          return;
-                        }
-                        Navigator.push(
+      floatingActionButton: Consumer<ThemeProvider>(
+        builder: (context, themeProvider, _) {
+          final isGlass = themeProvider.isGlassmorphismEnabled;
+          
+          if (widget.isMe) {
+            return AdaptiveFabPadding(
+              child: isGlass 
+                  ? GlassContainer(
+                      borderRadius: BorderRadius.circular(28),
+                      blur: 15,
+                      opacity: 0.4,
+                      color: AppColors.secondary,
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(28),
+                        onTap: () => Navigator.push(
                           context,
-                          MaterialPageRoute(
-                            builder: (_) => MapExplorerScreen(targetUser: widget.user),
+                          MaterialPageRoute(builder: (_) => const CreateProductScreen()),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.shopping_bag_outlined, size: 22, color: Colors.white),
+                              const SizedBox(width: 8),
+                              Text(
+                                Localizations.localeOf(context).languageCode == 'ar' ? 'إضافة منتج' : 'Add Product',
+                                style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                              ),
+                            ],
                           ),
-                        );
-                      },
-                      backgroundColor: Colors.white,
-                      foregroundColor: AppColors.primary,
-                      child: const Icon(Icons.location_on_outlined),
-                    ),
-                    const SizedBox(height: 12),
-                    FloatingActionButton.extended(
-                      heroTag: 'shop_contact_btn',
-                      onPressed: () => _showContactMenu(context, widget.user),
-                      backgroundColor: AppColors.primary,
+                        ),
+                      ),
+                    )
+                  : FloatingActionButton.extended(
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const CreateProductScreen()),
+                      ),
+                      backgroundColor: AppColors.secondary,
                       foregroundColor: Colors.white,
-                      icon: const Icon(Icons.support_agent, size: 22),
+                      icon: const Icon(Icons.shopping_bag_outlined, size: 22),
                       label: Text(
-                        Localizations.localeOf(context).languageCode == 'ar' ? 'تواصل معنا' : 'Contact Us',
+                        Localizations.localeOf(context).languageCode == 'ar' ? 'إضافة منتج' : 'Add Product',
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),
-                  ],
-                ),
-              )
-            : null,
+            );
+          }
+          
+          if (widget.user.role == UserRole.shop || widget.user.role == UserRole.techService || widget.user.role == UserRole.privateService) {
+            return AdaptiveFabPadding(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  isGlass 
+                      ? GlassContainer(
+                          borderRadius: BorderRadius.circular(28),
+                          blur: 15,
+                          opacity: 0.4,
+                          color: Colors.white.withValues(alpha: 0.2),
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.5)),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(28),
+                            onTap: () {
+                              if (widget.user.latitude == null || widget.user.longitude == null) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'الموقع غير متوفر لهذا المستخدم' : 'Location not available for this user'),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                                return;
+                              }
+                              Navigator.push(context, MaterialPageRoute(builder: (_) => MapExplorerScreen(targetUser: widget.user)));
+                            },
+                            child: const Padding(
+                              padding: EdgeInsets.all(12),
+                              child: Icon(Icons.location_on_outlined, color: AppColors.primary),
+                            ),
+                          ),
+                        )
+                      : FloatingActionButton.small(
+                          heroTag: 'shop_location_btn',
+                          onPressed: () {
+                            if (widget.user.latitude == null || widget.user.longitude == null) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'الموقع غير متوفر لهذا المستخدم' : 'Location not available for this user'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                              return;
+                            }
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => MapExplorerScreen(targetUser: widget.user)));
+                          },
+                          backgroundColor: Colors.white,
+                          foregroundColor: AppColors.primary,
+                          child: const Icon(Icons.location_on_outlined),
+                        ),
+                  const SizedBox(height: 12),
+                  isGlass
+                      ? GlassContainer(
+                          borderRadius: BorderRadius.circular(28),
+                          blur: 15,
+                          opacity: 0.4,
+                          color: AppColors.primary,
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(28),
+                            onTap: () => _showContactMenu(context, widget.user),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.support_agent, size: 22, color: Colors.white),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    Localizations.localeOf(context).languageCode == 'ar' ? 'تواصل معنا' : 'Contact Us',
+                                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        )
+                      : FloatingActionButton.extended(
+                          heroTag: 'shop_contact_btn',
+                          onPressed: () => _showContactMenu(context, widget.user),
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          icon: const Icon(Icons.support_agent, size: 22),
+                          label: Text(
+                            Localizations.localeOf(context).languageCode == 'ar' ? 'تواصل معنا' : 'Contact Us',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                ],
+              ),
+            );
+          }
+          
+          return const SizedBox.shrink();
+        },
+      ),
     );
   }
 
@@ -1342,9 +1494,11 @@ class _SliverTabBarDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return Material(
+    return GlassContainer(
+      blur: 20,
+      opacity: Theme.of(context).brightness == Brightness.dark ? 0.4 : 0.8,
       color: Theme.of(context).scaffoldBackgroundColor,
-      elevation: overlapsContent ? 2 : 0,
+      borderRadius: BorderRadius.zero,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [

@@ -110,10 +110,45 @@ class UserFirestoreService {
 
   // Send Partner Request
   Future<void> sendPartnerRequest(String requesterId, String requesterName, String targetId) async {
+    final batch = _firestore.batch();
     final targetRef = _firestore.collection('users').doc(targetId);
-    await targetRef.update({
+    
+    batch.update(targetRef, {
       'pendingPartnerIds': FieldValue.arrayUnion([requesterId])
     });
+
+    final notifRef = _firestore.collection('notifications').doc();
+    final notification = NotificationModel(
+      id: notifRef.id,
+      userId: targetId,
+      type: NotificationType.partnerRequest,
+      title: 'طلب زمالة جديد 🤝',
+      message: 'يريد $requesterName إضافتك كزميل',
+      createdAt: Timestamp.now(),
+      relatedId: requesterId,
+    );
+    batch.set(notifRef, notification.toFirestore());
+
+    await batch.commit();
+  }
+
+  // Remove Partner (Cancel Colleague Request / Sever relationship)
+  Future<void> removePartner(String userId, String targetId) async {
+    final batch = _firestore.batch();
+    final userRef = _firestore.collection('users').doc(userId);
+    final targetRef = _firestore.collection('users').doc(targetId);
+
+    // Remove from both sides partnerIds
+    batch.update(userRef, {
+      'partnerIds': FieldValue.arrayRemove([targetId]),
+      'pendingPartnerIds': FieldValue.arrayRemove([targetId]),
+    });
+    batch.update(targetRef, {
+      'partnerIds': FieldValue.arrayRemove([userId]),
+      'pendingPartnerIds': FieldValue.arrayRemove([userId]),
+    });
+
+    await batch.commit();
   }
 
   // Handle Partner Request
@@ -251,9 +286,25 @@ class UserFirestoreService {
     });
     await batch.commit();
   }
+  // Toggle Block User
+  Future<void> toggleBlock(String currentUserId, String targetUserId, bool isBlocked) async {
+    final userRef = _firestore.collection('users').doc(currentUserId);
+    if (isBlocked) {
+      await userRef.update({
+        'blockedUsers': FieldValue.arrayRemove([targetUserId])
+      });
+    } else {
+      await userRef.update({
+        'blockedUsers': FieldValue.arrayUnion([targetUserId])
+      });
+      // Also unfollow if blocking
+      toggleFollow(currentUserId, targetUserId, true);
+    }
+  }
+
 
   // Toggle Follow
-  Future<void> toggleFollow(String followerId, String targetId, bool isFollowing) async {
+  Future<void> toggleFollow(String followerId, String targetId, bool isFollowing, [String? followerName]) async {
     final batch = _firestore.batch();
     final followerRef = _firestore.collection('users').doc(followerId);
     final targetRef = _firestore.collection('users').doc(targetId);
@@ -274,6 +325,20 @@ class UserFirestoreService {
       batch.update(targetRef, {
         'followers': FieldValue.arrayUnion([followerId])
       });
+
+      if (followerName != null) {
+        final notifRef = _firestore.collection('notifications').doc();
+        final notification = NotificationModel(
+          id: notifRef.id,
+          userId: targetId,
+          type: NotificationType.follow,
+          title: 'متابع جديد 👤',
+          message: 'لقد قام $followerName بمتابعتك للتو!',
+          createdAt: Timestamp.now(),
+          relatedId: followerId,
+        );
+        batch.set(notifRef, notification.toFirestore());
+      }
     }
     await batch.commit();
   }

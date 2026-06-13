@@ -15,6 +15,7 @@ import 'package:shimmer/shimmer.dart';
 import '../../widgets/common/adaptive_fab_padding.dart';
 import '../../widgets/buttons/smart_draggable_fab.dart';
 import '../../services/smart_guide_service.dart';
+import '../../widgets/common/glass_container.dart';
 
 class RequestsScreen extends StatefulWidget {
   const RequestsScreen({super.key});
@@ -303,19 +304,12 @@ class _RequestCard extends StatelessWidget {
           MaterialPageRoute(builder: (_) => RequestDetailsScreen(request: request)),
         );
       },
-      child: Container(
+      child: GlassContainer(
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
+        blur: 15,
+        opacity: Theme.of(context).brightness == Brightness.dark ? 0.3 : 0.7,
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

@@ -99,6 +99,30 @@ class PostsFirestoreService {
     });
   }
 
+  // Get user posts including hidden ones (for dashboard)
+  Stream<List<PostModel>> getDashboardUserPosts(String userId) {
+    return _firestore
+        .collection('posts')
+        .where('userId', isEqualTo: userId)
+        .orderBy('createdAt', descending: true)
+        .limit(50)
+        .snapshots()
+        .map((snapshot) {
+      var posts = snapshot.docs
+          .map((doc) {
+            try {
+              return PostModel.fromFirestore(doc);
+            } catch (e) {
+              return null;
+            }
+          })
+          .whereType<PostModel>()
+          .toList();
+      posts.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return posts;
+    });
+  }
+
   Future<PostModel?> getPost(String postId) async {
     final doc = await _firestore.collection('posts').doc(postId).get();
     if (!doc.exists) return null;

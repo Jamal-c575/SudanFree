@@ -9,6 +9,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/utils/job_titles_utils.dart';
 import '../../services/cloudinary_service.dart';
 import '../profile/profile_screen.dart';
+import '../../widgets/cards/freelancer_card.dart';
 
 enum FilterType { nearYou, topRated, newest, shops, categories, freelancersNearYou, shopsNearYou }
 
@@ -122,6 +123,31 @@ class _FilteredProvidersScreenState extends State<FilteredProvidersScreen> {
            results.sort((a, b) => b.createdAt.compareTo(a.createdAt));
         }
 
+        if (widget.filterType == FilterType.nearYou || widget.filterType == FilterType.freelancersNearYou || widget.filterType == FilterType.shopsNearYou) {
+          int getLocationScore(UserModel u) {
+            if (currentUser?.state == null) return 0;
+            int score = 0;
+            if (u.state == currentUser!.state) score += 1;
+            if (u.locality != null && currentUser.locality != null && u.locality == currentUser.locality) score += 2;
+            if (u.neighborhood != null && currentUser.neighborhood != null) {
+              final uNeigh = u.neighborhood!.toLowerCase().replaceAll(' ', '');
+              final cNeigh = currentUser.neighborhood!.toLowerCase().replaceAll(' ', '');
+              if (uNeigh == cNeigh) {
+                score += 5;
+              } else if (uNeigh.isNotEmpty && cNeigh.isNotEmpty && (uNeigh.contains(cNeigh) || cNeigh.contains(uNeigh))) {
+                score += 4; 
+              }
+            }
+            return score;
+          }
+          results.sort((a, b) {
+            final aScore = getLocationScore(a);
+            final bScore = getLocationScore(b);
+            if (aScore != bScore) return bScore.compareTo(aScore);
+            return b.rating.compareTo(a.rating);
+          });
+        }
+
         if (mounted) {
           setState(() {
             _displayList = results;
@@ -232,6 +258,30 @@ class _FilteredProvidersScreenState extends State<FilteredProvidersScreen> {
         if (mounted) {
           setState(() {
             _displayList.addAll(results);
+            if (widget.filterType == FilterType.nearYou || widget.filterType == FilterType.freelancersNearYou || widget.filterType == FilterType.shopsNearYou) {
+              int getLocationScore(UserModel u) {
+                if (currentUser?.state == null) return 0;
+                int score = 0;
+                if (u.state == currentUser!.state) score += 1;
+                if (u.locality != null && currentUser.locality != null && u.locality == currentUser.locality) score += 2;
+                if (u.neighborhood != null && currentUser.neighborhood != null) {
+                  final uNeigh = u.neighborhood!.toLowerCase().replaceAll(' ', '');
+                  final cNeigh = currentUser.neighborhood!.toLowerCase().replaceAll(' ', '');
+                  if (uNeigh == cNeigh) {
+                    score += 5;
+                  } else if (uNeigh.isNotEmpty && cNeigh.isNotEmpty && (uNeigh.contains(cNeigh) || cNeigh.contains(uNeigh))) {
+                    score += 4; 
+                  }
+                }
+                return score;
+              }
+              _displayList.sort((a, b) {
+                final aScore = getLocationScore(a);
+                final bScore = getLocationScore(b);
+                if (aScore != bScore) return bScore.compareTo(aScore);
+                return b.rating.compareTo(a.rating);
+              });
+            }
             _isLoadingMore = false;
           });
         }
@@ -277,173 +327,18 @@ class _FilteredProvidersScreenState extends State<FilteredProvidersScreen> {
               : Column(
                   children: [
                     Expanded(
-                      child: GridView.builder(
+                      child: ListView.builder(
                         controller: _scrollController,
-                        padding: const EdgeInsets.all(16),
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          childAspectRatio: 0.72,
-                          crossAxisSpacing: 16,
-                          mainAxisSpacing: 16,
-                        ),
+                        padding: const EdgeInsets.only(top: 8, bottom: 16),
                         itemCount: _displayList.length,
                         itemBuilder: (context, index) {
                           final user = _displayList[index];
-                          final isShop = user.role == UserRole.shop;
-
-                          return GestureDetector(
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => ProfileScreen(userId: user.id)),
-                            ),
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: isDark ? AppColors.surfaceDark : Colors.white,
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: isDark ? AppColors.borderDark : const Color(0xFFE8ECF0),
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.06),
-                                    blurRadius: 12,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: Column(
-                                children: [
-                                  // Profile image
-                                  ClipRRect(
-                                    borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                                    child: Container(
-                                      height: 110,
-                                      width: double.infinity,
-                                      decoration: BoxDecoration(
-                                        gradient: isShop ? AppColors.sudanGradient : AppColors.primaryGradient,
-                                      ),
-                                      child: user.profileImageUrl != null
-                                          ? CachedNetworkImage(
-                                              imageUrl: CloudinaryService.getOptimizedUrl(
-                                                user.profileImageUrl!, width: 300, quality: 'auto'),
-                                              fit: BoxFit.cover,
-                                              memCacheWidth: 300,
-                                              placeholder: (_, __) => Center(
-                                                child: Icon(isShop ? Icons.store : Icons.person, size: 36, color: Colors.white54),
-                                              ),
-                                              errorWidget: (_, __, ___) => Center(
-                                                child: Icon(isShop ? Icons.store : Icons.person, size: 36, color: Colors.white54),
-                                              ),
-                                            )
-                                          : Center(
-                                              child: Icon(isShop ? Icons.store : Icons.person, size: 36, color: Colors.white54),
-                                            ),
-                                    ),
-                                  ),
-                                  // Info
-                                  Expanded(
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(10),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            user.name,
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w700,
-                                              color: Theme.of(context).textTheme.bodyLarge?.color,
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                          const SizedBox(height: 4),
-                                          if (isShop && user.shopCategory != null)
-                                            Text(
-                                              user.getShopCategoryName(locale),
-                                              style: TextStyle(
-                                                fontSize: 11,
-                                                color: AppColors.desertOrange,
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            )
-                                          else if (!isShop)
-                                            Text(
-                                              user.jobTitle?.isNotEmpty == true 
-                                                  ? JobTitlesUtils.getLocalizedTitle(user.jobTitle!, locale) 
-                                                  : (user.skills.isNotEmpty 
-                                                      ? user.skills.map((s) => JobTitlesUtils.getLocalizedTitle(s, locale)).join('، ') 
-                                                      : user.getRoleDisplayName(locale)),
-                                              style: TextStyle(
-                                                fontSize: 11,
-                                                color: AppColors.primary,
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          const SizedBox(height: 6),
-                                          Row(
-                                            children: [
-                                              Icon(Icons.location_on, size: 12, color: AppColors.softGrey),
-                                              const SizedBox(width: 4),
-                                              Expanded(
-                                                child: Text(
-                                                  user.state ?? (locale == 'ar' ? 'غير محدد' : 'Unknown'),
-                                                  style: TextStyle(
-                                                    fontSize: 10,
-                                                    color: AppColors.softGrey,
-                                                  ),
-                                                  maxLines: 1,
-                                                  overflow: TextOverflow.ellipsis,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                          const SizedBox(height: 4),
-                                          if (user.bio?.isNotEmpty == true)
-                                            Expanded(
-                                              child: Padding(
-                                                padding: const EdgeInsets.only(top: 4.0),
-                                                child: Text(
-                                                  user.bio!,
-                                                  style: TextStyle(
-                                                    fontSize: 10,
-                                                    color: AppColors.softGrey.withValues(alpha: 0.8),
-                                                    height: 1.3,
-                                                  ),
-                                                  maxLines: 2,
-                                                  overflow: TextOverflow.ellipsis,
-                                                ),
-                                              ),
-                                            )
-                                          else
-                                            const Spacer(),
-                                          Row(
-                                            children: [
-                                              Icon(Icons.star_rounded, size: 16, color: AppColors.sudanGold),
-                                              const SizedBox(width: 4),
-                                              Text(
-                                                user.rating > 0
-                                                    ? user.rating.toStringAsFixed(1)
-                                                    : (locale == 'ar' ? 'جديد' : 'New'),
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: Theme.of(context).textTheme.bodySmall?.color,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                          return FreelancerCard(
+                            freelancer: user,
+                            locale: locale,
+                            currentUserId: context.read<AuthProvider>().user?.id,
+                            currentUserName: context.read<AuthProvider>().user?.name,
+                            showContactButton: false,
                           );
                         },
                       ),

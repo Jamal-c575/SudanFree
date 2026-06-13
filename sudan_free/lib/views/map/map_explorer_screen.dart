@@ -164,16 +164,16 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
         _animatedMapMove(LatLng(position.latitude, position.longitude), 14.5);
       }
 
-      // Then get current with medium accuracy (much faster than high)
+      // Then get current with high accuracy for precise location
       position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.medium,
-          timeLimit: Duration(seconds: 5),
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 10),
         )
       );
       
       // التوجه إلى موقع المستخدم الفعلي بزووم قريب
-      _animatedMapMove(LatLng(position.latitude, position.longitude), 14.5);
+      _animatedMapMove(LatLng(position.latitude, position.longitude), 15.5);
     } catch (e) {
       debugPrint('Error getting location: $e');
     }

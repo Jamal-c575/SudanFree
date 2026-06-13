@@ -4,6 +4,7 @@ import '../../core/constants/app_colors.dart';
 import '../../providers/locale_provider.dart';
 import '../auth/login_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../widgets/common/glass_container.dart';
 
 class OnboardingScreen extends StatefulWidget {
   final VoidCallback? onCompleted;
@@ -92,12 +93,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Container(
+                        GlassContainer(
+                          shape: BoxShape.circle,
                           padding: const EdgeInsets.all(32),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.1),
-                            shape: BoxShape.circle,
-                          ),
+                          blur: 15,
+                          opacity: 0.1,
+                          color: AppColors.primary,
                           child: Icon(
                             items[index].icon,
                             size: 80,

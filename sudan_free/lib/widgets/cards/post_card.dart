@@ -19,7 +19,7 @@ import '../../views/posts/post_details_screen.dart';
 import '../../views/search/search_screen.dart';
 import 'package:any_link_preview/any_link_preview.dart';
 import '../common/internal_link_preview.dart';
-
+import '../common/glass_container.dart';
 
 class PostCard extends StatefulWidget {
   final PostModel post;
@@ -43,7 +43,7 @@ class PostCard extends StatefulWidget {
   State<PostCard> createState() => _PostCardState();
 }
 
-class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin {
+class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
   bool _isSharing = false;
   int _currentImageIndex = 0;
   bool? _localIsLiked;
@@ -53,6 +53,11 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
   late AnimationController _likeAnimController;
   late Animation<double> _likeScaleAnim;
   
+  // Heart overlay animation
+  bool _showHeartOverlay = false;
+  late AnimationController _heartOverlayController;
+  late Animation<double> _heartOverlayScale;
+
   // Track precached URLs to avoid redundant calls
   static final Set<String> _precachedUrls = {};
 
@@ -67,6 +72,23 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
       TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.3), weight: 50),
       TweenSequenceItem(tween: Tween(begin: 1.3, end: 1.0), weight: 50),
     ]).animate(CurvedAnimation(parent: _likeAnimController, curve: Curves.easeInOut));
+
+    _heartOverlayController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+    _heartOverlayScale = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.2), weight: 30),
+      TweenSequenceItem(tween: Tween(begin: 1.2, end: 1.0), weight: 30),
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.0), weight: 40),
+    ]).animate(CurvedAnimation(parent: _heartOverlayController, curve: Curves.easeInOut));
+    
+    _heartOverlayController.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        setState(() => _showHeartOverlay = false);
+        _heartOverlayController.reset();
+      }
+    });
   }
 
   @override
@@ -81,7 +103,43 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
   @override
   void dispose() {
     _likeAnimController.dispose();
+    _heartOverlayController.dispose();
     super.dispose();
+  }
+
+  void _toggleLike({bool forceLike = false}) {
+    final isLiked = _localIsLiked ?? widget.post.reactions.containsKey(widget.currentUserId);
+    final totalReactions = _localTotalReactions ?? widget.post.totalReactions;
+
+    if (forceLike && isLiked) return; // Already liked
+
+    HapticFeedback.lightImpact();
+    _likeAnimController.forward(from: 0);
+    
+    if (forceLike) {
+      setState(() {
+        _showHeartOverlay = true;
+        _localIsLiked = true;
+        _localTotalReactions = totalReactions + 1;
+      });
+      _heartOverlayController.forward(from: 0);
+    } else {
+      setState(() {
+        _localIsLiked = !isLiked;
+        _localTotalReactions = isLiked 
+             ? (totalReactions > 0 ? totalReactions - 1 : 0)
+             : totalReactions + 1;
+      });
+    }
+
+    final type = (forceLike || !isLiked) ? 'like' : 'unlike';
+    context.read<PostsProvider>().reactToPost(
+      widget.post.id,
+      widget.currentUserId,
+      context.read<AuthProvider>().user?.name ?? '',
+      widget.post.userId,
+      type,
+    );
   }
 
   String _getTimeAgo(DateTime time) {
@@ -151,7 +209,11 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
       image = Hero(tag: widget.post.id, child: image);
     }
 
-    return GestureDetector(onTap: _openDetails, child: image);
+    return GestureDetector(
+      onTap: _openDetails,
+      onDoubleTap: () => _toggleLike(forceLike: true),
+      child: image,
+    );
   }
 
   Widget _buildImageCarousel(List<String> urls) {
@@ -214,21 +276,12 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
     final isLiked = _localIsLiked ?? widget.post.reactions.containsKey(widget.currentUserId);
     final totalReactions = _localTotalReactions ?? widget.post.totalReactions;
 
-    return Container(
+    return GlassContainer(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: isDark
-                ? Colors.black.withValues(alpha: 0.25)
-                : Colors.black.withValues(alpha: 0.07),
-            blurRadius: 12,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
+      blur: 15,
+      opacity: isDark ? 0.3 : 0.6,
+      color: Theme.of(context).cardColor,
+      borderRadius: BorderRadius.circular(16),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
         child: Column(
@@ -400,7 +453,22 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
 
             // ─── Image Carousel (edge-to-edge) ────────────────────────────
             if (hasImage)
-              _buildImageCarousel(widget.post.allImageUrls),
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  _buildImageCarousel(widget.post.allImageUrls),
+                  if (_showHeartOverlay)
+                    ScaleTransition(
+                      scale: _heartOverlayScale,
+                      child: const Icon(
+                        Icons.favorite,
+                        color: Colors.white,
+                        size: 100,
+                        shadows: [Shadow(color: Colors.black26, blurRadius: 10)],
+                      ),
+                    ),
+                ],
+              ),
 
             // ─── Poll Widget ──────────────────────────────────────────────
             if (widget.post.poll != null)
@@ -420,25 +488,7 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
                         icon: isLiked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
                         label: totalReactions > 0 ? '$totalReactions' : '',
                         color: isLiked ? Colors.red : Colors.grey[600]!,
-                        onTap: () {
-                          HapticFeedback.lightImpact();
-                          _likeAnimController.forward(from: 0);
-                          setState(() {
-                            _localIsLiked = !isLiked;
-                            _localTotalReactions = isLiked 
-                                 ? (totalReactions > 0 ? totalReactions - 1 : 0)
-                                 : totalReactions + 1;
-                          });
-
-                          final type = isLiked ? 'unlike' : 'like';
-                          context.read<PostsProvider>().reactToPost(
-                            widget.post.id,
-                            widget.currentUserId,
-                            context.read<AuthProvider>().user?.name ?? '',
-                            widget.post.userId,
-                            type,
-                          );
-                        },
+                        onTap: _toggleLike,
                       ),
                     ),
                     const SizedBox(width: 4),

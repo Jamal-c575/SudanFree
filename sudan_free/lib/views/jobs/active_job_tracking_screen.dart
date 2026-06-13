@@ -9,6 +9,9 @@ import '../../core/constants/app_colors.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/notification_model.dart';
 import '../../services/smart_guide_service.dart';
+import '../../widgets/reviews/review_widgets.dart';
+import '../../models/review_model.dart';
+import '../../services/firestore_service.dart';
 
 class ActiveJobTrackingScreen extends StatefulWidget {
   final String jobId;
@@ -170,7 +173,7 @@ class _ActiveJobTrackingScreenState extends State<ActiveJobTrackingScreen> {
           const SizedBox(height: 20),
           Row(
             children: [
-              _buildHeaderStat(Icons.payments, '${job.budgetMax} SDG', 'الميزانية'),
+              _buildHeaderStat(Icons.payments, '${NumberFormat('#,##0').format(job.budgetMax)} SDG', 'الميزانية'),
               Container(height: 30, width: 1, color: Colors.white.withValues(alpha: 0.3), margin: const EdgeInsets.symmetric(horizontal: 16)),
               _buildHeaderStat(Icons.calendar_today, DateFormat('dd MMM yyyy').format(job.createdAt), 'تاريخ البدء'),
             ],
@@ -470,14 +473,14 @@ class _ActiveJobTrackingScreenState extends State<ActiveJobTrackingScreen> {
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
-                      '${m.amount} ${job.currency}', 
+                      '${NumberFormat('#,##0').format(m.amount)} ${job.currency}', 
                       style: const TextStyle(color: AppColors.secondary, fontWeight: FontWeight.w600, fontSize: 13)
                     ),
                   ),
                 ],
               ),
             ),
-            if (m.isPaid)
+            if (m.isPaid && m.isConfirmed)
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(20)),
@@ -485,13 +488,13 @@ class _ActiveJobTrackingScreenState extends State<ActiveJobTrackingScreen> {
                   children: [
                     Icon(Icons.check_circle, color: Colors.green, size: 16),
                     SizedBox(width: 4),
-                    Text('تم الدفع', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 12)),
+                    Text('مكتملة ومدفوعة', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 12)),
                   ],
                 ),
               )
-            else if (isClient && m.isCompleted && job.status == JobStatus.inProgress)
+            else if (m.isCompleted)
               ElevatedButton(
-                onPressed: () => _payMilestone(job, m),
+                onPressed: () => _confirmPaymentReceived(job, m),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
@@ -499,17 +502,17 @@ class _ActiveJobTrackingScreenState extends State<ActiveJobTrackingScreen> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 ),
-                child: const Text('دفع الآن', style: TextStyle(fontSize: 13)),
+                child: const Text('تأكيد الدفع', style: TextStyle(fontSize: 13)),
               )
             else
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(20)),
-                child: Row(
+                child: const Row(
                   children: [
-                    const Icon(Icons.pending_actions, color: Colors.orange, size: 16),
-                    const SizedBox(width: 4),
-                    Text(m.isCompleted ? 'بانتظار الدفع' : 'قيد العمل', style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 12)),
+                    Icon(Icons.pending_actions, color: Colors.orange, size: 16),
+                    SizedBox(width: 4),
+                    Text('قيد العمل', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 12)),
                   ],
                 ),
               ),
@@ -523,6 +526,16 @@ class _ActiveJobTrackingScreenState extends State<ActiveJobTrackingScreen> {
     final titleController = TextEditingController();
     final amountController = TextEditingController();
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final double currentTotal = job.milestones.fold(0.0, (acc, m) => acc + m.amount);
+    final double remainingAmount = job.budgetMax - currentTotal;
+
+    if (remainingAmount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم تقسيم كامل المبلغ المتفق عليه بالفعل.'), backgroundColor: Colors.orange),
+      );
+      return;
+    }
 
     showModalBottomSheet(
       context: context,
@@ -548,6 +561,18 @@ class _ActiveJobTrackingScreenState extends State<ActiveJobTrackingScreen> {
                 const SizedBox(width: 12),
                 const Text('إضافة دفعة إنجاز جديدة', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               ],
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: Colors.blue.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline, color: Colors.blue),
+                  const SizedBox(width: 8),
+                  Text('المبلغ المتبقي للتقسيم: ${NumberFormat('#,##0').format(remainingAmount)} ${job.currency}', style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
+                ],
+              ),
             ),
             const SizedBox(height: 24),
             TextField(
@@ -577,11 +602,21 @@ class _ActiveJobTrackingScreenState extends State<ActiveJobTrackingScreen> {
                 onPressed: () {
                   if (titleController.text.trim().isEmpty || amountController.text.trim().isEmpty) return;
                   
+                  final newAmount = double.tryParse(amountController.text) ?? 0;
+                  if (newAmount <= 0) return;
+                  
+                  if (newAmount > remainingAmount) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('عذراً، المبلغ يتجاوز المتبقي من الميزانية (${NumberFormat('#,##0').format(remainingAmount)} ${job.currency})'), backgroundColor: Colors.red),
+                    );
+                    return;
+                  }
+                  
                   final milestones = List<MilestoneModel>.from(job.milestones);
                   milestones.add(MilestoneModel(
                     id: DateTime.now().millisecondsSinceEpoch.toString(),
                     title: titleController.text.trim(),
-                    amount: double.tryParse(amountController.text) ?? 0,
+                    amount: newAmount,
                   ));
                   context.read<JobProvider>().updateMilestones(job.id, milestones);
                   Navigator.pop(ctx);
@@ -611,6 +646,7 @@ class _ActiveJobTrackingScreenState extends State<ActiveJobTrackingScreen> {
           amount: item.amount,
           isCompleted: completed,
           isPaid: item.isPaid,
+          isConfirmed: item.isConfirmed,
           completedAt: completed ? DateTime.now() : null,
         );
       }
@@ -628,8 +664,7 @@ class _ActiveJobTrackingScreenState extends State<ActiveJobTrackingScreen> {
     }
   }
 
-  void _payMilestone(JobModel job, MilestoneModel m) {
-    // Integrate with payment gateway later, for now just update status
+  void _confirmPaymentReceived(JobModel job, MilestoneModel m) {
     final milestones = job.milestones.map((item) {
       if (item.id == m.id) {
         return MilestoneModel(
@@ -638,6 +673,7 @@ class _ActiveJobTrackingScreenState extends State<ActiveJobTrackingScreen> {
           amount: item.amount,
           isCompleted: item.isCompleted,
           isPaid: true,
+          isConfirmed: true,
           completedAt: item.completedAt,
         );
       }
@@ -645,17 +681,40 @@ class _ActiveJobTrackingScreenState extends State<ActiveJobTrackingScreen> {
     }).toList();
     context.read<JobProvider>().updateMilestones(job.id, milestones);
 
-    if (job.assignedFreelancerId != null) {
-      _sendNotification(
-        targetUserId: job.assignedFreelancerId!,
-        title: 'تم الدفع',
-        message: 'تم دفع المرحلة: ${m.title}. استمر في عملك الرائع!',
-        jobId: job.id,
-      );
-    }
+    _sendNotification(
+      targetUserId: job.clientId,
+      title: 'تم استلام الدفعة',
+      message: 'قام مقدم الخدمة بتأكيد استلام الدفعة: ${m.title}.',
+      jobId: job.id,
+    );
   }
 
   void _showCompleteDialog(BuildContext context, JobModel job) {
+    final double currentTotal = job.milestones.fold(0.0, (acc, m) => acc + m.amount);
+    final bool isFullyFunded = currentTotal >= job.budgetMax;
+    final bool isAllCompletedAndConfirmed = job.milestones.isNotEmpty && job.milestones.every((m) => m.isCompleted && m.isPaid && m.isConfirmed);
+
+    if (!isFullyFunded || !isAllCompletedAndConfirmed) {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.orange),
+              SizedBox(width: 8),
+              Text('لا يمكن إكمال الاتفاق'),
+            ],
+          ),
+          content: const Text('لا يمكنك إنهاء هذا الاتفاق إلا بعد تقسيم كامل المبلغ المتفق عليه إلى دفعات، وإنجازها جميعاً، وتسديدها، ثم تأكيد مقدم الخدمة استلام جميع المبالغ.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('حسناً')),
+          ],
+        ),
+      );
+      return;
+    }
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -684,6 +743,45 @@ class _ActiveJobTrackingScreenState extends State<ActiveJobTrackingScreen> {
               }
               
               Navigator.pop(ctx);
+              
+              final authProvider = context.read<AuthProvider>();
+              final currentUser = authProvider.user;
+              if (currentUser?.id == job.clientId && job.assignedFreelancerId != null) {
+                showDialog(
+                  context: context,
+                  builder: (_) => AddReviewDialog(
+                    freelancerId: job.assignedFreelancerId!,
+                    targetName: job.assignedFreelancerName ?? 'الحرفي',
+                    jobId: job.id,
+                    jobTitle: job.title,
+                    onSubmit: (rating, comment, isNegative, isJobCompleted, wouldWorkAgain) async {
+                      final review = ReviewModel(
+                        id: '',
+                        freelancerId: job.assignedFreelancerId!,
+                        reviewerId: currentUser!.id,
+                        reviewerName: currentUser.name,
+                        reviewerImageUrl: currentUser.profileImageUrl,
+                        rating: rating,
+                        comment: comment,
+                        isNegative: isNegative,
+                        wouldWorkAgain: wouldWorkAgain,
+                        jobId: job.id,
+                        jobTitle: job.title,
+                        createdAt: DateTime.now(),
+                      );
+                      
+                      try {
+                        await FirestoreService().createReview(review, isJobCompleted: isJobCompleted);
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تمت إضافة التقييم بنجاح')));
+                      } catch (e) {
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('حدث خطأ أثناء إضافة التقييم')));
+                      }
+                    },
+                  ),
+                );
+              }
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
             child: const Text('تأكيد الإكمال'),

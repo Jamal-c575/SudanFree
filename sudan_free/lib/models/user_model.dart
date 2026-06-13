@@ -31,6 +31,7 @@ class UserModel {
   final String? username;  // @username للإشارات (اختياري)
   final String? phoneNumber;
   final bool isVerified;
+  final bool isPremium;
   final DateTime? verifiedAt;
   final VerificationStatus verificationStatus;
   final String? idCardUrl;
@@ -78,6 +79,7 @@ class UserModel {
   final List<String> pendingSquadInvites; // Pending squad join requests
   final List<String> followers; // Users who follow this shop/user
   final List<String> following; // Users/shops this user follows
+  final List<String> blockedUsers; // Users that this user has blocked
   final DateTime? lastActive; // For online status tracking
   final Map<String, bool> notificationSettings; // Notification preferences
   final List<String> searchKeywords; // Auto-generated keywords for search
@@ -146,8 +148,10 @@ class UserModel {
     this.pendingSquadInvites = const [],
     this.followers = const [],
     this.following = const [],
+    this.blockedUsers = const [],
     this.lastActive,
     this.isVerified = false,
+    this.isPremium = false,
     this.verifiedAt,
     this.verificationStatus = VerificationStatus.none,
     this.idCardUrl,
@@ -252,10 +256,12 @@ class UserModel {
       pendingSquadInvites: _safeStringList(data['pendingSquadInvites']),
       followers: _safeStringList(data['followers']),
       following: _safeStringList(data['following']),
+      blockedUsers: _safeStringList(data['blockedUsers']),
       lastActive: data['lastActive'] is Timestamp
           ? (data['lastActive'] as Timestamp).toDate()
           : null,
       isVerified: data['isVerified'] ?? false,
+      isPremium: data['isPremium'] ?? false,
       verifiedAt: data['verifiedAt'] is Timestamp
           ? (data['verifiedAt'] as Timestamp).toDate()
           : null,
@@ -390,8 +396,10 @@ class UserModel {
       'pendingSquadInvites': pendingSquadInvites,
       'followers': followers,
       'following': following,
+      'blockedUsers': blockedUsers,
       'lastActive': lastActive != null ? Timestamp.fromDate(lastActive!) : null,
       'isVerified': isVerified,
+      'isPremium': isPremium,
       'verificationStatus': verificationStatus.name,
       'idCardUrl': idCardUrl,
       if (verificationSelfieUrl != null) 'verificationSelfieUrl': verificationSelfieUrl,
@@ -478,8 +486,12 @@ class UserModel {
     List<String>? partnerIds,
     List<String>? pendingPartnerIds,
     List<String>? pendingSquadInvites,
+    List<String>? followers,
+    List<String>? following,
+    List<String>? blockedUsers,
     DateTime? lastActive,
     bool? isVerified,
+    bool? isPremium,
     DateTime? verifiedAt,
     VerificationStatus? verificationStatus,
     String? idCardUrl,
@@ -542,8 +554,12 @@ class UserModel {
       partnerIds: partnerIds ?? this.partnerIds,
       pendingPartnerIds: pendingPartnerIds ?? this.pendingPartnerIds,
       pendingSquadInvites: pendingSquadInvites ?? this.pendingSquadInvites,
+      followers: followers ?? this.followers,
+      following: following ?? this.following,
+      blockedUsers: blockedUsers ?? this.blockedUsers,
       lastActive: lastActive ?? this.lastActive,
       isVerified: isVerified ?? this.isVerified,
+      isPremium: isPremium ?? this.isPremium,
       verifiedAt: verifiedAt ?? this.verifiedAt,
       verificationStatus: verificationStatus ?? this.verificationStatus,
       idCardUrl: idCardUrl ?? this.idCardUrl,
