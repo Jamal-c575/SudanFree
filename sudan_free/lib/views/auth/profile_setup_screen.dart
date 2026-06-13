@@ -1158,19 +1158,38 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
               ),
               if (_selectedRole == UserRole.freelancer || _selectedRole == UserRole.techService || _selectedRole == UserRole.privateService) ...[
                 const SizedBox(height: 16),
-                CustomTextField(
-                  label: locale == 'ar' ? 'ما هو المبلغ الذي يرضيك للعمل المتواصل لمدة ساعة (بدون تكاليف خارجية)؟' : AppStrings.get(AppStrings.hourlyRate, locale),
-                  hint: '100',
-                  controller: _hourlyRateController,
-                  keyboardType: TextInputType.number,
-                  prefixIcon: Icons.attach_money,
-                  suffixIcon: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Text(
-                      locale == 'ar' ? 'SDG/ساعة' : 'SDG/hr',
-                      style: Theme.of(context).textTheme.bodyMedium,
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // ── وصف قصير فوق حقل الإدخال ──
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8, right: 4, left: 4),
+                      child: Text(
+                        locale == 'ar'
+                            ? 'ما هو المبلغ الذي يرضيك للعمل المتواصل\nلمدة ساعة (بدون تكاليف خارجية)؟'
+                            : 'What amount satisfies you for\none hour of continuous work?',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          height: 1.5,
+                        ),
+                      ),
                     ),
-                  ),
+                    // ── حقل الإدخال بتسمية مختصرة ──
+                    CustomTextField(
+                      label: locale == 'ar' ? 'السعر بالساعة' : 'Hourly Rate',
+                      hint: '100',
+                      controller: _hourlyRateController,
+                      keyboardType: TextInputType.number,
+                      prefixIcon: Icons.attach_money,
+                      suffixIcon: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Text(
+                          locale == 'ar' ? 'SDG/ساعة' : 'SDG/hr',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
               if (_selectedRole == UserRole.shop) ...[
