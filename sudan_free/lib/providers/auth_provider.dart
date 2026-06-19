@@ -479,8 +479,9 @@ class AuthProvider extends ChangeNotifier {
   /// Firebase Auth succeeds. UI is already showing HomeScreen by this point.
   void _loadUserDataInBackground(String uid) {
     Future(() async {
+      // ✅ Step 1: Check device ban — isolated try/catch so a failure
+      // does NOT prevent the profile from loading.
       try {
-        // 1. Check device ban (non-blocking, has 5s timeout)
         final banReason = await _deviceService.checkDeviceBan()
             .timeout(const Duration(seconds: 5), onTimeout: () => null);
         if (banReason != null) {
@@ -489,23 +490,26 @@ class AuthProvider extends ChangeNotifier {
           _status = AuthStatus.error;
           _errorMessage = 'DEVICE_BANNED:$banReason';
           notifyListeners();
-          return;
+          return; // Stop here only if truly banned
         }
-
-        // 2. Load user profile (has its own timeouts inside)
-        await _loadUserData(uid);
-
-        // 3. Sync FCM token in background
-        _syncFCMToken(uid);
       } catch (e) {
-        debugPrint('Background user data load error: $e');
-        // If profile load fails, still leave the user authenticated
-        // They will see HomeScreen; data loads from stream when online
+        // Non-fatal: ban check failed, continue loading user profile
+        debugPrint('AuthProvider: checkDeviceBan failed (non-fatal): $e');
+      }
+
+      // ✅ Step 2: ALWAYS load user profile, regardless of ban check result
+      try {
+        await _loadUserData(uid);
+      } catch (e) {
+        debugPrint('AuthProvider: _loadUserData failed in background: $e');
+        // Fallback: subscribe to real-time stream to get data when possible
         if (_user == null && _status == AuthStatus.authenticated) {
-          // Retry via stream subscription
           _subscribeToUserStream(uid);
         }
       }
+
+      // ✅ Step 3: Sync FCM token in background (non-blocking)
+      _syncFCMToken(uid);
     });
   }
 
