@@ -48,8 +48,6 @@ class AuthProvider extends ChangeNotifier {
   List<UserModel> get partners => _partners; // Added getter
   bool get isManualSignIn => _isManualSignIn; // Added for smooth UI transitions
 
-
-
   @override
   void dispose() {
     _authSubscription?.cancel();
@@ -122,7 +120,7 @@ class AuthProvider extends ChangeNotifier {
 
       final updatedPartners = List<String>.from(_user!.partnerIds);
       updatedPartners.remove(targetId);
-      
+
       final updatedPending = List<String>.from(_user!.pendingPartnerIds);
       updatedPending.remove(targetId);
 
@@ -132,7 +130,7 @@ class AuthProvider extends ChangeNotifier {
       );
 
       _partners.removeWhere((p) => p.id == targetId);
-      
+
       notifyListeners();
     } catch (e) {
       debugPrint('Error removing partner: $e');
@@ -150,9 +148,10 @@ class AuthProvider extends ChangeNotifier {
       } else {
         updatedFavorites.add(targetUserId);
       }
-      
+
       _user = _user!.copyWith(favoriteUserIds: updatedFavorites);
-      await _firestoreService.updateUserProfile(_user!.id, {'favoriteUserIds': updatedFavorites});
+      await _firestoreService
+          .updateUserProfile(_user!.id, {'favoriteUserIds': updatedFavorites});
       notifyListeners();
     } catch (e) {
       debugPrint('Error toggling favorite user: $e');
@@ -170,9 +169,10 @@ class AuthProvider extends ChangeNotifier {
       } else {
         updatedFavorites.add(productId);
       }
-      
+
       _user = _user!.copyWith(favoriteProductIds: updatedFavorites);
-      await _firestoreService.updateUserProfile(_user!.id, {'favoriteProductIds': updatedFavorites});
+      await _firestoreService.updateUserProfile(
+          _user!.id, {'favoriteProductIds': updatedFavorites});
       notifyListeners();
     } catch (e) {
       debugPrint('Error toggling favorite product: $e');
@@ -190,9 +190,10 @@ class AuthProvider extends ChangeNotifier {
       } else {
         updatedFavorites.add(squadId);
       }
-      
+
       _user = _user!.copyWith(favoriteSquadIds: updatedFavorites);
-      await _firestoreService.updateUserProfile(_user!.id, {'favoriteSquadIds': updatedFavorites});
+      await _firestoreService
+          .updateUserProfile(_user!.id, {'favoriteSquadIds': updatedFavorites});
       notifyListeners();
     } catch (e) {
       debugPrint('Error toggling favorite squad: $e');
@@ -235,20 +236,39 @@ class AuthProvider extends ChangeNotifier {
     _status = AuthStatus.loading;
     notifyListeners();
 
+    // ✅ Safety timeout: if splash stays loading for >10s, force unauthenticated
+    Future.delayed(const Duration(seconds: 10), () {
+      if (_status == AuthStatus.loading || _status == AuthStatus.initial) {
+        debugPrint('Auth state timeout — forcing unauthenticated to exit splash');
+        _status = AuthStatus.unauthenticated;
+        notifyListeners();
+      }
+    });
+
     try {
       await _cacheService.initialize();
 
-      _authSubscription = _authService.authStateChanges.listen((User? user) {
-        _handleAuthStateChange(user);
-      }, onError: (error) {
-        debugPrint('Auth provider stream error: $error');
-      });
+      _authSubscription = _authService.authStateChanges.listen(
+        (User? user) {
+          _handleAuthStateChange(user);
+        },
+        onError: (error) {
+          debugPrint('Auth provider stream error: $error');
+          // ✅ On stream error, also force exit splash
+          if (_status == AuthStatus.loading || _status == AuthStatus.initial) {
+            _status = AuthStatus.unauthenticated;
+            notifyListeners();
+          }
+        },
+      );
 
       // Listen to network changes to recover from offline app launch
-      _networkSubscription = NetworkService().onConnectivityChanged.listen((isConnected) {
+      _networkSubscription =
+          NetworkService().onConnectivityChanged.listen((isConnected) {
         if (isConnected && _authService.currentUser != null) {
           // If we had an error loading the profile (e.g. launched offline), retry loading it
-          if (_status == AuthStatus.error || (_status == AuthStatus.unauthenticated && _user == null)) {
+          if (_status == AuthStatus.error ||
+              (_status == AuthStatus.unauthenticated && _user == null)) {
             debugPrint('Network recovered. Retrying to load user profile...');
             _handleAuthStateChange(_authService.currentUser);
           }
@@ -320,7 +340,8 @@ class AuthProvider extends ChangeNotifier {
           await _authService.signOut();
           _user = null;
           _status = AuthStatus.error;
-          _errorMessage = 'BANNED:${profile.banReason ?? "مخالفة الشروط والأحكام"}';
+          _errorMessage =
+              'BANNED:${profile.banReason ?? "مخالفة الشروط والأحكام"}';
           notifyListeners();
           return;
         }
@@ -328,15 +349,18 @@ class AuthProvider extends ChangeNotifier {
         _user = profile;
         _isNewUser = false;
 
-        // OneSignal User Tagging (modern API)
+        // OneSignal User Tagging (modern API) - Run in background without await
         try {
-          await OneSignal.login(uid);
-          await OneSignal.User.addTags({
-            "state": profile.state ?? '',
-            "role": profile.role.name,
+          OneSignal.login(uid).then((_) {
+            OneSignal.User.addTags({
+              "state": profile.state ?? '',
+              "role": profile.role.name,
+            });
+          }).catchError((e) {
+            debugPrint('OneSignal tagging failed: $e');
           });
         } catch (e) {
-          debugPrint('OneSignal tagging failed: $e');
+          debugPrint('OneSignal sync error: $e');
         }
 
         _subscribeToUserStream(uid);
@@ -362,7 +386,8 @@ class AuthProvider extends ChangeNotifier {
             await _authService.signOut();
             _user = null;
             _status = AuthStatus.error;
-            _errorMessage = 'BANNED:${profile.banReason ?? "مخالفة الشروط والأحكام"}';
+            _errorMessage =
+                'BANNED:${profile.banReason ?? "مخالفة الشروط والأحكام"}';
             notifyListeners();
             return;
           }
@@ -876,17 +901,18 @@ class AuthProvider extends ChangeNotifier {
   }
 
   // Update user's GPS Location for Map
-  Future<bool> updateLocation(double lat, double lng, {String? state, String? locality}) async {
+  Future<bool> updateLocation(double lat, double lng,
+      {String? state, String? locality}) async {
     if (_user == null) return false;
-    
+
     final updates = <String, dynamic>{
       'latitude': lat,
       'longitude': lng,
     };
-    
+
     if (state != null) updates['state'] = state;
     if (locality != null) updates['locality'] = locality;
-    
+
     return await updateUserProfile(updates);
   }
 

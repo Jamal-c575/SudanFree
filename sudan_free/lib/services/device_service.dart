@@ -44,8 +44,12 @@ class DeviceService {
   Future<String?> checkDeviceBan() async {
     try {
       final deviceId = await getDeviceId();
-      final doc = await _firestore.collection('banned_devices').doc(deviceId).get();
-      
+      final doc = await _firestore
+          .collection('banned_devices')
+          .doc(deviceId)
+          .get()
+          .timeout(const Duration(seconds: 5));
+
       if (doc.exists) {
         final data = doc.data();
         return data?['reason'] as String? ?? 'تم حظر هذا الجهاز';
