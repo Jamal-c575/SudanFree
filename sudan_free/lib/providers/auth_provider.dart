@@ -447,22 +447,24 @@ class AuthProvider extends ChangeNotifier {
         return false;
       }
 
-      // Load user data directly to ensure immediate state update
       if (credential.user != null) {
-        // Check device ban
-        final banReason = await _deviceService.checkDeviceBan();
-        if (banReason != null) {
-          await _authService.signOut();
-          _status = AuthStatus.error;
-          _errorMessage = 'DEVICE_BANNED:$banReason';
-          _isManualSignIn = false;
-          notifyListeners();
-          return false;
-        }
-        await _loadUserData(credential.user!.uid);
-        _syncFCMToken(credential.user!.uid);
+        final uid = credential.user!.uid;
+
+        // ✅ Navigate immediately after Firebase Auth — do NOT block on Firestore
+        // Set authenticated right away so the UI transitions without freezing.
+        // _user stays null momentarily; app.dart Consumer handles this gracefully.
+        _isNewUser = false; // Assume existing user; corrected below in background
+        _status = AuthStatus.authenticated;
+        _isManualSignIn = false;
+        notifyListeners();
+
+        // Run device ban + profile loading in background
+        _loadUserDataInBackground(uid);
+      } else {
+        _status = AuthStatus.unauthenticated;
+        _isManualSignIn = false;
+        notifyListeners();
       }
-      _isManualSignIn = false;
       return true;
     } catch (e) {
       _status = AuthStatus.error;
@@ -471,6 +473,40 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       return false;
     }
+  }
+
+  /// Runs device ban check + profile loading in the background after
+  /// Firebase Auth succeeds. UI is already showing HomeScreen by this point.
+  void _loadUserDataInBackground(String uid) {
+    Future(() async {
+      try {
+        // 1. Check device ban (non-blocking, has 5s timeout)
+        final banReason = await _deviceService.checkDeviceBan()
+            .timeout(const Duration(seconds: 5), onTimeout: () => null);
+        if (banReason != null) {
+          await _authService.signOut();
+          _user = null;
+          _status = AuthStatus.error;
+          _errorMessage = 'DEVICE_BANNED:$banReason';
+          notifyListeners();
+          return;
+        }
+
+        // 2. Load user profile (has its own timeouts inside)
+        await _loadUserData(uid);
+
+        // 3. Sync FCM token in background
+        _syncFCMToken(uid);
+      } catch (e) {
+        debugPrint('Background user data load error: $e');
+        // If profile load fails, still leave the user authenticated
+        // They will see HomeScreen; data loads from stream when online
+        if (_user == null && _status == AuthStatus.authenticated) {
+          // Retry via stream subscription
+          _subscribeToUserStream(uid);
+        }
+      }
+    });
   }
 
   // Sign in with Facebook

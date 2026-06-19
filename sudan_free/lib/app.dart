@@ -221,8 +221,12 @@ class _SudanFreeAppState extends State<SudanFreeApp>
             home: Consumer<AuthProvider>(
               builder: (context, authProvider, _) {
                 if (authProvider.status == AuthStatus.authenticated) {
-                  if (authProvider.isNewUser || authProvider.user == null) {
+                  if (authProvider.isNewUser) {
                     return const ProfileSetupScreen();
+                  }
+                  // Profile still loading in background — show splash to avoid flicker
+                  if (authProvider.user == null) {
+                    return const SplashScreen();
                   }
                   return const HomeScreen();
                 }
