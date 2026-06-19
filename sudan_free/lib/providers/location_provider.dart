@@ -3,7 +3,7 @@ import '../services/location_service.dart';
 
 class LocationProvider extends ChangeNotifier {
   final LocationService _locationService = LocationService();
-  
+
   Map<String, List<String>> _locations = {};
   bool _isLoading = false;
   String? _error;

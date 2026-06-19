@@ -19,7 +19,7 @@ class CacheService {
   // Initialize Hive
   Future<void> initialize() async {
     await Hive.initFlutter();
-    
+
     _jobsBox = await Hive.openBox<dynamic>(_jobsBoxName);
     _userBox = await Hive.openBox<dynamic>(_userBoxName);
     _settingsBox = await Hive.openBox<dynamic>(_settingsBoxName);
@@ -37,13 +37,14 @@ class CacheService {
   Future<void> cacheFreelancers(List<Map<String, dynamic>> data) async {
     await _ensureReady();
     await _dataBox?.put('freelancers_list', data);
-    await _dataBox?.put('freelancers_cached_at', DateTime.now().toIso8601String());
+    await _dataBox?.put(
+        'freelancers_cached_at', DateTime.now().toIso8601String());
   }
 
   List<Map<String, dynamic>>? getCachedFreelancers() {
     final data = _dataBox?.get('freelancers_list');
     if (data == null) return null;
-    
+
     if (data is String) {
       try {
         return List<Map<String, dynamic>>.from(jsonDecode(data));
@@ -60,7 +61,8 @@ class CacheService {
     return null;
   }
 
-  bool isFreelancersCacheValid([Duration duration = const Duration(minutes: 30)]) {
+  bool isFreelancersCacheValid(
+      [Duration duration = const Duration(minutes: 30)]) {
     final cachedAtString = _dataBox?.get('freelancers_cached_at');
     if (cachedAtString == null) return false;
     try {
@@ -81,7 +83,7 @@ class CacheService {
   List<Map<String, dynamic>>? getCachedShops() {
     final data = _dataBox?.get('shops_list');
     if (data == null) return null;
-    
+
     if (data is String) {
       try {
         return List<Map<String, dynamic>>.from(jsonDecode(data));
@@ -119,7 +121,7 @@ class CacheService {
   List<Map<String, dynamic>>? getCachedPosts() {
     final data = _dataBox?.get('posts_list');
     if (data == null) return null;
-    
+
     if (data is String) {
       try {
         return List<Map<String, dynamic>>.from(jsonDecode(data));
@@ -158,7 +160,7 @@ class CacheService {
   List<Map<String, dynamic>>? getCachedJobs() {
     final data = _jobsBox?.get('all_jobs');
     if (data == null) return null;
-    
+
     if (data is String) {
       try {
         final List<dynamic> decoded = jsonDecode(data);
@@ -179,7 +181,7 @@ class CacheService {
   bool isJobsCacheValid([Duration duration = const Duration(hours: 24)]) {
     final cachedAtString = _jobsBox?.get('jobs_cached_at');
     if (cachedAtString == null) return false;
-    
+
     final cachedAt = DateTime.parse(cachedAtString);
     final now = DateTime.now();
     return now.difference(cachedAt) < duration;
@@ -187,7 +189,8 @@ class CacheService {
 
   // ==================== USER PROFILE CACHE ====================
 
-  Future<void> cacheUserProfile(String userId, Map<String, dynamic> user) async {
+  Future<void> cacheUserProfile(
+      String userId, Map<String, dynamic> user) async {
     await _ensureReady();
     await _userBox?.put('user_$userId', user);
   }
@@ -195,7 +198,7 @@ class CacheService {
   Map<String, dynamic>? getCachedUserProfile(String userId) {
     final data = _userBox?.get('user_$userId');
     if (data == null) return null;
-    
+
     if (data is String) {
       try {
         return Map<String, dynamic>.from(jsonDecode(data));
@@ -254,7 +257,8 @@ class CacheService {
 
   bool getNotificationsEnabled() {
     if (_settingsBox == null) return true;
-    return _settingsBox?.get('notifications_enabled', defaultValue: true) as bool;
+    return _settingsBox?.get('notifications_enabled', defaultValue: true)
+        as bool;
   }
 
   // Close all boxes

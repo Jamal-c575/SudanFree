@@ -17,6 +17,7 @@ import '../profile/profile_screen.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../profile/product_detail_screen.dart';
+
 /// شاشة تفاصيل المنشور/المنتج مع إمكانية التعليق والتفاعل
 class PostDetailsScreen extends StatefulWidget {
   final PostModel post;
@@ -32,13 +33,18 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
     final diff = DateTime.now().difference(time);
     final locale = context.read<LocaleProvider>().locale.languageCode;
     if (diff.inMinutes < 60) {
-      return locale == 'ar' ? 'منذ ${diff.inMinutes} دقيقة' : '${diff.inMinutes}m ago';
+      return locale == 'ar'
+          ? 'منذ ${diff.inMinutes} دقيقة'
+          : '${diff.inMinutes}m ago';
     } else if (diff.inHours < 24) {
-      return locale == 'ar' ? 'منذ ${diff.inHours} ساعة' : '${diff.inHours}h ago';
+      return locale == 'ar'
+          ? 'منذ ${diff.inHours} ساعة'
+          : '${diff.inHours}h ago';
     } else {
       return locale == 'ar' ? 'منذ ${diff.inDays} يوم' : '${diff.inDays}d ago';
     }
   }
+
   final TextEditingController _commentController = TextEditingController();
   final FocusNode _commentFocusNode = FocusNode();
   // Mentions Logic
@@ -72,24 +78,26 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
     final text = _commentController.text;
     final selection = _commentController.selection;
     if (selection.baseOffset < 0) return;
-    
+
     final cursorPos = selection.baseOffset;
     final textBeforeCursor = text.substring(0, cursorPos);
-    
+
     // Check for @
     final lastAt = textBeforeCursor.lastIndexOf('@');
     if (lastAt != -1) {
       final query = textBeforeCursor.substring(lastAt + 1);
-      
+
       // Basic validation: query shouldn't have newlines or too many spaces
       if (query.contains('\n') || query.split(' ').length > 3) {
-         if (_showMentions) setState(() => _showMentions = false);
-         return;
+        if (_showMentions) setState(() => _showMentions = false);
+        return;
       }
 
       final partners = context.read<AuthProvider>().partners;
-      final matches = partners.where((p) => p.name.toLowerCase().contains(query.toLowerCase())).toList();
-      
+      final matches = partners
+          .where((p) => p.name.toLowerCase().contains(query.toLowerCase()))
+          .toList();
+
       if (matches.isNotEmpty) {
         setState(() {
           _filteredPartners = matches;
@@ -105,40 +113,41 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
   }
 
   void _selectMention(UserModel user) {
-     if (_mentionStart < 0) return;
-     
-     final text = _commentController.text;
-     final selection = _commentController.selection;
-     final cursorPos = selection.baseOffset;
-     
-     // Be safe about bounds
-     // textBeforeCursor check ensured lastAt < cursorPos
-     final start = _mentionStart;
-     final end = cursorPos;
-     
-     if (start >= 0 && end > start && end <= text.length) {
-       final newText = text.replaceRange(start, end, '@${user.name} ');
-       _commentController.text = newText;
-       _commentController.selection = TextSelection.fromPosition(TextPosition(offset: start + user.name.length + 2));
-       
-       _mentionedUsers['@${user.name}'] = user.id;
-       setState(() => _showMentions = false);
-     }
+    if (_mentionStart < 0) return;
+
+    final text = _commentController.text;
+    final selection = _commentController.selection;
+    final cursorPos = selection.baseOffset;
+
+    // Be safe about bounds
+    // textBeforeCursor check ensured lastAt < cursorPos
+    final start = _mentionStart;
+    final end = cursorPos;
+
+    if (start >= 0 && end > start && end <= text.length) {
+      final newText = text.replaceRange(start, end, '@${user.name} ');
+      _commentController.text = newText;
+      _commentController.selection = TextSelection.fromPosition(
+          TextPosition(offset: start + user.name.length + 2));
+
+      _mentionedUsers['@${user.name}'] = user.id;
+      setState(() => _showMentions = false);
+    }
   }
 
   /// إشارة لجميع الشركاء دفعة واحدة
   void _selectAllPartners() {
     if (_mentionStart < 0) return;
-    
+
     final partners = context.read<AuthProvider>().partners;
     if (partners.isEmpty) return;
-    
+
     final text = _commentController.text;
     final selection = _commentController.selection;
     final cursorPos = selection.baseOffset;
     final start = _mentionStart;
     final end = cursorPos;
-    
+
     if (start >= 0 && end > start && end <= text.length) {
       // Build mentions string for all partners
       final mentionsText = partners.map((p) => '@${p.name}').join(' ');
@@ -147,19 +156,15 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
       _commentController.selection = TextSelection.fromPosition(
         TextPosition(offset: start + mentionsText.length + 1),
       );
-      
+
       // Add all partners to mentioned users map
       for (var partner in partners) {
         _mentionedUsers['@${partner.name}'] = partner.id;
       }
-      
+
       setState(() => _showMentions = false);
     }
   }
-
-
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -186,7 +191,8 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
           Consumer<AuthProvider>(
             builder: (context, auth, _) {
               if (auth.user == null) return const SizedBox.shrink();
-              final isFavorite = auth.user!.favoriteProductIds.contains(widget.post.id);
+              final isFavorite =
+                  auth.user!.favoriteProductIds.contains(widget.post.id);
               return IconButton(
                 icon: Icon(
                   isFavorite ? Icons.favorite : Icons.favorite_border,
@@ -214,7 +220,9 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
                         Column(
                           children: [
                             SizedBox(
-                              height: MediaQuery.of(context).size.width, // Square format
+                              height: MediaQuery.of(context)
+                                  .size
+                                  .width, // Square format
                               child: PageView.builder(
                                 controller: _pageController,
                                 itemCount: widget.post.allImageUrls.length,
@@ -222,7 +230,8 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
                                   setState(() => _currentPage = index);
                                 },
                                 itemBuilder: (context, index) {
-                                  final imageUrl = widget.post.allImageUrls[index];
+                                  final imageUrl =
+                                      widget.post.allImageUrls[index];
                                   final widgetContent = GestureDetector(
                                     onTap: () {
                                       Navigator.push(
@@ -236,14 +245,20 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
                                       );
                                     },
                                     child: CachedNetworkImage(
-                                      imageUrl: CloudinaryService.getOptimizedUrl(imageUrl, width: 1200, quality: 'auto'),
+                                      imageUrl:
+                                          CloudinaryService.getOptimizedUrl(
+                                              imageUrl,
+                                              width: 1200,
+                                              quality: 'auto'),
                                       width: double.infinity,
                                       fit: BoxFit.contain,
                                       placeholder: (_, __) => Container(
                                         color: Colors.grey[200],
-                                        child: const Center(child: CircularProgressIndicator()),
+                                        child: const Center(
+                                            child: CircularProgressIndicator()),
                                       ),
-                                      errorWidget: (_, __, ___) => const Icon(Icons.broken_image),
+                                      errorWidget: (_, __, ___) =>
+                                          const Icon(Icons.broken_image),
                                     ),
                                   );
 
@@ -265,7 +280,8 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
                                 children: List.generate(
                                   widget.post.allImageUrls.length,
                                   (index) => Container(
-                                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                                    margin: const EdgeInsets.symmetric(
+                                        horizontal: 4),
                                     width: 8,
                                     height: 8,
                                     decoration: BoxDecoration(
@@ -280,9 +296,10 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
                             ],
                           ],
                         ),
-    
+
                       // Caption / Description
-                      if (widget.post.caption != null && widget.post.caption!.isNotEmpty)
+                      if (widget.post.caption != null &&
+                          widget.post.caption!.isNotEmpty)
                         Padding(
                           padding: const EdgeInsets.all(16),
                           child: LinkableText(
@@ -290,27 +307,42 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
                             style: const TextStyle(fontSize: 16, height: 1.5),
                           ),
                         ),
-    
-                      
+
                       // --- Owner Header ---
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
                         child: GestureDetector(
                           onTap: () {
-                            Navigator.push(context, MaterialPageRoute(builder: (_) => ProfileScreen(userId: widget.post.userId)));
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) => ProfileScreen(
+                                        userId: widget.post.userId)));
                           },
                           child: Row(
                             children: [
                               CircleAvatar(
                                 radius: 20,
-                                backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                                backgroundImage: widget.post.userImageUrl != null
-                                    ? CachedNetworkImageProvider(CloudinaryService.getOptimizedUrl(widget.post.userImageUrl!, width: 100, quality: 'auto'))
-                                    : null,
+                                backgroundColor:
+                                    AppColors.primary.withValues(alpha: 0.1),
+                                backgroundImage:
+                                    widget.post.userImageUrl != null
+                                        ? CachedNetworkImageProvider(
+                                            CloudinaryService.getOptimizedUrl(
+                                                widget.post.userImageUrl!,
+                                                width: 100,
+                                                quality: 'auto'))
+                                        : null,
                                 child: widget.post.userImageUrl == null
                                     ? Text(
-                                        widget.post.userName.isNotEmpty ? widget.post.userName[0].toUpperCase() : '?',
-                                        style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
+                                        widget.post.userName.isNotEmpty
+                                            ? widget.post.userName[0]
+                                                .toUpperCase()
+                                            : '?',
+                                        style: const TextStyle(
+                                            color: AppColors.primary,
+                                            fontWeight: FontWeight.bold),
                                       )
                                     : null,
                               ),
@@ -321,17 +353,23 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
                                   children: [
                                     Text(
                                       widget.post.userName,
-                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16),
                                     ),
-                                    if (widget.post.userJobTitle != null && widget.post.userJobTitle!.isNotEmpty)
+                                    if (widget.post.userJobTitle != null &&
+                                        widget.post.userJobTitle!.isNotEmpty)
                                       Text(
                                         widget.post.userJobTitle!,
-                                        style: const TextStyle(color: AppColors.primary, fontSize: 13),
+                                        style: const TextStyle(
+                                            color: AppColors.primary,
+                                            fontSize: 13),
                                       ),
                                   ],
                                 ),
                               ),
-                              Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey[400]),
+                              Icon(Icons.arrow_forward_ios,
+                                  size: 14, color: Colors.grey[400]),
                             ],
                           ),
                         ),
@@ -345,19 +383,24 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
                           return Consumer<PostsProvider>(
                             builder: (context, postsProvider, _) {
                               // Get latest post data if available in provider, else use widget.post
-                              final latestPost = postsProvider.posts.firstWhere((p) => p.id == widget.post.id, orElse: () => widget.post);
-                              final isLiked = latestPost.reactions.containsKey(currentUserId);
+                              final latestPost = postsProvider.posts.firstWhere(
+                                  (p) => p.id == widget.post.id,
+                                  orElse: () => widget.post);
+                              final isLiked = latestPost.reactions
+                                  .containsKey(currentUserId);
                               final totalReactions = latestPost.totalReactions;
 
                               return Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 8),
                                 child: Row(
                                   children: [
                                     // Like Button
                                     InkWell(
                                       onTap: () {
                                         if (currentUserId.isEmpty) return;
-                                        final type = isLiked ? 'unlike' : 'like';
+                                        final type =
+                                            isLiked ? 'unlike' : 'like';
                                         postsProvider.reactToPost(
                                           latestPost.id,
                                           currentUserId,
@@ -368,21 +411,31 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
                                       },
                                       borderRadius: BorderRadius.circular(20),
                                       child: Padding(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 8, vertical: 8),
                                         child: Row(
                                           children: [
                                             Icon(
-                                              isLiked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                                              color: isLiked ? Colors.red : Colors.grey[600],
+                                              isLiked
+                                                  ? Icons.favorite_rounded
+                                                  : Icons
+                                                      .favorite_border_rounded,
+                                              color: isLiked
+                                                  ? Colors.red
+                                                  : Colors.grey[600],
                                               size: 22,
                                             ),
                                             const SizedBox(width: 6),
                                             Text(
-                                              totalReactions > 0 ? '$totalReactions' : '',
+                                              totalReactions > 0
+                                                  ? '$totalReactions'
+                                                  : '',
                                               style: TextStyle(
                                                 fontSize: 14,
                                                 fontWeight: FontWeight.bold,
-                                                color: isLiked ? Colors.red : Colors.grey[600],
+                                                color: isLiked
+                                                    ? Colors.red
+                                                    : Colors.grey[600],
                                               ),
                                             ),
                                           ],
@@ -390,7 +443,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
                                       ),
                                     ),
                                     const SizedBox(width: 16),
-                                    
+
                                     // Comment Button
                                     InkWell(
                                       onTap: () {
@@ -398,18 +451,27 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
                                           context: context,
                                           isScrollControlled: true,
                                           backgroundColor: Colors.transparent,
-                                          builder: (_) => CommentsSheet(postId: latestPost.id, postOwnerId: latestPost.userId),
+                                          builder: (_) => CommentsSheet(
+                                              postId: latestPost.id,
+                                              postOwnerId: latestPost.userId),
                                         );
                                       },
                                       borderRadius: BorderRadius.circular(20),
                                       child: Padding(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 8, vertical: 8),
                                         child: Row(
                                           children: [
-                                            Icon(Icons.chat_bubble_outline_rounded, color: Colors.grey[600], size: 22),
+                                            Icon(
+                                                Icons
+                                                    .chat_bubble_outline_rounded,
+                                                color: Colors.grey[600],
+                                                size: 22),
                                             const SizedBox(width: 6),
                                             Text(
-                                              latestPost.commentsCount > 0 ? '${latestPost.commentsCount}' : '',
+                                              latestPost.commentsCount > 0
+                                                  ? '${latestPost.commentsCount}'
+                                                  : '',
                                               style: TextStyle(
                                                 fontSize: 14,
                                                 fontWeight: FontWeight.bold,
@@ -428,8 +490,6 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
                         },
                       ),
 
-
-    
                       const SizedBox(height: 20),
                       // Comments section has been temporarily frozen/removed for display-only mode
 
@@ -444,17 +504,18 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
               ),
             ],
           ),
-          
+
           // Mentions Overlay
           if (_showMentions)
             Positioned(
-              bottom: 70, 
-              left: 16, 
+              bottom: 70,
+              left: 16,
               right: 16,
               child: MentionOverlay(
                 partners: _filteredPartners,
                 locale: Localizations.localeOf(context).languageCode,
-                onSelectAll: _filteredPartners.length > 1 ? _selectAllPartners : null,
+                onSelectAll:
+                    _filteredPartners.length > 1 ? _selectAllPartners : null,
                 onSelectUser: _selectMention,
               ),
             ),
@@ -462,7 +523,6 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
       ),
     );
   }
-
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -489,8 +549,8 @@ class _LinkedProductBannerState extends State<_LinkedProductBanner> {
 
   Future<void> _fetchProduct() async {
     try {
-      final doc = await FirestoreService()
-          .getPost(widget.post.linkedProductId!);
+      final doc =
+          await FirestoreService().getPost(widget.post.linkedProductId!);
       if (mounted) {
         setState(() {
           _product = doc;
@@ -504,8 +564,7 @@ class _LinkedProductBannerState extends State<_LinkedProductBanner> {
 
   @override
   Widget build(BuildContext context) {
-    final isArabic =
-        context.read<LocaleProvider>().locale.languageCode == 'ar';
+    final isArabic = context.read<LocaleProvider>().locale.languageCode == 'ar';
 
     if (_loading) {
       return Padding(
@@ -525,8 +584,8 @@ class _LinkedProductBannerState extends State<_LinkedProductBanner> {
     final productName = _product?.caption?.split('\n').first ??
         widget.post.linkedProductName ??
         (isArabic ? 'منتج' : 'Product');
-    final imageUrl = _product?.allImageUrls.firstOrNull ??
-        widget.post.linkedProductImage;
+    final imageUrl =
+        _product?.allImageUrls.firstOrNull ?? widget.post.linkedProductImage;
     final price = _product?.price ?? widget.post.linkedProductPrice;
 
     return Padding(

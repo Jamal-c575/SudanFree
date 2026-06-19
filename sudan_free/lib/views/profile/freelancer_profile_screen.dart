@@ -22,6 +22,7 @@ import '../chat/chat_screen.dart';
 import '../../services/firestore_service.dart';
 import '../../services/firestore/job_service.dart';
 import '../../widgets/common/adaptive_fab_padding.dart';
+import '../../widgets/buttons/smart_draggable_fab.dart';
 import '../posts/create_post_screen.dart';
 import '../map/map_explorer_screen.dart';
 import '../auth/profile_setup_screen.dart';
@@ -66,13 +67,15 @@ class FreelancerProfileScreen extends StatefulWidget {
   });
 
   @override
-  State<FreelancerProfileScreen> createState() => _FreelancerProfileScreenState();
+  State<FreelancerProfileScreen> createState() =>
+      _FreelancerProfileScreenState();
 }
 
-class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with SingleTickerProviderStateMixin {
+class _FreelancerProfileScreenState extends State<FreelancerProfileScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   bool _isUploadingImage = false; // loading state for photo upload
-  
+
   late Stream<UserModel?> _userStream;
   late Stream<List<PostModel>> _postsStream;
   late Stream<List<PortfolioProjectModel>> _portfolioStream;
@@ -81,16 +84,17 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this, initialIndex: widget.initialTabIndex);
+    _tabController = TabController(
+        length: 3, vsync: this, initialIndex: widget.initialTabIndex);
     _tabController.addListener(() {
       setState(() {});
     });
-    
+
     _userStream = FirestoreService().getUserStream(widget.user.id);
     _postsStream = FirestoreService().getUserPosts(widget.user.id);
     _portfolioStream = FirestoreService().getUserPortfolio(widget.user.id);
     _reviewsStream = FirestoreService().getFreelancerReviews(widget.user.id);
-    
+
     if (widget.showReviewDialog && !widget.isMe) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _showAddReviewDialog();
@@ -99,17 +103,21 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
 
     // Increment profile views if not me
     if (!widget.isMe) {
-      final currentUserId = Provider.of<AuthProvider>(context, listen: false).user?.id;
+      final currentUserId =
+          Provider.of<AuthProvider>(context, listen: false).user?.id;
       if (currentUserId != null) {
         FirestoreService()
             .incrementProfileViews(widget.user.id, currentUserId)
-            .catchError((_) {}); // Non-critical: silently ignore permission errors
+            .catchError(
+                (_) {}); // Non-critical: silently ignore permission errors
       }
-      
+
       SmartGuideService.showMicroTip(
         context,
-        messageAr: 'ألقِ نظرة على سابقة الأعمال واقرأ تجارب من تعاملوا معه سابقاً ⭐',
-        messageEn: 'Take a look at past work and read experiences of previous clients ⭐',
+        messageAr:
+            'ألقِ نظرة على سابقة الأعمال واقرأ تجارب من تعاملوا معه سابقاً ⭐',
+        messageEn:
+            'Take a look at past work and read experiences of previous clients ⭐',
         tipId: 'profile_first_visit',
         icon: Icons.person_search_rounded,
       );
@@ -117,7 +125,8 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
       SmartGuideService.showMicroTip(
         context,
         messageAr: 'معرضك هو واجهتك! أضف صور أعمالك الجديدة لمضاعفة طلباتك 📈',
-        messageEn: 'Your portfolio is your storefront! Add recent work to double your requests 📈',
+        messageEn:
+            'Your portfolio is your storefront! Add recent work to double your requests 📈',
         tipId: 'portfolio_first_visit',
         icon: Icons.add_photo_alternate_rounded,
       );
@@ -139,599 +148,1019 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
       body: Stack(
         children: [
           StreamBuilder<UserModel?>(
-            stream: _userStream,
-            initialData: widget.user,
-            builder: (context, snapshot) {
-              final user = snapshot.data ?? widget.user;
-              
-              return NestedScrollView(
-            headerSliverBuilder: (context, innerBoxIsScrolled) {
-              return [
-                SliverAppBar(
-                  expandedHeight: 200,
-                  pinned: false,
-                  floating: false,
-                  backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-                  systemOverlayStyle: Theme.of(context).appBarTheme.systemOverlayStyle,
-                  leading: const BackButton(),
-                  actions: [
-                    IconButton(
-                      icon: const Icon(Icons.share, color: Colors.white),
-                      tooltip: l10n.localeName == 'ar' ? 'مشاركة الملف الشخصي' : 'Share Profile',
-                      onPressed: () {
-                        final url = 'https://sudanfree.com/sudan-free.html?profileId=${user.id}';
-                        final text = l10n.localeName == 'ar' 
-                            ? 'شاهد الملف الشخصي لـ ${user.name} على تطبيق سودان فري:\n$url' 
-                            : 'Check out ${user.name}\'s profile on SudanFree:\n$url';
-                        Share.share(text);
-                      },
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.badge, color: Colors.white),
-                      tooltip: l10n.localeName == 'ar' ? 'هويتي الرقمية' : 'Digital ID',
-                      onPressed: () {
-                        Navigator.push(context, PremiumPageRoute(page: DigitalIdCardScreen(user: user)));
-                      },
-                    ),
-                    if (widget.isMe) ...[
-                      IconButton(
-                        icon: const Icon(Icons.favorite, color: Colors.white),
-                        tooltip: l10n.localeName == 'ar' ? 'مفضلاتي' : 'Favorites',
-                        onPressed: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (_) =>
-                                    const FavoritesScreen())),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.edit, color: Colors.white),
-                        tooltip: l10n.editStore,
-                        onPressed: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (_) =>
-                                    ProfileSetupScreen(existingUser: user))),
-                      ),
-                    ] else ...[
-                      PopupMenuButton<String>(
-                        icon: const Icon(Icons.more_vert, color: Colors.white),
-                        onSelected: (value) async {
-                          if (value == 'report') {
-                            showDialog(
-                                context: context,
-                                builder: (_) => ReportDialog(reportedUser: user));
-                          } else if (value == 'block') {
-                            final auth = context.read<AuthProvider>();
-                            if (auth.user == null) return;
-                            final isBlocked = auth.user!.blockedUsers.contains(user.id);
-                            
-                            final isRtl = Localizations.localeOf(context).languageCode == 'ar';
-                            final confirm = await showDialog<bool>(
-                              context: context,
-                              builder: (ctx) => AlertDialog(
-                                title: Text(isRtl ? (isBlocked ? 'إلغاء حظر المستخدم؟' : 'حظر المستخدم؟') : (isBlocked ? 'Unblock User?' : 'Block User?')),
-                                content: Text(isRtl 
-                                  ? (isBlocked ? 'هل أنت متأكد من إلغاء حظر هذا المستخدم؟' : 'لن تتمكن من رؤية منشورات أو التعليقات من هذا المستخدم. وسيتم إلغاء متابعتك له إذا كنت تتابعه.')
-                                  : (isBlocked ? 'Are you sure you want to unblock this user?' : 'You will no longer see posts or comments from this user. You will also unfollow them.')),
-                                actions: [
-                                  TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(isRtl ? 'إلغاء' : 'Cancel')),
-                                  ElevatedButton(
-                                    onPressed: () => Navigator.pop(ctx, true), 
-                                    style: ElevatedButton.styleFrom(backgroundColor: isBlocked ? Colors.green : Colors.red),
-                                    child: Text(isRtl ? (isBlocked ? 'إلغاء الحظر' : 'حظر') : (isBlocked ? 'Unblock' : 'Block'), style: const TextStyle(color: Colors.white)),
-                                  ),
-                                ],
-                              ),
-                            );
-                            
-                            if (confirm == true) {
-                              await FirestoreService().toggleBlock(auth.user!.id, user.id, isBlocked);
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text(isRtl ? (isBlocked ? 'تم إلغاء الحظر' : 'تم الحظر') : (isBlocked ? 'Unblocked' : 'Blocked'))),
-                                );
-                                auth.refreshUserProfile();
-                                if (!isBlocked) {
-                                  Navigator.pop(context); // Leave profile if blocked
-                                }
-                              }
-                            }
-                          }
-                        },
-                        itemBuilder: (BuildContext context) {
-                          final auth = context.read<AuthProvider>();
-                          final isBlocked = auth.user?.blockedUsers.contains(user.id) ?? false;
-                          final isRtl = Localizations.localeOf(context).languageCode == 'ar';
-                          
-                          return [
-                            PopupMenuItem<String>(
-                              value: 'report',
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.flag_outlined, color: Colors.orange),
-                                  const SizedBox(width: 8),
-                                  Text(user.isShop ? l10n.reportStore : (isRtl ? 'الإبلاغ عن الحرفي' : 'Report Freelancer'), style: const TextStyle(color: Colors.orange)),
-                                ],
-                              ),
-                            ),
-                            PopupMenuItem<String>(
-                              value: 'block',
-                              child: Row(
-                                children: [
-                                  Icon(isBlocked ? Icons.check_circle_outline : Icons.block, color: Colors.red),
-                                  const SizedBox(width: 8),
-                                  Text(isRtl ? (isBlocked ? 'إلغاء الحظر' : 'حظر') : (isBlocked ? 'Unblock' : 'Block'), style: const TextStyle(color: Colors.red)),
-                                ],
-                              ),
-                            ),
-                          ];
-                        },
-                      ),
-                    ]
-                  ],
-                  flexibleSpace: LayoutBuilder(
-                    builder: (BuildContext context, BoxConstraints constraints) {
-                      final double expandedHeight = 200.0;
-                      final double collapsedHeight = kToolbarHeight + MediaQuery.of(context).padding.top;
-                      final double currentHeight = constraints.biggest.height;
-                      
-                      double progress = (currentHeight - collapsedHeight) / (expandedHeight - collapsedHeight);
-                      progress = progress.clamp(0.0, 1.0);
-                      
-                      final double opacity = progress > 0.4 ? ((progress - 0.4) / 0.6).clamp(0.0, 1.0) : 0.0;
-                      final double scale = Curves.easeOut.transform(progress);
+              stream: _userStream,
+              initialData: widget.user,
+              builder: (context, snapshot) {
+                final user = snapshot.data ?? widget.user;
 
-                      return Stack(
-                        fit: StackFit.expand,
-                        clipBehavior: Clip.none,
-                        children: [
-                          // Cover Image
-                          GestureDetector(
-                            onTap: () => _handleImageTap(user.coverImageUrl, true),
-                            child: user.coverImageUrl != null
-                                ? Hero(
-                                    tag: '${user.id}_cover',
-                                    child: CachedNetworkImage(
-                                      imageUrl: user.coverImageUrl!,
-                                      fit: BoxFit.cover,
-                                      placeholder: (_,__) => Container(color: Colors.grey[300]),
-                                    ),
-                                  )
-                                : Container(
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        colors: [AppColors.primary, AppColors.secondary],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      ),
-                                    ),
-                                  ),
+                return NestedScrollView(
+                  headerSliverBuilder: (context, innerBoxIsScrolled) {
+                    return [
+                      SliverAppBar(
+                        expandedHeight: 200,
+                        pinned: false,
+                        floating: false,
+                        backgroundColor:
+                            Theme.of(context).scaffoldBackgroundColor,
+                        systemOverlayStyle:
+                            Theme.of(context).appBarTheme.systemOverlayStyle,
+                        leading: const BackButton(),
+                        actions: [
+                          IconButton(
+                            icon: const Icon(Icons.share, color: Colors.white),
+                            tooltip: l10n.localeName == 'ar'
+                                ? 'مشاركة الملف الشخصي'
+                                : 'Share Profile',
+                            onPressed: () {
+                              final url =
+                                  'https://sudanfree.com/sudan-free.html?profileId=${user.id}';
+                              final text = l10n.localeName == 'ar'
+                                  ? 'شاهد الملف الشخصي لـ ${user.name} على تطبيق سودان فري:\n$url'
+                                  : 'Check out ${user.name}\'s profile on SudanFree:\n$url';
+                              Share.share(text);
+                            },
                           ),
-                          // Gradient
-                          Positioned(
-                            bottom: 0, left: 0, right: 0, height: 100,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                  colors: [
-                                    Colors.transparent,
-                                    Theme.of(context).scaffoldBackgroundColor,
-                                  ],
-                                ),
-                              ),
+                          IconButton(
+                            icon: const Icon(Icons.badge, color: Colors.white),
+                            tooltip: l10n.localeName == 'ar'
+                                ? 'هويتي الرقمية'
+                                : 'Digital ID',
+                            onPressed: () {
+                              Navigator.push(
+                                  context,
+                                  PremiumPageRoute(
+                                      page: DigitalIdCardScreen(user: user)));
+                            },
+                          ),
+                          if (widget.isMe) ...[
+                            IconButton(
+                              icon: const Icon(Icons.favorite,
+                                  color: Colors.white),
+                              tooltip: l10n.localeName == 'ar'
+                                  ? 'مفضلاتي'
+                                  : 'Favorites',
+                              onPressed: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (_) => const FavoritesScreen())),
                             ),
-                          ),
-                          // Avatar
-                          Positioned(
-                            bottom: -60,
-                            left: 0, right: 0,
-                            child: Center(
-                              child: Opacity(
-                                opacity: opacity,
-                                child: Transform.scale(
-                                  scale: scale,
-                                  alignment: Alignment.center,
-                                  child: GestureDetector(
-                                    onTap: opacity > 0 ? () => _handleImageTap(user.profileImageUrl, false) : null,
-                                    child: Stack(
-                                      children: [
-                                        Container(
-                                          padding: const EdgeInsets.all(4),
-                                          decoration: BoxDecoration(
-                                            color: Theme.of(context).scaffoldBackgroundColor,
-                                            shape: BoxShape.circle,
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: Colors.black.withValues(alpha: 0.15),
-                                                blurRadius: 12,
-                                                offset: const Offset(0, 4),
-                                              ),
-                                            ],
-                                          ),
-                                          child: Hero(
-                                            tag: '${user.id}_profile',
-                                            child: CircleAvatar(
-                                              radius: 80,
-                                              backgroundColor: Theme.of(context).cardColor,
-                                              backgroundImage: user.profileImageUrl != null
-                                                  ? CachedNetworkImageProvider(user.profileImageUrl!)
-                                                  : null,
-                                              child: user.profileImageUrl == null
-                                                  ? const Icon(Icons.person, size: 60, color: Colors.grey)
-                                                  : null,
-                                            ),
-                                          ),
+                            IconButton(
+                              icon: const Icon(Icons.edit, color: Colors.white),
+                              tooltip: l10n.editStore,
+                              onPressed: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (_) => ProfileSetupScreen(
+                                          existingUser: user))),
+                            ),
+                          ] else ...[
+                            PopupMenuButton<String>(
+                              icon: const Icon(Icons.more_vert,
+                                  color: Colors.white),
+                              onSelected: (value) async {
+                                if (value == 'report') {
+                                  showDialog(
+                                      context: context,
+                                      builder: (_) =>
+                                          ReportDialog(reportedUser: user));
+                                } else if (value == 'block') {
+                                  final auth = context.read<AuthProvider>();
+                                  if (auth.user == null) return;
+                                  final isBlocked =
+                                      auth.user!.blockedUsers.contains(user.id);
+
+                                  final isRtl = Localizations.localeOf(context)
+                                          .languageCode ==
+                                      'ar';
+                                  final confirm = await showDialog<bool>(
+                                    context: context,
+                                    builder: (ctx) => AlertDialog(
+                                      title: Text(isRtl
+                                          ? (isBlocked
+                                              ? 'إلغاء حظر المستخدم؟'
+                                              : 'حظر المستخدم؟')
+                                          : (isBlocked
+                                              ? 'Unblock User?'
+                                              : 'Block User?')),
+                                      content: Text(isRtl
+                                          ? (isBlocked
+                                              ? 'هل أنت متأكد من إلغاء حظر هذا المستخدم؟'
+                                              : 'لن تتمكن من رؤية منشورات أو التعليقات من هذا المستخدم. وسيتم إلغاء متابعتك له إذا كنت تتابعه.')
+                                          : (isBlocked
+                                              ? 'Are you sure you want to unblock this user?'
+                                              : 'You will no longer see posts or comments from this user. You will also unfollow them.')),
+                                      actions: [
+                                        TextButton(
+                                            onPressed: () =>
+                                                Navigator.pop(ctx, false),
+                                            child: Text(
+                                                isRtl ? 'إلغاء' : 'Cancel')),
+                                        ElevatedButton(
+                                          onPressed: () =>
+                                              Navigator.pop(ctx, true),
+                                          style: ElevatedButton.styleFrom(
+                                              backgroundColor: isBlocked
+                                                  ? Colors.green
+                                                  : Colors.red),
+                                          child: Text(
+                                              isRtl
+                                                  ? (isBlocked
+                                                      ? 'إلغاء الحظر'
+                                                      : 'حظر')
+                                                  : (isBlocked
+                                                      ? 'Unblock'
+                                                      : 'Block'),
+                                              style: const TextStyle(
+                                                  color: Colors.white)),
                                         ),
-                                        if (user.isOnline && !widget.isMe)
-                                          Positioned(
-                                            bottom: 8, right: 8,
-                                            child: Container(
-                                              width: 18, height: 18,
-                                              decoration: BoxDecoration(
-                                                color: Colors.green,
-                                                shape: BoxShape.circle,
-                                                border: Border.all(color: Theme.of(context).scaffoldBackgroundColor, width: 3),
-                                              ),
-                                            ),
-                                          ),
                                       ],
                                     ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                ),
+                                  );
 
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                    child: Column(
-                      children: [
-                        const SizedBox(height: 80), // Space for the overlapping avatar
-                        
-                        // Name & Skill
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Flexible(
-                              child: Text(
-                                user.name,
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 24),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                            SmartVerificationBadge(user: user, size: 24),
-                          ],
-                        ),
-                        // All Skills as Chips
-                        if (user.skills.isNotEmpty)
-                          Wrap(
-                            alignment: WrapAlignment.center,
-                            spacing: 6,
-                            runSpacing: 4,
-                            children: user.skills.where((s) => s.toLowerCase() != 'other').map((skill) => Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: AppColors.primary.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
-                              ),
-                              child: Text(
-                                JobTitlesUtils.getLocalizedTitle(skill, context.read<LocaleProvider>().locale.languageCode),
-                                style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600, fontSize: 13),
-                              ),
-                            )).toList(),
-                          )
-                        else
-                          Text(
-                            JobTitlesUtils.getLocalizedTitle(
-                              user.jobTitle ?? 'Freelancer',
-                              context.read<LocaleProvider>().locale.languageCode
-                            ),
-                            style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w500, fontSize: 16),
-                            textAlign: TextAlign.center,
-                          ),
-                        
-                        const SizedBox(height: 16),
-                        
-                        // Stats Row
-                        GlassContainer(
-                          blur: 15,
-                          opacity: Theme.of(context).brightness == Brightness.dark ? 0.3 : 0.7,
-                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-                          borderRadius: BorderRadius.circular(16),
-                          color: Theme.of(context).cardColor,
-                          child: Row(
-                            children: [
-                               Expanded(child: _buildStatItem(l10n.reviews, '${user.totalStars.round()}', Icons.star, Colors.amber)),
-                               Container(width: 1, height: 30, color: Colors.grey.withValues(alpha: 0.2)),
-                               Expanded(child: _buildStatItem(l10n.completedJobs, '${user.completedJobs}', Icons.work_history, Colors.blue)),
-                               Container(width: 1, height: 30, color: Colors.grey.withValues(alpha: 0.2)),
-                               Expanded(child: _buildStatItem(context.read<LocaleProvider>().isArabic ? 'المشاهدات' : 'Views', '${user.profileViews}', Icons.visibility, Colors.purple)),
-                               Container(width: 1, height: 30, color: Colors.grey.withValues(alpha: 0.2)),
-                               Expanded(child: _buildStatItem(
-                                 l10n.location, 
-                                 user.state != null 
-                                    ? SudanLocations.getStateName(user.state!, context.read<LocaleProvider>().locale.languageCode) 
-                                    : (context.read<LocaleProvider>().isArabic ? 'غير محدد' : 'Not set'), 
-                                 Icons.location_on, 
-                                 Colors.red
-                               )),
-                               
-                               // Partner / Favorite Button
-                               if (!widget.isMe) ...[
-                                 Container(width: 1, height: 30, color: Colors.grey.withValues(alpha: 0.2)),
-                                 Expanded(child: Consumer<AuthProvider>(
-                                   builder: (context, auth, _) {
-                                     final isViewerFreelancer = auth.user?.role == UserRole.freelancer || auth.user?.role == UserRole.techService || auth.user?.role == UserRole.privateService;
-                                     
-                                     // 1. Client/Shop Logic: Favorites (Hearts)
-                                     if (!isViewerFreelancer) {
-                                       final isFavorite = auth.user?.favoriteUserIds.contains(user.id) ?? false;
-                                       return _buildStatItem(
-                                         context.read<LocaleProvider>().isArabic ? 'مفضلة' : 'Favorite',
-                                         isFavorite ? (context.read<LocaleProvider>().isArabic ? 'محفوظ' : 'Saved') : (context.read<LocaleProvider>().isArabic ? 'حفظ' : 'Save'),
-                                         isFavorite ? Icons.favorite : Icons.favorite_border,
-                                         isFavorite ? Colors.red : Colors.grey,
-                                         onTap: () {
-                                           auth.toggleFavoriteUser(user.id);
-                                         },
-                                       );
-                                     }
+                                  if (confirm == true) {
+                                    await FirestoreService().toggleBlock(
+                                        auth.user!.id, user.id, isBlocked);
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                            content: Text(isRtl
+                                                ? (isBlocked
+                                                    ? 'تم إلغاء الحظر'
+                                                    : 'تم الحظر')
+                                                : (isBlocked
+                                                    ? 'Unblocked'
+                                                    : 'Blocked'))),
+                                      );
+                                      auth.refreshUserProfile();
+                                      if (!isBlocked) {
+                                        Navigator.pop(
+                                            context); // Leave profile if blocked
+                                      }
+                                    }
+                                  }
+                                }
+                              },
+                              itemBuilder: (BuildContext context) {
+                                final auth = context.read<AuthProvider>();
+                                final isBlocked =
+                                    auth.user?.blockedUsers.contains(user.id) ??
+                                        false;
+                                final isRtl = Localizations.localeOf(context)
+                                        .languageCode ==
+                                    'ar';
 
-                                     // 2. Freelancer Viewer Logic: Partnership (Zamalah)
-                                     final isPartner = auth.user?.partnerIds.contains(user.id) ?? false;
-                                     final isPending = user.pendingPartnerIds.contains(auth.user?.id) || (auth.user?.pendingPartnerIds.contains(user.id) ?? false);
-                                     
-                                     String titleText = context.read<LocaleProvider>().isArabic ? 'إضافة' : 'Connect';
-                                     IconData iconData = Icons.person_add_alt_1;
-                                     Color iconColor = Colors.grey;
-
-                                     if (isPartner) {
-                                       titleText = context.read<LocaleProvider>().isArabic ? 'متصل' : 'Connected';
-                                       iconData = Icons.check_circle;
-                                       iconColor = Colors.green;
-                                     } else if (isPending) {
-                                       titleText = context.read<LocaleProvider>().isArabic ? 'مُعلّق' : 'Pending';
-                                       iconData = Icons.schedule;
-                                       iconColor = Colors.purple;
-                                     }
-
-                                     return _buildStatItem(
-                                       context.read<LocaleProvider>().isArabic ? 'زميل' : 'Partner',
-                                       titleText,
-                                       iconData,
-                                       iconColor,
-                                       onTap: () {
-                                         final scaffoldMessenger = ScaffoldMessenger.of(context);
-                                         final isAr = context.read<LocaleProvider>().isArabic;
-                                         if (isPartner || isPending) {
-                                           auth.removePartner(user.id);
-                                           scaffoldMessenger.showSnackBar(
-                                             SnackBar(
-                                               content: Text(isAr ? 'تم إلغاء العلاقة / الطلب' : 'Relationship / Request cancelled'),
-                                               backgroundColor: Colors.grey,
-                                             ),
-                                           );
-                                         } else {
-                                           auth.sendPartnerRequest(user.id);
-                                           scaffoldMessenger.showSnackBar(
-                                             SnackBar(
-                                               content: Text(isAr 
-                                                   ? 'تم إرسال طلب الزمالة بنجاح!' 
-                                                   : 'Partner request sent successfully!'),
-                                               backgroundColor: Colors.green,
-                                             ),
-                                           );
-                                         }
-                                       },
-                                     );
-                                   },
-                                 )),
-                               ],
-                            ],
-                          ),
-                        ),
-                        
-                        const SizedBox(height: 16),
-
-                        // Reputation Score & Vouchers
-                        if (user.completedJobs > 0 || user.reviewsCount > 0 || user.vouchedBy.isNotEmpty)
-                          GlassContainer(
-                            blur: 15,
-                            opacity: Theme.of(context).brightness == Brightness.dark ? 0.3 : 0.7,
-                            borderRadius: BorderRadius.circular(16),
-                            color: Theme.of(context).cardColor,
-                            child: Row(
-                              children: [
-                                // Part 1: Reputation Score
-                                Expanded(
-                                  flex: 1,
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                                return [
+                                  PopupMenuItem<String>(
+                                    value: 'report',
                                     child: Row(
                                       children: [
-                                        ReputationScoreWidget(user: user, size: 48),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                context.read<LocaleProvider>().isArabic ? 'نقاط السمعة' : 'Reputation',
-                                                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
-                                              ),
-                                              const SizedBox(height: 2),
-                                              Text(
-                                                context.read<LocaleProvider>().isArabic 
-                                                    ? 'مبنية على الأعمال' 
-                                                    : 'Based on jobs',
-                                                style: TextStyle(fontSize: 10, color: AppColors.textLight),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
+                                        const Icon(Icons.flag_outlined,
+                                            color: Colors.orange),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                            user.isShop
+                                                ? l10n.reportStore
+                                                : (isRtl
+                                                    ? 'الإبلاغ عن الحرفي'
+                                                    : 'Report Freelancer'),
+                                            style: const TextStyle(
+                                                color: Colors.orange)),
                                       ],
                                     ),
                                   ),
-                                ),
-                                
-                                // Divider
-                                Container(width: 1, height: 50, color: Colors.grey.withValues(alpha: 0.2)),
-
-                                // Part 2: Vouchers
-                                Expanded(
-                                  flex: 1,
-                                  child: InkWell(
-                                    onTap: () => _showVouchersBottomSheet(context, user.vouchedBy),
-                                    borderRadius: BorderRadius.horizontal(
-                                      right: context.read<LocaleProvider>().isArabic ? Radius.zero : const Radius.circular(16),
-                                      left: context.read<LocaleProvider>().isArabic ? const Radius.circular(16) : Radius.zero,
+                                  PopupMenuItem<String>(
+                                    value: 'block',
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                            isBlocked
+                                                ? Icons.check_circle_outline
+                                                : Icons.block,
+                                            color: Colors.red),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                            isRtl
+                                                ? (isBlocked
+                                                    ? 'إلغاء الحظر'
+                                                    : 'حظر')
+                                                : (isBlocked
+                                                    ? 'Unblock'
+                                                    : 'Block'),
+                                            style: const TextStyle(
+                                                color: Colors.red)),
+                                      ],
                                     ),
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            context.read<LocaleProvider>().isArabic ? 'المُزكّين' : 'Vouchers',
-                                            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
-                                          ),
-                                          const SizedBox(height: 6),
-                                          if (user.vouchedBy.isEmpty)
-                                            Text(
-                                              context.read<LocaleProvider>().isArabic ? 'لا توجد تزكيات' : 'No vouches yet',
-                                              style: TextStyle(fontSize: 11, color: AppColors.textLight),
-                                            )
-                                          else
-                                              SizedBox(
-                                                height: 42,
-                                                child: Stack(
-                                                  children: [
-                                                    for (int i = 0; i < (user.vouchedBy.length > 3 ? 3 : user.vouchedBy.length); i++)
-                                                      Positioned(
-                                                        right: context.read<LocaleProvider>().isArabic ? null : (i * 26.0),
-                                                        left: context.read<LocaleProvider>().isArabic ? (i * 26.0) : null,
-                                                        child: Container(
-                                                          decoration: BoxDecoration(
-                                                            shape: BoxShape.circle,
-                                                            border: Border.all(color: Theme.of(context).cardColor, width: 2),
-                                                          ),
-                                                          child: CircleAvatar(
-                                                            radius: 19,
-                                                            backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                                                            backgroundImage: user.vouchedBy[i]['profileImageUrl'] != null 
-                                                                ? NetworkImage(user.vouchedBy[i]['profileImageUrl']) 
-                                                                : null,
-                                                            child: user.vouchedBy[i]['profileImageUrl'] == null
-                                                                ? const Icon(Icons.person, size: 20, color: AppColors.primary)
-                                                                : null,
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    if (user.vouchedBy.length > 3)
-                                                      Positioned(
-                                                        right: context.read<LocaleProvider>().isArabic ? null : (3 * 26.0),
-                                                        left: context.read<LocaleProvider>().isArabic ? (3 * 26.0) : null,
-                                                        child: Container(
-                                                          decoration: BoxDecoration(
-                                                            shape: BoxShape.circle,
-                                                            border: Border.all(color: Theme.of(context).cardColor, width: 2),
-                                                          ),
-                                                          child: CircleAvatar(
-                                                            radius: 19,
-                                                            backgroundColor: AppColors.sudanGold,
-                                                            child: Text(
-                                                              '+${user.vouchedBy.length - 3}',
-                                                              style: const TextStyle(fontSize: 14, color: Colors.white, fontWeight: FontWeight.bold),
-                                                            ),
-                                                          ),
-                                                        ),
-                                                      ),
-                                                  ],
+                                  ),
+                                ];
+                              },
+                            ),
+                          ]
+                        ],
+                        flexibleSpace: LayoutBuilder(
+                          builder: (BuildContext context,
+                              BoxConstraints constraints) {
+                            final double expandedHeight = 200.0;
+                            final double collapsedHeight = kToolbarHeight +
+                                MediaQuery.of(context).padding.top;
+                            final double currentHeight =
+                                constraints.biggest.height;
+
+                            double progress =
+                                (currentHeight - collapsedHeight) /
+                                    (expandedHeight - collapsedHeight);
+                            progress = progress.clamp(0.0, 1.0);
+
+                            final double opacity = progress > 0.4
+                                ? ((progress - 0.4) / 0.6).clamp(0.0, 1.0)
+                                : 0.0;
+                            final double scale =
+                                Curves.easeOut.transform(progress);
+
+                            return Stack(
+                              fit: StackFit.expand,
+                              clipBehavior: Clip.none,
+                              children: [
+                                // Cover Image with Curve
+                                ClipPath(
+                                  clipper: ProfileHeaderCurve(),
+                                  child: Stack(
+                                    fit: StackFit.expand,
+                                    children: [
+                                      GestureDetector(
+                                        onTap: () => _handleImageTap(
+                                            user.coverImageUrl, true),
+                                        child: user.coverImageUrl != null
+                                            ? Hero(
+                                                tag: '${user.id}_cover',
+                                                child: CachedNetworkImage(
+                                                  imageUrl: user.coverImageUrl!,
+                                                  fit: BoxFit.cover,
+                                                  placeholder: (_, __) =>
+                                                      Container(
+                                                          color:
+                                                              Colors.grey[300]),
+                                                ),
+                                              )
+                                            : Container(
+                                                decoration: BoxDecoration(
+                                                  gradient: LinearGradient(
+                                                    colors: [
+                                                      AppColors.primary,
+                                                      AppColors.secondary
+                                                    ],
+                                                    begin: Alignment.topLeft,
+                                                    end: Alignment.bottomRight,
+                                                  ),
                                                 ),
                                               ),
-                                        ],
+                                      ),
+                                      // Glass overlay for the cover photo so it keeps the app identity
+                                      if (user.coverImageUrl != null)
+                                        IgnorePointer(
+                                          child: Container(
+                                            color: AppColors.primary
+                                                .withValues(alpha: 0.4),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                                // Avatar
+                                Positioned(
+                                  bottom: -60,
+                                  left: 0,
+                                  right: 0,
+                                  child: Center(
+                                    child: Opacity(
+                                      opacity: opacity,
+                                      child: Transform.scale(
+                                        scale: scale,
+                                        alignment: Alignment.center,
+                                        child: GestureDetector(
+                                          onTap: opacity > 0
+                                              ? () => _handleImageTap(
+                                                  user.profileImageUrl, false)
+                                              : null,
+                                          child: Stack(
+                                            children: [
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.all(4),
+                                                decoration: BoxDecoration(
+                                                  color: Theme.of(context)
+                                                      .scaffoldBackgroundColor,
+                                                  shape: BoxShape.circle,
+                                                  boxShadow: [
+                                                    BoxShadow(
+                                                      color: Colors.black
+                                                          .withValues(
+                                                              alpha: 0.15),
+                                                      blurRadius: 12,
+                                                      offset:
+                                                          const Offset(0, 4),
+                                                    ),
+                                                  ],
+                                                ),
+                                                child: Hero(
+                                                  tag: '${user.id}_profile',
+                                                  child: CircleAvatar(
+                                                    radius: 80,
+                                                    backgroundColor:
+                                                        Theme.of(context)
+                                                            .cardColor,
+                                                    backgroundImage: user
+                                                                .profileImageUrl !=
+                                                            null
+                                                        ? CachedNetworkImageProvider(
+                                                            user.profileImageUrl!)
+                                                        : null,
+                                                    child:
+                                                        user.profileImageUrl ==
+                                                                null
+                                                            ? const Icon(
+                                                                Icons.person,
+                                                                size: 60,
+                                                                color:
+                                                                    Colors.grey)
+                                                            : null,
+                                                  ),
+                                                ),
+                                              ),
+                                              if (user.isOnline && !widget.isMe)
+                                                Positioned(
+                                                  bottom: 8,
+                                                  right: 8,
+                                                  child: Container(
+                                                    width: 18,
+                                                    height: 18,
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.green,
+                                                      shape: BoxShape.circle,
+                                                      border: Border.all(
+                                                          color: Theme.of(
+                                                                  context)
+                                                              .scaffoldBackgroundColor,
+                                                          width: 3),
+                                                    ),
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
+                                        ),
                                       ),
                                     ),
                                   ),
                                 ),
                               ],
+                            );
+                          },
+                        ),
+                      ),
+
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                          child: Column(
+                            children: [
+                              const SizedBox(
+                                  height:
+                                      80), // Space for the overlapping avatar
+
+                              // Name & Skill
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      user.name,
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 24),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                                  SmartVerificationBadge(user: user, size: 24),
+                                ],
+                              ),
+                              // All Skills as Chips
+                              if (user.skills.isNotEmpty)
+                                Wrap(
+                                  alignment: WrapAlignment.center,
+                                  spacing: 6,
+                                  runSpacing: 4,
+                                  children: user.skills
+                                      .where((s) => s.toLowerCase() != 'other')
+                                      .map((skill) => Container(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 10, vertical: 4),
+                                            decoration: BoxDecoration(
+                                              color: AppColors.primary
+                                                  .withValues(alpha: 0.1),
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                              border: Border.all(
+                                                  color: AppColors.primary
+                                                      .withValues(alpha: 0.3)),
+                                            ),
+                                            child: Text(
+                                              JobTitlesUtils.getLocalizedTitle(
+                                                  skill,
+                                                  context
+                                                      .read<LocaleProvider>()
+                                                      .locale
+                                                      .languageCode),
+                                              style: TextStyle(
+                                                  color: AppColors.primary,
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 13),
+                                            ),
+                                          ))
+                                      .toList(),
+                                )
+                              else
+                                Text(
+                                  JobTitlesUtils.getLocalizedTitle(
+                                      user.jobTitle ?? 'Freelancer',
+                                      context
+                                          .read<LocaleProvider>()
+                                          .locale
+                                          .languageCode),
+                                  style: TextStyle(
+                                      color: AppColors.primary,
+                                      fontWeight: FontWeight.w500,
+                                      fontSize: 16),
+                                  textAlign: TextAlign.center,
+                                ),
+
+                              const SizedBox(height: 16),
+
+                              // Stats Row
+                              GlassContainer(
+                                blur: 15,
+                                opacity: Theme.of(context).brightness ==
+                                        Brightness.dark
+                                    ? 0.3
+                                    : 0.7,
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 12, horizontal: 8),
+                                borderRadius: BorderRadius.circular(16),
+                                color: Theme.of(context).cardColor,
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                        child: _buildStatItem(
+                                            l10n.reviews,
+                                            '${user.totalStars.round()}',
+                                            Icons.star,
+                                            Colors.amber)),
+                                    Container(
+                                        width: 1,
+                                        height: 30,
+                                        color:
+                                            Colors.grey.withValues(alpha: 0.2)),
+                                    Expanded(
+                                        child: _buildStatItem(
+                                            l10n.completedJobs,
+                                            '${user.completedJobs}',
+                                            Icons.work_history,
+                                            Colors.blue)),
+                                    Container(
+                                        width: 1,
+                                        height: 30,
+                                        color:
+                                            Colors.grey.withValues(alpha: 0.2)),
+                                    Expanded(
+                                        child: _buildStatItem(
+                                            context
+                                                    .read<LocaleProvider>()
+                                                    .isArabic
+                                                ? 'المشاهدات'
+                                                : 'Views',
+                                            '${user.profileViews}',
+                                            Icons.visibility,
+                                            Colors.purple)),
+                                    Container(
+                                        width: 1,
+                                        height: 30,
+                                        color:
+                                            Colors.grey.withValues(alpha: 0.2)),
+                                    Expanded(
+                                        child: _buildStatItem(
+                                            l10n.location,
+                                            user.state != null
+                                                ? SudanLocations.getStateName(
+                                                    user.state!,
+                                                    context
+                                                        .read<LocaleProvider>()
+                                                        .locale
+                                                        .languageCode)
+                                                : (context
+                                                        .read<LocaleProvider>()
+                                                        .isArabic
+                                                    ? 'غير محدد'
+                                                    : 'Not set'),
+                                            Icons.location_on,
+                                            Colors.red)),
+
+                                    // Partner / Favorite Button
+                                    if (!widget.isMe) ...[
+                                      Container(
+                                          width: 1,
+                                          height: 30,
+                                          color: Colors.grey
+                                              .withValues(alpha: 0.2)),
+                                      Expanded(child: Consumer<AuthProvider>(
+                                        builder: (context, auth, _) {
+                                          final isViewerFreelancer =
+                                              auth.user?.role ==
+                                                      UserRole.freelancer ||
+                                                  auth.user?.role ==
+                                                      UserRole.techService ||
+                                                  auth.user?.role ==
+                                                      UserRole.privateService;
+
+                                          // 1. Client/Shop Logic: Favorites (Hearts)
+                                          if (!isViewerFreelancer) {
+                                            final isFavorite = auth
+                                                    .user?.favoriteUserIds
+                                                    .contains(user.id) ??
+                                                false;
+                                            return _buildStatItem(
+                                              context
+                                                      .read<LocaleProvider>()
+                                                      .isArabic
+                                                  ? 'مفضلة'
+                                                  : 'Favorite',
+                                              isFavorite
+                                                  ? (context
+                                                          .read<
+                                                              LocaleProvider>()
+                                                          .isArabic
+                                                      ? 'محفوظ'
+                                                      : 'Saved')
+                                                  : (context
+                                                          .read<
+                                                              LocaleProvider>()
+                                                          .isArabic
+                                                      ? 'حفظ'
+                                                      : 'Save'),
+                                              isFavorite
+                                                  ? Icons.favorite
+                                                  : Icons.favorite_border,
+                                              isFavorite
+                                                  ? Colors.red
+                                                  : Colors.grey,
+                                              onTap: () {
+                                                auth.toggleFavoriteUser(
+                                                    user.id);
+                                              },
+                                            );
+                                          }
+
+                                          // 2. Freelancer Viewer Logic: Partnership (Zamalah)
+                                          final isPartner = auth
+                                                  .user?.partnerIds
+                                                  .contains(user.id) ??
+                                              false;
+                                          final isPending = user
+                                                  .pendingPartnerIds
+                                                  .contains(auth.user?.id) ||
+                                              (auth.user?.pendingPartnerIds
+                                                      .contains(user.id) ??
+                                                  false);
+
+                                          String titleText = context
+                                                  .read<LocaleProvider>()
+                                                  .isArabic
+                                              ? 'إضافة'
+                                              : 'Connect';
+                                          IconData iconData =
+                                              Icons.person_add_alt_1;
+                                          Color iconColor = Colors.grey;
+
+                                          if (isPartner) {
+                                            titleText = context
+                                                    .read<LocaleProvider>()
+                                                    .isArabic
+                                                ? 'متصل'
+                                                : 'Connected';
+                                            iconData = Icons.check_circle;
+                                            iconColor = Colors.green;
+                                          } else if (isPending) {
+                                            titleText = context
+                                                    .read<LocaleProvider>()
+                                                    .isArabic
+                                                ? 'مُعلّق'
+                                                : 'Pending';
+                                            iconData = Icons.schedule;
+                                            iconColor = Colors.purple;
+                                          }
+
+                                          return _buildStatItem(
+                                            context
+                                                    .read<LocaleProvider>()
+                                                    .isArabic
+                                                ? 'زميل'
+                                                : 'Partner',
+                                            titleText,
+                                            iconData,
+                                            iconColor,
+                                            onTap: () {
+                                              final scaffoldMessenger =
+                                                  ScaffoldMessenger.of(context);
+                                              final isAr = context
+                                                  .read<LocaleProvider>()
+                                                  .isArabic;
+                                              if (isPartner || isPending) {
+                                                auth.removePartner(user.id);
+                                                scaffoldMessenger.showSnackBar(
+                                                  SnackBar(
+                                                    content: Text(isAr
+                                                        ? 'تم إلغاء العلاقة / الطلب'
+                                                        : 'Relationship / Request cancelled'),
+                                                    backgroundColor:
+                                                        Colors.grey,
+                                                  ),
+                                                );
+                                              } else {
+                                                auth.sendPartnerRequest(
+                                                    user.id);
+                                                scaffoldMessenger.showSnackBar(
+                                                  SnackBar(
+                                                    content: Text(isAr
+                                                        ? 'تم إرسال طلب الزمالة بنجاح!'
+                                                        : 'Partner request sent successfully!'),
+                                                    backgroundColor:
+                                                        Colors.green,
+                                                  ),
+                                                );
+                                              }
+                                            },
+                                          );
+                                        },
+                                      )),
+                                    ],
+                                  ],
+                                ),
+                              ),
+
+                              const SizedBox(height: 16),
+
+                              // Reputation Score & Vouchers
+                              if (user.completedJobs > 0 ||
+                                  user.reviewsCount > 0 ||
+                                  user.vouchedBy.isNotEmpty)
+                                GlassContainer(
+                                  blur: 15,
+                                  opacity: Theme.of(context).brightness ==
+                                          Brightness.dark
+                                      ? 0.3
+                                      : 0.7,
+                                  borderRadius: BorderRadius.circular(16),
+                                  color: Theme.of(context).cardColor,
+                                  child: Row(
+                                    children: [
+                                      // Part 1: Reputation Score
+                                      Expanded(
+                                        flex: 1,
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                              vertical: 12, horizontal: 16),
+                                          child: Row(
+                                            children: [
+                                              ReputationScoreWidget(
+                                                  user: user, size: 48),
+                                              const SizedBox(width: 12),
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      context
+                                                              .read<
+                                                                  LocaleProvider>()
+                                                              .isArabic
+                                                          ? 'نقاط السمعة'
+                                                          : 'Reputation',
+                                                      style: const TextStyle(
+                                                          fontWeight:
+                                                              FontWeight.w700,
+                                                          fontSize: 13),
+                                                    ),
+                                                    const SizedBox(height: 2),
+                                                    Text(
+                                                      context
+                                                              .read<
+                                                                  LocaleProvider>()
+                                                              .isArabic
+                                                          ? 'مبنية على الأعمال'
+                                                          : 'Based on jobs',
+                                                      style: TextStyle(
+                                                          fontSize: 10,
+                                                          color: AppColors
+                                                              .textLight),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+
+                                      // Divider
+                                      Container(
+                                          width: 1,
+                                          height: 50,
+                                          color: Colors.grey
+                                              .withValues(alpha: 0.2)),
+
+                                      // Part 2: Vouchers
+                                      Expanded(
+                                        flex: 1,
+                                        child: InkWell(
+                                          onTap: () => _showVouchersBottomSheet(
+                                              context, user.vouchedBy),
+                                          borderRadius: BorderRadius.horizontal(
+                                            right: context
+                                                    .read<LocaleProvider>()
+                                                    .isArabic
+                                                ? Radius.zero
+                                                : const Radius.circular(16),
+                                            left: context
+                                                    .read<LocaleProvider>()
+                                                    .isArabic
+                                                ? const Radius.circular(16)
+                                                : Radius.zero,
+                                          ),
+                                          child: Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                                vertical: 12, horizontal: 16),
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  context
+                                                          .read<
+                                                              LocaleProvider>()
+                                                          .isArabic
+                                                      ? 'المُزكّين'
+                                                      : 'Vouchers',
+                                                  style: const TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                      fontSize: 13),
+                                                ),
+                                                const SizedBox(height: 6),
+                                                if (user.vouchedBy.isEmpty)
+                                                  Text(
+                                                    context
+                                                            .read<
+                                                                LocaleProvider>()
+                                                            .isArabic
+                                                        ? 'لا توجد تزكيات'
+                                                        : 'No vouches yet',
+                                                    style: TextStyle(
+                                                        fontSize: 11,
+                                                        color: AppColors
+                                                            .textLight),
+                                                  )
+                                                else
+                                                  SizedBox(
+                                                    height: 42,
+                                                    child: Stack(
+                                                      children: [
+                                                        for (int i = 0;
+                                                            i <
+                                                                (user.vouchedBy
+                                                                            .length >
+                                                                        3
+                                                                    ? 3
+                                                                    : user
+                                                                        .vouchedBy
+                                                                        .length);
+                                                            i++)
+                                                          Positioned(
+                                                            right: context
+                                                                    .read<
+                                                                        LocaleProvider>()
+                                                                    .isArabic
+                                                                ? null
+                                                                : (i * 26.0),
+                                                            left: context
+                                                                    .read<
+                                                                        LocaleProvider>()
+                                                                    .isArabic
+                                                                ? (i * 26.0)
+                                                                : null,
+                                                            child: Container(
+                                                              decoration:
+                                                                  BoxDecoration(
+                                                                shape: BoxShape
+                                                                    .circle,
+                                                                border: Border.all(
+                                                                    color: Theme.of(
+                                                                            context)
+                                                                        .cardColor,
+                                                                    width: 2),
+                                                              ),
+                                                              child:
+                                                                  CircleAvatar(
+                                                                radius: 19,
+                                                                backgroundColor: AppColors
+                                                                    .primary
+                                                                    .withValues(
+                                                                        alpha:
+                                                                            0.1),
+                                                                backgroundImage: user.vouchedBy[i]
+                                                                            [
+                                                                            'profileImageUrl'] !=
+                                                                        null
+                                                                    ? NetworkImage(
+                                                                        user.vouchedBy[i]
+                                                                            [
+                                                                            'profileImageUrl'])
+                                                                    : null,
+                                                                child: user.vouchedBy[i]
+                                                                            [
+                                                                            'profileImageUrl'] ==
+                                                                        null
+                                                                    ? const Icon(
+                                                                        Icons
+                                                                            .person,
+                                                                        size:
+                                                                            20,
+                                                                        color: AppColors
+                                                                            .primary)
+                                                                    : null,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        if (user.vouchedBy
+                                                                .length >
+                                                            3)
+                                                          Positioned(
+                                                            right: context
+                                                                    .read<
+                                                                        LocaleProvider>()
+                                                                    .isArabic
+                                                                ? null
+                                                                : (3 * 26.0),
+                                                            left: context
+                                                                    .read<
+                                                                        LocaleProvider>()
+                                                                    .isArabic
+                                                                ? (3 * 26.0)
+                                                                : null,
+                                                            child: Container(
+                                                              decoration:
+                                                                  BoxDecoration(
+                                                                shape: BoxShape
+                                                                    .circle,
+                                                                border: Border.all(
+                                                                    color: Theme.of(
+                                                                            context)
+                                                                        .cardColor,
+                                                                    width: 2),
+                                                              ),
+                                                              child:
+                                                                  CircleAvatar(
+                                                                radius: 19,
+                                                                backgroundColor:
+                                                                    AppColors
+                                                                        .sudanGold,
+                                                                child: Text(
+                                                                  '+${user.vouchedBy.length - 3}',
+                                                                  style: const TextStyle(
+                                                                      fontSize:
+                                                                          14,
+                                                                      color: Colors
+                                                                          .white,
+                                                                      fontWeight:
+                                                                          FontWeight
+                                                                              .bold),
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+
+                              const SizedBox(height: 16),
+
+                              // Bio
+                              if (user.bio != null && user.bio!.isNotEmpty)
+                                LinkableText(
+                                  text: user.bio!,
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                      height: 1.5,
+                                      color: Theme.of(context)
+                                          .textTheme
+                                          .bodyLarge
+                                          ?.color
+                                          ?.withValues(alpha: 0.9)),
+                                ),
+
+                              const SizedBox(height: 16),
+
+                              // Average Price Card
+                              _buildAveragePriceCard(user),
+
+                              const SizedBox(height: 24),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      // 3. Tab Bar
+                      SliverPersistentHeader(
+                        pinned: true,
+                        delegate: _SliverTabBarDelegate(
+                          topPadding: MediaQuery.of(context).padding.top,
+                          TabBar(
+                            controller: _tabController,
+                            indicatorSize: TabBarIndicatorSize.tab,
+                            dividerColor:
+                                Colors.transparent, // Remove default underline
+                            labelPadding: EdgeInsets.zero,
+                            indicatorPadding: const EdgeInsets.all(2),
+                            indicator: BoxDecoration(
+                              borderRadius: BorderRadius.circular(20),
+                              color: AppColors.primary,
+                              boxShadow: [
+                                BoxShadow(
+                                  color:
+                                      AppColors.primary.withValues(alpha: 0.3),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                )
+                              ],
                             ),
+                            labelColor: Colors.white,
+                            unselectedLabelColor: Colors.grey.shade600,
+                            labelStyle: const TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 13),
+                            unselectedLabelStyle: const TextStyle(
+                                fontWeight: FontWeight.w600, fontSize: 13),
+                            splashBorderRadius: BorderRadius.circular(20),
+                            tabs: [
+                              Tab(
+                                  height: 28,
+                                  text: Localizations.localeOf(context)
+                                              .languageCode ==
+                                          'ar'
+                                      ? 'المنشورات'
+                                      : 'Posts'),
+                              Tab(
+                                  height: 28,
+                                  text: Localizations.localeOf(context)
+                                              .languageCode ==
+                                          'ar'
+                                      ? 'المعرض'
+                                      : 'Portfolio'),
+                              Tab(height: 28, text: l10n.reviews),
+                            ],
                           ),
+                        ),
+                      ),
+                    ];
+                  },
+                  body: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      // Tab 1: Posts (Grid)
+                      KeepAliveTabView(child: _buildPortfolioGrid()),
 
-                        const SizedBox(height: 16),
+                      // Tab 2: Professional Portfolio (Detailed)
+                      KeepAliveTabView(child: _buildProfessionalPortfolio()),
 
-                        // Bio
-                        if (user.bio != null && user.bio!.isNotEmpty)
-                          LinkableText(
-                            text: user.bio!,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(height: 1.5, color: Theme.of(context).textTheme.bodyLarge?.color?.withValues(alpha: 0.9)),
-                          ),
-
-                        const SizedBox(height: 16),
-                        
-                        // Average Price Card
-                        _buildAveragePriceCard(user),
-
-                        const SizedBox(height: 24),
-                      ],
-                    ),
+                      // Tab 3: Reviews (List + Add Button)
+                      KeepAliveTabView(child: _buildReviewsSection()),
+                    ],
                   ),
-                ),
-
-                // 3. Tab Bar
-                SliverPersistentHeader(
-                  pinned: true,
-                  delegate: _SliverTabBarDelegate(
-                    topPadding: MediaQuery.of(context).padding.top,
-                    TabBar(
-                      controller: _tabController,
-                      indicatorColor: AppColors.primary,
-                      labelColor: AppColors.primary,
-                      unselectedLabelColor: Colors.grey,
-                      labelStyle: const TextStyle(fontWeight: FontWeight.bold),
-                      tabs: [
-                        Tab(text: Localizations.localeOf(context).languageCode == 'ar' ? 'المنشورات' : 'Posts'),
-                        Tab(text: Localizations.localeOf(context).languageCode == 'ar' ? 'المعرض' : 'Portfolio'),
-                        Tab(text: l10n.reviews),
-                      ],
-                    ),
-                  ),
-                ),
-              ];
-            },
-            body: TabBarView(
-              controller: _tabController,
-              children: [
-                // Tab 1: Posts (Grid)
-                KeepAliveTabView(child: _buildPortfolioGrid()),
-
-                // Tab 2: Professional Portfolio (Detailed)
-                KeepAliveTabView(child: _buildProfessionalPortfolio()),
-                
-                // Tab 3: Reviews (List + Add Button)
-                KeepAliveTabView(child: _buildReviewsSection()),
-              ],
-            ),
-          );
-        }
-      ),
+                );
+              }),
           // Loading overlay while uploading image
           if (_isUploadingImage)
             Container(
               color: Colors.black.withValues(alpha: 0.55),
               child: Center(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
                   decoration: BoxDecoration(
                     color: Theme.of(context).cardColor,
                     borderRadius: BorderRadius.circular(16),
@@ -752,6 +1181,30 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
                 ),
               ),
             ),
+          if (widget.isMe &&
+              (_tabController.index == 0 || _tabController.index == 1))
+            SmartDraggableFab(
+              heroTag: 'add_portfolio_fab',
+              icon: _tabController.index == 0
+                  ? Icons.add_photo_alternate_outlined
+                  : Icons.create_new_folder_outlined,
+              locale: Localizations.localeOf(context).languageCode,
+              initialBottom: MediaQuery.of(context).padding.bottom + 82.0,
+              onPressed: () {
+                if (_tabController.index == 0) {
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const CreatePostScreen()));
+                } else {
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) =>
+                              const CreatePortfolioProjectScreen()));
+                }
+              },
+            ),
         ],
       ),
       floatingActionButton: Consumer<ThemeProvider>(
@@ -760,53 +1213,6 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
           final isAr = Localizations.localeOf(context).languageCode == 'ar';
 
           if (widget.isMe) {
-            if (_tabController.index == 0 || _tabController.index == 1) {
-              return AdaptiveFabPadding(
-                child: isGlass
-                    ? GlassContainer(
-                        borderRadius: BorderRadius.circular(28),
-                        blur: 15,
-                        opacity: 0.4,
-                        color: AppColors.primary,
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(28),
-                          onTap: () {
-                            if (_tabController.index == 0) {
-                              Navigator.push(context, MaterialPageRoute(builder: (_) => const CreatePostScreen()));
-                            } else {
-                              Navigator.push(context, MaterialPageRoute(builder: (_) => const CreatePortfolioProjectScreen()));
-                            }
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Icon(
-                              _tabController.index == 0 ? Icons.add_photo_alternate_outlined : Icons.create_new_folder_outlined,
-                              color: Colors.white,
-                              size: 22,
-                            ),
-                          ),
-                        ),
-                      )
-                    : FloatingActionButton(
-                        heroTag: 'add_portfolio_fab',
-                        onPressed: () {
-                          if (_tabController.index == 0) {
-                            Navigator.push(context, MaterialPageRoute(builder: (_) => const CreatePostScreen()));
-                          } else {
-                            Navigator.push(context, MaterialPageRoute(builder: (_) => const CreatePortfolioProjectScreen()));
-                          }
-                        },
-                        backgroundColor: AppColors.primary,
-                        mini: true,
-                        child: Icon(
-                          _tabController.index == 0 ? Icons.add_photo_alternate_outlined : Icons.create_new_folder_outlined,
-                          color: Colors.white,
-                          size: 22,
-                        ),
-                      ),
-              );
-            }
             return const SizedBox.shrink();
           }
 
@@ -821,34 +1227,54 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
                         blur: 15,
                         opacity: 0.4,
                         color: Colors.white.withValues(alpha: 0.2),
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.5)),
+                        border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.5)),
                         child: InkWell(
                           borderRadius: BorderRadius.circular(28),
                           onTap: () {
-                            if (widget.user.latitude == null || widget.user.longitude == null) {
+                            if (widget.user.latitude == null ||
+                                widget.user.longitude == null) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text(isAr ? 'الموقع غير متوفر لهذا المستخدم' : 'Location not available for this user'), backgroundColor: Colors.red),
+                                SnackBar(
+                                    content: Text(isAr
+                                        ? 'الموقع غير متوفر لهذا المستخدم'
+                                        : 'Location not available for this user'),
+                                    backgroundColor: Colors.red),
                               );
                               return;
                             }
-                            Navigator.push(context, MaterialPageRoute(builder: (_) => MapExplorerScreen(targetUser: widget.user)));
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) => MapExplorerScreen(
+                                        targetUser: widget.user)));
                           },
                           child: const Padding(
                             padding: EdgeInsets.all(12),
-                            child: Icon(Icons.location_on_outlined, color: AppColors.primary),
+                            child: Icon(Icons.location_on_outlined,
+                                color: AppColors.primary),
                           ),
                         ),
                       )
                     : FloatingActionButton.small(
                         heroTag: 'freelancer_location_btn',
                         onPressed: () {
-                          if (widget.user.latitude == null || widget.user.longitude == null) {
+                          if (widget.user.latitude == null ||
+                              widget.user.longitude == null) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(isAr ? 'الموقع غير متوفر لهذا المستخدم' : 'Location not available for this user'), backgroundColor: Colors.red),
+                              SnackBar(
+                                  content: Text(isAr
+                                      ? 'الموقع غير متوفر لهذا المستخدم'
+                                      : 'Location not available for this user'),
+                                  backgroundColor: Colors.red),
                             );
                             return;
                           }
-                          Navigator.push(context, MaterialPageRoute(builder: (_) => MapExplorerScreen(targetUser: widget.user)));
+                          Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) => MapExplorerScreen(
+                                      targetUser: widget.user)));
                         },
                         backgroundColor: Colors.white,
                         foregroundColor: AppColors.primary,
@@ -861,18 +1287,24 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
                         blur: 15,
                         opacity: 0.4,
                         color: AppColors.primary,
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+                        border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.3)),
                         child: InkWell(
                           borderRadius: BorderRadius.circular(28),
                           onTap: () => _showContactMenu(context, widget.user),
                           child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 12),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(Icons.support_agent, size: 22, color: Colors.white),
+                                const Icon(Icons.support_agent,
+                                    size: 22, color: Colors.white),
                                 const SizedBox(width: 8),
-                                Text(isAr ? 'تواصل معي' : 'Contact Me', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                                Text(isAr ? 'تواصل معي' : 'Contact Me',
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white)),
                               ],
                             ),
                           ),
@@ -884,7 +1316,9 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
                         icon: const Icon(Icons.support_agent, size: 22),
-                        label: Text(isAr ? 'تواصل معي' : 'Contact Me', style: const TextStyle(fontWeight: FontWeight.bold)),
+                        label: Text(isAr ? 'تواصل معي' : 'Contact Me',
+                            style:
+                                const TextStyle(fontWeight: FontWeight.bold)),
                       ),
               ],
             ),
@@ -897,37 +1331,67 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
   void _showContactMenu(BuildContext context, UserModel freelancer) {
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => GlassContainer(
+        blur: 20,
+        opacity: Theme.of(context).brightness == Brightness.dark ? 0.3 : 0.8,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Drag handle
+                Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
               Text(
-                Localizations.localeOf(context).languageCode == 'ar' ? 'تواصل مع الحرفي' : 'Contact Freelancer',
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                Localizations.localeOf(context).languageCode == 'ar'
+                    ? 'تواصل مع الحرفي'
+                    : 'Contact Freelancer',
+                style:
+                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
               ListTile(
-                leading: const CircleAvatar(backgroundColor: Colors.green, child: Icon(Icons.chat, color: Colors.white)),
-                title: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'واتساب' : 'WhatsApp'),
+                leading: const CircleAvatar(
+                    backgroundColor: Colors.green,
+                    child: Icon(Icons.chat, color: Colors.white)),
+                title: Text(Localizations.localeOf(context).languageCode == 'ar'
+                    ? 'واتساب'
+                    : 'WhatsApp'),
                 onTap: () {
                   Navigator.pop(ctx);
-                  _openWhatsApp(freelancer.whatsappNumber ?? freelancer.phoneNumber);
+                  _openWhatsApp(
+                      freelancer.whatsappNumber ?? freelancer.phoneNumber);
                 },
               ),
               ListTile(
-                leading: CircleAvatar(backgroundColor: AppColors.primary, child: const Icon(Icons.call, color: Colors.white)),
-                title: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'اتصال مباشر' : 'Direct Call'),
+                leading: CircleAvatar(
+                    backgroundColor: AppColors.primary,
+                    child: const Icon(Icons.call, color: Colors.white)),
+                title: Text(Localizations.localeOf(context).languageCode == 'ar'
+                    ? 'اتصال مباشر'
+                    : 'Direct Call'),
                 onTap: () {
                   Navigator.pop(ctx);
                   _makePhoneCall(freelancer.phoneNumber);
                 },
               ),
               ListTile(
-                leading: CircleAvatar(backgroundColor: Colors.blue, child: const Icon(Icons.handshake, color: Colors.white)),
-                title: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'إنشاء اتفاق (دردشة)' : 'Create Agreement (Chat)'),
+                leading: CircleAvatar(
+                    backgroundColor: Colors.blue,
+                    child: const Icon(Icons.handshake, color: Colors.white)),
+                title: Text(Localizations.localeOf(context).languageCode == 'ar'
+                    ? 'إنشاء اتفاق (دردشة)'
+                    : 'Create Agreement (Chat)'),
                 onTap: () async {
                   final authProvider = context.read<AuthProvider>();
                   final currentUser = authProvider.user;
@@ -943,7 +1407,8 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
                   showDialog(
                     context: context,
                     barrierDismissible: false,
-                    builder: (_) => const Center(child: CircularProgressIndicator()),
+                    builder: (_) =>
+                        const Center(child: CircularProgressIndicator()),
                   );
 
                   try {
@@ -964,23 +1429,32 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
                     if (chat != null) {
                       navigator.push(
                         MaterialPageRoute(
-                          builder: (_) => ChatScreen(chat: chat, autoOpenContractDialog: true),
+                          builder: (_) => ChatScreen(
+                              chat: chat, autoOpenContractDialog: true),
                         ),
                       );
                     } else {
-                      final errorMsg = chatProvider.errorMessage ?? (locale == 'ar' ? 'حدث خطأ أثناء إنشاء المحادثة' : 'Error creating chat');
+                      final errorMsg = chatProvider.errorMessage ??
+                          (locale == 'ar'
+                              ? 'حدث خطأ أثناء إنشاء المحادثة'
+                              : 'Error creating chat');
                       scaffoldMessenger.showSnackBar(
-                        SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
+                        SnackBar(
+                            content: Text(errorMsg),
+                            backgroundColor: Colors.red),
                       );
                     }
                   } catch (e, stack) {
                     navigator.pop();
                     if (ctx.mounted) Navigator.pop(ctx);
-                    if (context.mounted) AppErrorHandler.show(context, e, stack, logContext: 'FreelancerProfile.createChat');
+                    if (context.mounted)
+                      AppErrorHandler.show(context, e, stack,
+                          logContext: 'FreelancerProfile.createChat');
                   }
                 },
               ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -989,7 +1463,8 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
 
   // --- Helper Widgets & Methods ---
 
-  Widget _buildStatItem(String label, String value, IconData icon, Color color, {VoidCallback? onTap}) {
+  Widget _buildStatItem(String label, String value, IconData icon, Color color,
+      {VoidCallback? onTap}) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
@@ -997,7 +1472,13 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
         children: [
           Icon(icon, color: color, size: 24),
           const SizedBox(height: 4),
-          Text(value, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: onTap != null ? color : null)), // Highlight value if clickable
+          Text(value,
+              style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                  color: onTap != null
+                      ? color
+                      : null)), // Highlight value if clickable
           Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
         ],
       ),
@@ -1032,51 +1513,51 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
           return b.createdAt.compareTo(a.createdAt);
         });
 
-          if (portfolioPosts.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.image_not_supported_outlined, size: 64, color: Colors.grey[300]),
-                  const SizedBox(height: 16),
-                  Text(
-                    widget.isMe ? l10n.addWork : l10n.noWorkDisplayed,
-                    style: TextStyle(color: Colors.grey[600]),
-                  ),
-                ],
+        if (portfolioPosts.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.image_not_supported_outlined,
+                    size: 64, color: Colors.grey[300]),
+                const SizedBox(height: 16),
+                Text(
+                  widget.isMe ? l10n.addWork : l10n.noWorkDisplayed,
+                  style: TextStyle(color: Colors.grey[600]),
+                ),
+              ],
+            ),
+          );
+        }
+        return ListView.separated(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          itemCount: portfolioPosts.length,
+          separatorBuilder: (context, index) => const SizedBox(height: 8),
+          itemBuilder: (context, index) {
+            final post = portfolioPosts[index];
+            return StaggeredAnimatedWidget(
+              index: index,
+              listId: 'freelancer_profile_${widget.user.id}',
+              child: PostCard(
+                post: post,
+                currentUserId: context.read<AuthProvider>().user?.id ?? '',
+                locale: Localizations.localeOf(context).languageCode,
+                showActions: true,
               ),
             );
-          }
-          return ListView.separated(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            itemCount: portfolioPosts.length,
-            separatorBuilder: (context, index) => const SizedBox(height: 8),
-            itemBuilder: (context, index) {
-              final post = portfolioPosts[index];
-              return StaggeredAnimatedWidget(
-                index: index,
-                listId: 'freelancer_profile_${widget.user.id}',
-                child: PostCard(
-                  post: post,
-                  currentUserId: context.read<AuthProvider>().user?.id ?? '',
-                  locale: Localizations.localeOf(context).languageCode,
-                  showActions: true,
-                ),
-              );
-            },
-          );
-        },
-      );
-    }
-
-
+          },
+        );
+      },
+    );
+  }
 
   Widget _buildReviewsSection() {
     final l10n = AppLocalizations.of(context)!;
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        Text(l10n.reviews, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        Text(l10n.reviews,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
         const SizedBox(height: 12),
         _buildReviewsList(),
       ],
@@ -1087,16 +1568,22 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
     return StreamBuilder<List<ReviewModel>>(
       stream: _reviewsStream,
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) return const LoadingIndicator();
-        if (!snapshot.hasData || snapshot.data!.isEmpty) return Center(child: Text(AppLocalizations.of(context)!.noReviews, style: const TextStyle(color: Colors.grey)));
-        
+        if (snapshot.connectionState == ConnectionState.waiting)
+          return const LoadingIndicator();
+        if (!snapshot.hasData || snapshot.data!.isEmpty)
+          return Center(
+              child: Text(AppLocalizations.of(context)!.noReviews,
+                  style: const TextStyle(color: Colors.grey)));
+
         return Column(
           children: [
             ReviewStatsWidget(
               reviews: snapshot.data!,
               locale: context.read<LocaleProvider>().locale.languageCode,
             ),
-            ...snapshot.data!.map((review) => ReviewCard(review: review, locale: context.read<LocaleProvider>().locale.languageCode)),
+            ...snapshot.data!.map((review) => ReviewCard(
+                review: review,
+                locale: context.read<LocaleProvider>().locale.languageCode)),
           ],
         );
       },
@@ -1108,7 +1595,8 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
     final currentUser = context.read<AuthProvider>().user;
     if (currentUser == null) {
       final scaffoldMessenger = ScaffoldMessenger.of(context);
-      scaffoldMessenger.showSnackBar(SnackBar(content: Text(l10n.loginToReview)));
+      scaffoldMessenger
+          .showSnackBar(SnackBar(content: Text(l10n.loginToReview)));
       return;
     }
 
@@ -1128,7 +1616,10 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
             children: [
               const Icon(Icons.info_outline, color: Colors.orange),
               const SizedBox(width: 8),
-              Expanded(child: Text(isArabic ? 'يجب إكمال اتفاق أولاً' : 'Complete an Agreement First')),
+              Expanded(
+                  child: Text(isArabic
+                      ? 'يجب إكمال اتفاق أولاً'
+                      : 'Complete an Agreement First')),
             ],
           ),
           content: Text(
@@ -1154,10 +1645,11 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
         freelancerId: widget.user.id,
         targetName: widget.user.name,
         targetImageUrl: widget.user.profileImageUrl,
-        onSubmit: (rating, comment, isNegative, isJobCompleted, wouldWorkAgain) async {
+        onSubmit: (rating, comment, isNegative, isJobCompleted,
+            wouldWorkAgain) async {
           final l10n = AppLocalizations.of(context)!;
           final messenger = ScaffoldMessenger.of(this.context);
-          
+
           final review = ReviewModel(
             id: '',
             freelancerId: widget.user.id,
@@ -1170,18 +1662,23 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
             wouldWorkAgain: wouldWorkAgain,
             createdAt: DateTime.now(),
           );
-          
+
           try {
-            await FirestoreService().createReview(review, isJobCompleted: isJobCompleted);
-            
+            await FirestoreService()
+                .createReview(review, isJobCompleted: isJobCompleted);
+
             // Log review successfully added
             debugPrint('Review added successfully for job completion check');
-            
+
             if (!mounted) return;
-            messenger.showSnackBar(SnackBar(content: Text(l10n.reviewAddedSuccessfully), backgroundColor: AppColors.success));
+            messenger.showSnackBar(SnackBar(
+                content: Text(l10n.reviewAddedSuccessfully),
+                backgroundColor: AppColors.success));
           } catch (e, stack) {
             if (!mounted) return;
-            if (context.mounted) AppErrorHandler.show(context, e, stack, logContext: 'FreelancerProfile.addReview');
+            if (context.mounted)
+              AppErrorHandler.show(context, e, stack,
+                  logContext: 'FreelancerProfile.addReview');
           }
         },
       ),
@@ -1190,7 +1687,7 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
 
   Future<void> _openWhatsApp(String? number) async {
     if (number == null || number.isEmpty) return;
-    
+
     final l10n = AppLocalizations.of(context)!;
 
     try {
@@ -1209,12 +1706,13 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
           );
           await FirestoreService().createContactLog(log);
         } catch (e, stack) {
-          AppErrorHandler.log(e, stack, context: 'FreelancerProfile.whatsappContactLog');
+          AppErrorHandler.log(e, stack,
+              context: 'FreelancerProfile.whatsappContactLog');
         }
       }
-      
+
       String cleaned = number.replaceAll(RegExp(r'[^\d+]'), '');
-      
+
       if (cleaned.startsWith('00')) {
         cleaned = cleaned.substring(2);
       } else if (cleaned.startsWith('+')) {
@@ -1224,15 +1722,14 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
       } else if (!cleaned.startsWith('249') && cleaned.length == 9) {
         cleaned = '249$cleaned';
       }
-      
-      final message = Uri.encodeComponent(
-        l10n.localeName == 'ar' 
-            ? 'مرحباً، أتواصل معك من خلال منصة سودان فري.' 
-            : 'Hello, I am contacting you through the Sudan Free platform.'
-      );
+
+      final message = Uri.encodeComponent(l10n.localeName == 'ar'
+          ? 'مرحباً، أتواصل معك من خلال منصة سودان فري.'
+          : 'Hello, I am contacting you through the Sudan Free platform.');
       final url = 'https://wa.me/$cleaned?text=$message';
       try {
-        await launchUrl(Uri.parse(url), mode: LaunchMode.externalNonBrowserApplication);
+        await launchUrl(Uri.parse(url),
+            mode: LaunchMode.externalNonBrowserApplication);
       } catch (_) {}
     } finally {
       // Contact complete
@@ -1258,13 +1755,15 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
           );
           await FirestoreService().createContactLog(log);
         } catch (e, stack) {
-          AppErrorHandler.log(e, stack, context: 'FreelancerProfile.callContactLog');
+          AppErrorHandler.log(e, stack,
+              context: 'FreelancerProfile.callContactLog');
         }
       }
-      
+
       final Uri launchUri = Uri(scheme: 'tel', path: number);
       try {
-        await launchUrl(launchUri, mode: LaunchMode.externalNonBrowserApplication);
+        await launchUrl(launchUri,
+            mode: LaunchMode.externalNonBrowserApplication);
       } catch (_) {}
     } finally {
       // Call complete
@@ -1273,23 +1772,26 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
 
   void _openImage(String url, String tag) {
     Navigator.push(
-      context, 
-      MaterialPageRoute(builder: (_) => ImageViewerScreen(imageUrl: url, heroTag: tag))
-    );
+        context,
+        MaterialPageRoute(
+            builder: (_) => ImageViewerScreen(imageUrl: url, heroTag: tag)));
   }
 
   void _handleImageTap(String? imageUrl, bool isCover) {
     final l10n = AppLocalizations.of(context)!;
     // If not me, just view image (if exists)
     if (!widget.isMe) {
-      if (imageUrl != null) _openImage(imageUrl, isCover ? '${widget.user.id}_cover' : '${widget.user.id}_profile');
+      if (imageUrl != null)
+        _openImage(imageUrl,
+            isCover ? '${widget.user.id}_cover' : '${widget.user.id}_profile');
       return;
     }
 
     // If me, show options
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) => SafeArea(
         child: Wrap(
           children: [
@@ -1297,7 +1799,8 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
               padding: const EdgeInsets.all(16.0),
               child: Text(
                 isCover ? l10n.coverPhoto : l10n.profilePhoto,
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                style:
+                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
               ),
             ),
             if (imageUrl != null)
@@ -1306,7 +1809,11 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
                 title: Text(AppLocalizations.of(context)!.viewImage),
                 onTap: () {
                   Navigator.pop(ctx);
-                  _openImage(imageUrl, isCover ? '${widget.user.id}_cover' : '${widget.user.id}_profile');
+                  _openImage(
+                      imageUrl,
+                      isCover
+                          ? '${widget.user.id}_cover'
+                          : '${widget.user.id}_profile');
                 },
               ),
             ListTile(
@@ -1328,8 +1835,9 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
     if (_isUploadingImage) return;
 
     final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
-    
+    final pickedFile =
+        await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+
     if (pickedFile == null) return;
     if (!mounted) return;
 
@@ -1339,34 +1847,34 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
     try {
       final file = File(pickedFile.path);
       final url = isCover
-          ? await StorageService().uploadImage(file, folder: 'users/${widget.user.id}/cover')
+          ? await StorageService()
+              .uploadImage(file, folder: 'users/${widget.user.id}/cover')
           : await StorageService().uploadProfileImage(widget.user.id, file);
 
       if (url != null) {
         // Update Firestore
-        final updates = isCover 
-            ? {'coverImageUrl': url}
-            : {'profileImageUrl': url};
-        
+        final updates =
+            isCover ? {'coverImageUrl': url} : {'profileImageUrl': url};
+
         await FirestoreService().updateUserProfile(widget.user.id, updates);
-        
+
         // Update ALL User posts and comments with new image if profile image changed
         if (!isCover) {
-          await FirestoreService().updateUserProfileImages(widget.user.id, url, null);
+          await FirestoreService()
+              .updateUserProfileImages(widget.user.id, url, null);
         }
 
         // Force refresh list
-        if (mounted) context.read<UserProvider>().fetchFreelancers(forceRefresh: true);
+        if (mounted)
+          context.read<UserProvider>().fetchFreelancers(forceRefresh: true);
 
         if (mounted) {
           final scaffoldMessenger = ScaffoldMessenger.of(context);
           scaffoldMessenger.showSnackBar(
             SnackBar(
-              content: Text(
-                context.read<LocaleProvider>().isArabic 
-                    ? 'تم تحديث الصورة بنجاح ✅' 
-                    : 'Image updated successfully ✅'
-              ),
+              content: Text(context.read<LocaleProvider>().isArabic
+                  ? 'تم تحديث الصورة بنجاح ✅'
+                  : 'Image updated successfully ✅'),
               backgroundColor: AppColors.success,
             ),
           );
@@ -1376,11 +1884,9 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
           final scaffoldMessenger = ScaffoldMessenger.of(context);
           scaffoldMessenger.showSnackBar(
             SnackBar(
-              content: Text(
-                context.read<LocaleProvider>().isArabic 
-                    ? 'فشل رفع الصورة، تحقق من اتصالك بالإنترنت' 
-                    : 'Image upload failed, check your internet connection'
-              ),
+              content: Text(context.read<LocaleProvider>().isArabic
+                  ? 'فشل رفع الصورة، تحقق من اتصالك بالإنترنت'
+                  : 'Image upload failed, check your internet connection'),
               backgroundColor: Colors.red,
               duration: const Duration(seconds: 5),
             ),
@@ -1388,11 +1894,14 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
         }
       }
     } catch (e, stack) {
-      if (mounted) AppErrorHandler.show(context, e, stack, logContext: 'FreelancerProfile.uploadImage');
+      if (mounted)
+        AppErrorHandler.show(context, e, stack,
+            logContext: 'FreelancerProfile.uploadImage');
     } finally {
       if (mounted) setState(() => _isUploadingImage = false);
     }
   }
+
   Widget _buildProfessionalPortfolio() {
     final locale = context.watch<LocaleProvider>().locale.languageCode;
     return StreamBuilder<List<PortfolioProjectModel>>(
@@ -1402,15 +1911,19 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
           debugPrint('Error loading portfolio: ${snapshot.error}');
           // Show empty state for permission errors instead of red error text
           final errorStr = snapshot.error.toString();
-          if (errorStr.contains('permission-denied') || errorStr.contains('PERMISSION_DENIED')) {
+          if (errorStr.contains('permission-denied') ||
+              errorStr.contains('PERMISSION_DENIED')) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.folder_open_outlined, size: 64, color: Colors.grey[400]),
+                  Icon(Icons.folder_open_outlined,
+                      size: 64, color: Colors.grey[400]),
                   const SizedBox(height: 16),
                   Text(
-                    locale == 'ar' ? 'لا توجد مشاريع في المعرض بعد' : 'No portfolio projects yet',
+                    locale == 'ar'
+                        ? 'لا توجد مشاريع في المعرض بعد'
+                        : 'No portfolio projects yet',
                     style: TextStyle(color: Colors.grey[600]),
                   ),
                 ],
@@ -1421,14 +1934,17 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Text(
-                locale == 'ar' ? 'خطأ في تحميل المعرض المهني.' : 'Error loading portfolio.',
+                locale == 'ar'
+                    ? 'خطأ في تحميل المعرض المهني.'
+                    : 'Error loading portfolio.',
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: Colors.red),
               ),
             ),
           );
         }
-        if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: LoadingIndicator());
+        if (snapshot.connectionState == ConnectionState.waiting)
+          return const Center(child: LoadingIndicator());
         final projects = snapshot.data ?? [];
 
         if (projects.isEmpty) {
@@ -1436,10 +1952,13 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.folder_open_outlined, size: 64, color: Colors.grey[400]),
+                Icon(Icons.folder_open_outlined,
+                    size: 64, color: Colors.grey[400]),
                 const SizedBox(height: 16),
                 Text(
-                  locale == 'ar' ? 'لا توجد مشاريع في المعرض بعد' : 'No portfolio projects yet',
+                  locale == 'ar'
+                      ? 'لا توجد مشاريع في المعرض بعد'
+                      : 'No portfolio projects yet',
                   style: TextStyle(color: Colors.grey[600]),
                 ),
               ],
@@ -1505,8 +2024,14 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
                     child: CachedNetworkImage(
                       imageUrl: project.imageUrls.first,
                       fit: BoxFit.cover,
-                      placeholder: (_, __) => Container(color: Colors.grey.withValues(alpha: 0.1), child: const Center(child: CircularProgressIndicator())),
-                      errorWidget: (_, __, ___) => Container(color: Colors.grey.withValues(alpha: 0.1), child: const Icon(Icons.broken_image, color: Colors.grey)),
+                      placeholder: (_, __) => Container(
+                          color: Colors.grey.withValues(alpha: 0.1),
+                          child:
+                              const Center(child: CircularProgressIndicator())),
+                      errorWidget: (_, __, ___) => Container(
+                          color: Colors.grey.withValues(alpha: 0.1),
+                          child: const Icon(Icons.broken_image,
+                              color: Colors.grey)),
                     ),
                   ),
                   if (project.imageUrls.length > 1)
@@ -1514,7 +2039,8 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
                       top: 12,
                       right: 12,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
                           color: Colors.black.withValues(alpha: 0.7),
                           borderRadius: BorderRadius.circular(20),
@@ -1522,16 +2048,21 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.photo_library, size: 14, color: Colors.white),
+                            const Icon(Icons.photo_library,
+                                size: 14, color: Colors.white),
                             const SizedBox(width: 4),
-                            Text('${project.imageUrls.length}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                            Text('${project.imageUrls.length}',
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12)),
                           ],
                         ),
                       ),
                     ),
                 ],
               ),
-            
+
             // ─── Details Area ───
             Padding(
               padding: const EdgeInsets.all(20),
@@ -1545,7 +2076,10 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
                       Expanded(
                         child: Text(
                           project.title,
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, height: 1.3),
+                          style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              height: 1.3),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -1560,7 +2094,8 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
                               color: Colors.red.withValues(alpha: 0.1),
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                            child: const Icon(Icons.delete_outline,
+                                color: Colors.red, size: 20),
                           ),
                         ),
                       ],
@@ -1574,11 +2109,16 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
                     runSpacing: 8,
                     children: [
                       if (project.category != null)
-                        _buildTag(project.category!, AppColors.primary, Icons.category),
+                        _buildTag(project.category!, AppColors.primary,
+                            Icons.category),
                       if (project.status != null)
                         _buildTag(
-                          project.status == 'completed' ? (isAr ? 'مكتمل' : 'Completed') : (isAr ? 'قيد التنفيذ' : 'Ongoing'),
-                          project.status == 'completed' ? Colors.green : Colors.orange,
+                          project.status == 'completed'
+                              ? (isAr ? 'مكتمل' : 'Completed')
+                              : (isAr ? 'قيد التنفيذ' : 'Ongoing'),
+                          project.status == 'completed'
+                              ? Colors.green
+                              : Colors.orange,
                           Icons.task_alt,
                         ),
                       if (project.projectType != null)
@@ -1596,7 +2136,8 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
                     project.description,
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: Colors.grey[600], fontSize: 14, height: 1.5),
+                    style: TextStyle(
+                        color: Colors.grey[600], fontSize: 14, height: 1.5),
                   ),
                   const SizedBox(height: 16),
 
@@ -1605,10 +2146,14 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
                     children: [
                       Text(
                         isAr ? 'عرض تفاصيل المشروع' : 'View Project Details',
-                        style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 14),
+                        style: const TextStyle(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14),
                       ),
                       const SizedBox(width: 4),
-                      const Icon(Icons.arrow_forward_rounded, size: 16, color: AppColors.primary),
+                      const Icon(Icons.arrow_forward_rounded,
+                          size: 16, color: AppColors.primary),
                     ],
                   ),
                 ],
@@ -1640,24 +2185,28 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
         children: [
           Icon(icon, size: 14, color: color),
           const SizedBox(width: 4),
-          Text(text, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold)),
+          Text(text,
+              style: TextStyle(
+                  color: color, fontSize: 12, fontWeight: FontWeight.bold)),
         ],
       ),
     );
   }
-
 
   void _confirmDeleteProject(PortfolioProjectModel project) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('حذف المشروع'),
-        content: const Text('هل أنت متأكد أنك تريد حذف هذا المشروع من معرض أعمالك؟'),
+        content:
+            const Text('هل أنت متأكد أنك تريد حذف هذا المشروع من معرض أعمالك؟'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
           ElevatedButton(
             onPressed: () {
-              FirestoreService().deletePortfolioProject(widget.user.id, project.id);
+              FirestoreService()
+                  .deletePortfolioProject(widget.user.id, project.id);
               Navigator.pop(ctx);
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
@@ -1667,13 +2216,16 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
       ),
     );
   }
-  void _showVouchersBottomSheet(BuildContext context, List<Map<String, dynamic>> vouchedBy) {
+
+  void _showVouchersBottomSheet(
+      BuildContext context, List<Map<String, dynamic>> vouchedBy) {
     if (vouchedBy.isEmpty) return;
     final isAr = context.read<LocaleProvider>().isArabic;
-    
+
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) {
         return Container(
           padding: const EdgeInsets.symmetric(vertical: 20),
@@ -1682,7 +2234,8 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
             children: [
               Text(
                 isAr ? 'قائمة المُزكّين' : 'Vouchers List',
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style:
+                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
               Flexible(
@@ -1694,9 +2247,12 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
                     return FutureBuilder<UserModel?>(
                       future: FirestoreService().getUser(voucher['id']),
                       builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
                           return const ListTile(
-                            leading: CircleAvatar(child: CircularProgressIndicator(strokeWidth: 2)),
+                            leading: CircleAvatar(
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2)),
                             title: Text('...'),
                           );
                         }
@@ -1705,15 +2261,28 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
 
                         return ListTile(
                           leading: CircleAvatar(
-                            backgroundImage: user.profileImageUrl != null ? NetworkImage(user.profileImageUrl!) : null,
-                            child: user.profileImageUrl == null ? const Icon(Icons.person) : null,
+                            backgroundImage: user.profileImageUrl != null
+                                ? NetworkImage(user.profileImageUrl!)
+                                : null,
+                            child: user.profileImageUrl == null
+                                ? const Icon(Icons.person)
+                                : null,
                           ),
-                          title: Text(user.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                          subtitle: Text('${user.jobTitle ?? ''} • ${user.state ?? ''}', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                          title: Text(user.name,
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.bold)),
+                          subtitle: Text(
+                              '${user.jobTitle != null ? JobTitlesUtils.getLocalizedTitle(user.jobTitle!, context.read<LocaleProvider>().locale.languageCode) : ''} • ${user.state != null ? SudanLocations.getStateName(user.state!, context.read<LocaleProvider>().locale.languageCode) : ''}',
+                              style: TextStyle(
+                                  color: Colors.grey[600], fontSize: 12)),
                           trailing: const Icon(Icons.chevron_right),
                           onTap: () {
                             Navigator.pop(ctx);
-                            Navigator.push(context, MaterialPageRoute(builder: (_) => ProfileScreen(userId: user.id)));
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) =>
+                                        ProfileScreen(userId: user.id)));
                           },
                         );
                       },
@@ -1727,15 +2296,15 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
       },
     );
   }
+
   Widget _buildAveragePriceCard(UserModel user) {
     if (user.jobTitle == null) return const SizedBox();
-    
+
     // Try to find the matching JobCategory
     JobCategory? matchingCategory;
     try {
       matchingCategory = JobCategory.values.firstWhere(
-        (cat) => cat.name.toLowerCase() == user.jobTitle!.toLowerCase()
-      );
+          (cat) => cat.name.toLowerCase() == user.jobTitle!.toLowerCase());
     } catch (e) {
       // Not a standard enum category, skip average calculation
       return const SizedBox();
@@ -1747,27 +2316,28 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
         if (!snapshot.hasData || snapshot.data == null) {
           // If no average available, maybe show their own hourly rate if they set one
           if (user.hourlyRate != null && user.hourlyRate! > 0) {
-            return _buildPriceContainer(
-              context, 
-              title: context.read<LocaleProvider>().isArabic ? 'سعري الخاص' : 'My Rate',
-              price: user.hourlyRate!, 
-              icon: Icons.person_outline
-            );
+            return _buildPriceContainer(context,
+                title: context.read<LocaleProvider>().isArabic
+                    ? 'سعري الخاص'
+                    : 'My Rate',
+                price: user.hourlyRate!,
+                icon: Icons.person_outline);
           }
           return const SizedBox();
         }
 
-        return _buildPriceContainer(
-          context, 
-          title: context.read<LocaleProvider>().isArabic ? 'متوسط السعر في السوق' : 'Market Average Price',
-          price: snapshot.data!, 
-          icon: Icons.analytics_outlined
-        );
+        return _buildPriceContainer(context,
+            title: context.read<LocaleProvider>().isArabic
+                ? 'متوسط السعر في السوق'
+                : 'Market Average Price',
+            price: snapshot.data!,
+            icon: Icons.analytics_outlined);
       },
     );
   }
 
-  Widget _buildPriceContainer(BuildContext context, {required String title, required double price, required IconData icon}) {
+  Widget _buildPriceContainer(BuildContext context,
+      {required String title, required double price, required IconData icon}) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1794,7 +2364,11 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
                   title,
                   style: TextStyle(
                     fontSize: 12,
-                    color: Theme.of(context).textTheme.bodyLarge?.color?.withValues(alpha: 0.7),
+                    color: Theme.of(context)
+                        .textTheme
+                        .bodyLarge
+                        ?.color
+                        ?.withValues(alpha: 0.7),
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -1811,7 +2385,9 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen> with 
                       ),
                     ),
                     Text(
-                      context.read<LocaleProvider>().isArabic ? 'جنيه سوداني' : 'SDG',
+                      context.read<LocaleProvider>().isArabic
+                          ? 'جنيه سوداني'
+                          : 'SDG',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
@@ -1835,22 +2411,39 @@ class _SliverTabBarDelegate extends SliverPersistentHeaderDelegate {
   _SliverTabBarDelegate(this._tabBar, {this.topPadding = 0});
 
   @override
-  double get minExtent => _tabBar.preferredSize.height + topPadding;
+  double get minExtent => 40 + topPadding;
   @override
-  double get maxExtent => _tabBar.preferredSize.height + topPadding;
+  double get maxExtent => 40 + topPadding;
 
   @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return GlassContainer(
-      blur: 20,
-      opacity: Theme.of(context).brightness == Brightness.dark ? 0.4 : 0.8,
+  Widget build(
+      BuildContext context, double shrinkOffset, bool overlapsContent) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
       color: Theme.of(context).scaffoldBackgroundColor,
-      borderRadius: BorderRadius.zero,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          SizedBox(height: topPadding),
-          _tabBar,
+          SizedBox(height: topPadding + 4),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: SizedBox(
+              height: 32,
+              child: GlassContainer(
+                blur: 20,
+                opacity: isDark ? 0.3 : 0.9,
+                color: isDark ? Colors.black45 : Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                    color: isDark ? Colors.white12 : Colors.grey.shade200),
+                child: Padding(
+                  padding: const EdgeInsets.all(2.0),
+                  child: _tabBar,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
         ],
       ),
     );
@@ -1858,4 +2451,20 @@ class _SliverTabBarDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   bool shouldRebuild(_SliverTabBarDelegate oldDelegate) => true;
+}
+
+class ProfileHeaderCurve extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    Path path = Path();
+    path.lineTo(0, size.height - 40);
+    path.quadraticBezierTo(
+        size.width / 2, size.height + 20, size.width, size.height - 40);
+    path.lineTo(size.width, 0);
+    path.close();
+    return path;
+  }
+
+  @override
+  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
 }

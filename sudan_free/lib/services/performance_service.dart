@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 /// Performance monitoring service for tracking custom traces and network metrics.
-/// 
+///
 /// Uses Stopwatch-based timing for now. When firebase_performance is added
 /// to pubspec.yaml, this can be upgraded to full Firebase Performance traces
 /// with zero API changes for callers.
@@ -33,7 +33,8 @@ class PerformanceService {
       return result;
     } catch (e) {
       trace.putAttribute('status', 'error');
-      trace.putAttribute('error', e.toString().substring(0, 100.clamp(0, e.toString().length)));
+      trace.putAttribute('error',
+          e.toString().substring(0, 100.clamp(0, e.toString().length)));
       rethrow;
     } finally {
       trace.stop();
@@ -69,16 +70,17 @@ class AppTrace {
   void stop() {
     _stopwatch.stop();
     final durationMs = _stopwatch.elapsedMilliseconds;
-    
+
     // Log performance data
-    final buffer = StringBuffer('⏱️ [Perf] "$name" completed in ${durationMs}ms');
+    final buffer =
+        StringBuffer('⏱️ [Perf] "$name" completed in ${durationMs}ms');
     if (_attributes.isNotEmpty) {
       buffer.write(' | attrs: $_attributes');
     }
     if (_metrics.isNotEmpty) {
       buffer.write(' | metrics: $_metrics');
     }
-    
+
     // Warn if operation took too long
     if (durationMs > 3000) {
       debugPrint('⚠️ [Perf] SLOW: $buffer');

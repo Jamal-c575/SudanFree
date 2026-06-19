@@ -9,7 +9,6 @@ import '../../widgets/inputs/custom_text_field.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../settings/privacy_policy_screen.dart';
 
-
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
 
@@ -33,24 +32,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Future<void> _handleRegister() async {
     if (!_formKey.currentState!.validate()) return;
-    
+
     final locale = context.read<LocaleProvider>().locale.languageCode;
     final authProvider = context.read<AuthProvider>();
 
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-          title: Text(
-            locale == 'ar' 
-                ? 'شروط الاستخدام والخصوصية' 
-                : 'Terms of Use and Privacy',
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-          content: Text(
-            locale == 'ar'
-                ? 'بالضغط على "موافق"، أنت تؤكد اطلاعك وموافقتك على شروط الاستخدام وسياسة الخصوصية الخاصة بنا.'
-                : 'By clicking "Agree", you confirm that you have read and agreed to our Terms of Use and Privacy Policy.'
-          ),
+        title: Text(
+          locale == 'ar'
+              ? 'شروط الاستخدام والخصوصية'
+              : 'Terms of Use and Privacy',
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: Text(locale == 'ar'
+            ? 'بالضغط على "موافق"، أنت تؤكد اطلاعك وموافقتك على شروط الاستخدام وسياسة الخصوصية الخاصة بنا.'
+            : 'By clicking "Agree", you confirm that you have read and agreed to our Terms of Use and Privacy Policy.'),
         actions: [
           TextButton(
             onPressed: () {
@@ -64,12 +61,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(ctx);
-              
+
               // Show loading overlay
               showDialog(
                 context: context,
                 barrierDismissible: false,
-                builder: (context) => const Center(child: CircularProgressIndicator()),
+                builder: (context) =>
+                    const Center(child: CircularProgressIndicator()),
               );
 
               final success = await authProvider.signUpWithEmail(
@@ -77,7 +75,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 password: _passwordController.text,
               );
 
-              if (mounted) if (context.mounted) Navigator.pop(context); // Close loading overlay
+              if (mounted) if (context.mounted)
+                Navigator.pop(context); // Close loading overlay
 
               if (success && mounted) {
                 // Registration successful → let app.dart handle it
@@ -88,7 +87,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 final scaffoldMessenger = ScaffoldMessenger.of(context);
                 scaffoldMessenger.showSnackBar(
                   SnackBar(
-                    content: Text(authProvider.errorMessage ?? 'Registration failed'),
+                    content: Text(
+                        authProvider.errorMessage ?? 'Registration failed'),
                     backgroundColor: AppColors.error,
                   ),
                 );
@@ -125,24 +125,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 24),
-                
+
                 // Welcome Text
                 Text(
-                  locale == 'ar' ? 'مرحباً بك في سودان فري!' : 'Welcome to SudanFree!',
+                  locale == 'ar'
+                      ? 'مرحباً بك في سودان فري!'
+                      : 'Welcome to SudanFree!',
                   style: Theme.of(context).textTheme.headlineMedium,
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  locale == 'ar' 
-                      ? 'أنشئ حسابك للبدء في رحلة العمل الحر' 
+                  locale == 'ar'
+                      ? 'أنشئ حسابك للبدء في رحلة العمل الحر'
                       : 'Create your account to start your freelance journey',
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
+                        color: AppColors.textSecondary,
+                      ),
                 ),
-                
+
                 const SizedBox(height: 32),
-                
+
                 // Email Field
                 CustomTextField(
                   label: l10n.email,
@@ -152,84 +154,103 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   prefixIcon: Icons.email_outlined,
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return locale == 'ar' ? 'البريد الإلكتروني مطلوب' : 'Email is required';
+                      return locale == 'ar'
+                          ? 'البريد الإلكتروني مطلوب'
+                          : 'Email is required';
                     }
-                    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                      return locale == 'ar' ? 'بريد إلكتروني غير صالح' : 'Invalid email';
+                    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
+                        .hasMatch(value)) {
+                      return locale == 'ar'
+                          ? 'بريد إلكتروني غير صالح'
+                          : 'Invalid email';
                     }
                     return null;
                   },
                 ),
-                
+
                 const SizedBox(height: 16),
-                
+
                 // Password Field
                 PasswordTextField(
                   label: AppStrings.get(AppStrings.password, locale),
-                  hint: locale == 'ar' ? 'أدخل كلمة المرور' : 'Enter your password',
+                  hint: locale == 'ar'
+                      ? 'أدخل كلمة المرور'
+                      : 'Enter your password',
                   controller: _passwordController,
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return locale == 'ar' ? 'كلمة المرور مطلوبة' : 'Password is required';
+                      return locale == 'ar'
+                          ? 'كلمة المرور مطلوبة'
+                          : 'Password is required';
                     }
                     if (value.length < 6) {
-                      return locale == 'ar' ? 'كلمة المرور يجب أن تكون 6 أحرف على الأقل' : 'Password must be at least 6 characters';
+                      return locale == 'ar'
+                          ? 'كلمة المرور يجب أن تكون 6 أحرف على الأقل'
+                          : 'Password must be at least 6 characters';
                     }
                     return null;
                   },
                 ),
-                
+
                 const SizedBox(height: 16),
-                
+
                 // Confirm Password Field
                 PasswordTextField(
-                  label: locale == 'ar' ? 'تأكيد كلمة المرور' : 'Confirm Password',
-                  hint: locale == 'ar' ? 'أعد إدخال كلمة المرور' : 'Re-enter password',
+                  label:
+                      locale == 'ar' ? 'تأكيد كلمة المرور' : 'Confirm Password',
+                  hint: locale == 'ar'
+                      ? 'أعد إدخال كلمة المرور'
+                      : 'Re-enter password',
                   controller: _confirmPasswordController,
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return locale == 'ar' ? 'تأكيد كلمة المرور مطلوب' : 'Confirm password is required';
+                      return locale == 'ar'
+                          ? 'تأكيد كلمة المرور مطلوب'
+                          : 'Confirm password is required';
                     }
                     if (value != _passwordController.text) {
-                      return locale == 'ar' ? 'كلمات المرور غير متطابقة' : 'Passwords do not match';
+                      return locale == 'ar'
+                          ? 'كلمات المرور غير متطابقة'
+                          : 'Passwords do not match';
                     }
                     return null;
                   },
                 ),
-                
+
                 const SizedBox(height: 32),
-                
+
                 // Register Button
                 GradientButton(
                   text: AppStrings.get(AppStrings.signup, locale),
                   isLoading: isLoading,
                   onPressed: _handleRegister,
                 ),
-                
+
                 const SizedBox(height: 24),
-                
+
                 // Terms and Conditions
                 GestureDetector(
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const PrivacyPolicyScreen()),
+                      MaterialPageRoute(
+                          builder: (_) => const PrivacyPolicyScreen()),
                     );
                   },
                   child: Text(
-                    locale == 'ar' 
-                      ? 'بالتسجيل، أنت توافق على شروط الاستخدام وسياسة الخصوصية'
-                      : 'By registering, you agree to the Terms of Use and Privacy Policy',
+                    locale == 'ar'
+                        ? 'بالتسجيل، أنت توافق على شروط الاستخدام وسياسة الخصوصية'
+                        : 'By registering, you agree to the Terms of Use and Privacy Policy',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppColors.primary,
-                      decoration: TextDecoration.underline,
-                    ),
+                          color: AppColors.primary,
+                          decoration: TextDecoration.underline,
+                        ),
                     textAlign: TextAlign.center,
                   ),
                 ),
-                
+
                 const SizedBox(height: 32),
-                
+
                 // Login Link
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,

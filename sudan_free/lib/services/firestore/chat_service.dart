@@ -8,26 +8,29 @@ class ChatFirestoreService {
   // Send message
   Future<void> sendMessage(MessageModel message) async {
     final batch = _firestore.batch();
-    
+
     final msgRef = _firestore
         .collection('chats')
         .doc(message.chatId)
         .collection('messages')
         .doc();
-    
+
     final messageWithId = message.copyWith(id: msgRef.id);
     batch.set(msgRef, messageWithId.toFirestore());
-    
+
     // Update chat metadata using merge to preserve existing fields
     // Use dot notation for nested map fields (unreadCount.userId)
-    batch.set(_firestore.collection('chats').doc(message.chatId), {
-      'lastMessage': message.content,
-      'lastMessageTime': Timestamp.fromDate(message.createdAt),
-      'lastSenderId': message.senderId,
-      'unreadCount': {
-        message.receiverId: FieldValue.increment(1),
-      },
-    }, SetOptions(merge: true));
+    batch.set(
+        _firestore.collection('chats').doc(message.chatId),
+        {
+          'lastMessage': message.content,
+          'lastMessageTime': Timestamp.fromDate(message.createdAt),
+          'lastSenderId': message.senderId,
+          'unreadCount': {
+            message.receiverId: FieldValue.increment(1),
+          },
+        },
+        SetOptions(merge: true));
 
     await batch.commit();
   }
@@ -39,7 +42,8 @@ class ChatFirestoreService {
         .where('participants', arrayContains: userId)
         .orderBy('lastMessageTime', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs.map((doc) => ChatModel.fromFirestore(doc)).toList());
+        .map((snapshot) =>
+            snapshot.docs.map((doc) => ChatModel.fromFirestore(doc)).toList());
   }
 
   // Get user's chats ONCE (Get - to save reads)
@@ -66,14 +70,14 @@ class ChatFirestoreService {
     // Standardize chatId to be consistent regardless of who initiates
     final ids = [user1Id, user2Id]..sort();
     final chatId = ids.join('_');
-    
+
     final chatDoc = _firestore.collection('chats').doc(chatId);
-    
+
     // Try to read existing chat — may fail with permission-denied if doc doesn't exist
     // (Firestore read rule checks resource.data.participants which is null for non-existent docs)
     try {
       final snapshot = await chatDoc.get();
-      
+
       if (snapshot.exists) {
         // Update participant names/images in case they changed
         await chatDoc.update({
@@ -91,7 +95,7 @@ class ChatFirestoreService {
         rethrow; // Only swallow permission-denied (means doc doesn't exist)
       }
     }
-    
+
     // Chat doesn't exist — create new one
     final now = DateTime.now();
     final chat = ChatModel(
@@ -118,7 +122,7 @@ class ChatFirestoreService {
       jobTitle: jobTitle,
       createdAt: now,
     );
-    
+
     await chatDoc.set(chat.toFirestore());
     return chat;
   }
@@ -132,7 +136,9 @@ class ChatFirestoreService {
         .orderBy('createdAt', descending: true)
         .limit(100)
         .snapshots()
-        .map((snapshot) => snapshot.docs.map((doc) => MessageModel.fromFirestore(doc)).toList());
+        .map((snapshot) => snapshot.docs
+            .map((doc) => MessageModel.fromFirestore(doc))
+            .toList());
   }
 
   // Mark chat as read
@@ -143,7 +149,8 @@ class ChatFirestoreService {
   }
 
   // Update a message in a chat subcollection
-  Future<void> updateMessage(String messageId, Map<String, dynamic> data, {String? chatId}) async {
+  Future<void> updateMessage(String messageId, Map<String, dynamic> data,
+      {String? chatId}) async {
     // If chatId is provided, update directly (faster and more reliable)
     if (chatId != null) {
       await _firestore
@@ -154,7 +161,7 @@ class ChatFirestoreService {
           .update(data);
       return;
     }
-    
+
     // Fallback: Use collectionGroup query to find the message across all chats
     final querySnapshot = await _firestore
         .collectionGroup('messages')
@@ -191,7 +198,8 @@ class ChatFirestoreService {
   }
 
   // Update typing status
-  Future<void> updateTypingStatus(String chatId, String userId, bool isTyping) async {
+  Future<void> updateTypingStatus(
+      String chatId, String userId, bool isTyping) async {
     await _firestore.collection('chats').doc(chatId).update({
       'typingStatus.$userId': isTyping,
     });

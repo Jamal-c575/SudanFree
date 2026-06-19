@@ -4,13 +4,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 /// يُستخدم لربط التقييمات بتواصل حقيقي عبر واتساب أو اتصال
 class ContactLogModel {
   final String id;
-  final String contacterId;       // من تواصل (العميل)
+  final String contacterId; // من تواصل (العميل)
   final String contacterName;
-  final String freelancerId;      // مع من (الحرفي/المتجر)
+  final String freelancerId; // مع من (الحرفي/المتجر)
   final String freelancerName;
-  final String contactType;       // 'whatsapp' | 'call'
+  final String contactType; // 'whatsapp' | 'call'
   final DateTime createdAt;
-  final bool hasReviewed;         // هل تم التقييم؟
+  final bool hasReviewed; // هل تم التقييم؟
   final DateTime? reviewedAt;
 
   ContactLogModel({

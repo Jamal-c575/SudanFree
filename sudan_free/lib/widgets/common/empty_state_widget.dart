@@ -25,7 +25,8 @@ class EmptyStateWidget extends StatefulWidget {
   State<EmptyStateWidget> createState() => _EmptyStateWidgetState();
 }
 
-class _EmptyStateWidgetState extends State<EmptyStateWidget> with SingleTickerProviderStateMixin {
+class _EmptyStateWidgetState extends State<EmptyStateWidget>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
 
   @override
@@ -83,12 +84,12 @@ class _EmptyStateWidgetState extends State<EmptyStateWidget> with SingleTickerPr
                     filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                     child: Container(
                       decoration: BoxDecoration(
-                        color: isDark 
-                            ? Colors.white.withValues(alpha: 0.03) 
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.03)
                             : Colors.white.withValues(alpha: 0.6),
                         border: Border.all(
-                          color: isDark 
-                              ? Colors.white.withValues(alpha: 0.1) 
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.1)
                               : Colors.white,
                           width: 1.5,
                         ),
@@ -152,7 +153,8 @@ class _EmptyStateWidgetState extends State<EmptyStateWidget> with SingleTickerPr
                   icon: Icon(widget.actionIcon ?? Icons.refresh),
                   label: Text(widget.actionLabel!),
                   style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 28, vertical: 14),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),

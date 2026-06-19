@@ -21,7 +21,9 @@ class RequestFirestoreService {
         .where('clientId', isEqualTo: userId)
         .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs.map((doc) => RequestModel.fromMap(doc.data(), doc.id)).toList());
+        .map((snapshot) => snapshot.docs
+            .map((doc) => RequestModel.fromMap(doc.data(), doc.id))
+            .toList());
   }
 
   // Get request
@@ -42,12 +44,13 @@ class RequestFirestoreService {
   Stream<List<RequestModel>> getGlobalRequests() {
     return _firestore
         .collection('requests')
-        .orderBy('createdAt', descending: true)
+        .where('isFulfilled', isEqualTo: false)
+        .where('expiresAt', isGreaterThan: Timestamp.now())
+        .orderBy('expiresAt', descending: true)
         .limit(100) // Performance fix: Prevent pulling all documents
         .snapshots()
         .map((snapshot) => snapshot.docs
             .map((doc) => RequestModel.fromMap(doc.data(), doc.id))
-            .where((r) => !r.isFulfilled)
             .toList());
   }
 }

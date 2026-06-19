@@ -4,19 +4,19 @@ import '../services/cache_service.dart';
 
 class LocaleProvider extends ChangeNotifier {
   final CacheService _cacheService = CacheService();
-  
+
   Locale _locale = const Locale('ar');
-  
+
   Locale get locale => _locale;
   bool get isArabic => _locale.languageCode == 'ar';
   bool get isEnglish => _locale.languageCode == 'en';
-  
+
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
   Future<void> initialize() async {
     final savedLanguage = _cacheService.getLanguage();
-    
+
     if (savedLanguage != null) {
       _locale = Locale(savedLanguage);
     } else {
@@ -35,13 +35,13 @@ class LocaleProvider extends ChangeNotifier {
   Future<void> setLocale(Locale locale) async {
     _isLoading = true;
     notifyListeners();
-    
+
     // Short delay to show loading state
     await Future.delayed(const Duration(milliseconds: 150));
-    
+
     _locale = locale;
     await _cacheService.saveLanguage(locale.languageCode);
-    
+
     _isLoading = false;
     notifyListeners();
   }

@@ -4,7 +4,7 @@ String? extractUrl(String text) {
   if (match != null) {
     String url = match.group(0)!;
     if (!url.startsWith('http')) {
-      url = 'https://' + url;
+      url = 'https://$url';
     }
     return url;
   }

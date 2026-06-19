@@ -206,18 +206,21 @@ class GradientButton extends StatelessWidget {
           gradient: LinearGradient(
             colors: isDisabled
                 ? [Colors.grey.shade400, Colors.grey.shade500]
-                : (gradientColors ?? [AppColors.primary, AppColors.primaryDark]),
+                : (gradientColors ??
+                    [AppColors.primary, AppColors.primaryDark]),
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(AppRadius.md),
-          boxShadow: isDisabled ? [] : [
-            BoxShadow(
-              color: AppColors.primary.withValues(alpha: 0.3),
-              blurRadius: 8,
-              offset: const Offset(0, 4),
-            ),
-          ],
+          boxShadow: isDisabled
+              ? []
+              : [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
         ),
         child: Material(
           color: Colors.transparent,

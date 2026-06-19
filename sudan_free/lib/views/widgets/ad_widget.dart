@@ -9,10 +9,10 @@ class AdWidget extends StatelessWidget {
   final VoidCallback? onTap;
   final BorderRadiusGeometry? borderRadius;
   final EdgeInsetsGeometry? margin;
-  
+
   const AdWidget({
-    super.key, 
-    required this.ad, 
+    super.key,
+    required this.ad,
     this.onTap,
     this.borderRadius,
     this.margin,
@@ -22,7 +22,7 @@ class AdWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isVideo = ad.mediaType == AdMediaType.video && ad.mediaUrl.isNotEmpty;
-    
+
     final appliedMargin = margin ?? const EdgeInsets.only(bottom: 8);
     final appliedBorderRadius = borderRadius ?? BorderRadius.zero;
 
@@ -60,7 +60,7 @@ class AdWidget extends StatelessWidget {
           child: Stack(
             children: [
               Positioned.fill(child: _buildImageBackground(isDark)),
-              
+
               // Gradient Overlay for text readability
               Positioned.fill(
                 child: Container(
@@ -78,16 +78,18 @@ class AdWidget extends StatelessWidget {
                   ),
                 ),
               ),
-              
+
               // Sponsored badge at top right
               Positioned(
                 top: 0,
                 right: 0,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     color: Colors.teal.shade700.withValues(alpha: 0.9),
-                    borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(16)),
+                    borderRadius: const BorderRadius.only(
+                        bottomLeft: Radius.circular(16)),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -95,7 +97,9 @@ class AdWidget extends StatelessWidget {
                       const Icon(Icons.campaign, color: Colors.white, size: 14),
                       const SizedBox(width: 4),
                       Text(
-                        ad.advertiserName != null ? 'إعلان من ${ad.advertiserName}' : 'إعلان ممول',
+                        ad.advertiserName != null
+                            ? 'إعلان من ${ad.advertiserName}'
+                            : 'إعلان ممول',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 11,
@@ -106,7 +110,7 @@ class AdWidget extends StatelessWidget {
                   ),
                 ),
               ),
-              
+
               // Ad Content at the bottom
               Positioned(
                 left: 12,
@@ -150,8 +154,12 @@ class AdWidget extends StatelessWidget {
           ? CachedNetworkImage(
               imageUrl: ad.mediaUrls.first,
               fit: BoxFit.cover,
-              placeholder: (context, url) => Container(color: isDark ? Colors.grey.shade800 : Colors.grey.shade200, child: const Center(child: CircularProgressIndicator())),
-              errorWidget: (context, url, error) => Container(color: isDark ? Colors.grey.shade800 : Colors.grey.shade200, child: const Icon(Icons.error, color: Colors.grey)),
+              placeholder: (context, url) => Container(
+                  color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
+                  child: const Center(child: CircularProgressIndicator())),
+              errorWidget: (context, url, error) => Container(
+                  color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
+                  child: const Icon(Icons.error, color: Colors.grey)),
             )
           : ImageCarousel(
               imageUrls: ad.mediaUrls,
@@ -162,10 +170,15 @@ class AdWidget extends StatelessWidget {
       return CachedNetworkImage(
         imageUrl: ad.mediaUrl,
         fit: BoxFit.cover,
-        placeholder: (context, url) => Container(color: isDark ? Colors.grey.shade800 : Colors.grey.shade200, child: const Center(child: CircularProgressIndicator())),
-        errorWidget: (context, url, error) => Container(color: isDark ? Colors.grey.shade800 : Colors.grey.shade200, child: const Icon(Icons.error, color: Colors.grey)),
+        placeholder: (context, url) => Container(
+            color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
+            child: const Center(child: CircularProgressIndicator())),
+        errorWidget: (context, url, error) => Container(
+            color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
+            child: const Icon(Icons.error, color: Colors.grey)),
       );
     }
-    return Container(color: isDark ? Colors.grey.shade800 : Colors.grey.shade200);
+    return Container(
+        color: isDark ? Colors.grey.shade800 : Colors.grey.shade200);
   }
 }

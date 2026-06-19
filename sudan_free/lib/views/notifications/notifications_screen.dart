@@ -7,7 +7,8 @@ import '../../providers/user_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../models/notification_model.dart';
 import '../../models/user_model.dart';
-
+import '../../models/squad_model.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/firestore_service.dart';
 import '../posts/post_details_screen.dart';
 import '../posts/comments_sheet.dart';
@@ -18,8 +19,10 @@ import '../profile/profile_screen.dart';
 import '../../widgets/common/empty_state_widget.dart';
 import '../safety/safety_tips_screen.dart';
 import '../requests/request_details_screen.dart';
+import '../jobs/active_job_tracking_screen.dart';
 import '../chat/chats_list_screen.dart';
 import '../../providers/chat_provider.dart';
+import '../../core/routes/premium_page_route.dart';
 import '../../services/smart_guide_service.dart';
 import '../../widgets/common/glass_container.dart';
 
@@ -37,8 +40,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       SmartGuideService.showMicroTip(
         context,
-        messageAr: 'ابقَ على اطلاع دائم! هنا تجد أحدث التنبيهات لطلباتك ورسائلك المهمة 🔔',
-        messageEn: 'Stay in the loop! Find the latest updates on your requests and messages here 🔔',
+        messageAr:
+            'ابقَ على اطلاع دائم! هنا تجد أحدث التنبيهات لطلباتك ورسائلك المهمة 🔔',
+        messageEn:
+            'Stay in the loop! Find the latest updates on your requests and messages here 🔔',
         tipId: 'notifications_tip',
         icon: Icons.notifications_active_rounded,
       );
@@ -68,7 +73,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const ChatsListScreen()),
+                    PremiumPageRoute(page: const ChatsListScreen()),
                   );
                 },
               ),
@@ -107,7 +112,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   onPressed: () =>
                       _showPendingRequestsSheet(context, user, locale),
                 ),
-                if (user.pendingPartnerIds.isNotEmpty || user.pendingSquadInvites.isNotEmpty)
+                if (user.pendingPartnerIds.isNotEmpty ||
+                    user.pendingSquadInvites.isNotEmpty)
                   Positioned(
                     right: 8,
                     top: 8,
@@ -168,7 +174,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               subtitle: locale == 'ar'
                   ? 'ابق على اطلاع! تصفح المجتمع وتفاعل الآن.'
                   : 'Stay updated! Browse the community now.',
-              actionLabel: locale == 'ar' ? 'تصفح المجتمع' : 'Explore Community',
+              actionLabel:
+                  locale == 'ar' ? 'تصفح المجتمع' : 'Explore Community',
               actionIcon: Icons.explore_rounded,
               onAction: () {
                 Navigator.popUntil(context, (route) => route.isFirst);
@@ -365,86 +372,86 @@ class _SimpleNotificationTileState extends State<_SimpleNotificationTile> {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-        onTap: _isNavigating ? null : () => _onTap(context),
-        onLongPress: () => _onLongPress(context),
-        borderRadius: BorderRadius.circular(14),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Icon
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: _color.withValues(alpha: 0.15),
-                  shape: BoxShape.circle,
+          onTap: _isNavigating ? null : () => _onTap(context),
+          onLongPress: () => _onLongPress(context),
+          borderRadius: BorderRadius.circular(14),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Icon
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: _color.withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(_icon, color: _color, size: 22),
                 ),
-                child: Icon(_icon, color: _color, size: 22),
-              ),
-              const SizedBox(width: 12),
+                const SizedBox(width: 12),
 
-              // Content
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Title + Time
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            _title,
-                            style: theme.textTheme.bodyLarge?.copyWith(
-                              fontWeight: notification.isRead
-                                  ? FontWeight.w600
-                                  : FontWeight.w800,
-                              fontSize: 14,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        if (!notification.isRead)
-                          Container(
-                            width: 8,
-                            height: 8,
-                            margin: const EdgeInsets.only(left: 6, right: 6),
-                            decoration: BoxDecoration(
-                              color: _color,
-                              shape: BoxShape.circle,
+                // Content
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Title + Time
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              _title,
+                              style: theme.textTheme.bodyLarge?.copyWith(
+                                fontWeight: notification.isRead
+                                    ? FontWeight.w600
+                                    : FontWeight.w800,
+                                fontSize: 14,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                        Text(
-                          _timeAgo(notification.createdAt.toDate()),
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.textTheme.bodySmall?.color
-                                ?.withValues(alpha: 0.6),
-                            fontSize: 11,
+                          if (!notification.isRead)
+                            Container(
+                              width: 8,
+                              height: 8,
+                              margin: const EdgeInsets.only(left: 6, right: 6),
+                              decoration: BoxDecoration(
+                                color: _color,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          Text(
+                            _timeAgo(notification.createdAt.toDate()),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.textTheme.bodySmall?.color
+                                  ?.withValues(alpha: 0.6),
+                              fontSize: 11,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-
-                    Text(
-                      notification.message,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.textTheme.bodyMedium?.color?.withValues(
-                            alpha: notification.isRead ? 0.6 : 0.85),
-                        height: 1.3,
+                        ],
                       ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
+                      const SizedBox(height: 4),
+
+                      Text(
+                        notification.message,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.textTheme.bodyMedium?.color?.withValues(
+                              alpha: notification.isRead ? 0.6 : 0.85),
+                          height: 1.3,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
-      ),
       ),
     );
   }
@@ -511,8 +518,9 @@ class _SimpleNotificationTileState extends State<_SimpleNotificationTile> {
         case NotificationType.message:
           if (notification.relatedId != null) {
             final chat = await firestore.getChatById(notification.relatedId!);
-            if (chat != null && context.mounted) {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => ChatScreen(chat: chat)));
+            if (chat != null && mounted) {
+              Navigator.push(
+                  context, PremiumPageRoute(page: ChatScreen(chat: chat)));
             }
           }
           break;
@@ -523,9 +531,20 @@ class _SimpleNotificationTileState extends State<_SimpleNotificationTile> {
           }
           break;
         case NotificationType.system:
-          // If relatedId is a userId, navigate to profile
+          // Try user first, if not found, try job
           if (notification.relatedId != null) {
-            await _navigateToProfile(context, notification.relatedId!);
+            final user = await firestore.getUser(notification.relatedId!);
+            if (user != null) {
+              await _navigateToProfile(context, notification.relatedId!);
+            } else {
+              final job = await firestore.getJob(notification.relatedId!);
+              if (job != null && mounted) {
+                Navigator.push(
+                    context,
+                    PremiumPageRoute(
+                        page: ActiveJobTrackingScreen(jobId: job.id)));
+              }
+            }
           }
           break;
         case NotificationType.assignment:
@@ -709,6 +728,7 @@ class _PendingRequestsSheet extends StatefulWidget {
 
 class _PendingRequestsSheetState extends State<_PendingRequestsSheet> {
   List<UserModel> _requesters = [];
+  List<SquadModel> _squads = [];
   bool _isLoading = true;
   final Set<String> _processingIds = {};
 
@@ -720,21 +740,113 @@ class _PendingRequestsSheetState extends State<_PendingRequestsSheet> {
 
   Future<void> _loadRequesters() async {
     final user = context.read<AuthProvider>().user;
-    if (user == null || user.pendingPartnerIds.isEmpty) {
+    if (user == null ||
+        (user.pendingPartnerIds.isEmpty && user.pendingSquadInvites.isEmpty)) {
       if (mounted) setState(() => _isLoading = false);
       return;
     }
     try {
-      final users =
-          await FirestoreService().getUsersByIds(user.pendingPartnerIds);
+      final futures = <Future<dynamic>>[];
+
+      if (user.pendingPartnerIds.isNotEmpty) {
+        futures.add(FirestoreService().getUsersByIds(user.pendingPartnerIds));
+      } else {
+        futures.add(Future.value(<UserModel>[]));
+      }
+
+      if (user.pendingSquadInvites.isNotEmpty) {
+        futures.add(FirebaseFirestore.instance
+            .collection('squads')
+            .where(FieldPath.documentId, whereIn: user.pendingSquadInvites)
+            .get()
+            .then((snap) => snap.docs
+                .map((doc) => SquadModel.fromFirestore(doc))
+                .toList()));
+      } else {
+        futures.add(Future.value(<SquadModel>[]));
+      }
+
+      final results = await Future.wait(futures);
+      final users = results[0] as List<UserModel>;
+      final squadsList = results[1] as List<SquadModel>;
+
       if (mounted) {
         setState(() {
           _requesters = users;
+          _squads = squadsList;
           _isLoading = false;
         });
       }
     } catch (e) {
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _handleSquadRequest(String squadId, bool accept) async {
+    if (_processingIds.contains(squadId)) return;
+
+    final squadIndex = _squads.indexWhere((s) => s.id == squadId);
+    if (squadIndex == -1) return;
+    final squad = _squads[squadIndex];
+
+    setState(() {
+      _processingIds.add(squadId);
+      _squads.removeAt(squadIndex);
+    });
+
+    try {
+      final user = context.read<AuthProvider>().user!;
+      final batch = FirebaseFirestore.instance.batch();
+
+      final userRef =
+          FirebaseFirestore.instance.collection('users').doc(user.id);
+      batch.update(userRef, {
+        'pendingSquadInvites': FieldValue.arrayRemove([squadId]),
+      });
+
+      if (accept) {
+        final squadRef =
+            FirebaseFirestore.instance.collection('squads').doc(squadId);
+        batch.update(squadRef, {
+          'memberIds': FieldValue.arrayUnion([user.id])
+        });
+      }
+
+      await batch.commit();
+
+      // Refresh local user state
+      context.read<AuthProvider>().refreshUserProfile();
+
+      if (mounted) {
+        setState(() => _processingIds.remove(squadId));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(accept
+                ? (widget.locale == 'ar'
+                    ? 'تم الانضمام للمجموعة بنجاح ✅'
+                    : 'Joined squad successfully ✅')
+                : (widget.locale == 'ar'
+                    ? 'تم رفض دعوة المجموعة ❌'
+                    : 'Squad invite declined ❌')),
+            backgroundColor: accept ? Colors.green : Colors.red,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _processingIds.remove(squadId);
+          _squads.insert(squadIndex, squad);
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text(widget.locale == 'ar'
+                  ? 'حدث خطأ، يرجى المحاولة'
+                  : 'An error occurred'),
+              backgroundColor: Colors.red),
+        );
+      }
     }
   }
 
@@ -860,11 +972,11 @@ class _PendingRequestsSheetState extends State<_PendingRequestsSheet> {
                     ),
                     const SizedBox(width: 12),
                     Text(
-                      isArabic ? 'طلبات الزمالة' : 'Partner Requests',
+                      isArabic ? 'الطلبات والدعوات' : 'Requests & Invites',
                       style: const TextStyle(
                           fontSize: 18, fontWeight: FontWeight.bold),
                     ),
-                    if (_requesters.isNotEmpty) ...[
+                    if (_requesters.isNotEmpty || _squads.isNotEmpty) ...[
                       const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(
@@ -874,7 +986,7 @@ class _PendingRequestsSheetState extends State<_PendingRequestsSheet> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
-                          '${_requesters.length}',
+                          '${_requesters.length + _squads.length}',
                           style: const TextStyle(
                               color: Colors.white,
                               fontSize: 12,
@@ -900,7 +1012,7 @@ class _PendingRequestsSheetState extends State<_PendingRequestsSheet> {
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
-                : _requesters.isEmpty
+                : _requesters.isEmpty && _squads.isEmpty
                     ? Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -911,8 +1023,8 @@ class _PendingRequestsSheetState extends State<_PendingRequestsSheet> {
                             const SizedBox(height: 16),
                             Text(
                               isArabic
-                                  ? 'لا توجد طلبات زمالة معلقة'
-                                  : 'No pending partner requests',
+                                  ? 'لا توجد طلبات معلقة'
+                                  : 'No pending requests',
                               style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
@@ -921,166 +1033,266 @@ class _PendingRequestsSheetState extends State<_PendingRequestsSheet> {
                             const SizedBox(height: 8),
                             Text(
                               isArabic
-                                  ? 'ستظهر هنا طلبات الزمالة الجديدة'
-                                  : 'New partner requests will appear here',
+                                  ? 'ستظهر هنا طلبات الزمالة ودعوات المجموعات'
+                                  : 'Partner requests and squad invites will appear here',
                               style: TextStyle(
                                   fontSize: 14, color: Colors.grey[500]),
                             ),
                           ],
                         ),
                       )
-                    : ListView.separated(
+                    : ListView(
                         padding: const EdgeInsets.all(16),
-                        itemCount: _requesters.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 12),
-                        itemBuilder: (context, index) {
-                          final requester = _requesters[index];
-                          final isProcessing =
-                              _processingIds.contains(requester.id);
-
-                          final roleText =
-                              requester.role == UserRole.freelancer ||
-                                      requester.role == UserRole.techService
-                                  ? (isArabic ? 'حرفي' : 'Freelancer')
-                                  : (requester.role == UserRole.shop
-                                      ? (isArabic ? 'معرض / متجر' : 'Shop')
-                                      : '');
-
-                          return GestureDetector(
-                            onTap: () => _navigateToProfile(requester),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 12),
-                              decoration: BoxDecoration(
-                                color: isDark
-                                    ? Colors.white.withValues(alpha: 0.05)
-                                    : Colors.white,
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                    color: AppColors.primary
-                                        .withValues(alpha: 0.2)),
-                                boxShadow: [
-                                  if (!isDark)
-                                    BoxShadow(
-                                      color: AppColors.primary
-                                          .withValues(alpha: 0.05),
-                                      blurRadius: 10,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                ],
-                              ),
-                              child: Row(
-                                children: [
-                                  // Avatar
-                                  CircleAvatar(
-                                    radius: 28,
-                                    backgroundColor: AppColors.primary
-                                        .withValues(alpha: 0.1),
-                                    backgroundImage:
-                                        requester.profileImageUrl != null
-                                            ? CachedNetworkImageProvider(
-                                                requester.profileImageUrl!)
-                                            : null,
-                                    child: requester.profileImageUrl == null
-                                        ? const Icon(Icons.person,
-                                            color: AppColors.primary, size: 30)
-                                        : null,
-                                  ),
-                                  const SizedBox(width: 14),
-
-                                  // Info
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          requester.name,
-                                          style: const TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 16),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Row(
-                                          children: [
-                                            Icon(Icons.work_outline,
-                                                size: 14,
-                                                color: Colors.grey[600]),
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              roleText,
-                                              style: TextStyle(
-                                                  color: Colors.grey[600],
-                                                  fontSize: 13),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-
-                                  // Action Buttons (Incoming Call Style)
-                                  if (isProcessing)
-                                    const Padding(
-                                      padding:
-                                          EdgeInsets.symmetric(horizontal: 20),
-                                      child: SizedBox(
-                                        width: 24,
-                                        height: 24,
-                                        child: CircularProgressIndicator(
-                                            strokeWidth: 2),
-                                      ),
-                                    )
-                                  else
-                                    Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        // Accept (Green Check)
-                                        GestureDetector(
-                                          onTap: () => _handleRequest(
-                                              requester.id, true),
-                                          child: Container(
-                                            padding: const EdgeInsets.all(8),
-                                            decoration: BoxDecoration(
-                                              color: Colors.green
-                                                  .withValues(alpha: 0.15),
-                                              shape: BoxShape.circle,
-                                            ),
-                                            child: const Icon(
-                                                Icons.check_rounded,
-                                                color: Colors.green,
-                                                size: 22),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        // Reject (Red X)
-                                        GestureDetector(
-                                          onTap: () => _handleRequest(
-                                              requester.id, false),
-                                          child: Container(
-                                            padding: const EdgeInsets.all(8),
-                                            decoration: BoxDecoration(
-                                              color: Colors.red
-                                                  .withValues(alpha: 0.15),
-                                              shape: BoxShape.circle,
-                                            ),
-                                            child: const Icon(
-                                                Icons.close_rounded,
-                                                color: Colors.red,
-                                                size: 22),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                ],
+                        children: [
+                          if (_requesters.isNotEmpty) ...[
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                  bottom: 8, left: 4, right: 4),
+                              child: Text(
+                                isArabic ? 'طلبات الزمالة' : 'Partner Requests',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                    color: AppColors.primary),
                               ),
                             ),
-                          );
-                        },
+                            ..._requesters.map((requester) =>
+                                _buildUserRequestCard(
+                                    requester, isDark, isArabic)),
+                          ],
+                          if (_requesters.isNotEmpty && _squads.isNotEmpty)
+                            const SizedBox(height: 24),
+                          if (_squads.isNotEmpty) ...[
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                  bottom: 8, left: 4, right: 4),
+                              child: Text(
+                                isArabic ? 'دعوات المجموعات' : 'Squad Invites',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                    color: AppColors.primary),
+                              ),
+                            ),
+                            ..._squads.map((squad) =>
+                                _buildSquadInviteCard(squad, isDark, isArabic)),
+                          ],
+                        ],
                       ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUserRequestCard(
+      UserModel requester, bool isDark, bool isArabic) {
+    final isProcessing = _processingIds.contains(requester.id);
+    final roleText = requester.role == UserRole.freelancer ||
+            requester.role == UserRole.techService
+        ? (isArabic ? 'حرفي' : 'Freelancer')
+        : (requester.role == UserRole.shop
+            ? (isArabic ? 'معرض / متجر' : 'Shop')
+            : '');
+
+    return GestureDetector(
+      onTap: () => _navigateToProfile(requester),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+          boxShadow: [
+            if (!isDark)
+              BoxShadow(
+                color: AppColors.primary.withValues(alpha: 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+          ],
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 28,
+              backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+              backgroundImage: requester.profileImageUrl != null
+                  ? CachedNetworkImageProvider(requester.profileImageUrl!)
+                  : null,
+              child: requester.profileImageUrl == null
+                  ? const Icon(Icons.person, color: AppColors.primary, size: 30)
+                  : null,
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    requester.name,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 16),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(Icons.work_outline,
+                          size: 14, color: Colors.grey[600]),
+                      const SizedBox(width: 4),
+                      Text(
+                        roleText,
+                        style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            if (isProcessing)
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20),
+                child: SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2)),
+              )
+            else
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  GestureDetector(
+                    onTap: () => _handleRequest(requester.id, true),
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                          color: Colors.green.withValues(alpha: 0.15),
+                          shape: BoxShape.circle),
+                      child: const Icon(Icons.check_rounded,
+                          color: Colors.green, size: 22),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: () => _handleRequest(requester.id, false),
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                          color: Colors.red.withValues(alpha: 0.15),
+                          shape: BoxShape.circle),
+                      child: const Icon(Icons.close_rounded,
+                          color: Colors.red, size: 22),
+                    ),
+                  ),
+                ],
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSquadInviteCard(SquadModel squad, bool isDark, bool isArabic) {
+    final isProcessing = _processingIds.contains(squad.id);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+        boxShadow: [
+          if (!isDark)
+            BoxShadow(
+              color: AppColors.primary.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+        ],
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 28,
+            backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+            backgroundImage: squad.squadImageUrl != null
+                ? CachedNetworkImageProvider(squad.squadImageUrl!)
+                : null,
+            child: squad.squadImageUrl == null
+                ? const Icon(Icons.groups, color: AppColors.primary, size: 30)
+                : null,
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  squad.name,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 16),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Icon(Icons.category, size: 14, color: Colors.grey[600]),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        squad.category.getName(widget.locale),
+                        style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          if (isProcessing)
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20),
+              child: SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2)),
+            )
+          else
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                GestureDetector(
+                  onTap: () => _handleSquadRequest(squad.id, true),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                        color: Colors.green.withValues(alpha: 0.15),
+                        shape: BoxShape.circle),
+                    child: const Icon(Icons.check_rounded,
+                        color: Colors.green, size: 22),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: () => _handleSquadRequest(squad.id, false),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                        color: Colors.red.withValues(alpha: 0.15),
+                        shape: BoxShape.circle),
+                    child: const Icon(Icons.close_rounded,
+                        color: Colors.red, size: 22),
+                  ),
+                ),
+              ],
+            ),
         ],
       ),
     );

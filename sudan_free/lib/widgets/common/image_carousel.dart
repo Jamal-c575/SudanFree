@@ -28,7 +28,7 @@ class ImageCarousel extends StatefulWidget {
 class _ImageCarouselState extends State<ImageCarousel> {
   int _currentIndex = 0;
   final PageController _pageController = PageController();
-  
+
   // Track precached images to avoid redundant precaching
   final Set<int> _precachedIndices = {};
 
@@ -49,14 +49,15 @@ class _ImageCarouselState extends State<ImageCarousel> {
     for (final index in indicesToPrecache) {
       // Skip if already precached
       if (_precachedIndices.contains(index)) continue;
-      
+
       _precachedIndices.add(index);
-      
+
       final url = widget.imageUrls[index];
       try {
         precacheImage(
           CachedNetworkImageProvider(
-            CloudinaryService.getOptimizedUrl(url, width: 1200, quality: 'auto'),
+            CloudinaryService.getOptimizedUrl(url,
+                width: 1200, quality: 'auto'),
           ),
           context,
         ).catchError((error) {
@@ -117,7 +118,8 @@ class _ImageCarouselState extends State<ImageCarousel> {
                   }
                 },
                 child: CachedNetworkImage(
-                  imageUrl: CloudinaryService.getOptimizedUrl(url, width: 600, quality: 'auto'),
+                  imageUrl: CloudinaryService.getOptimizedUrl(url,
+                      width: 600, quality: 'auto'),
                   fit: widget.fit,
                   placeholder: (context, url) => Container(
                     color: AppColors.border.withValues(alpha: 0.1),
@@ -164,4 +166,3 @@ class _ImageCarouselState extends State<ImageCarousel> {
     );
   }
 }
-

@@ -76,32 +76,36 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   Future<void> _handleOrderNow(BuildContext context, bool isArabic) async {
     final scaffoldMessenger = ScaffoldMessenger.of(context);
-    
+
     // Fetch Shop User to get their WhatsApp number
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (_) => const Center(child: CircularProgressIndicator()),
     );
-    
+
     try {
       final shopUser = await FirestoreService().getUser(widget.product.userId);
       if (!context.mounted) return;
       Navigator.pop(context); // Pop loading
-      
+
       if (shopUser == null) {
-        scaffoldMessenger.showSnackBar(SnackBar(content: Text(isArabic ? 'حدث خطأ، المتجر غير موجود' : 'Shop not found'), backgroundColor: Colors.red));
+        scaffoldMessenger.showSnackBar(SnackBar(
+            content:
+                Text(isArabic ? 'حدث خطأ، المتجر غير موجود' : 'Shop not found'),
+            backgroundColor: Colors.red));
         return;
       }
 
       final productUrl = _buildProductLink();
-      final message = isArabic 
+      final message = isArabic
           ? 'مرحباً، أريد طلب هذا المنتج:\n${widget.product.caption?.split('\n').first ?? ''}\n$productUrl\n\nهل هو متوفر؟'
           : 'Hello, I want to order this product:\n${widget.product.caption?.split('\n').first ?? ''}\n$productUrl\n\nIs it available?';
 
       showModalBottomSheet(
         context: context,
-        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
         builder: (ctx) => SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(16.0),
@@ -110,17 +114,21 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               children: [
                 Text(
                   isArabic ? 'اطلب الآن عبر' : 'Order Now via',
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 16),
                 ListTile(
-                  leading: const CircleAvatar(backgroundColor: Colors.green, child: Icon(Icons.chat, color: Colors.white)),
+                  leading: const CircleAvatar(
+                      backgroundColor: Colors.green,
+                      child: Icon(Icons.chat, color: Colors.white)),
                   title: Text(isArabic ? 'واتساب' : 'WhatsApp'),
                   onTap: () async {
                     Navigator.pop(ctx);
-                    final number = shopUser.whatsappNumber ?? shopUser.phoneNumber;
+                    final number =
+                        shopUser.whatsappNumber ?? shopUser.phoneNumber;
                     if (number == null || number.isEmpty) return;
-                    
+
                     String formattedNumber = number;
                     if (formattedNumber.startsWith('0')) {
                       formattedNumber = '249${formattedNumber.substring(1)}';
@@ -128,33 +136,41 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     if (!formattedNumber.startsWith('+')) {
                       formattedNumber = '+$formattedNumber';
                     }
-                    
-                    final whatsappUrl = Uri.parse('whatsapp://send?phone=$formattedNumber&text=${Uri.encodeComponent(message)}');
+
+                    final whatsappUrl = Uri.parse(
+                        'whatsapp://send?phone=$formattedNumber&text=${Uri.encodeComponent(message)}');
                     try {
                       await launchUrl(whatsappUrl);
                     } catch (e) {
                       if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(isArabic ? 'لم يتم العثور على واتساب' : 'WhatsApp not found')));
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                            content: Text(isArabic
+                                ? 'لم يتم العثور على واتساب'
+                                : 'WhatsApp not found')));
                       }
                     }
                   },
                 ),
                 ListTile(
-                  leading: CircleAvatar(backgroundColor: AppColors.primary, child: const Icon(Icons.message_rounded, color: Colors.white)),
+                  leading: CircleAvatar(
+                      backgroundColor: AppColors.primary,
+                      child: const Icon(Icons.message_rounded,
+                          color: Colors.white)),
                   title: Text(isArabic ? 'محادثة داخل التطبيق' : 'In-App Chat'),
                   onTap: () async {
                     Navigator.pop(ctx);
                     final authProvider = context.read<AuthProvider>();
                     final currentUser = authProvider.user;
                     if (currentUser == null) return;
-                    
+
                     final chatProvider = context.read<ChatProvider>();
                     final nav = Navigator.of(context);
-                    
+
                     showDialog(
                       context: context,
                       barrierDismissible: false,
-                      builder: (_) => const Center(child: CircularProgressIndicator()),
+                      builder: (_) =>
+                          const Center(child: CircularProgressIndicator()),
                     );
 
                     try {
@@ -166,7 +182,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         otherUserName: shopUser.name,
                         otherUserImageUrl: shopUser.profileImageUrl,
                       );
-                      
+
                       nav.pop(); // dismiss loading
                       if (chat != null) {
                         await chatProvider.sendMessage(
@@ -175,7 +191,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           receiverId: shopUser.id,
                           content: message,
                         );
-                        nav.push(MaterialPageRoute(builder: (_) => ChatScreen(chat: chat)));
+                        nav.push(MaterialPageRoute(
+                            builder: (_) => ChatScreen(chat: chat)));
                       }
                     } catch (e) {
                       nav.pop();
@@ -190,7 +207,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     } catch (e) {
       if (!context.mounted) return;
       Navigator.pop(context); // Pop loading
-      scaffoldMessenger.showSnackBar(SnackBar(content: Text(isArabic ? 'حدث خطأ' : 'An error occurred'), backgroundColor: Colors.red));
+      scaffoldMessenger.showSnackBar(SnackBar(
+          content: Text(isArabic ? 'حدث خطأ' : 'An error occurred'),
+          backgroundColor: Colors.red));
     }
   }
 
@@ -204,10 +223,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     final allMedia = widget.product.allImageUrls;
 
     final productTitle = widget.product.caption?.split('\n').first ?? '';
-    final productDesc = widget.product.caption != null &&
-            widget.product.caption!.contains('\n')
-        ? widget.product.caption!.split('\n').skip(1).join('\n').trim()
-        : '';
+    final productDesc =
+        widget.product.caption != null && widget.product.caption!.contains('\n')
+            ? widget.product.caption!.split('\n').skip(1).join('\n').trim()
+            : '';
 
     final theme = Theme.of(context);
 
@@ -226,14 +245,17 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           if (currentUser != null)
             Consumer<AuthProvider>(
               builder: (context, auth, _) {
-                final isFavorite = auth.user?.favoriteProductIds.contains(widget.product.id) ?? false;
+                final isFavorite =
+                    auth.user?.favoriteProductIds.contains(widget.product.id) ??
+                        false;
                 return IconButton(
                   icon: Icon(
                     isFavorite ? Icons.favorite : Icons.favorite_border,
                     color: isFavorite ? Colors.red : null,
                   ),
                   tooltip: isArabic ? 'مفضلة' : 'Favorite',
-                  onPressed: () => auth.toggleFavoriteProduct(widget.product.id),
+                  onPressed: () =>
+                      auth.toggleFavoriteProduct(widget.product.id),
                 );
               },
             ),
@@ -244,58 +266,58 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           ),
         ],
       ),
-
-      bottomNavigationBar: (isMyProduct && isShopOwner) 
-        ? SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: _shareInCommunity,
-                  icon: const Icon(Icons.group_rounded, size: 18),
-                  label: Text(
-                    isArabic ? 'نشر في المجتمع' : 'Post to Community',
-                    style: const TextStyle(fontSize: 13),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 13),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-              ),
-            ),
-          ) 
-        : (!isMyProduct 
-            ? SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: () => _handleOrderNow(context, isArabic),
-                      icon: const Icon(Icons.shopping_cart_checkout_rounded, size: 20),
-                      label: Text(
-                        isArabic ? 'اطلب الآن' : 'Order Now',
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green.shade600,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                        elevation: 4,
-                      ),
+      bottomNavigationBar: (isMyProduct && isShopOwner)
+          ? SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _shareInCommunity,
+                    icon: const Icon(Icons.group_rounded, size: 18),
+                    label: Text(
+                      isArabic ? 'نشر في المجتمع' : 'Post to Community',
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 13),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
                     ),
                   ),
                 ),
-              )
-            : null),
-
+              ),
+            )
+          : (!isMyProduct
+              ? SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () => _handleOrderNow(context, isArabic),
+                        icon: const Icon(Icons.shopping_cart_checkout_rounded,
+                            size: 20),
+                        label: Text(
+                          isArabic ? 'اطلب الآن' : 'Order Now',
+                          style: const TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green.shade600,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          elevation: 4,
+                        ),
+                      ),
+                    ),
+                  ),
+                )
+              : null),
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -312,19 +334,33 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 child: Column(
                   children: [
                     GestureDetector(
-                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProfileScreen(userId: widget.product.userId))),
+                      onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => ProfileScreen(
+                                  userId: widget.product.userId))),
                       child: Row(
                         children: [
                           CircleAvatar(
                             radius: 20,
-                            backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                            backgroundColor:
+                                AppColors.primary.withValues(alpha: 0.1),
                             backgroundImage: widget.product.userImageUrl != null
-                                ? CachedNetworkImageProvider(CloudinaryService.getOptimizedUrl(widget.product.userImageUrl!, width: 100, quality: 'auto'))
+                                ? CachedNetworkImageProvider(
+                                    CloudinaryService.getOptimizedUrl(
+                                        widget.product.userImageUrl!,
+                                        width: 100,
+                                        quality: 'auto'))
                                 : null,
                             child: widget.product.userImageUrl == null
                                 ? Text(
-                                    widget.product.userName.isNotEmpty ? widget.product.userName[0].toUpperCase() : '?',
-                                    style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
+                                    widget.product.userName.isNotEmpty
+                                        ? widget.product.userName[0]
+                                            .toUpperCase()
+                                        : '?',
+                                    style: const TextStyle(
+                                        color: AppColors.primary,
+                                        fontWeight: FontWeight.bold),
                                   )
                                 : null,
                           ),
@@ -335,17 +371,22 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                               children: [
                                 Text(
                                   widget.product.userName,
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 15),
                                 ),
-                                if (widget.product.userJobTitle != null && widget.product.userJobTitle!.isNotEmpty)
+                                if (widget.product.userJobTitle != null &&
+                                    widget.product.userJobTitle!.isNotEmpty)
                                   Text(
                                     widget.product.userJobTitle!,
-                                    style: const TextStyle(color: AppColors.primary, fontSize: 12),
+                                    style: const TextStyle(
+                                        color: AppColors.primary, fontSize: 12),
                                   ),
                               ],
                             ),
                           ),
-                          Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey[400]),
+                          Icon(Icons.arrow_forward_ios,
+                              size: 14, color: Colors.grey[400]),
                         ],
                       ),
                     ),
@@ -358,8 +399,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         final currentUserId = auth.user?.id ?? '';
                         return Consumer<PostsProvider>(
                           builder: (context, postsProvider, _) {
-                            final latestPost = postsProvider.posts.firstWhere((p) => p.id == widget.product.id, orElse: () => widget.product);
-                            final isLiked = latestPost.reactions.containsKey(currentUserId);
+                            final latestPost = postsProvider.posts.firstWhere(
+                                (p) => p.id == widget.product.id,
+                                orElse: () => widget.product);
+                            final isLiked =
+                                latestPost.reactions.containsKey(currentUserId);
                             final totalReactions = latestPost.totalReactions;
 
                             return Row(
@@ -368,16 +412,37 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                   onTap: () {
                                     if (currentUserId.isEmpty) return;
                                     final type = isLiked ? 'unlike' : 'like';
-                                    postsProvider.reactToPost(latestPost.id, currentUserId, auth.user?.name ?? '', latestPost.userId, type);
+                                    postsProvider.reactToPost(
+                                        latestPost.id,
+                                        currentUserId,
+                                        auth.user?.name ?? '',
+                                        latestPost.userId,
+                                        type);
                                   },
                                   borderRadius: BorderRadius.circular(20),
                                   child: Padding(
-                                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 8, horizontal: 8),
                                     child: Row(
                                       children: [
-                                        Icon(isLiked ? Icons.favorite_rounded : Icons.favorite_border_rounded, color: isLiked ? Colors.red : Colors.grey[600], size: 22),
+                                        Icon(
+                                            isLiked
+                                                ? Icons.favorite_rounded
+                                                : Icons.favorite_border_rounded,
+                                            color: isLiked
+                                                ? Colors.red
+                                                : Colors.grey[600],
+                                            size: 22),
                                         const SizedBox(width: 6),
-                                        Text(totalReactions > 0 ? '$totalReactions' : '', style: TextStyle(fontWeight: FontWeight.bold, color: isLiked ? Colors.red : Colors.grey[600])),
+                                        Text(
+                                            totalReactions > 0
+                                                ? '$totalReactions'
+                                                : '',
+                                            style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                color: isLiked
+                                                    ? Colors.red
+                                                    : Colors.grey[600])),
                                       ],
                                     ),
                                   ),
@@ -389,17 +454,27 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                       context: context,
                                       isScrollControlled: true,
                                       backgroundColor: Colors.transparent,
-                                      builder: (_) => CommentsSheet(postId: latestPost.id, postOwnerId: latestPost.userId),
+                                      builder: (_) => CommentsSheet(
+                                          postId: latestPost.id,
+                                          postOwnerId: latestPost.userId),
                                     );
                                   },
                                   borderRadius: BorderRadius.circular(20),
                                   child: Padding(
-                                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 8, horizontal: 8),
                                     child: Row(
                                       children: [
-                                        Icon(Icons.chat_bubble_outline_rounded, color: Colors.grey[600], size: 22),
+                                        Icon(Icons.chat_bubble_outline_rounded,
+                                            color: Colors.grey[600], size: 22),
                                         const SizedBox(width: 6),
-                                        Text(latestPost.commentsCount > 0 ? '${latestPost.commentsCount}' : '', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey[600])),
+                                        Text(
+                                            latestPost.commentsCount > 0
+                                                ? '${latestPost.commentsCount}'
+                                                : '',
+                                            style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.grey[600])),
                                       ],
                                     ),
                                   ),
@@ -512,9 +587,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             const SizedBox(height: 10),
                           if (widget.product.quantity != null)
                             _DetailRow(
-                              label: isArabic
-                                  ? 'الكمية المتاحة'
-                                  : 'Available Qty',
+                              label:
+                                  isArabic ? 'الكمية المتاحة' : 'Available Qty',
                               icon: Icons.inventory_2_outlined,
                               value: '${widget.product.quantity}',
                             ),
@@ -606,7 +680,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             bottomRight: Radius.circular(24),
           ),
         ),
-        child: const Icon(Icons.image_not_supported, size: 64, color: Colors.grey),
+        child:
+            const Icon(Icons.image_not_supported, size: 64, color: Colors.grey),
       );
     }
 
@@ -643,7 +718,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           memCacheWidth: 800,
                           placeholder: (_, __) => Container(
                             color: placeholderColor,
-                            child: const Center(child: CircularProgressIndicator()),
+                            child: const Center(
+                                child: CircularProgressIndicator()),
                           ),
                           errorWidget: (_, __, ___) => Container(
                             color: placeholderColor,
@@ -658,7 +734,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         memCacheWidth: 800,
                         placeholder: (_, __) => Container(
                           color: placeholderColor,
-                          child: const Center(child: CircularProgressIndicator()),
+                          child:
+                              const Center(child: CircularProgressIndicator()),
                         ),
                         errorWidget: (_, __, ___) => Container(
                           color: placeholderColor,
@@ -708,8 +785,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             top: 12,
             right: 16,
             child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
                 color: Colors.black.withValues(alpha: 0.45),
                 borderRadius: BorderRadius.circular(20),
@@ -818,7 +894,11 @@ class _DetailRow extends StatelessWidget {
         '$label:',
         style: TextStyle(
             fontSize: 14,
-            color: Theme.of(context).textTheme.bodyMedium?.color?.withValues(alpha: 0.7),
+            color: Theme.of(context)
+                .textTheme
+                .bodyMedium
+                ?.color
+                ?.withValues(alpha: 0.7),
             fontWeight: FontWeight.w600),
       ),
       const SizedBox(width: 6),

@@ -1,21 +1,19 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:provider/provider.dart';
+import 'package:shimmer/shimmer.dart';
 import '../../models/request_model.dart';
 import '../../models/user_model.dart';
 import '../../services/firestore_service.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/locale_provider.dart';
 import '../../core/constants/app_colors.dart';
-
-
-import 'add_request_screen.dart';
-import 'request_details_screen.dart';
-import 'package:shimmer/shimmer.dart';
-import '../../widgets/common/adaptive_fab_padding.dart';
+import '../../widgets/common/glass_container.dart';
 import '../../widgets/buttons/smart_draggable_fab.dart';
 import '../../services/smart_guide_service.dart';
-import '../../widgets/common/glass_container.dart';
+import 'add_request_screen.dart';
+import 'request_details_screen.dart';
 
 class RequestsScreen extends StatefulWidget {
   const RequestsScreen({super.key});
@@ -24,28 +22,56 @@ class RequestsScreen extends StatefulWidget {
   State<RequestsScreen> createState() => _RequestsScreenState();
 }
 
-class _RequestsScreenState extends State<RequestsScreen> {
-  bool _showMyRequestsOnly = false;
+// ✅ FIX #2: Use SingleTickerProviderStateMixin for a SHARED clock
+// instead of one Timer.periodic per card (which caused CPU overload)
+class _RequestsScreenState extends State<RequestsScreen>
+    with SingleTickerProviderStateMixin {
+  // ✅ FIX #3: Category uses English key for consistent filtering across languages
+  String _selectedCategoryKey = 'All';
+  final List<Map<String, String>> _categories = [
+    {'ar': 'الكل',         'en': 'All'},
+    {'ar': 'سيارات',       'en': 'Cars'},
+    {'ar': 'عقارات',       'en': 'Real Estate'},
+    {'ar': 'إلكترونيات',  'en': 'Electronics'},
+    {'ar': 'ملابس',        'en': 'Clothes'},
+    {'ar': 'خدمات',        'en': 'Services'},
+    {'ar': 'أطعمة',        'en': 'Food'},
+    {'ar': 'بناء',         'en': 'Construction'},
+    {'ar': 'تجميل',        'en': 'Beauty'},
+  ];
+
+  // ✅ FIX #2: Single shared Ticker — replaces N timers
+  late Ticker _ticker;
+  DateTime _now = DateTime.now();
+
+  // ✅ FIX #3: Search controller
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
+    // One ticker for the whole screen — all cards read _now
+    _ticker = createTicker((_) {
+      if (mounted) setState(() => _now = DateTime.now());
+    })..start();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final user = context.read<AuthProvider>().user;
-      final isClient = user?.role == UserRole.client;
-      
       SmartGuideService.showMicroTip(
         context,
-        messageAr: isClient
-            ? 'اطرح ما تحتاجه هنا، ودع أفضل المتخصصين يتنافسون لخدمتك 🎯'
-            : 'فرص عمل جديدة بانتظارك! تصفح طلبات العملاء وقدم عرضك الآن 💼',
-        messageEn: isClient
-            ? 'Post what you need here and let the best professionals compete 🎯'
-            : 'New jobs await! Browse client requests and submit your offer now 💼',
-        tipId: 'requests_first_visit',
-        icon: Icons.assignment_rounded,
+        messageAr: 'مرحباً بك في العروض المؤقتة! تصفح أفضل الصفقات التي تنتهي قريباً ⏳',
+        messageEn: 'Welcome to the Marketplace! Browse the best deals expiring soon ⏳',
+        tipId: 'marketplace_first_visit',
+        icon: Icons.storefront_rounded,
       );
     });
+  }
+
+  @override
+  void dispose() {
+    _ticker.dispose();
+    _searchController.dispose();
+    super.dispose();
   }
 
   @override
@@ -54,207 +80,247 @@ class _RequestsScreenState extends State<RequestsScreen> {
     final currentUser = authProvider.user;
     final locale = context.watch<LocaleProvider>().locale.languageCode;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+    final navBarTop = bottomInset > 30 ? bottomInset + 8 + 62.0 : bottomInset + 14 + 62.0;
+
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: Text(locale == 'ar' ? 'الطلبات' : 'Requests'),
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        title: Text(locale == 'ar' ? 'عروض مؤقتة' : 'Marketplace', style: const TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.transparent,
         elevation: 0,
-        actions: [
-          if (currentUser != null)
-            IconButton(
-              icon: Icon(
-                _showMyRequestsOnly ? Icons.filter_alt : Icons.filter_alt_outlined,
-                color: _showMyRequestsOnly ? AppColors.primary : null,
-              ),
-              tooltip: locale == 'ar' ? 'طلباتي فقط' : 'My Requests Only',
-              onPressed: () {
-                setState(() {
-                  _showMyRequestsOnly = !_showMyRequestsOnly;
-                });
-              },
-            ),
-        ],
+        flexibleSpace: ClipRect(
+          child: GlassContainer(
+            blur: 15,
+            opacity: isDark ? 0.4 : 0.8,
+            color: Theme.of(context).scaffoldBackgroundColor.withValues(alpha: isDark ? 0.3 : 0.7),
+            child: Container(),
+          ),
+        ),
       ),
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: StreamBuilder<List<RequestModel>>(
-              stream: FirestoreService().getRequests(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return _buildRequestsShimmer(isDark);
-                }
-                if (snapshot.hasError) {
-                   return Center(
-                     child: Padding(
-                       padding: const EdgeInsets.all(32),
-                       child: Column(
-                         mainAxisAlignment: MainAxisAlignment.center,
-                         children: [
-                           const Icon(Icons.error_outline, size: 48, color: Colors.red),
-                           const SizedBox(height: 16),
-                           Text(
-                             locale == 'ar' ? 'حدث خطأ في تحميل الطلبات' : 'Error loading requests',
-                             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                           ),
-                           const SizedBox(height: 8),
-                           Text(
-                             '${snapshot.error}',
-                             textAlign: TextAlign.center,
-                             style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                           ),
-                           const SizedBox(height: 16),
-                           ElevatedButton.icon(
-                             onPressed: () => setState(() {}),
-                             icon: const Icon(Icons.refresh),
-                             label: Text(locale == 'ar' ? 'إعادة المحاولة' : 'Retry'),
-                           ),
-                         ],
-                       ),
-                     ),
-                   );
-                }
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: isDark 
+              ? [const Color(0xFF0F172A), const Color(0xFF1E293B)] 
+              : [const Color(0xFFF8FAFC), const Color(0xFFE2E8F0)],
+          ),
+        ),
+        child: SafeArea(
+          bottom: false,
+          child: Column(
+            children: [
+              // Search & Filter Section
+              _buildTopSection(isDark, locale),
 
-                var requests = snapshot.data ?? [];
-                
-                if (_showMyRequestsOnly && currentUser != null) {
-                  requests = requests.where((r) => r.clientId == currentUser.id).toList();
-                }
+              
+              // ✅ Feed Section — properly wrapped in Expanded + StreamBuilder
+              Expanded(
+                child: StreamBuilder<List<RequestModel>>(
+                  stream: FirestoreService().getRequests(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return _buildShimmerGrid(isDark);
+                    }
 
-                if (requests.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.assignment_outlined, size: 64, color: AppColors.textSecondary.withValues(alpha: 0.5)),
-                        const SizedBox(height: 16),
-                        Text(
-                          locale == 'ar' ? 'لا توجد طلبات حالياً' : 'No requests available',
-                          style: TextStyle(color: AppColors.textSecondary, fontSize: 18),
+                    var posts = snapshot.data ?? [];
+
+                    // ✅ FIX #3: Filter by English key (works in any language)
+                    if (_selectedCategoryKey != 'All') {
+                      posts = posts.where((p) => p.category == _selectedCategoryKey).toList();
+                    }
+
+                    // ✅ FIX #3: Search filter
+                    if (_searchQuery.isNotEmpty) {
+                      final q = _searchQuery.toLowerCase();
+                      posts = posts.where((p) =>
+                        p.text.toLowerCase().contains(q) ||
+                        (p.category?.toLowerCase().contains(q) ?? false) ||
+                        (p.clientName.toLowerCase().contains(q))
+                      ).toList();
+                    }
+
+                    if (posts.isEmpty) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.storefront_outlined, size: 80, color: Colors.grey[300]),
+                            const SizedBox(height: 16),
+                            Text(
+                              locale == 'ar' ? 'لا توجد عروض حالياً' : 'No active offers right now',
+                              style: TextStyle(color: Colors.grey[500], fontSize: 18, fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              locale == 'ar' ? 'كن أول من ينشر عرضاً!' : 'Be the first to post an offer!',
+                              style: TextStyle(color: Colors.grey[400], fontSize: 14),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                  );
-                }
+                      );
+                    }
 
-                // 3. منع تداخل المحتوى مع شريط التنقل
-                final bottomInset = MediaQuery.of(context).padding.bottom;
-                final navBarMargin = bottomInset > 30 ? bottomInset + 8 : bottomInset + 14;
-                final navBarHeight = 62.0;
-                final navBarTop = navBarMargin + navBarHeight;
-
-                return ListView.separated(
-                  padding: EdgeInsets.fromLTRB(16, 16, 16, navBarTop + 80),
-                  physics: const ClampingScrollPhysics(),
-                  addRepaintBoundaries: true,
-                  addAutomaticKeepAlives: false,
-                  itemCount: requests.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
-                  itemBuilder: (context, index) {
-                    final request = requests[index];
-                    return RepaintBoundary(
-                      child: _RequestCard(
-                        request: request,
-                        locale: locale,
-                        currentUserId: currentUser?.id,
-                      ),
+                    return ListView.builder(
+                      padding: EdgeInsets.fromLTRB(16, 8, 16, navBarTop + 20),
+                      itemCount: posts.length,
+                      itemBuilder: (context, index) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          // ✅ FIX #2: Pass shared _now instead of per-card Timer
+                          child: MarketplaceItemCard(
+                            post: posts[index],
+                            locale: locale,
+                            currentUserId: currentUser?.id,
+                            now: _now,
+                          ),
+                        );
+                      },
                     );
                   },
-                );
-              },
-            ),
+                ),
+              ),
+            ],
           ),
-          
-          // 2. زر إضافة الطلب الذكي والمتحرك
-          if (currentUser != null)
-            SmartDraggableFab(
-              heroTag: 'create_request_fab',
-              icon: Icons.add,
-              label: locale == 'ar' ? 'أضف طلبك' : 'Add Request',
-              locale: locale,
-              initialBottom: MediaQuery.of(context).padding.bottom + 82.0, // navBar + safe area
-              onPressed: () {
-                showModalBottomSheet(
-                  context: context,
-                  isScrollControlled: true,
-                  backgroundColor: Colors.transparent,
-                  builder: (_) => AddRequestBottomSheet(user: currentUser),
-                );
-              },
-            ),
-        ],
+        ),
       ),
+      floatingActionButton: currentUser != null ? SmartDraggableFab(
+        heroTag: 'add_market_post',
+        icon: Icons.add_circle_outline,
+        label: locale == 'ar' ? 'نشر عرض +' : 'Post Offer +',
+        locale: locale,
+        initialBottom: MediaQuery.of(context).padding.bottom + 82.0,
+        onPressed: () {
+           showModalBottomSheet(
+              context: context,
+              isScrollControlled: true,
+              backgroundColor: Colors.transparent,
+              builder: (_) => AddRequestBottomSheet(user: currentUser),
+            );
+        },
+      ) : null,
     );
   }
 
-  Widget _buildRequestsShimmer(bool isDark) {
-    return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-      itemCount: 4,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
-      itemBuilder: (context, index) {
-        return Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: isDark ? Colors.grey[900] : Colors.white,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Shimmer.fromColors(
-            baseColor: isDark ? Colors.grey[800]! : Colors.grey[300]!,
-            highlightColor: isDark ? Colors.grey[700]! : Colors.grey[100]!,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const CircleAvatar(radius: 20, backgroundColor: Colors.white),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(width: 100, height: 16, color: Colors.white),
-                          const SizedBox(height: 4),
-                          Container(width: 60, height: 12, color: Colors.white),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Container(width: double.infinity, height: 14, color: Colors.white),
-                const SizedBox(height: 4),
-                Container(width: 250, height: 14, color: Colors.white),
-                const SizedBox(height: 16),
-                Container(width: 120, height: 14, color: Colors.white),
-              ],
+  Widget _buildTopSection(bool isDark, String locale) {
+    return Column(
+      children: [
+        // ✅ FIX #3: Fully working search field
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+          child: GlassContainer(
+            borderRadius: BorderRadius.circular(24),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            blur: 10,
+            color: isDark ? Colors.black26 : Colors.white54,
+            child: TextField(
+              controller: _searchController,
+              onChanged: (val) => setState(() => _searchQuery = val.trim()),
+              decoration: InputDecoration(
+                border: InputBorder.none,
+                hintText: locale == 'ar' ? 'ابحث في العروض...' : 'Search offers...',
+                icon: const Icon(Icons.search, color: AppColors.primary),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear, size: 18),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() => _searchQuery = '');
+                        },
+                      )
+                    : null,
+              ),
             ),
           ),
-        );
-      },
+        ),
+        // ✅ FIX #3: Category filter uses English key internally
+        SizedBox(
+          height: 50,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            itemCount: _categories.length,
+            itemBuilder: (context, index) {
+              final cat = _categories[index];
+              final key = cat['en']!;
+              final label = locale == 'ar' ? cat['ar']! : cat['en']!;
+              final isSelected = key == _selectedCategoryKey;
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                child: ChoiceChip(
+                  label: Text(label, style: TextStyle(
+                    color: isSelected ? Colors.white : (isDark ? Colors.grey[300] : Colors.grey[800]),
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  )),
+                  selected: isSelected,
+                  selectedColor: AppColors.primary,
+                  backgroundColor: isDark ? Colors.white12 : Colors.white,
+                  onSelected: (val) {
+                    if (val) setState(() => _selectedCategoryKey = key);
+                  },
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 8),
+      ],
+    );
+  }
+
+  Widget _buildShimmerGrid(bool isDark) {
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: 3,
+      itemBuilder: (_, __) => Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: Shimmer.fromColors(
+          baseColor: isDark ? Colors.grey[800]! : Colors.grey[300]!,
+          highlightColor: isDark ? Colors.grey[700]! : Colors.grey[100]!,
+          child: Container(
+            height: 250,
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+          ),
+        ),
+      ),
     );
   }
 }
 
-class _RequestCard extends StatelessWidget {
-  final RequestModel request;
+// ✅ FIX #2: MarketplaceItemCard is now a StatelessWidget
+// The `now` clock is passed from the parent screen's shared Ticker
+// — ZERO timers instead of one per card!
+class MarketplaceItemCard extends StatelessWidget {
+  final RequestModel post;
   final String locale;
   final String? currentUserId;
+  final DateTime now; // ✅ Passed from screen-level Ticker
 
-  const _RequestCard({
-    required this.request, 
+  const MarketplaceItemCard({
+    super.key,
+    required this.post,
     required this.locale,
+    required this.now,
     this.currentUserId,
   });
 
-  Future<void> _deleteRequest(BuildContext context) async {
+  Duration get _timeLeft {
+    final diff = post.expiresAt.difference(now);
+    return diff.isNegative ? Duration.zero : diff;
+  }
+
+  Future<void> _deletePost(BuildContext context) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(locale == 'ar' ? 'حذف الطلب' : 'Delete Request'),
+        title: Text(locale == 'ar' ? 'حذف العرض' : 'Delete Offer'),
         content: Text(locale == 'ar'
-            ? 'هل أنت متأكد من حذف هذا الطلب نهائياً؟'
-            : 'Are you sure you want to delete this request permanently?'),
+            ? 'هل أنت متأكد من حذف هذا العرض نهائياً؟'
+            : 'Are you sure you want to delete this offer permanently?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -263,7 +329,8 @@ class _RequestCard extends StatelessWidget {
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: Text(locale == 'ar' ? 'حذف' : 'Delete', style: const TextStyle(color: Colors.white)),
+            child: Text(locale == 'ar' ? 'حذف' : 'Delete',
+                style: const TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -271,24 +338,19 @@ class _RequestCard extends StatelessWidget {
 
     if (confirmed == true && context.mounted) {
       try {
-        await FirestoreService().deleteRequest(request.id);
+        await FirestoreService().deleteRequest(post.id);
         if (context.mounted) {
-          final scaffoldMessenger = ScaffoldMessenger.of(context);
-          scaffoldMessenger.showSnackBar(
+          ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(locale == 'ar' ? 'تم حذف الطلب بنجاح' : 'Request deleted successfully'),
+              content: Text(locale == 'ar' ? 'تم الحذف بنجاح' : 'Deleted successfully'),
               backgroundColor: AppColors.success,
             ),
           );
         }
       } catch (e) {
         if (context.mounted) {
-          final scaffoldMessenger = ScaffoldMessenger.of(context);
-          scaffoldMessenger.showSnackBar(
-            SnackBar(
-              content: Text('${locale == 'ar' ? 'حدث خطأ: ' : 'Error: '}$e'),
-              backgroundColor: Colors.red,
-            ),
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
           );
         }
       }
@@ -297,153 +359,181 @@ class _RequestCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => RequestDetailsScreen(request: request)),
-        );
-      },
+      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => RequestDetailsScreen(request: post))),
       child: GlassContainer(
-        padding: const EdgeInsets.all(16),
-        blur: 15,
-        opacity: Theme.of(context).brightness == Brightness.dark ? 0.3 : 0.7,
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(16),
+        blur: 20,
+        opacity: isDark ? 0.2 : 0.8,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  radius: 20,
-                  backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                  backgroundImage: request.clientImageUrl != null ? CachedNetworkImageProvider(request.clientImageUrl!) : null,
-                  child: request.clientImageUrl == null ? const Icon(Icons.person, color: AppColors.primary) : null,
+            // Image
+            if (post.allImageUrls.isNotEmpty)
+              ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                child: CachedNetworkImage(
+                  imageUrl: post.allImageUrls.first,
+                  height: 200,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  placeholder: (context, url) => Container(color: Colors.grey[300]),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+              )
+            else
+              Container(
+                height: 100,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                child: const Center(child: Icon(Icons.campaign_outlined, size: 40, color: AppColors.primary)),
+              ),
+
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Countdown & Category Badge
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        request.clientName,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: _timeLeft.inHours < 2
+                              ? Colors.redAccent.withValues(alpha: 0.2)
+                              : Colors.orange.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: _timeLeft.inHours < 2 ? Colors.red : Colors.orange,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.timer_outlined,
+                                size: 14,
+                                color: _timeLeft.inHours < 2 ? Colors.red : Colors.orange),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${_timeLeft.inHours.toString().padLeft(2, '0')}:'
+                              '${(_timeLeft.inMinutes % 60).toString().padLeft(2, '0')}:'
+                              '${(_timeLeft.inSeconds % 60).toString().padLeft(2, '0')}',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                                color: _timeLeft.inHours < 2 ? Colors.red : Colors.orange,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      Text(
-                        _formatTimeAgo(request.createdAt, locale),
-                        style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                      if (post.category != null)
+                        Text(post.category!,
+                            style: const TextStyle(
+                                color: AppColors.secondary,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12)),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Text Content
+                  Text(
+                    post.text,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 12),
+                  if (post.locality != null)
+                    Row(
+                      children: [
+                        const Icon(Icons.location_on_outlined, size: 14, color: Colors.grey),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${post.locality ?? ''} ${post.state != null ? '- ${post.state}' : ''}',
+                          style: const TextStyle(color: Colors.grey, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  
+                  if (post.price != null && post.price! > 0)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8.0),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.payments_outlined, size: 16, color: Colors.green),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${post.price!.toStringAsFixed(0)} SDG',
+                            style: const TextStyle(
+                              color: Colors.green,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  const SizedBox(height: 12),
+
+                  // Footer: User & Button
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 14,
+                            backgroundImage: post.clientImageUrl != null
+                                ? CachedNetworkImageProvider(post.clientImageUrl!)
+                                : null,
+                            child: post.clientImageUrl == null
+                                ? const Icon(Icons.person, size: 14)
+                                : null,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(post.clientName,
+                              style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          if (currentUserId == post.clientId)
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline, color: Colors.grey, size: 20),
+                              onPressed: () => _deletePost(context),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                            ),
+                          if (currentUserId == post.clientId) const SizedBox(width: 8),
+                          GlassContainer(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            borderRadius: BorderRadius.circular(16),
+                            color: AppColors.primary,
+                            child: Text(
+                              locale == 'ar' ? 'التفاصيل' : 'Details',
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ),
-                if (request.category != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: AppColors.secondary.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      request.category!,
-                      style: const TextStyle(color: AppColors.secondary, fontSize: 12, fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                if (currentUserId != null && currentUserId == request.clientId)
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline, color: Colors.grey, size: 20),
-                    onPressed: () => _deleteRequest(context),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              request.text,
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 15, height: 1.4),
-            ),
-            if (request.state != null || request.locality != null) ...[
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  const Icon(Icons.location_on_outlined, size: 16, color: Colors.grey),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${request.locality ?? ''} ${request.state != null ? '- ${request.state}' : ''}',
-                    style: const TextStyle(color: Colors.grey, fontSize: 12),
-                  ),
                 ],
               ),
-            ],
-            if (request.allImageUrls.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Icon(Icons.photo_outlined, size: 16, color: Colors.grey[500]),
-                  const SizedBox(width: 4),
-                  Text(
-                    locale == 'ar' 
-                        ? '${request.allImageUrls.length} صور مرفقة' 
-                        : '${request.allImageUrls.length} photo(s) attached',
-                    style: TextStyle(color: Colors.grey[500], fontSize: 12),
-                  ),
-                ],
-              ),
-            ],
-            const SizedBox(height: 12),
-            const Divider(),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Icon(
-                      Icons.local_offer_outlined, 
-                      size: 18, 
-                      color: Theme.of(context).brightness == Brightness.dark ? AppColors.primaryLight : AppColors.primary,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      '${request.offersCount} ${locale == 'ar' ? 'عروض' : 'Offers'}',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold, 
-                        color: Theme.of(context).brightness == Brightness.dark ? AppColors.primaryLight : AppColors.primary,
-                      ),
-                    ),
-                  ],
-                ),
-                Text(
-                  locale == 'ar' ? 'عرض التفاصيل' : 'View Details',
-                  style: TextStyle(
-                    color: Theme.of(context).brightness == Brightness.dark ? Colors.blue[300] : Colors.blue[700], 
-                    fontWeight: FontWeight.bold, 
-                    fontSize: 13,
-                  ),
-                ),
-              ],
             ),
           ],
         ),
       ),
     );
-  }
-
-  String _formatTimeAgo(DateTime date, String locale) {
-    final diff = DateTime.now().difference(date);
-    if (diff.inDays > 30) {
-      return '${date.day}/${date.month}/${date.year}';
-    } else if (diff.inDays > 0) {
-      return locale == 'ar' ? 'منذ ${diff.inDays} يوم' : '${diff.inDays}d ago';
-    } else if (diff.inHours > 0) {
-      return locale == 'ar' ? 'منذ ${diff.inHours} ساعة' : '${diff.inHours}h ago';
-    } else if (diff.inMinutes > 0) {
-      return locale == 'ar' ? 'منذ ${diff.inMinutes} دقيقة' : '${diff.inMinutes}m ago';
-    } else {
-      return locale == 'ar' ? 'الآن' : 'Just now';
-    }
   }
 }

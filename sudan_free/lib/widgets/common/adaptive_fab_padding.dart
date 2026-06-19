@@ -35,9 +35,11 @@ class AdaptiveFabPadding extends StatelessWidget {
         // ارتفاع الشريط = 62
         // أعلى نقطة = bottomMargin + 62
         // FAB الافتراضي يبدأ من 16px من أسفل الشاشة، لذا نطرحها
-        final navBarMargin = bottomInset > 30 ? bottomInset + 8 : bottomInset + 14;
+        final navBarMargin =
+            bottomInset > 30 ? bottomInset + 8 : bottomInset + 14;
         final navBarTopEdge = navBarMargin + 62;
-        bottomPadding = navBarTopEdge - 16 + 8; // 8 = مسافة أمان بين الزر والشريط
+        bottomPadding =
+            navBarTopEdge - 16 + 8; // 8 = مسافة أمان بين الزر والشريط
       } else {
         // ── شريط التنقل مخفي (أثناء التمرير) ──
         // نحتاج فقط أن نبقى فوق أزرار النظام

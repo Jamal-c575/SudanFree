@@ -1,5 +1,8 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
+import '../../widgets/common/glass_container.dart';
+import '../../widgets/common/glass_card.dart';
 
 class PrivacyPolicyScreen extends StatelessWidget {
   const PrivacyPolicyScreen({super.key});
@@ -8,8 +11,10 @@ class PrivacyPolicyScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final isAr = Localizations.localeOf(context).languageCode == 'ar';
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: Text(
           isAr ? 'السياسات وشروط الاستخدام' : 'Policies & Terms',
@@ -17,18 +22,37 @@ class PrivacyPolicyScreen extends StatelessWidget {
         ),
         centerTitle: true,
         elevation: 0,
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        foregroundColor: Theme.of(context).textTheme.bodyLarge?.color,
+        backgroundColor: Colors.transparent,
+        flexibleSpace: ClipRRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(color: Colors.transparent),
+          ),
+        ),
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: isDark
+                ? [const Color(0xFF0F172A), const Color(0xFF1E293B)]
+                : [AppColors.primaryLight.withValues(alpha: 0.3), Colors.white],
+          ),
+        ),
+        child: SafeArea(
+          child: ListView(
+            padding: const EdgeInsets.all(16),
         children: [
           // Header
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [AppColors.primary, AppColors.primary.withValues(alpha: 0.8)],
+                colors: [
+                  AppColors.primary,
+                  AppColors.primary.withValues(alpha: 0.8)
+                ],
               ),
               borderRadius: BorderRadius.circular(16),
             ),
@@ -37,11 +61,13 @@ class PrivacyPolicyScreen extends StatelessWidget {
                 const Icon(Icons.gavel, size: 48, color: Colors.white),
                 const SizedBox(height: 12),
                 Text(
-                  isAr ? 'سياسات ومعايير الاستخدام' : 'Usage Policies & Standards',
+                  isAr
+                      ? 'سياسات ومعايير الاستخدام'
+                      : 'Usage Policies & Standards',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
                   textAlign: TextAlign.center,
                 ),
               ],
@@ -53,7 +79,9 @@ class PrivacyPolicyScreen extends StatelessWidget {
           // 1. Strict Usage Warnings
           _SectionTitle(
             icon: Icons.warning_amber_rounded,
-            title: isAr ? '⚠️ تحذيرات هامة وشروط الاستخدام' : '⚠️ Important Warnings & Terms',
+            title: isAr
+                ? '⚠️ تحذيرات هامة وشروط الاستخدام'
+                : '⚠️ Important Warnings & Terms',
             color: Colors.redAccent,
           ),
           const SizedBox(height: 12),
@@ -139,7 +167,9 @@ class PrivacyPolicyScreen extends StatelessWidget {
           // 4. Privacy & Data Deletion
           _SectionTitle(
             icon: Icons.privacy_tip,
-            title: isAr ? '🔒 سياسة الخصوصية وحذف البيانات' : '🔒 Privacy & Data Deletion',
+            title: isAr
+                ? '🔒 سياسة الخصوصية وحذف البيانات'
+                : '🔒 Privacy & Data Deletion',
             color: Colors.teal,
           ),
           const SizedBox(height: 12),
@@ -169,7 +199,9 @@ class PrivacyPolicyScreen extends StatelessWidget {
 
           Center(
             child: Text(
-              isAr ? 'استخدامك للتطبيق يعني موافقتك الصريحة على هذه السياسات' : 'Using the app means your explicit agreement to these policies',
+              isAr
+                  ? 'استخدامك للتطبيق يعني موافقتك الصريحة على هذه السياسات'
+                  : 'Using the app means your explicit agreement to these policies',
               style: TextStyle(
                 color: Colors.grey[500],
                 fontSize: 12,
@@ -179,6 +211,8 @@ class PrivacyPolicyScreen extends StatelessWidget {
           ),
           const SizedBox(height: 20),
         ],
+      ),
+      ),
       ),
     );
   }
@@ -212,8 +246,8 @@ class _SectionTitle extends StatelessWidget {
           child: Text(
             title,
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+                  fontWeight: FontWeight.bold,
+                ),
           ),
         ),
       ],
@@ -234,27 +268,14 @@ class _PolicyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Theme.of(context).brightness == Brightness.dark
-            ? Border.all(color: Colors.white.withValues(alpha: 0.08))
-            : null,
-        boxShadow: Theme.of(context).brightness == Brightness.dark
-            ? null
-            : [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: GlassCard(
+        borderRadius: 12,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
             padding: const EdgeInsets.all(10),
@@ -269,11 +290,13 @@ class _PolicyCard extends StatelessWidget {
             child: Text(
               text,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                height: 1.6,
-              ),
+                    height: 1.6,
+                  ),
             ),
           ),
-        ],
+          ],
+          ),
+        ),
       ),
     );
   }

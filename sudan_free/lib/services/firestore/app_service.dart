@@ -1,14 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart';
 import '../../models/contact_log_model.dart';
-import '../../models/notification_model.dart';
 
 class AppFirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   // App Version Info
   Future<Map<String, dynamic>> getAppVersionInfo() async {
-    final doc = await _firestore.collection('app_config').doc('version_info').get();
+    final doc =
+        await _firestore.collection('app_config').doc('version_info').get();
     return doc.data() ?? {};
   }
 
@@ -21,11 +20,14 @@ class AppFirestoreService {
         .get();
 
     if (existingQuery.docs.isNotEmpty) {
-      final logs = existingQuery.docs.map((doc) => ContactLogModel.fromFirestore(doc)).toList();
+      final logs = existingQuery.docs
+          .map((doc) => ContactLogModel.fromFirestore(doc))
+          .toList();
       logs.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       final lastLog = logs.first;
-      
-      final hoursSinceLastContact = DateTime.now().difference(lastLog.createdAt).inHours;
+
+      final hoursSinceLastContact =
+          DateTime.now().difference(lastLog.createdAt).inHours;
       if (hoursSinceLastContact < 24) return lastLog.id;
     }
 
@@ -34,24 +36,14 @@ class AppFirestoreService {
     data['id'] = docRef.id;
     await docRef.set(data);
 
-    try {
-      final notifRef = _firestore.collection('notifications').doc();
-      final notification = NotificationModel(
-        id: notifRef.id,
-        userId: log.contacterId,
-        type: NotificationType.reviewRequest,
-        title: 'كيف كانت تجربتك؟',
-        message: 'تواصلت مع ${log.freelancerName}. قيّم تجربتك لمساعدة الآخرين',
-        createdAt: Timestamp.now(),
-        relatedId: log.freelancerId,
-      );
-      await notifRef.set(notification.toFirestore());
-    } catch (e) { debugPrint('AppService: Review notification error: $e'); }
+    // The review request notification code has been removed based on user request.
+    // We now rely solely on the contract system for reviews.
 
     return docRef.id;
   }
 
-  Future<ContactLogModel?> getContactLog(String contacterId, String freelancerId) async {
+  Future<ContactLogModel?> getContactLog(
+      String contacterId, String freelancerId) async {
     final query = await _firestore
         .collection('contactLogs')
         .where('contacterId', isEqualTo: contacterId)
@@ -59,7 +51,7 @@ class AppFirestoreService {
         .orderBy('createdAt', descending: true)
         .limit(1)
         .get();
-    
+
     if (query.docs.isEmpty) return null;
     return ContactLogModel.fromFirestore(query.docs.first);
   }

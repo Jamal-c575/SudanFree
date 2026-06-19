@@ -31,7 +31,8 @@ class PromotedUser {
       userId: data['userId'] ?? '',
       promoText: data['promoText'] ?? '',
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      expiryDate: (data['expiryDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      expiryDate:
+          (data['expiryDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
       isActive: data['isActive'] ?? true,
     );
   }
@@ -55,12 +56,14 @@ class PromotionService {
 
       if (snap.docs.isEmpty) return [];
 
-      final promotions = snap.docs.map((d) => PromotedUser.fromFirestore(d)).toList();
+      final promotions =
+          snap.docs.map((d) => PromotedUser.fromFirestore(d)).toList();
 
       // Fetch user data for each promotion
       for (final promo in promotions) {
         try {
-          final userDoc = await _firestore.collection('users').doc(promo.userId).get();
+          final userDoc =
+              await _firestore.collection('users').doc(promo.userId).get();
           if (userDoc.exists) {
             promo.user = UserModel.fromFirestore(userDoc);
           }

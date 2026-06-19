@@ -16,7 +16,8 @@ class MyAgreementsScreen extends StatefulWidget {
   State<MyAgreementsScreen> createState() => _MyAgreementsScreenState();
 }
 
-class _MyAgreementsScreenState extends State<MyAgreementsScreen> with SingleTickerProviderStateMixin {
+class _MyAgreementsScreenState extends State<MyAgreementsScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
   @override
@@ -28,13 +29,13 @@ class _MyAgreementsScreenState extends State<MyAgreementsScreen> with SingleTick
       if (user != null) {
         final jobProvider = context.read<JobProvider>();
         jobProvider.fetchClientJobs(user.id);
-        if (user.role.name.toLowerCase().contains('freelancer') || 
-            user.role.name.toLowerCase().contains('shop') || 
+        if (user.role.name.toLowerCase().contains('freelancer') ||
+            user.role.name.toLowerCase().contains('shop') ||
             user.role.name.toLowerCase().contains('service')) {
           jobProvider.fetchFreelancerJobs(user.id);
         }
       }
-      
+
       SmartGuideService.showMicroTip(
         context,
         messageAr: 'هنا يمكنك متابعة وإدارة جميع عقودك واتفاقياتك 📝',
@@ -57,9 +58,11 @@ class _MyAgreementsScreenState extends State<MyAgreementsScreen> with SingleTick
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF8F9FA),
+      backgroundColor:
+          isDark ? const Color(0xFF121212) : const Color(0xFFF8F9FA),
       appBar: AppBar(
-        title: Text(l10n.localeName == 'ar' ? 'اتفاقاتي' : 'My Agreements', style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(l10n.localeName == 'ar' ? 'اتفاقاتي' : 'My Agreements',
+            style: const TextStyle(fontWeight: FontWeight.bold)),
         elevation: 0,
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
@@ -77,11 +80,16 @@ class _MyAgreementsScreenState extends State<MyAgreementsScreen> with SingleTick
       ),
       body: Consumer<JobProvider>(
         builder: (context, jobProvider, child) {
-          if (jobProvider.isLoading && jobProvider.clientJobs.isEmpty && jobProvider.freelancerJobs.isEmpty) {
+          if (jobProvider.isLoading &&
+              jobProvider.clientJobs.isEmpty &&
+              jobProvider.freelancerJobs.isEmpty) {
             return _buildShimmerList(isDark);
           }
-          final allJobs = [...jobProvider.clientJobs, ...jobProvider.freelancerJobs];
-          
+          final allJobs = [
+            ...jobProvider.clientJobs,
+            ...jobProvider.freelancerJobs
+          ];
+
           // Remove duplicates if user is both client and freelancer on same job (rare)
           final uniqueJobs = <String, JobModel>{};
           for (var job in allJobs) {
@@ -90,9 +98,15 @@ class _MyAgreementsScreenState extends State<MyAgreementsScreen> with SingleTick
           final jobs = uniqueJobs.values.toList()
             ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
 
-          final inProgressJobs = jobs.where((j) => j.status == JobStatus.inProgress).toList();
-          final completedJobs = jobs.where((j) => j.status == JobStatus.completed).toList();
-          final otherJobs = jobs.where((j) => j.status != JobStatus.inProgress && j.status != JobStatus.completed).toList();
+          final inProgressJobs =
+              jobs.where((j) => j.status == JobStatus.inProgress).toList();
+          final completedJobs =
+              jobs.where((j) => j.status == JobStatus.completed).toList();
+          final otherJobs = jobs
+              .where((j) =>
+                  j.status != JobStatus.inProgress &&
+                  j.status != JobStatus.completed)
+              .toList();
 
           return TabBarView(
             controller: _tabController,
@@ -107,7 +121,8 @@ class _MyAgreementsScreenState extends State<MyAgreementsScreen> with SingleTick
     );
   }
 
-  Widget _buildJobList(List<JobModel> jobs, AppLocalizations l10n, bool isDark) {
+  Widget _buildJobList(
+      List<JobModel> jobs, AppLocalizations l10n, bool isDark) {
     if (jobs.isEmpty) {
       return Center(
         child: Column(
@@ -116,7 +131,9 @@ class _MyAgreementsScreenState extends State<MyAgreementsScreen> with SingleTick
             Icon(Icons.assignment_outlined, size: 60, color: Colors.grey[400]),
             const SizedBox(height: 16),
             Text(
-              l10n.localeName == 'ar' ? 'لا توجد اتفاقات حالياً' : 'No agreements found',
+              l10n.localeName == 'ar'
+                  ? 'لا توجد اتفاقات حالياً'
+                  : 'No agreements found',
               style: TextStyle(color: Colors.grey[600], fontSize: 16),
             ),
           ],
@@ -130,18 +147,20 @@ class _MyAgreementsScreenState extends State<MyAgreementsScreen> with SingleTick
       itemBuilder: (context, index) {
         final job = jobs[index];
         final isClient = job.clientId == context.read<AuthProvider>().user?.id;
-        
+
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
           elevation: 2,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           color: isDark ? Colors.grey[900] : Colors.white,
           child: InkWell(
             borderRadius: BorderRadius.circular(16),
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => ActiveJobTrackingScreen(jobId: job.id)),
+                MaterialPageRoute(
+                    builder: (_) => ActiveJobTrackingScreen(jobId: job.id)),
               );
             },
             child: Padding(
@@ -155,7 +174,8 @@ class _MyAgreementsScreenState extends State<MyAgreementsScreen> with SingleTick
                       Expanded(
                         child: Text(
                           job.title,
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 16),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -175,16 +195,22 @@ class _MyAgreementsScreenState extends State<MyAgreementsScreen> with SingleTick
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      Icon(isClient ? Icons.person_outline : Icons.work_outline, size: 16, color: Colors.grey),
+                      Icon(isClient ? Icons.person_outline : Icons.work_outline,
+                          size: 16, color: Colors.grey),
                       const SizedBox(width: 6),
                       Text(
-                        isClient ? (job.assignedFreelancerName ?? 'متعاقد') : job.clientName,
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                        isClient
+                            ? (job.assignedFreelancerName ?? 'متعاقد')
+                            : job.clientName,
+                        style: const TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w600),
                       ),
                       const Spacer(),
                       Text(
                         '${job.budgetMax} SDG',
-                        style: const TextStyle(color: AppColors.secondary, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                            color: AppColors.secondary,
+                            fontWeight: FontWeight.bold),
                       ),
                     ],
                   ),
@@ -228,7 +254,8 @@ class _MyAgreementsScreenState extends State<MyAgreementsScreen> with SingleTick
       ),
       child: Text(
         text,
-        style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold),
+        style:
+            TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold),
       ),
     );
   }
@@ -241,7 +268,8 @@ class _MyAgreementsScreenState extends State<MyAgreementsScreen> with SingleTick
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
           elevation: 2,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           color: isDark ? Colors.grey[900] : Colors.white,
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -255,11 +283,17 @@ class _MyAgreementsScreenState extends State<MyAgreementsScreen> with SingleTick
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Container(width: 150, height: 20, color: Colors.white),
-                      Container(width: 60, height: 20, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12))),
+                      Container(
+                          width: 60,
+                          height: 20,
+                          decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12))),
                     ],
                   ),
                   const SizedBox(height: 12),
-                  Container(width: double.infinity, height: 14, color: Colors.white),
+                  Container(
+                      width: double.infinity, height: 14, color: Colors.white),
                   const SizedBox(height: 4),
                   Container(width: 200, height: 14, color: Colors.white),
                   const SizedBox(height: 16),

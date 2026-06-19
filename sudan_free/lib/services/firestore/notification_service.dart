@@ -13,7 +13,9 @@ class NotificationFirestoreService {
         .orderBy('createdAt', descending: true)
         .limit(50)
         .snapshots()
-        .map((snapshot) => snapshot.docs.map((doc) => NotificationModel.fromFirestore(doc)).toList());
+        .map((snapshot) => snapshot.docs
+            .map((doc) => NotificationModel.fromFirestore(doc))
+            .toList());
   }
 
   // Stream unread count
@@ -34,7 +36,7 @@ class NotificationFirestoreService {
         .where('userId', isEqualTo: userId)
         .where('isRead', isEqualTo: false)
         .get();
-    
+
     for (var doc in snapshot.docs) {
       batch.update(doc.reference, {'isRead': true});
     }
@@ -43,7 +45,9 @@ class NotificationFirestoreService {
 
   // Add Notification
   Future<void> addNotification(NotificationModel notification) async {
-    await _firestore.collection('notifications').add(notification.toFirestore());
+    await _firestore
+        .collection('notifications')
+        .add(notification.toFirestore());
   }
 
   // Delete Notification
@@ -71,7 +75,7 @@ class NotificationFirestoreService {
         .orderBy('createdAt', descending: true)
         .limit(50)
         .get();
-    
+
     return snapshot.docs
         .map((doc) => NotificationModel.fromFirestore(doc))
         .toList();

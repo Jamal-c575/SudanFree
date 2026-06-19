@@ -50,7 +50,7 @@ class ReportModel {
       reportedUserPhone: data['reportedUserPhone'],
       reason: data['reason'] ?? '',
       imageUrl: data['imageUrl'],
-      createdAt: data['createdAt'] is Timestamp 
+      createdAt: data['createdAt'] is Timestamp
           ? (data['createdAt'] as Timestamp).toDate()
           : DateTime.now(),
       status: data['status'] ?? 'pending',

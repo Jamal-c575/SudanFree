@@ -26,6 +26,7 @@ class _CreateSquadScreenState extends State<CreateSquadScreen> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameController;
   late final TextEditingController _descController;
+  late final TextEditingController _skillsController;
   SquadCategory? _selectedCategory;
   String? _selectedState;
   String? _selectedLocality;
@@ -36,16 +37,21 @@ class _CreateSquadScreenState extends State<CreateSquadScreen> {
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController(text: widget.squadToEdit?.name ?? '');
-    _descController = TextEditingController(text: widget.squadToEdit?.description ?? '');
+    _nameController =
+        TextEditingController(text: widget.squadToEdit?.name ?? '');
+    _descController =
+        TextEditingController(text: widget.squadToEdit?.description ?? '');
+    _skillsController = TextEditingController(
+        text: widget.squadToEdit?.combinedSkills.join('، ') ?? '');
     _selectedCategory = widget.squadToEdit?.category;
     _selectedState = widget.squadToEdit?.state;
     _selectedLocality = widget.squadToEdit?.locality;
     _currentImageUrl = widget.squadToEdit?.squadImageUrl;
-    
+
     // Ensure locality is valid for the state
     if (_selectedState != null && _selectedLocality != null) {
-      if (!SudanLocations.getLocalities(_selectedState!).contains(_selectedLocality)) {
+      if (!SudanLocations.getLocalities(_selectedState!)
+          .contains(_selectedLocality)) {
         _selectedLocality = null;
       }
     }
@@ -55,12 +61,14 @@ class _CreateSquadScreenState extends State<CreateSquadScreen> {
   void dispose() {
     _nameController.dispose();
     _descController.dispose();
+    _skillsController.dispose();
     super.dispose();
   }
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+    final pickedFile =
+        await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
     if (pickedFile != null) {
       setState(() {
         _imageFile = File(pickedFile.path);
@@ -72,7 +80,9 @@ class _CreateSquadScreenState extends State<CreateSquadScreen> {
     if (!_formKey.currentState!.validate() || _selectedCategory == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(context.read<LocaleProvider>().isArabic ? 'الرجاء إكمال جميع الحقول واختيار الفئة' : 'Please fill all fields and select a category'),
+          content: Text(context.read<LocaleProvider>().isArabic
+              ? 'الرجاء إكمال جميع الحقول واختيار الفئة'
+              : 'Please fill all fields and select a category'),
           backgroundColor: Colors.red,
         ),
       );
@@ -80,18 +90,23 @@ class _CreateSquadScreenState extends State<CreateSquadScreen> {
     }
 
     setState(() => _isLoading = true);
-    
+
     try {
       final user = context.read<AuthProvider>().user;
       if (user == null) throw Exception('User not authenticated');
 
       final squadId = widget.squadToEdit?.id ?? const Uuid().v4();
-      
+
       String? uploadedImageUrl = _currentImageUrl;
       if (_imageFile != null) {
-        final url = await StorageService().uploadImage(_imageFile!, folder: 'squads/$squadId');
+        final url = await StorageService()
+            .uploadImage(_imageFile!, folder: 'squads/$squadId');
         if (url != null) uploadedImageUrl = url;
       }
+
+      final rawSkills = _skillsController.text.split(RegExp(r'[,،]'));
+      final parsedSkills =
+          rawSkills.map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
 
       final squad = SquadModel(
         id: squadId,
@@ -105,22 +120,32 @@ class _CreateSquadScreenState extends State<CreateSquadScreen> {
         createdAt: widget.squadToEdit?.createdAt ?? DateTime.now(),
         rating: widget.squadToEdit?.rating ?? 0.0,
         completedJobs: widget.squadToEdit?.completedJobs ?? 0,
-        combinedSkills: widget.squadToEdit?.combinedSkills ?? [],
+        combinedSkills: parsedSkills,
         squadImageUrl: uploadedImageUrl,
       );
 
       if (widget.squadToEdit != null) {
-        await FirebaseFirestore.instance.collection('squads').doc(squadId).update(squad.toFirestore());
+        await FirebaseFirestore.instance
+            .collection('squads')
+            .doc(squadId)
+            .update(squad.toFirestore());
       } else {
-        await FirebaseFirestore.instance.collection('squads').doc(squadId).set(squad.toFirestore());
+        await FirebaseFirestore.instance
+            .collection('squads')
+            .doc(squadId)
+            .set(squad.toFirestore());
       }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(context.read<LocaleProvider>().isArabic 
-                ? (widget.squadToEdit != null ? 'تم تحديث المجموعة بنجاح!' : 'تم إنشاء المجموعة بنجاح!') 
-                : (widget.squadToEdit != null ? 'Squad updated successfully!' : 'Squad created successfully!')),
+            content: Text(context.read<LocaleProvider>().isArabic
+                ? (widget.squadToEdit != null
+                    ? 'تم تحديث المجموعة بنجاح!'
+                    : 'تم إنشاء المجموعة بنجاح!')
+                : (widget.squadToEdit != null
+                    ? 'Squad updated successfully!'
+                    : 'Squad created successfully!')),
             backgroundColor: Colors.green,
           ),
         );
@@ -130,7 +155,9 @@ class _CreateSquadScreenState extends State<CreateSquadScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(context.read<LocaleProvider>().isArabic ? 'حدث خطأ أثناء الحفظ' : 'Error saving squad'),
+            content: Text(context.read<LocaleProvider>().isArabic
+                ? 'حدث خطأ أثناء الحفظ'
+                : 'Error saving squad'),
             backgroundColor: Colors.red,
           ),
         );
@@ -148,7 +175,9 @@ class _CreateSquadScreenState extends State<CreateSquadScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isEditing ? (isAr ? 'تعديل المجموعة' : 'Edit Squad') : (isAr ? 'إنشاء مجموعة عمل' : 'Create Squad')),
+        title: Text(isEditing
+            ? (isAr ? 'تعديل المجموعة' : 'Edit Squad')
+            : (isAr ? 'إنشاء مجموعة عمل' : 'Create Squad')),
         elevation: 0,
       ),
       body: _isLoading
@@ -170,9 +199,14 @@ class _CreateSquadScreenState extends State<CreateSquadScreen> {
                               backgroundColor: Colors.grey[200],
                               backgroundImage: _imageFile != null
                                   ? FileImage(_imageFile!)
-                                  : (_currentImageUrl != null ? CachedNetworkImageProvider(_currentImageUrl!) : null) as ImageProvider?,
-                              child: (_imageFile == null && _currentImageUrl == null)
-                                  ? const Icon(Icons.groups, size: 50, color: Colors.grey)
+                                  : (_currentImageUrl != null
+                                      ? CachedNetworkImageProvider(
+                                          _currentImageUrl!)
+                                      : null) as ImageProvider?,
+                              child: (_imageFile == null &&
+                                      _currentImageUrl == null)
+                                  ? const Icon(Icons.groups,
+                                      size: 50, color: Colors.grey)
                                   : null,
                             ),
                             Positioned(
@@ -184,7 +218,8 @@ class _CreateSquadScreenState extends State<CreateSquadScreen> {
                                   color: AppColors.primary,
                                   shape: BoxShape.circle,
                                 ),
-                                child: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
+                                child: const Icon(Icons.camera_alt,
+                                    color: Colors.white, size: 20),
                               ),
                             ),
                           ],
@@ -194,45 +229,59 @@ class _CreateSquadScreenState extends State<CreateSquadScreen> {
                     const SizedBox(height: 24),
                     Text(
                       isAr ? 'اسم المجموعة' : 'Squad Name',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 16),
                     ),
                     const SizedBox(height: 8),
                     TextFormField(
                       controller: _nameController,
                       decoration: InputDecoration(
-                        hintText: isAr ? 'مثال: فريق البناء المتكامل' : 'e.g., Integrated Builders Squad',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        hintText: isAr
+                            ? 'مثال: فريق البناء المتكامل'
+                            : 'e.g., Integrated Builders Squad',
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12)),
                       ),
-                      validator: (val) => val == null || val.isEmpty ? (isAr ? 'مطلوب' : 'Required') : null,
+                      validator: (val) => val == null || val.isEmpty
+                          ? (isAr ? 'مطلوب' : 'Required')
+                          : null,
                     ),
-                    
+
                     const SizedBox(height: 24),
-                    
+
                     Text(
                       isAr ? 'وصف المجموعة' : 'Squad Description',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 16),
                     ),
                     const SizedBox(height: 8),
                     TextFormField(
                       controller: _descController,
                       decoration: InputDecoration(
-                        hintText: isAr ? 'اشرح تخصص المجموعة وأهدافها...' : 'Describe the squad specialization...',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        hintText: isAr
+                            ? 'اشرح تخصص المجموعة وأهدافها...'
+                            : 'Describe the squad specialization...',
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12)),
                       ),
                       maxLines: 4,
-                      validator: (val) => val == null || val.isEmpty ? (isAr ? 'مطلوب' : 'Required') : null,
+                      validator: (val) => val == null || val.isEmpty
+                          ? (isAr ? 'مطلوب' : 'Required')
+                          : null,
                     ),
 
                     const SizedBox(height: 24),
-                    
+
                     Text(
                       isAr ? 'فئة المجموعة' : 'Squad Category',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 16),
                     ),
                     const SizedBox(height: 8),
                     Container(
                       decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
+                        border: Border.all(
+                            color: Colors.grey.withValues(alpha: 0.3)),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: DropdownButtonHideUnderline(
@@ -241,28 +290,63 @@ class _CreateSquadScreenState extends State<CreateSquadScreen> {
                           value: _selectedCategory,
                           hint: Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: Text(isAr ? 'اختر التخصص الأساسي' : 'Select main specialization'),
+                            child: Text(isAr
+                                ? 'اختر التخصص الأساسي'
+                                : 'Select main specialization'),
                           ),
                           items: SquadCategory.values.map((cat) {
                             return DropdownMenuItem(
                               value: cat,
                               child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 16),
                                 child: Text(cat.getName(locale)),
                               ),
                             );
                           }).toList(),
-                          onChanged: (val) => setState(() => _selectedCategory = val),
+                          onChanged: (val) =>
+                              setState(() => _selectedCategory = val),
                         ),
                       ),
                     ),
 
                     const SizedBox(height: 24),
 
+                    Text(
+                      isAr
+                          ? 'الخدمات والتخصصات (اختياري)'
+                          : 'Services & Specialties (Optional)',
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: _skillsController,
+                      decoration: InputDecoration(
+                        hintText: isAr
+                            ? 'أدخل التخصصات مفصولة بفاصلة (،) مثال: كهرباء، سباكة'
+                            : 'Enter skills separated by comma (,)',
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      isAr
+                          ? '* إذا تركتها فارغة، سيتم عرض تخصصات أعضاء المجموعة تلقائياً.'
+                          : '* If left empty, members skills will be displayed automatically.',
+                      style: const TextStyle(color: Colors.grey, fontSize: 12),
+                    ),
+
+                    const SizedBox(height: 24),
+
                     // Location Selection
                     Text(
-                      isAr ? 'موقع المجموعة (اختياري)' : 'Squad Location (Optional)',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      isAr
+                          ? 'موقع المجموعة (اختياري)'
+                          : 'Squad Location (Optional)',
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 16),
                     ),
                     const SizedBox(height: 8),
                     Row(
@@ -270,7 +354,8 @@ class _CreateSquadScreenState extends State<CreateSquadScreen> {
                         Expanded(
                           child: Container(
                             decoration: BoxDecoration(
-                              border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
+                              border: Border.all(
+                                  color: Colors.grey.withValues(alpha: 0.3)),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: DropdownButtonHideUnderline(
@@ -278,15 +363,18 @@ class _CreateSquadScreenState extends State<CreateSquadScreen> {
                                 isExpanded: true,
                                 value: _selectedState,
                                 hint: Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 16),
                                   child: Text(isAr ? 'الولاية' : 'State'),
                                 ),
                                 items: SudanLocations.states.map((state) {
                                   return DropdownMenuItem(
                                     value: state,
                                     child: Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                                      child: Text(SudanLocations.getStateName(state, locale)),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 16),
+                                      child: Text(SudanLocations.getStateName(
+                                          state, locale)),
                                     ),
                                   );
                                 }).toList(),
@@ -304,7 +392,8 @@ class _CreateSquadScreenState extends State<CreateSquadScreen> {
                         Expanded(
                           child: Container(
                             decoration: BoxDecoration(
-                              border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
+                              border: Border.all(
+                                  color: Colors.grey.withValues(alpha: 0.3)),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: DropdownButtonHideUnderline(
@@ -312,25 +401,33 @@ class _CreateSquadScreenState extends State<CreateSquadScreen> {
                                 isExpanded: true,
                                 value: _selectedLocality,
                                 hint: Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 16),
                                   child: Text(isAr ? 'المحلية' : 'Locality'),
                                 ),
-                                items: _selectedState == null 
-                                    ? [] 
-                                    : SudanLocations.getLocalities(_selectedState!).map((loc) {
+                                items: _selectedState == null
+                                    ? []
+                                    : SudanLocations.getLocalities(
+                                            _selectedState!)
+                                        .map((loc) {
                                         return DropdownMenuItem(
                                           value: loc,
                                           child: Padding(
-                                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                                            child: Text(SudanLocations.getLocalityName(loc, locale)),
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 16),
+                                            child: Text(
+                                                SudanLocations.getLocalityName(
+                                                    loc, locale)),
                                           ),
                                         );
                                       }).toList(),
-                                onChanged: _selectedState == null ? null : (val) {
-                                  setState(() {
-                                    _selectedLocality = val;
-                                  });
-                                },
+                                onChanged: _selectedState == null
+                                    ? null
+                                    : (val) {
+                                        setState(() {
+                                          _selectedLocality = val;
+                                        });
+                                      },
                               ),
                             ),
                           ),
@@ -347,13 +444,17 @@ class _CreateSquadScreenState extends State<CreateSquadScreen> {
                         onPressed: _saveSquad,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16)),
                         ),
                         child: Text(
-                          isEditing 
+                          isEditing
                               ? (isAr ? 'حفظ التعديلات' : 'Save Changes')
                               : (isAr ? 'إنشاء واعتماد' : 'Create Squad'),
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                          style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white),
                         ),
                       ),
                     ),

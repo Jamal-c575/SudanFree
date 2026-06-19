@@ -10,10 +10,12 @@ import '../../core/constants/app_colors.dart';
 import '../../models/user_model.dart';
 import '../../providers/locale_provider.dart';
 import '../../services/firestore_service.dart';
+import '../../services/smart_guide_service.dart';
 import '../../models/job_model.dart';
 import '../profile/profile_screen.dart';
-import '../../services/smart_guide_service.dart';
 import '../../core/utils/job_titles_utils.dart';
+import '../../widgets/common/glass_container.dart';
+import '../../widgets/common/premium_animations.dart';
 
 class CachedTileProvider extends TileProvider {
   CachedTileProvider();
@@ -37,10 +39,11 @@ class MapExplorerScreen extends StatefulWidget {
   State<MapExplorerScreen> createState() => _MapExplorerScreenState();
 }
 
-class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProviderStateMixin {
+class _MapExplorerScreenState extends State<MapExplorerScreen>
+    with TickerProviderStateMixin {
   final MapController _mapController = MapController();
   final TextEditingController _searchController = TextEditingController();
-  
+
   List<UserModel> _allMapUsers = [];
   List<UserModel> _filteredUsers = [];
   bool _isLoading = true;
@@ -53,14 +56,15 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
 
   // حدود السودان التقريبية (وسعناها قليلاً لتجنب الأخطاء)
   final LatLngBounds _sudanBounds = LatLngBounds(
-    const LatLng(8.0, 21.0), 
-    const LatLng(23.0, 39.0), 
+    const LatLng(8.0, 21.0),
+    const LatLng(23.0, 39.0),
   );
 
-  final LatLng _defaultCenter = const LatLng(15.5007, 32.5599); // الخرطوم كموقع افتراضي
-  
+  final LatLng _defaultCenter =
+      const LatLng(15.5007, 32.5599); // الخرطوم كموقع افتراضي
+
   Timer? _debounceTimer;
-  
+
   bool _isValidSudanCoordinate(double? lat, double? lng) {
     if (lat == null || lng == null) return false;
     return lat >= 8.0 && lat <= 23.0 && lng >= 21.0 && lng <= 39.0;
@@ -75,7 +79,7 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
       final user = widget.targetUser!;
       double? lat = user.latitude;
       double? lng = user.longitude;
-      
+
       if (lat != null && lng != null) {
         if (user.showOnMap != true) {
           // Add a random offset for privacy (approx 2-3km)
@@ -84,7 +88,7 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
           lng += (DateTime.now().microsecond % 4 - 2) * 0.01;
           // Set a flag to indicate it's approximate (we can use a custom property or just standard)
         }
-        
+
         // Ensure it's valid
         if (_isValidSudanCoordinate(lat, lng)) {
           // create a copy of the user with modified coords
@@ -101,7 +105,7 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
         if (lat != null && lng != null) {
           _animatedMapMove(LatLng(lat, lng), 14.5);
         }
-        
+
         if (user.showOnMap != true) {
           final scaffoldMessenger = ScaffoldMessenger.of(context);
           scaffoldMessenger.showSnackBar(
@@ -118,11 +122,11 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
       });
     } else {
       _fetchUsersInBounds(_sudanBounds);
-      
+
       // تحريك الخريطة لموقع المستخدم الفعلي بعد بناء الواجهة
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _locateUser();
-        
+
         SmartGuideService.showMicroTip(
           context,
           messageAr: 'اضغط على أي نقطة لرؤية تفاصيل مقدم الخدمة 📍',
@@ -154,7 +158,7 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) return;
     }
-    
+
     if (permission == LocationPermission.deniedForever) return;
 
     try {
@@ -166,12 +170,11 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
 
       // Then get current with high accuracy for precise location
       position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-          timeLimit: Duration(seconds: 10),
-        )
-      );
-      
+          locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        timeLimit: Duration(seconds: 10),
+      ));
+
       // التوجه إلى موقع المستخدم الفعلي بزووم قريب
       _animatedMapMove(LatLng(position.latitude, position.longitude), 15.5);
     } catch (e) {
@@ -182,17 +185,19 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
   // حركة سينمائية ناعمة للكاميرا
   void _animatedMapMove(LatLng destLocation, double destZoom) {
     if (!mounted) return;
-    
+
     final latTween = Tween<double>(
-        begin: _mapController.camera.center.latitude, end: destLocation.latitude);
+        begin: _mapController.camera.center.latitude,
+        end: destLocation.latitude);
     final lngTween = Tween<double>(
-        begin: _mapController.camera.center.longitude, end: destLocation.longitude);
-    final zoomTween = Tween<double>(
-        begin: _mapController.camera.zoom, end: destZoom);
+        begin: _mapController.camera.center.longitude,
+        end: destLocation.longitude);
+    final zoomTween =
+        Tween<double>(begin: _mapController.camera.zoom, end: destZoom);
 
     final controller = AnimationController(
         duration: const Duration(milliseconds: 1200), vsync: this);
-        
+
     final Animation<double> animation =
         CurvedAnimation(parent: controller, curve: Curves.easeInOutCubic);
 
@@ -203,7 +208,8 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
     });
 
     animation.addStatusListener((status) {
-      if (status == AnimationStatus.completed || status == AnimationStatus.dismissed) {
+      if (status == AnimationStatus.completed ||
+          status == AnimationStatus.dismissed) {
         controller.dispose();
       }
     });
@@ -217,7 +223,7 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
 
     try {
       final users = await FirestoreService().getUsersInMapBounds(
-        bounds.south - 0.1, 
+        bounds.south - 0.1,
         bounds.north + 0.1,
         bounds.west - 0.1,
         bounds.east + 0.1,
@@ -238,9 +244,9 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
   }
 
   void _onMapPositionChanged(MapPosition position, bool hasGesture) {
-    if (!hasGesture) return; 
+    if (!hasGesture) return;
     if (position.bounds == null) return;
-    
+
     if (_debounceTimer?.isActive ?? false) _debounceTimer!.cancel();
     _debounceTimer = Timer(const Duration(milliseconds: 500), () {
       _fetchUsersInBounds(position.bounds!);
@@ -249,16 +255,21 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
 
   void _applyFilters({bool setStateOnly = true}) {
     final filtered = _allMapUsers.where((user) {
-      if (_selectedRoleFilter == 'shop' && user.role != UserRole.shop) return false;
-      if (_selectedRoleFilter == 'freelancer' && user.role != UserRole.freelancer) return false;
+      if (_selectedRoleFilter == 'shop' && user.role != UserRole.shop)
+        return false;
+      if (_selectedRoleFilter == 'freelancer' &&
+          user.role != UserRole.freelancer) return false;
       if (_selectedShopCategoryFilter != null) {
         if (user.role != UserRole.shop) return false;
         if (user.shopCategory != _selectedShopCategoryFilter) return false;
       }
       if (_selectedFreelancerCategoryFilter != null) {
-        if (user.role != UserRole.freelancer && user.role != UserRole.techService && user.role != UserRole.privateService) return false;
+        if (user.role != UserRole.freelancer &&
+            user.role != UserRole.techService &&
+            user.role != UserRole.privateService) return false;
         if (user.jobTitle == null) return false;
-        if (user.jobTitle!.toLowerCase() != _selectedFreelancerCategoryFilter!.name.toLowerCase()) return false;
+        if (user.jobTitle!.toLowerCase() !=
+            _selectedFreelancerCategoryFilter!.name.toLowerCase()) return false;
       }
       return true;
     }).toList();
@@ -271,7 +282,6 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
     } else {
       _filteredUsers = filtered;
     }
-
   }
 
   // Pre-computed valid markers list for performance
@@ -297,8 +307,12 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
       return null;
     }
     // حرفي / تقني / خاص - المسمى الوظيفي الحقيقي فقط
-    if (user.jobTitle != null && user.jobTitle!.isNotEmpty) return JobTitlesUtils.getLocalizedTitle(user.jobTitle!, isAr ? 'ar' : 'en');
-    if (user.skills.isNotEmpty) return _getTranslatedSkill(user.skills.first, isAr); // أخذ المسمى الذي اختاره عند التسجيل وترجمته
+    if (user.jobTitle != null && user.jobTitle!.isNotEmpty)
+      return JobTitlesUtils.getLocalizedTitle(
+          user.jobTitle!, isAr ? 'ar' : 'en');
+    if (user.skills.isNotEmpty)
+      return _getTranslatedSkill(user.skills.first,
+          isAr); // أخذ المسمى الذي اختاره عند التسجيل وترجمته
     return null;
   }
 
@@ -310,9 +324,13 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
 
   String _getUserStatusText(UserModel user, bool isAr, bool isActive) {
     if (user.isShop) {
-      return isActive ? (isAr ? 'مفتوح الآن' : 'Open Now') : (isAr ? 'مغلق الآن' : 'Closed Now');
+      return isActive
+          ? (isAr ? 'مفتوح الآن' : 'Open Now')
+          : (isAr ? 'مغلق الآن' : 'Closed Now');
     }
-    return isActive ? (isAr ? 'متوفر' : 'Available') : (isAr ? 'غير متوفر' : 'Unavailable');
+    return isActive
+        ? (isAr ? 'متوفر' : 'Available')
+        : (isAr ? 'غير متوفر' : 'Unavailable');
   }
 
   void _showUserPopup(UserModel user) {
@@ -327,12 +345,17 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (context) => Container(
+      builder: (context) => GlassContainer(
         padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: Theme.of(context).scaffoldBackgroundColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 20, offset: Offset(0, -5))],
+        blur: 20,
+        opacity: Theme.of(context).brightness == Brightness.dark ? 0.7 : 0.85,
+        color: Theme.of(context).scaffoldBackgroundColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+        border: Border(
+          top: BorderSide(
+            color: Colors.white.withValues(alpha: 0.2),
+            width: 1,
+          ),
         ),
         child: SafeArea(
           child: Column(
@@ -365,11 +388,18 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
                               memCacheWidth: 140,
                               placeholder: (_, __) => Container(
                                 color: AppColors.primary.withValues(alpha: 0.1),
-                                child: Icon(user.isShop ? Icons.store : Icons.person, size: 35, color: AppColors.primary),
+                                child: Icon(
+                                    user.isShop ? Icons.store : Icons.person,
+                                    size: 35,
+                                    color: AppColors.primary),
                               ),
-                              errorWidget: (_, __, ___) => Icon(user.isShop ? Icons.store : Icons.person, size: 35, color: AppColors.primary),
+                              errorWidget: (_, __, ___) => Icon(
+                                  user.isShop ? Icons.store : Icons.person,
+                                  size: 35,
+                                  color: AppColors.primary),
                             )
-                          : Icon(user.isShop ? Icons.store : Icons.person, size: 35, color: AppColors.primary),
+                          : Icon(user.isShop ? Icons.store : Icons.person,
+                              size: 35, color: AppColors.primary),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -380,7 +410,8 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
                         // الاسم
                         Text(
                           user.name,
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 20),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -390,7 +421,9 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
                           Row(
                             children: [
                               Icon(
-                                user.isShop ? Icons.storefront : Icons.work_outline,
+                                user.isShop
+                                    ? Icons.storefront
+                                    : Icons.work_outline,
                                 size: 14,
                                 color: Colors.grey[600],
                               ),
@@ -398,7 +431,8 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
                               Expanded(
                                 child: Text(
                                   profession,
-                                  style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                                  style: TextStyle(
+                                      color: Colors.grey[600], fontSize: 14),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -411,7 +445,8 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
                         Row(
                           children: [
                             Container(
-                              width: 8, height: 8,
+                              width: 8,
+                              height: 8,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 color: statusColor,
@@ -432,15 +467,18 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
                         // التقييم
                         Row(
                           children: [
-                            Icon(Icons.star_rounded, size: 18, color: Colors.amber[600]),
+                            Icon(Icons.star_rounded,
+                                size: 18, color: Colors.amber[600]),
                             const SizedBox(width: 3),
                             Text(
                               user.rating.toStringAsFixed(1),
-                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                              style: const TextStyle(
+                                  fontSize: 14, fontWeight: FontWeight.bold),
                             ),
                             Text(
                               ' (${user.completedJobs} ${isAr ? 'عمل' : 'jobs'})',
-                              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                              style: TextStyle(
+                                  fontSize: 12, color: Colors.grey[600]),
                             ),
                           ],
                         ),
@@ -450,18 +488,19 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
                 ],
               ),
               const SizedBox(height: 16),
-              
+
               // Bio
               if (user.bio != null && user.bio!.isNotEmpty) ...[
                 Text(
                   user.bio!,
                   maxLines: 3,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 13, color: Colors.grey[700], height: 1.4),
+                  style: TextStyle(
+                      fontSize: 13, color: Colors.grey[700], height: 1.4),
                 ),
                 const SizedBox(height: 12),
               ],
-              
+
               // Skills / Tags
               if (user.skills.isNotEmpty) ...[
                 Wrap(
@@ -469,14 +508,18 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
                   runSpacing: 6,
                   children: user.skills.take(3).map((skill) {
                     return Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: AppColors.primary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
                         _getTranslatedSkill(skill, isAr),
-                        style: const TextStyle(color: AppColors.primary, fontSize: 11, fontWeight: FontWeight.w600),
+                        style: const TextStyle(
+                            color: AppColors.primary,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600),
                       ),
                     );
                   }).toList(),
@@ -485,8 +528,8 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
               ],
 
               // Location & Work Hours
-              if ((user.state != null && user.state!.isNotEmpty) || 
-                  (user.locality != null && user.locality!.isNotEmpty) || 
+              if ((user.state != null && user.state!.isNotEmpty) ||
+                  (user.locality != null && user.locality!.isNotEmpty) ||
                   (user.openingHours != null && user.openingHours!.isNotEmpty))
                 Container(
                   padding: const EdgeInsets.all(12),
@@ -499,33 +542,44 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
                   child: Column(
                     children: [
                       // Location
-                      if ((user.state != null && user.state!.isNotEmpty) || (user.locality != null && user.locality!.isNotEmpty))
+                      if ((user.state != null && user.state!.isNotEmpty) ||
+                          (user.locality != null && user.locality!.isNotEmpty))
                         Row(
                           children: [
-                            Icon(Icons.location_on, size: 16, color: Colors.grey[600]),
+                            Icon(Icons.location_on,
+                                size: 16, color: Colors.grey[600]),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                [user.state, user.locality].where((e) => e != null && e.isNotEmpty).join(' - '),
-                                style: TextStyle(fontSize: 13, color: Colors.grey[800]),
+                                [user.state, user.locality]
+                                    .where((e) => e != null && e.isNotEmpty)
+                                    .join(' - '),
+                                style: TextStyle(
+                                    fontSize: 13, color: Colors.grey[800]),
                               ),
                             ),
                           ],
                         ),
-                      
+
                       // Work Hours
-                      if (user.openingHours != null && user.openingHours!.isNotEmpty) ...[
-                        if ((user.state != null && user.state!.isNotEmpty) || (user.locality != null && user.locality!.isNotEmpty))
+                      if (user.openingHours != null &&
+                          user.openingHours!.isNotEmpty) ...[
+                        if ((user.state != null && user.state!.isNotEmpty) ||
+                            (user.locality != null &&
+                                user.locality!.isNotEmpty))
                           const Divider(height: 16),
                         Row(
                           children: [
-                            Icon(Icons.access_time, size: 16, color: Colors.grey[600]),
+                            Icon(Icons.access_time,
+                                size: 16, color: Colors.grey[600]),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                isAr ? 'زمن العمل: من ${user.openingHours} إلى ${user.closingHours ?? ''}'
-                                     : 'Working hours: ${user.openingHours} to ${user.closingHours ?? ''}',
-                                style: TextStyle(fontSize: 13, color: Colors.grey[800]),
+                                isAr
+                                    ? 'زمن العمل: من ${user.openingHours} إلى ${user.closingHours ?? ''}'
+                                    : 'Working hours: ${user.openingHours} to ${user.closingHours ?? ''}',
+                                style: TextStyle(
+                                    fontSize: 13, color: Colors.grey[800]),
                               ),
                             ),
                           ],
@@ -541,22 +595,41 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
 
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton.icon(
-                  icon: const Icon(Icons.person, size: 20),
-                  label: Text(isAr ? 'زيارة الملف الشخصي' : 'View Profile', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  ),
-                  onPressed: () {
+                child: PressableCard(
+                  onTap: () {
                     if (context.mounted) Navigator.pop(context);
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => ProfileScreen(userId: user.id)),
+                      MaterialPageRoute(
+                          builder: (_) => ProfileScreen(userId: user.id)),
                     );
                   },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withValues(alpha: 0.3),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.person, size: 20, color: Colors.white),
+                        const SizedBox(width: 8),
+                        Text(isAr ? 'زيارة الملف الشخصي' : 'View Profile',
+                            style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white)),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -580,7 +653,10 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
                 color: Theme.of(context).cardColor,
                 borderRadius: BorderRadius.circular(30),
                 boxShadow: const [
-                  BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 4))
+                  BoxShadow(
+                      color: Colors.black26,
+                      blurRadius: 10,
+                      offset: Offset(0, 4))
                 ],
               ),
               child: TextField(
@@ -592,25 +668,30 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
                   });
                 },
                 decoration: InputDecoration(
-                  hintText: isAr ? 'ابحث عن متجر أو حرفي...' : 'Search shops or freelancers...',
-                  prefixIcon: const Icon(Icons.search, color: AppColors.primary),
-                  suffixIcon: _isSearching ? IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () {
-                      _searchController.clear();
-                      setState(() {
-                        _searchQuery = '';
-                        _isSearching = false;
-                      });
-                      FocusScope.of(context).unfocus();
-                    }
-                  ) : null,
+                  hintText: isAr
+                      ? 'ابحث عن متجر أو حرفي...'
+                      : 'Search shops or freelancers...',
+                  prefixIcon:
+                      const Icon(Icons.search, color: AppColors.primary),
+                  suffixIcon: _isSearching
+                      ? IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() {
+                              _searchQuery = '';
+                              _isSearching = false;
+                            });
+                            FocusScope.of(context).unfocus();
+                          })
+                      : null,
                   border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
                 ),
               ),
             ),
-            
+
             // قائمة النتائج
             if (_isSearching)
               Container(
@@ -618,7 +699,9 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
                 decoration: BoxDecoration(
                   color: Theme.of(context).cardColor,
                   borderRadius: BorderRadius.circular(20),
-                  boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 10)],
+                  boxShadow: const [
+                    BoxShadow(color: Colors.black26, blurRadius: 10)
+                  ],
                 ),
                 constraints: const BoxConstraints(maxHeight: 280),
                 child: ClipRRect(
@@ -626,18 +709,35 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
                   child: ListView(
                     shrinkWrap: true,
                     padding: EdgeInsets.zero,
-                    children: _allMapUsers.where((u) => u.name.toLowerCase().contains(_searchQuery)).map((user) {
+                    children: _allMapUsers
+                        .where(
+                            (u) => u.name.toLowerCase().contains(_searchQuery))
+                        .map((user) {
                       return ListTile(
                         leading: CircleAvatar(
-                          backgroundImage: user.profileImageUrl != null ? NetworkImage(user.profileImageUrl!) : null,
-                          backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                          child: user.profileImageUrl == null ? Icon(user.role == UserRole.shop ? Icons.store : Icons.person, color: AppColors.primary) : null,
+                          backgroundImage: user.profileImageUrl != null
+                              ? NetworkImage(user.profileImageUrl!)
+                              : null,
+                          backgroundColor:
+                              AppColors.primary.withValues(alpha: 0.1),
+                          child: user.profileImageUrl == null
+                              ? Icon(
+                                  user.role == UserRole.shop
+                                      ? Icons.store
+                                      : Icons.person,
+                                  color: AppColors.primary)
+                              : null,
                         ),
-                        title: Text(user.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                        title: Text(user.name,
+                            style:
+                                const TextStyle(fontWeight: FontWeight.bold)),
                         subtitle: Text(
-                          user.jobTitle != null && user.jobTitle!.isNotEmpty 
-                              ? JobTitlesUtils.getLocalizedTitle(user.jobTitle!, isAr ? 'ar' : 'en') 
-                              : (user.role == UserRole.shop ? (isAr ? 'متجر' : 'Shop') : (isAr ? 'حرفي' : 'Freelancer')),
+                          user.jobTitle != null && user.jobTitle!.isNotEmpty
+                              ? JobTitlesUtils.getLocalizedTitle(
+                                  user.jobTitle!, isAr ? 'ar' : 'en')
+                              : (user.role == UserRole.shop
+                                  ? (isAr ? 'متجر' : 'Shop')
+                                  : (isAr ? 'حرفي' : 'Freelancer')),
                           style: TextStyle(color: Colors.grey[600]),
                         ),
                         onTap: () {
@@ -649,8 +749,10 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
                           });
                           if (user.latitude != null && user.longitude != null) {
                             // الذهاب فوراً لمكان الشخص في الخريطة وفتح بطاقته
-                            _animatedMapMove(LatLng(user.latitude!, user.longitude!), 16.0);
-                            Future.delayed(const Duration(milliseconds: 1000), () {
+                            _animatedMapMove(
+                                LatLng(user.latitude!, user.longitude!), 16.0);
+                            Future.delayed(const Duration(milliseconds: 1000),
+                                () {
                               _showUserPopup(user);
                             });
                           }
@@ -671,7 +773,8 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
     final isAr = locale == 'ar';
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (context) => StatefulBuilder(
         builder: (context, setSheetState) {
           return Padding(
@@ -680,9 +783,13 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(isAr ? 'تصفية الخريطة' : 'Filter Map', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                Text(isAr ? 'تصفية الخريطة' : 'Filter Map',
+                    style: const TextStyle(
+                        fontSize: 22, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 24),
-                Text(isAr ? 'عرض:' : 'Show:', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                Text(isAr ? 'عرض:' : 'Show:',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 16)),
                 const SizedBox(height: 12),
                 Wrap(
                   spacing: 12,
@@ -691,28 +798,43 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
                       label: Text(isAr ? 'الكل' : 'All'),
                       selected: _selectedRoleFilter == 'all',
                       onSelected: (val) {
-                        if (val) setSheetState(() { _selectedRoleFilter = 'all'; _selectedShopCategoryFilter = null; _selectedFreelancerCategoryFilter = null; });
+                        if (val)
+                          setSheetState(() {
+                            _selectedRoleFilter = 'all';
+                            _selectedShopCategoryFilter = null;
+                            _selectedFreelancerCategoryFilter = null;
+                          });
                       },
                     ),
                     FilterChip(
                       label: Text(isAr ? 'المتاجر' : 'Shops'),
                       selected: _selectedRoleFilter == 'shop',
                       onSelected: (val) {
-                        if (val) setSheetState(() { _selectedRoleFilter = 'shop'; _selectedFreelancerCategoryFilter = null; });
+                        if (val)
+                          setSheetState(() {
+                            _selectedRoleFilter = 'shop';
+                            _selectedFreelancerCategoryFilter = null;
+                          });
                       },
                     ),
                     FilterChip(
                       label: Text(isAr ? 'الحرفيين' : 'Freelancers'),
                       selected: _selectedRoleFilter == 'freelancer',
                       onSelected: (val) {
-                        if (val) setSheetState(() { _selectedRoleFilter = 'freelancer'; _selectedShopCategoryFilter = null; });
+                        if (val)
+                          setSheetState(() {
+                            _selectedRoleFilter = 'freelancer';
+                            _selectedShopCategoryFilter = null;
+                          });
                       },
                     ),
                   ],
                 ),
                 if (_selectedRoleFilter == 'shop') ...[
                   const SizedBox(height: 16),
-                  Text(isAr ? 'تصنيف المتجر:' : 'Shop Category:', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                  Text(isAr ? 'تصنيف المتجر:' : 'Shop Category:',
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 14)),
                   const SizedBox(height: 8),
                   SizedBox(
                     height: 45,
@@ -722,7 +844,8 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
                         return Padding(
                           padding: const EdgeInsets.only(right: 8.0),
                           child: FilterChip(
-                            label: Text(UserModel.getLocalizedShopCategory(cat, isAr ? 'ar' : 'en')),
+                            label: Text(UserModel.getLocalizedShopCategory(
+                                cat, isAr ? 'ar' : 'en')),
                             selected: _selectedShopCategoryFilter == cat,
                             onSelected: (val) {
                               setSheetState(() {
@@ -737,7 +860,9 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
                 ],
                 if (_selectedRoleFilter == 'freelancer') ...[
                   const SizedBox(height: 16),
-                  Text(isAr ? 'التخصص:' : 'Profession:', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                  Text(isAr ? 'التخصص:' : 'Profession:',
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 14)),
                   const SizedBox(height: 8),
                   SizedBox(
                     height: 45,
@@ -747,11 +872,13 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
                         return Padding(
                           padding: const EdgeInsets.only(right: 8.0),
                           child: FilterChip(
-                            label: Text(JobTitlesUtils.getLocalizedTitle(cat.name, isAr ? 'ar' : 'en')),
+                            label: Text(JobTitlesUtils.getLocalizedTitle(
+                                cat.name, isAr ? 'ar' : 'en')),
                             selected: _selectedFreelancerCategoryFilter == cat,
                             onSelected: (val) {
                               setSheetState(() {
-                                _selectedFreelancerCategoryFilter = val ? cat : null;
+                                _selectedFreelancerCategoryFilter =
+                                    val ? cat : null;
                               });
                             },
                           ),
@@ -770,11 +897,14 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
                     },
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16)),
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
                     ),
-                    child: Text(isAr ? 'تطبيق' : 'Apply', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    child: Text(isAr ? 'تطبيق' : 'Apply',
+                        style: const TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold)),
                   ),
                 ),
               ],
@@ -790,11 +920,13 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
     final isAr = context.read<LocaleProvider>().locale.languageCode == 'ar';
 
     return Scaffold(
-      extendBodyBehindAppBar: true, // يجعل التطبيق يغطي الشاشة بالكامل تحت الـ AppBar
+      extendBodyBehindAppBar:
+          true, // يجعل التطبيق يغطي الشاشة بالكامل تحت الـ AppBar
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white), // لون الأزرار أبيض ليناسب الستايل الداكن
+        iconTheme: const IconThemeData(
+            color: Colors.white), // لون الأزرار أبيض ليناسب الستايل الداكن
         actions: [
           Container(
             margin: const EdgeInsets.only(right: 8, left: 8),
@@ -835,85 +967,102 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
                   padding: const EdgeInsets.all(50),
                   maxZoom: 15,
                   markers: _validMarkerUsers.map((user) {
-                  final isShop = user.isShop;
-                  final isPrivacyProtected = user.showOnMap != true;
-                  final markerColor = isPrivacyProtected ? Colors.yellow : (isShop ? Colors.amber : Colors.cyanAccent);
-                  return Marker(
-                    key: ValueKey('marker_${user.id}'),
-                    point: LatLng(user.latitude!, user.longitude!),
-                    width: 50,
-                    height: 50,
-                    child: RepaintBoundary(
-                      child: GestureDetector(
-                        onTap: () {
-                          _animatedMapMove(LatLng(user.latitude!, user.longitude!), 16.0);
-                          _showUserPopup(user);
-                        },
-                        child: Container(
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(color: markerColor, width: 2.5),
-                            boxShadow: [
-                              BoxShadow(
-                                color: markerColor.withValues(alpha: 0.5),
-                                blurRadius: 8,
-                                spreadRadius: 1,
-                              ),
-                            ],
-                          ),
-                          child: ClipOval(
-                            child: user.profileImageUrl != null
-                                ? CachedNetworkImage(
-                                    imageUrl: user.profileImageUrl!,
-                                    fit: BoxFit.cover,
-                                    memCacheWidth: 100,
-                                    fadeInDuration: const Duration(milliseconds: 150),
-                                    placeholder: (_, __) => Container(
+                    final isShop = user.isShop;
+                    final isPrivacyProtected = user.showOnMap != true;
+                    final markerColor = isPrivacyProtected
+                        ? Colors.yellow
+                        : (isShop ? Colors.amber : Colors.cyanAccent);
+                    return Marker(
+                      key: ValueKey('marker_${user.id}'),
+                      point: LatLng(user.latitude!, user.longitude!),
+                      width: 50,
+                      height: 50,
+                      child: RepaintBoundary(
+                        child: GestureDetector(
+                          onTap: () {
+                            _animatedMapMove(
+                                LatLng(user.latitude!, user.longitude!), 16.0);
+                            _showUserPopup(user);
+                          },
+                          child: Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border:
+                                  Border.all(color: markerColor, width: 2.5),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: markerColor.withValues(alpha: 0.5),
+                                  blurRadius: 8,
+                                  spreadRadius: 1,
+                                ),
+                              ],
+                            ),
+                            child: ClipOval(
+                              child: user.profileImageUrl != null
+                                  ? CachedNetworkImage(
+                                      imageUrl: user.profileImageUrl!,
+                                      fit: BoxFit.cover,
+                                      memCacheWidth: 100,
+                                      fadeInDuration:
+                                          const Duration(milliseconds: 150),
+                                      placeholder: (_, __) => Container(
+                                        color: Colors.grey[900],
+                                        child: Icon(
+                                            isShop ? Icons.store : Icons.work,
+                                            color: Colors.white,
+                                            size: 22),
+                                      ),
+                                      errorWidget: (_, __, ___) => Container(
+                                        color: Colors.grey[900],
+                                        child: Icon(
+                                            isShop ? Icons.store : Icons.work,
+                                            color: Colors.white,
+                                            size: 22),
+                                      ),
+                                    )
+                                  : Container(
                                       color: Colors.grey[900],
-                                      child: Icon(isShop ? Icons.store : Icons.work, color: Colors.white, size: 22),
+                                      child: Icon(
+                                          isShop ? Icons.store : Icons.work,
+                                          color: Colors.white,
+                                          size: 22),
                                     ),
-                                    errorWidget: (_, __, ___) => Container(
-                                      color: Colors.grey[900],
-                                      child: Icon(isShop ? Icons.store : Icons.work, color: Colors.white, size: 22),
-                                    ),
-                                  )
-                                : Container(
-                                    color: Colors.grey[900],
-                                    child: Icon(isShop ? Icons.store : Icons.work, color: Colors.white, size: 22),
-                                  ),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  );
-                }).toList(),
-                builder: (context, markers) {
-                  return Container(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppColors.primary,
-                      border: Border.all(color: Colors.white, width: 2),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Colors.black26,
-                          blurRadius: 5,
-                          offset: Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Center(
-                      child: Text(
-                        markers.length.toString(),
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                    );
+                  }).toList(),
+                  builder: (context, markers) {
+                    return Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.primary,
+                        border: Border.all(color: Colors.white, width: 2),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Colors.black26,
+                            blurRadius: 5,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
                       ),
-                    ),
-                  );
-                },
+                      child: Center(
+                        child: Text(
+                          markers.length.toString(),
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14),
+                        ),
+                      ),
+                    );
+                  },
+                ),
               ),
-            ),
             ],
           ),
-          
+
           // شريط البحث المخصص
           _buildSearchBar(isAr),
 
@@ -936,7 +1085,8 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
               right: 0,
               child: Center(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
                     color: Colors.black87,
                     borderRadius: BorderRadius.circular(20),
@@ -944,9 +1094,14 @@ class _MapExplorerScreenState extends State<MapExplorerScreen> with TickerProvid
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)),
+                      SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                              color: Colors.white, strokeWidth: 2)),
                       SizedBox(width: 12),
-                      Text('جاري تحميل البيانات...', style: TextStyle(color: Colors.white, fontSize: 12)),
+                      Text('جاري تحميل البيانات...',
+                          style: TextStyle(color: Colors.white, fontSize: 12)),
                     ],
                   ),
                 ),

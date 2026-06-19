@@ -62,7 +62,8 @@ class CustomTextField extends StatelessWidget {
               if (isRequired)
                 const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 4.0),
-                  child: Text('*', style: TextStyle(color: Colors.red, fontSize: 16)),
+                  child: Text('*',
+                      style: TextStyle(color: Colors.red, fontSize: 16)),
                 ),
             ],
           ),
@@ -95,9 +96,11 @@ class CustomTextField extends StatelessWidget {
               enabledBorder: InputBorder.none,
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                borderSide:
+                    const BorderSide(color: AppColors.primary, width: 1.5),
               ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             ),
           ),
         ),
@@ -186,7 +189,10 @@ class SearchTextField extends StatelessWidget {
         onChanged: onChanged,
         onSubmitted: onSubmitted,
         decoration: InputDecoration(
-          hintText: hint ?? (Localizations.localeOf(context).languageCode == 'ar' ? 'بحث...' : 'Search...'),
+          hintText: hint ??
+              (Localizations.localeOf(context).languageCode == 'ar'
+                  ? 'بحث...'
+                  : 'Search...'),
           prefixIcon: const Icon(Icons.search),
           suffixIcon: controller?.text.isNotEmpty == true
               ? IconButton(
@@ -204,7 +210,8 @@ class SearchTextField extends StatelessWidget {
             borderRadius: BorderRadius.circular(AppRadius.full),
             borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
           ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         ),
       ),
     );

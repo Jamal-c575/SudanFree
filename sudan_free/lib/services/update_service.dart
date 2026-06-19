@@ -17,7 +17,8 @@ class UpdateService {
     // Rate limit: don't check more than once per 30 minutes
     if (_updateCheckInProgress) return;
     if (_lastUpdateCheckTime != null &&
-        DateTime.now().difference(_lastUpdateCheckTime!) < _updateCheckCooldown) {
+        DateTime.now().difference(_lastUpdateCheckTime!) <
+            _updateCheckCooldown) {
       return;
     }
 
@@ -104,7 +105,8 @@ class UpdateService {
                   try {
                     final uri = Uri.parse(storeUrl);
                     if (await canLaunchUrl(uri)) {
-                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                      await launchUrl(uri,
+                          mode: LaunchMode.externalApplication);
                     } else {
                       debugPrint('UpdateService: Cannot launch URL: $storeUrl');
                       if (context.mounted) {

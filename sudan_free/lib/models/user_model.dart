@@ -4,23 +4,23 @@ import '../utils/safe_parse.dart';
 enum UserRole { freelancer, techService, privateService, client, shop, admin }
 
 enum ShopCategory {
-  electronics,      // إلكترونيات
-  clothing,         // ملابس
-  furniture,        // أثاث
-  food,             // مواد غذائية
-  restaurant,       // مطعم
-  supermarket,      // سوبرماركت
-  pharmacy,         // صيدلية
-  beauty,           // تجميل ومستحضرات
-  automotive,       // قطع غيار سيارات
-  building,         // مواد بناء
-  jewelry,          // مجوهرات
-  mobile,           // جوالات وإكسسوارات
-  bookstore,        // مكتبة
-  sports,           // رياضة
-  toys,             // ألعاب أطفال
-  home,             // أدوات منزلية
-  other,            // أخرى
+  electronics, // إلكترونيات
+  clothing, // ملابس
+  furniture, // أثاث
+  food, // مواد غذائية
+  restaurant, // مطعم
+  supermarket, // سوبرماركت
+  pharmacy, // صيدلية
+  beauty, // تجميل ومستحضرات
+  automotive, // قطع غيار سيارات
+  building, // مواد بناء
+  jewelry, // مجوهرات
+  mobile, // جوالات وإكسسوارات
+  bookstore, // مكتبة
+  sports, // رياضة
+  toys, // ألعاب أطفال
+  home, // أدوات منزلية
+  other, // أخرى
 }
 
 enum VerificationStatus { none, pending, verified, rejected }
@@ -28,7 +28,7 @@ enum VerificationStatus { none, pending, verified, rejected }
 class UserModel {
   final String id;
   final String email;
-  final String? username;  // @username للإشارات (اختياري)
+  final String? username; // @username للإشارات (اختياري)
   final String? phoneNumber;
   final bool isVerified;
   final bool isPremium;
@@ -42,23 +42,23 @@ class UserModel {
   final String name;
   final UserRole role;
   final String? bio;
-  final String? jobTitle;  // نوع العمل المخصص
+  final String? jobTitle; // نوع العمل المخصص
   final String? profileImageUrl;
   final String? coverImageUrl;
   final List<String> skills;
   final List<String> portfolioImages;
-  final List<String> portfolioVideos;  // معرض الفيديوهات
+  final List<String> portfolioVideos; // معرض الفيديوهات
   final double? hourlyRate;
   // Location fields
-  final String? state;      // الولاية
-  final String? locality;   // المحلية
+  final String? state; // الولاية
+  final String? locality; // المحلية
   final String? neighborhood; // المنطقة / الحي
   // Shop fields (for role == shop)
-  final ShopCategory? shopCategory;  // تصنيف المتجر
-  final List<String> shopImages;      // صور المنتجات
-  final String? openingHours;         // أوقات الفتح
-  final String? closingHours;         // أوقات الإغلاق
-  final String? whatsappNumber;       // رقم الواتساب للتواصل
+  final ShopCategory? shopCategory; // تصنيف المتجر
+  final List<String> shopImages; // صور المنتجات
+  final String? openingHours; // أوقات الفتح
+  final String? closingHours; // أوقات الإغلاق
+  final String? whatsappNumber; // رقم الواتساب للتواصل
   // Rating fields
   final double rating;
   final int reviewsCount;
@@ -84,23 +84,25 @@ class UserModel {
   final Map<String, bool> notificationSettings; // Notification preferences
   final List<String> searchKeywords; // Auto-generated keywords for search
   // Client Interests
-  final List<String> shopInterests;    // أنواع المتاجر التي يهتم بها العميل
+  final List<String> shopInterests; // أنواع المتاجر التي يهتم بها العميل
   final List<String> serviceInterests; // أنواع الخدمات التي يحتاجها العميل
-  final List<String> favoriteUserIds;  // المفضلة: حرفيون أو متاجر
+  final List<String> favoriteUserIds; // المفضلة: حرفيون أو متاجر
   final List<String> favoriteProductIds;
   final List<String> favoriteSquadIds; // المفضلة: المنتجات
   final bool showOnMap; // إظهار أو إخفاء من الخريطة
   final double? latitude; // خط العرض
   final double? longitude; // خط الطول
-  
+
   // Guarantor / Vouching System (نظام الضامن)
   final List<Map<String, dynamic>> vouchedBy; // [{id, name, level, timestamp}]
 
   // Master-Apprentice System (نظام الأسطى والصبي)
   final String? masterId; // الخبير المسؤول عن هذا المتدرب
   final List<String> apprenticesIds; // قائمة المتدربين تحت إشراف هذا الخبير
-  final List<String> pendingApprenticeRequests; // طلبات من صبيان للانضمام لهذا الأسطى
-  final List<String> pendingMasterRequests; // دعوات من أسطوات لهذا المستخدم ليكون صبياً لهم
+  final List<String>
+      pendingApprenticeRequests; // طلبات من صبيان للانضمام لهذا الأسطى
+  final List<String>
+      pendingMasterRequests; // دعوات من أسطوات لهذا المستخدم ليكون صبياً لهم
   final List<String> pendingLeaveRequests; // طلبات من صبيان لترك هذا الأسطى
 
   UserModel({
@@ -228,21 +230,24 @@ class UserModel {
         try {
           final raw = data['ratingCounts'];
           if (raw == null) return <String, int>{};
-          return (raw as Map).map((k, v) => MapEntry(k.toString(), (v as num).toInt()));
-        } catch (_) { return <String, int>{}; }
+          return (raw as Map)
+              .map((k, v) => MapEntry(k.toString(), (v as num).toInt()));
+        } catch (_) {
+          return <String, int>{};
+        }
       })(),
       negativeReports: (data['negativeReports'] as num?)?.toInt() ?? 0,
       totalJobs: (data['totalJobs'] as num?)?.toInt() ?? 0,
       completedJobs: (data['completedJobs'] as num?)?.toInt() ?? 0,
       // Handle both Timestamp (Firestore) and String/int (JSON Cache)
-      createdAt: data['createdAt'] is Timestamp 
+      createdAt: data['createdAt'] is Timestamp
           ? (data['createdAt'] as Timestamp).toDate()
-          : data['createdAt'] is String 
+          : data['createdAt'] is String
               ? DateTime.parse(data['createdAt'])
               : DateTime.now(), // Fallback
-      updatedAt: data['updatedAt'] is Timestamp 
+      updatedAt: data['updatedAt'] is Timestamp
           ? (data['updatedAt'] as Timestamp).toDate()
-          : data['updatedAt'] is String 
+          : data['updatedAt'] is String
               ? DateTime.parse(data['updatedAt'])
               : DateTime.now(),
       fcmToken: data['fcmToken'],
@@ -275,10 +280,21 @@ class UserModel {
       notificationSettings: (() {
         try {
           final raw = data['notificationSettings'];
-          if (raw == null) return {'chat': true, 'mentions': true, 'milestones': true, 'marketing': false};
+          if (raw == null)
+            return {
+              'chat': true,
+              'mentions': true,
+              'milestones': true,
+              'marketing': false
+            };
           return (raw as Map).map((k, v) => MapEntry(k.toString(), v == true));
         } catch (_) {
-          return {'chat': true, 'mentions': true, 'milestones': true, 'marketing': false};
+          return {
+            'chat': true,
+            'mentions': true,
+            'milestones': true,
+            'marketing': false
+          };
         }
       })(),
       searchKeywords: _safeStringList(data['searchKeywords']),
@@ -295,12 +311,17 @@ class UserModel {
         try {
           final raw = data['vouchedBy'];
           if (raw == null) return <Map<String, dynamic>>[];
-          return (raw as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
-        } catch (_) { return <Map<String, dynamic>>[]; }
+          return (raw as List)
+              .map((e) => Map<String, dynamic>.from(e as Map))
+              .toList();
+        } catch (_) {
+          return <Map<String, dynamic>>[];
+        }
       })(),
       masterId: data['masterId'],
       apprenticesIds: _safeStringList(data['apprenticesIds']),
-      pendingApprenticeRequests: _safeStringList(data['pendingApprenticeRequests']),
+      pendingApprenticeRequests:
+          _safeStringList(data['pendingApprenticeRequests']),
       pendingMasterRequests: _safeStringList(data['pendingMasterRequests']),
       pendingLeaveRequests: _safeStringList(data['pendingLeaveRequests']),
     );
@@ -358,7 +379,8 @@ class UserModel {
       'phoneNumber': phoneNumber,
       'profileViews': profileViews,
       'dailyProfileViews': dailyProfileViews,
-      if (lastViewReset != null) 'lastViewReset': Timestamp.fromDate(lastViewReset!),
+      if (lastViewReset != null)
+        'lastViewReset': Timestamp.fromDate(lastViewReset!),
       'name': name,
       'role': role.name,
       'bio': bio,
@@ -402,7 +424,8 @@ class UserModel {
       'isPremium': isPremium,
       'verificationStatus': verificationStatus.name,
       'idCardUrl': idCardUrl,
-      if (verificationSelfieUrl != null) 'verificationSelfieUrl': verificationSelfieUrl,
+      if (verificationSelfieUrl != null)
+        'verificationSelfieUrl': verificationSelfieUrl,
       'notificationSettings': notificationSettings,
       'shopInterests': shopInterests,
       'serviceInterests': serviceInterests,
@@ -442,6 +465,17 @@ class UserModel {
 
   // Calculated getter for total stars (Ranking Score)
   double get totalStars => rating * reviewsCount;
+
+  // Calculated getter for Reputation Points System (نظام السمعة)
+  int get reputationScore {
+    int score = (totalStars * 10).toInt() + 
+                (completedJobs * 50) + 
+                (profileViews ~/ 10) - 
+                (negativeReports * 100);
+    if (effectivelyVerified) score += 500;
+    if (isPremium) score += 200;
+    return score < 0 ? 0 : score;
+  }
 
   UserModel copyWith({
     String? id,
@@ -563,7 +597,8 @@ class UserModel {
       verifiedAt: verifiedAt ?? this.verifiedAt,
       verificationStatus: verificationStatus ?? this.verificationStatus,
       idCardUrl: idCardUrl ?? this.idCardUrl,
-      verificationSelfieUrl: verificationSelfieUrl ?? this.verificationSelfieUrl,
+      verificationSelfieUrl:
+          verificationSelfieUrl ?? this.verificationSelfieUrl,
       notificationSettings: notificationSettings ?? this.notificationSettings,
       searchKeywords: searchKeywords,
       shopInterests: shopInterests ?? this.shopInterests,
@@ -577,8 +612,10 @@ class UserModel {
       vouchedBy: vouchedBy ?? this.vouchedBy,
       masterId: masterId ?? this.masterId,
       apprenticesIds: apprenticesIds ?? this.apprenticesIds,
-      pendingApprenticeRequests: pendingApprenticeRequests ?? this.pendingApprenticeRequests,
-      pendingMasterRequests: pendingMasterRequests ?? this.pendingMasterRequests,
+      pendingApprenticeRequests:
+          pendingApprenticeRequests ?? this.pendingApprenticeRequests,
+      pendingMasterRequests:
+          pendingMasterRequests ?? this.pendingMasterRequests,
       pendingLeaveRequests: pendingLeaveRequests ?? this.pendingLeaveRequests,
     );
   }
@@ -596,8 +633,10 @@ class UserModel {
   /// Dynamically checks if shop is currently open based on openingHours/closingHours.
   /// Falls back to isAvailable if hours are not set.
   bool get isShopCurrentlyOpen {
-    if (openingHours == null || closingHours == null ||
-        openingHours!.isEmpty || closingHours!.isEmpty) {
+    if (openingHours == null ||
+        closingHours == null ||
+        openingHours!.isEmpty ||
+        closingHours!.isEmpty) {
       return isAvailable; // Fallback to static field
     }
 
@@ -608,8 +647,10 @@ class UserModel {
       final openParts = openingHours!.split(':');
       final closeParts = closingHours!.split(':');
 
-      final openMinutes = int.parse(openParts[0]) * 60 + int.parse(openParts[1]);
-      final closeMinutes = int.parse(closeParts[0]) * 60 + int.parse(closeParts[1]);
+      final openMinutes =
+          int.parse(openParts[0]) * 60 + int.parse(openParts[1]);
+      final closeMinutes =
+          int.parse(closeParts[0]) * 60 + int.parse(closeParts[1]);
 
       // Handle overnight hours (e.g., 22:00 - 06:00)
       if (closeMinutes <= openMinutes) {
@@ -621,7 +662,7 @@ class UserModel {
       return isAvailable; // Fallback on parse error
     }
   }
-  
+
   String get locationDisplay {
     if (state == null) return '';
     final parts = <String>[];
@@ -630,7 +671,7 @@ class UserModel {
     parts.add(state!);
     return parts.join('، ');
   }
-  
+
   String get ratingDisplay => rating.toStringAsFixed(1);
 
   /// True if user was active within the last 5 minutes
@@ -638,7 +679,7 @@ class UserModel {
     if (lastActive == null) return false;
     return DateTime.now().difference(lastActive!).inMinutes < 5;
   }
-  
+
   static String getLocalizedShopCategory(ShopCategory cat, String locale) {
     final names = {
       'ar': {
@@ -686,7 +727,9 @@ class UserModel {
   // Helper to get shop category display name
   String getShopCategoryName(String locale) {
     if (shopCategory == null) return '';
-    if (shopCategory == ShopCategory.other && jobTitle != null && jobTitle!.isNotEmpty) {
+    if (shopCategory == ShopCategory.other &&
+        jobTitle != null &&
+        jobTitle!.isNotEmpty) {
       return jobTitle!;
     }
     return getLocalizedShopCategory(shopCategory!, locale);
@@ -695,21 +738,33 @@ class UserModel {
   String getRoleDisplayName(String locale) {
     if (locale == 'ar') {
       switch (role) {
-        case UserRole.freelancer: return 'مقدم خدمات فنية';
-        case UserRole.techService: return 'مقدم خدمات تقنية';
-        case UserRole.privateService: return 'مقدم خدمات خاصة';
-        case UserRole.shop: return 'معرض / متجر';
-        case UserRole.client: return 'عميل';
-        case UserRole.admin: return 'مدير';
+        case UserRole.freelancer:
+          return 'مقدم خدمات فنية';
+        case UserRole.techService:
+          return 'مقدم خدمات تقنية';
+        case UserRole.privateService:
+          return 'مقدم خدمات خاصة';
+        case UserRole.shop:
+          return 'معرض / متجر';
+        case UserRole.client:
+          return 'عميل';
+        case UserRole.admin:
+          return 'مدير';
       }
     } else {
       switch (role) {
-        case UserRole.freelancer: return 'Craft Service';
-        case UserRole.techService: return 'Tech Service';
-        case UserRole.privateService: return 'Private Service';
-        case UserRole.shop: return 'Shop / Gallery';
-        case UserRole.client: return 'Client';
-        case UserRole.admin: return 'Admin';
+        case UserRole.freelancer:
+          return 'Craft Service';
+        case UserRole.techService:
+          return 'Tech Service';
+        case UserRole.privateService:
+          return 'Private Service';
+        case UserRole.shop:
+          return 'Shop / Gallery';
+        case UserRole.client:
+          return 'Client';
+        case UserRole.admin:
+          return 'Admin';
       }
     }
   }
@@ -743,15 +798,15 @@ class UserModel {
 
     // Name (full + parts)
     addWords(name);
-    
+
     // Job Title
     addWords(jobTitle);
-    
+
     // Skills
     for (final skill in skills) {
       addWords(skill);
     }
-    
+
     // Bio (extract meaningful words, skip very short ones)
     if (bio != null && bio.isNotEmpty) {
       final normalized = _normalize(bio);
@@ -759,12 +814,12 @@ class UserModel {
         if (word.length >= 3) keywords.add(word);
       }
     }
-    
+
     // Location
     addWords(state);
     addWords(locality);
     addWords(neighborhood);
-    
+
     // Shop Category (Arabic names)
     if (shopCategory != null) {
       const categoryKeywords = {
@@ -805,7 +860,7 @@ class UserModel {
         addWords(kw);
       }
     }
-    
+
     return keywords.toList();
   }
 

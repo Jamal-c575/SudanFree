@@ -66,4 +66,3 @@ class DefaultFirebaseOptions {
     iosBundleId: 'com.sudanfree.sudan_free.RunnerTests',
   );
 }
-

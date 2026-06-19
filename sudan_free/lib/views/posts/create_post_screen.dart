@@ -24,9 +24,9 @@ class CreatePostScreen extends StatefulWidget {
   const CreatePostScreen({
     super.key,
     this.post,
-    this.showInCommunity = true,  // Default: show in community
-    this.showInProfile = true,    // Default: show in profile
-    this.linkedProduct,           // منتج مرتبط اختياري
+    this.showInCommunity = true, // Default: show in community
+    this.showInProfile = true, // Default: show in profile
+    this.linkedProduct, // منتج مرتبط اختياري
   });
 
   @override
@@ -35,13 +35,14 @@ class CreatePostScreen extends StatefulWidget {
 
 class _CreatePostScreenState extends State<CreatePostScreen> {
   final _captionController = TextEditingController();
-  final _priceController = TextEditingController(); // New field for shop products
+  final _priceController =
+      TextEditingController(); // New field for shop products
   final List<File> _selectedImages = [];
   PostCategory? _selectedCategory;
   late bool _showInCommunity;
   late bool _showInProfile;
   bool _isPosting = false;
-  
+
   // Mentions
   List<UserModel> _partners = [];
   List<UserModel> _filteredPartners = [];
@@ -71,29 +72,40 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       _showInProfile = widget.post!.showInProfile;
       if (widget.post!.category != null) {
         try {
-          _selectedCategory = PostCategory.values.firstWhere((e) => e.name == widget.post!.category);
+          _selectedCategory = PostCategory.values
+              .firstWhere((e) => e.name == widget.post!.category);
           // If it's a barter post, try to parse the text backwards
           if (_selectedCategory == PostCategory.barter) {
             final caption = _captionController.text;
-            if (caption.contains('**أقدم:**') && caption.contains('**أحتاج مقابل ذلك:**')) {
-              final offerStart = caption.indexOf('**أقدم:**') + '**أقدم:**'.length;
+            if (caption.contains('**أقدم:**') &&
+                caption.contains('**أحتاج مقابل ذلك:**')) {
+              final offerStart =
+                  caption.indexOf('**أقدم:**') + '**أقدم:**'.length;
               final offerEnd = caption.indexOf('\n\n**أحتاج مقابل ذلك:**');
               if (offerStart != -1 && offerEnd != -1) {
-                _barterOfferController.text = caption.substring(offerStart, offerEnd).trim();
+                _barterOfferController.text =
+                    caption.substring(offerStart, offerEnd).trim();
               }
-              final requestStart = caption.indexOf('**أحتاج مقابل ذلك:**') + '**أحتاج مقابل ذلك:**'.length;
+              final requestStart = caption.indexOf('**أحتاج مقابل ذلك:**') +
+                  '**أحتاج مقابل ذلك:**'.length;
               if (requestStart != -1) {
-                _barterRequestController.text = caption.substring(requestStart).trim();
+                _barterRequestController.text =
+                    caption.substring(requestStart).trim();
               }
-            } else if (caption.contains('**I offer:**') && caption.contains('**I need in return:**')) {
-              final offerStart = caption.indexOf('**I offer:**') + '**I offer:**'.length;
+            } else if (caption.contains('**I offer:**') &&
+                caption.contains('**I need in return:**')) {
+              final offerStart =
+                  caption.indexOf('**I offer:**') + '**I offer:**'.length;
               final offerEnd = caption.indexOf('\n\n**I need in return:**');
               if (offerStart != -1 && offerEnd != -1) {
-                _barterOfferController.text = caption.substring(offerStart, offerEnd).trim();
+                _barterOfferController.text =
+                    caption.substring(offerStart, offerEnd).trim();
               }
-              final requestStart = caption.indexOf('**I need in return:**') + '**I need in return:**'.length;
+              final requestStart = caption.indexOf('**I need in return:**') +
+                  '**I need in return:**'.length;
               if (requestStart != -1) {
-                _barterRequestController.text = caption.substring(requestStart).trim();
+                _barterRequestController.text =
+                    caption.substring(requestStart).trim();
               }
             }
           }
@@ -104,7 +116,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       }
     } else {
       _showInCommunity = widget.showInCommunity;
-      
+
       // إذا كان النشر من صفحة الملف الشخصي → معرض أعمال فقط
       if (widget.showInProfile && !widget.showInCommunity) {
         _showInProfile = true;
@@ -120,7 +132,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
 
     // Fetch Partners for Mentions
     _fetchPartners();
-    
+
     // Listen for mentions
     _captionController.addListener(_checkForMentions);
   }
@@ -129,7 +141,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     final user = context.read<AuthProvider>().user;
     if (user != null && user.partnerIds.isNotEmpty) {
       try {
-        final partners = await FirestoreService().getUsersByIds(user.partnerIds);
+        final partners =
+            await FirestoreService().getUsersByIds(user.partnerIds);
         if (mounted) {
           setState(() {
             _partners = partners;
@@ -148,13 +161,16 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
 
     final textBeforeCursor = text.substring(0, selection.baseOffset);
     // Find the word being typed
-    final words = textBeforeCursor.split(RegExp(r'[\s\n]+')); // Split by space or newline
+    final words =
+        textBeforeCursor.split(RegExp(r'[\s\n]+')); // Split by space or newline
     final lastWord = words.isNotEmpty ? words.last : '';
 
     if (lastWord.startsWith('@')) {
       final query = lastWord.substring(1).toLowerCase(); // Remove @
       setState(() {
-        _filteredPartners = _partners.where((u) => u.name.toLowerCase().contains(query)).toList();
+        _filteredPartners = _partners
+            .where((u) => u.name.toLowerCase().contains(query))
+            .toList();
         _showMentions = _filteredPartners.isNotEmpty;
       });
     } else {
@@ -168,23 +184,25 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     final text = _captionController.text;
     final selection = _captionController.selection;
     final textBeforeCursor = text.substring(0, selection.baseOffset);
-    
+
     final words = textBeforeCursor.split(RegExp(r'[\s\n]+'));
     final lastWord = words.last; // This is the @query
-    
+
     final mentionText = '@${partner.name} ';
-    
+
     // Replace the last word (the incomplete mention) with the full mention
-    final newTextBefore = textBeforeCursor.substring(0, textBeforeCursor.length - lastWord.length) + mentionText;
+    final newTextBefore = textBeforeCursor.substring(
+            0, textBeforeCursor.length - lastWord.length) +
+        mentionText;
     final newTextAfter = text.substring(selection.baseOffset);
-    
+
     final newText = newTextBefore + newTextAfter;
-    
+
     _captionController.value = TextEditingValue(
       text: newText,
       selection: TextSelection.collapsed(offset: newTextBefore.length),
     );
-    
+
     setState(() {
       _mentionedUserIds.add(partner.id);
       _showMentions = false;
@@ -219,22 +237,43 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
 
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 16), decoration: BoxDecoration(color: Colors.grey[400], borderRadius: BorderRadius.circular(2))),
+            Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                    color: Colors.grey[400],
+                    borderRadius: BorderRadius.circular(2))),
             ListTile(
-              leading: Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.photo_library_outlined, color: AppColors.primary)),
+              leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12)),
+                  child: const Icon(Icons.photo_library_outlined,
+                      color: AppColors.primary)),
               title: Text(isArabic ? 'المعرض' : 'Gallery'),
-              subtitle: Text(isArabic ? 'اختر عدة صور' : 'Pick multiple', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+              subtitle: Text(isArabic ? 'اختر عدة صور' : 'Pick multiple',
+                  style: TextStyle(fontSize: 12, color: Colors.grey[500])),
               onTap: () => Navigator.pop(ctx, ImageSource.gallery),
             ),
             ListTile(
-              leading: Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.camera_alt_outlined, color: Colors.orange)),
+              leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                      color: Colors.orange.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12)),
+                  child: const Icon(Icons.camera_alt_outlined,
+                      color: Colors.orange)),
               title: Text(isArabic ? 'الكاميرا' : 'Camera'),
-              subtitle: Text(isArabic ? 'التقط صورة' : 'Take a photo', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+              subtitle: Text(isArabic ? 'التقط صورة' : 'Take a photo',
+                  style: TextStyle(fontSize: 12, color: Colors.grey[500])),
               onTap: () => Navigator.pop(ctx, ImageSource.camera),
             ),
           ]),
@@ -244,13 +283,17 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     if (source == null) return;
 
     if (source == ImageSource.camera) {
-      final image = await picker.pickImage(source: ImageSource.camera, imageQuality: 70, maxWidth: 1200);
-      if (image != null && mounted) setState(() => _selectedImages.add(File(image.path)));
+      final image = await picker.pickImage(
+          source: ImageSource.camera, imageQuality: 70, maxWidth: 1200);
+      if (image != null && mounted)
+        setState(() => _selectedImages.add(File(image.path)));
     } else {
-      final images = await picker.pickMultiImage(imageQuality: 70, maxWidth: 1200);
+      final images =
+          await picker.pickMultiImage(imageQuality: 70, maxWidth: 1200);
       if (images.isNotEmpty && mounted) {
         setState(() {
-          _selectedImages.addAll(images.take(remaining).map((img) => File(img.path)));
+          _selectedImages
+              .addAll(images.take(remaining).map((img) => File(img.path)));
         });
       }
     }
@@ -258,7 +301,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
 
   Future<void> _handleSubmit() async {
     final locale = context.read<LocaleProvider>().locale.languageCode;
-    
+
     // Format Barter text before validation
     if (_showInCommunity && _selectedCategory == PostCategory.barter) {
       final offer = _barterOfferController.text.trim();
@@ -271,8 +314,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         final scaffoldMessenger = ScaffoldMessenger.of(context);
         scaffoldMessenger.showSnackBar(
           SnackBar(
-            content: Text(locale == 'ar' 
-                ? 'يرجى تعبئة كلا الحقلين: ماذا تقدم وماذا تطلب' 
+            content: Text(locale == 'ar'
+                ? 'يرجى تعبئة كلا الحقلين: ماذا تقدم وماذا تطلب'
                 : 'Please fill both fields: what you offer and what you need'),
             backgroundColor: Colors.orange,
           ),
@@ -291,18 +334,23 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         pollData = PollModel(
           question: _pollQuestionController.text.trim(),
           options: validOptions.map((o) => PollOption(text: o)).toList(),
-          expiresAt: DateTime.now().add(const Duration(days: 3)), // Default 3 days
+          expiresAt:
+              DateTime.now().add(const Duration(days: 3)), // Default 3 days
           isMultipleChoice: _isPollMultipleChoice,
         );
       }
     }
 
-    if (_captionController.text.trim().isEmpty && _selectedImages.isEmpty && widget.post?.imageUrl == null && widget.post?.allImageUrls.isEmpty != false && pollData == null) {
+    if (_captionController.text.trim().isEmpty &&
+        _selectedImages.isEmpty &&
+        widget.post?.imageUrl == null &&
+        widget.post?.allImageUrls.isEmpty != false &&
+        pollData == null) {
       final scaffoldMessenger = ScaffoldMessenger.of(context);
       scaffoldMessenger.showSnackBar(
         SnackBar(
-          content: Text(locale == 'ar' 
-              ? 'يرجى كتابة نص أو إضافة صورة أو استطلاع رأي' 
+          content: Text(locale == 'ar'
+              ? 'يرجى كتابة نص أو إضافة صورة أو استطلاع رأي'
               : 'Please write text, add image, or add a poll'),
         ),
       );
@@ -314,8 +362,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       final scaffoldMessenger = ScaffoldMessenger.of(context);
       scaffoldMessenger.showSnackBar(
         SnackBar(
-          content: Text(locale == 'ar' 
-              ? 'يرجى تصنيف منشورك (عام، نقاش، بيع/شراء، مساعدة، إعلان، أو سؤال)' 
+          content: Text(locale == 'ar'
+              ? 'يرجى تصنيف منشورك (عام، نقاش، بيع/شراء، مساعدة، إعلان، أو سؤال)'
               : 'Please classify your post (General, Discussion, Buy/Sell, Help, Announcement, or Question)'),
           backgroundColor: Colors.orange,
           duration: const Duration(seconds: 4),
@@ -335,40 +383,45 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       if (widget.post != null) {
         // Update
         success = await context.read<PostsProvider>().updatePost(
-          postId: widget.post!.id,
-          imageFiles: _selectedImages.isNotEmpty ? _selectedImages : null,
-          caption: _captionController.text.trim(),
-          category: _selectedCategory?.name,
-          mentionedUsers: _mentionedUserIds.toList(),
-          showInCommunity: _showInCommunity,
-          showInProfile: _showInProfile,
-          price: double.tryParse(_priceController.text.trim()),
-        );
+              postId: widget.post!.id,
+              imageFiles: _selectedImages.isNotEmpty ? _selectedImages : null,
+              caption: _captionController.text.trim(),
+              category: _selectedCategory?.name,
+              mentionedUsers: _mentionedUserIds.toList(),
+              showInCommunity: _showInCommunity,
+              showInProfile: _showInProfile,
+              price: double.tryParse(_priceController.text.trim()),
+            );
       } else {
         // Create Background
         final user = context.read<AuthProvider>().user!;
         context.read<PostsProvider>().createPostInBackground(
-          userId: user.id,
-          userName: user.name,
-          userRole: user.role.name,
-          userJobTitle: user.jobTitle ?? (user.role == UserRole.shop 
-              ? user.getShopCategoryName(context.read<LocaleProvider>().locale.languageCode)
-              : user.getRoleDisplayName(context.read<LocaleProvider>().locale.languageCode)),
-          userImageUrl: user.profileImageUrl,
-          imageFiles: _selectedImages.isNotEmpty ? _selectedImages : null,
-          caption: _captionController.text.trim(),
-          category: _selectedCategory?.name,
-          mentionedUsers: _mentionedUserIds.toList(),
-          showInCommunity: _showInCommunity,
-          showInProfile: _showInProfile,
-          price: double.tryParse(_priceController.text.trim()),
-          // إرفاق بيانات المنتج المرتبط إن وجد
-          linkedProductId: widget.linkedProduct?.id,
-          linkedProductName: widget.linkedProduct?.caption?.split('\n').first,
-          linkedProductImage: widget.linkedProduct?.allImageUrls.firstOrNull,
-          linkedProductPrice: widget.linkedProduct?.price,
-          poll: pollData,
-        );
+              userId: user.id,
+              userName: user.name,
+              userRole: user.role.name,
+              userJobTitle: user.jobTitle ??
+                  (user.role == UserRole.shop
+                      ? user.getShopCategoryName(
+                          context.read<LocaleProvider>().locale.languageCode)
+                      : user.getRoleDisplayName(
+                          context.read<LocaleProvider>().locale.languageCode)),
+              userImageUrl: user.profileImageUrl,
+              imageFiles: _selectedImages.isNotEmpty ? _selectedImages : null,
+              caption: _captionController.text.trim(),
+              category: _selectedCategory?.name,
+              mentionedUsers: _mentionedUserIds.toList(),
+              showInCommunity: _showInCommunity,
+              showInProfile: _showInProfile,
+              price: double.tryParse(_priceController.text.trim()),
+              // إرفاق بيانات المنتج المرتبط إن وجد
+              linkedProductId: widget.linkedProduct?.id,
+              linkedProductName:
+                  widget.linkedProduct?.caption?.split('\n').first,
+              linkedProductImage:
+                  widget.linkedProduct?.allImageUrls.firstOrNull,
+              linkedProductPrice: widget.linkedProduct?.price,
+              poll: pollData,
+            );
         success = true;
       }
     } catch (e, stack) {
@@ -390,16 +443,23 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       final scaffoldMessenger = ScaffoldMessenger.of(context);
       scaffoldMessenger.showSnackBar(
         SnackBar(
-          content: Text(widget.post != null 
-              ? (locale == 'ar' ? 'تم تحديث المنشور بنجاح ✅' : 'Post updated successfully ✅')
-              : (locale == 'ar' ? 'جاري النشر في الخلفية... ⏳' : 'Posting in background... ⏳')),
-          backgroundColor: widget.post != null ? Colors.green : AppColors.primary,
+          content: Text(widget.post != null
+              ? (locale == 'ar'
+                  ? 'تم تحديث المنشور بنجاح ✅'
+                  : 'Post updated successfully ✅')
+              : (locale == 'ar'
+                  ? 'جاري النشر في الخلفية... ⏳'
+                  : 'Posting in background... ⏳')),
+          backgroundColor:
+              widget.post != null ? Colors.green : AppColors.primary,
         ),
       );
       if (context.mounted) Navigator.pop(context);
     } else if (!success && mounted) {
-      final errorMsg = context.read<PostsProvider>().errorMessage ?? 
-          (locale == 'ar' ? 'حدث خطأ، حاول مرة أخرى' : 'An error occurred, please try again');
+      final errorMsg = context.read<PostsProvider>().errorMessage ??
+          (locale == 'ar'
+              ? 'حدث خطأ، حاول مرة أخرى'
+              : 'An error occurred, please try again');
       final scaffoldMessenger = ScaffoldMessenger.of(context);
       scaffoldMessenger.showSnackBar(
         SnackBar(
@@ -410,20 +470,26 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       );
     }
   }
+
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthProvider>().user;
-    
+
     String appBarTitle;
     if (widget.post != null) {
-      appBarTitle = context.read<LocaleProvider>().isArabic ? 'تعديل منشور' : 'Edit Post';
+      appBarTitle =
+          context.read<LocaleProvider>().isArabic ? 'تعديل منشور' : 'Edit Post';
     } else {
       if (!widget.showInCommunity && widget.showInProfile) {
         // From profile
         if (user?.role == UserRole.shop) {
-          appBarTitle = context.read<LocaleProvider>().isArabic ? 'إضافة منتج' : 'Add Product';
+          appBarTitle = context.read<LocaleProvider>().isArabic
+              ? 'إضافة منتج'
+              : 'Add Product';
         } else {
-          appBarTitle = context.read<LocaleProvider>().isArabic ? 'إضافة عمل منجز' : 'Add Completed Work';
+          appBarTitle = context.read<LocaleProvider>().isArabic
+              ? 'إضافة عمل منجز'
+              : 'Add Completed Work';
         }
       } else {
         appBarTitle = AppLocalizations.of(context)!.createPost;
@@ -456,9 +522,10 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                       const SizedBox(width: 12),
                       Text(
                         user?.name ?? '',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style:
+                            Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
                       ),
                     ],
                   ),
@@ -472,11 +539,13 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                       decoration: BoxDecoration(
                         color: AppColors.primary.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                        border: Border.all(
+                            color: AppColors.primary.withValues(alpha: 0.3)),
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.info_outline, color: AppColors.primary, size: 20),
+                          Icon(Icons.info_outline,
+                              color: AppColors.primary, size: 20),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
@@ -493,17 +562,20 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                         ],
                       ),
                     ),
-                  
+
                   // Category Selection (Only for Community Posts)
-                  if (_showInCommunity) ...[ 
+                  if (_showInCommunity) ...[
                     SizedBox(
                       width: double.infinity,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            context.read<LocaleProvider>().isArabic ? 'تصنيف المنشور:' : 'Post Category:',
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                            context.read<LocaleProvider>().isArabic
+                                ? 'تصنيف المنشور:'
+                                : 'Post Category:',
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 15),
                           ),
                           const SizedBox(height: 10),
                           // Step 1: Main Group Selection
@@ -512,29 +584,53 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                             child: ListView.separated(
                               scrollDirection: Axis.horizontal,
                               itemCount: PostCategoryGroup.values.length,
-                              separatorBuilder: (_, __) => const SizedBox(width: 8),
+                              separatorBuilder: (_, __) =>
+                                  const SizedBox(width: 8),
                               itemBuilder: (context, index) {
                                 final group = PostCategoryGroup.values[index];
-                                final isSelected = _selectedCategory != null && _selectedCategory!.group == group;
+                                final isSelected = _selectedCategory != null &&
+                                    _selectedCategory!.group == group;
                                 return GestureDetector(
                                   onTap: () => _showSubcategoryPicker(group),
                                   child: AnimatedContainer(
                                     duration: const Duration(milliseconds: 200),
-                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 14, vertical: 8),
                                     decoration: BoxDecoration(
-                                      color: isSelected ? group.color : group.color.withValues(alpha: 0.08),
+                                      color: isSelected
+                                          ? group.color
+                                          : group.color.withValues(alpha: 0.08),
                                       borderRadius: BorderRadius.circular(20),
-                                      border: Border.all(color: isSelected ? group.color : group.color.withValues(alpha: 0.3)),
+                                      border: Border.all(
+                                          color: isSelected
+                                              ? group.color
+                                              : group.color
+                                                  .withValues(alpha: 0.3)),
                                     ),
-                                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                                      Icon(group.icon, size: 16, color: isSelected ? Colors.white : group.color),
-                                      const SizedBox(width: 6),
-                                      Text(group.getName(context.read<LocaleProvider>().locale.languageCode), style: TextStyle(
-                                        color: isSelected ? Colors.white : group.color,
-                                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                                        fontSize: 13,
-                                      )),
-                                    ]),
+                                    child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(group.icon,
+                                              size: 16,
+                                              color: isSelected
+                                                  ? Colors.white
+                                                  : group.color),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                              group.getName(context
+                                                  .read<LocaleProvider>()
+                                                  .locale
+                                                  .languageCode),
+                                              style: TextStyle(
+                                                color: isSelected
+                                                    ? Colors.white
+                                                    : group.color,
+                                                fontWeight: isSelected
+                                                    ? FontWeight.bold
+                                                    : FontWeight.w600,
+                                                fontSize: 13,
+                                              )),
+                                        ]),
                                   ),
                                 );
                               },
@@ -545,16 +641,22 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                             Padding(
                               padding: const EdgeInsets.only(top: 10),
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 8),
                                 decoration: BoxDecoration(
-                                  color: _selectedCategory!.group.color.withValues(alpha: 0.1),
+                                  color: _selectedCategory!.group.color
+                                      .withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: _selectedCategory!.group.color.withValues(alpha: 0.3)),
+                                  border: Border.all(
+                                      color: _selectedCategory!.group.color
+                                          .withValues(alpha: 0.3)),
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(Icons.check_circle, size: 16, color: _selectedCategory!.group.color),
+                                    Icon(Icons.check_circle,
+                                        size: 16,
+                                        color: _selectedCategory!.group.color),
                                     const SizedBox(width: 6),
                                     Text(
                                       '${_selectedCategory!.group.getName(context.read<LocaleProvider>().locale.languageCode)} › ${_selectedCategory!.getName(context.read<LocaleProvider>().locale.languageCode)}',
@@ -566,8 +668,12 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                                     ),
                                     const SizedBox(width: 8),
                                     GestureDetector(
-                                      onTap: () => setState(() => _selectedCategory = null),
-                                      child: Icon(Icons.close, size: 16, color: _selectedCategory!.group.color),
+                                      onTap: () => setState(
+                                          () => _selectedCategory = null),
+                                      child: Icon(Icons.close,
+                                          size: 16,
+                                          color:
+                                              _selectedCategory!.group.color),
                                     ),
                                   ],
                                 ),
@@ -578,7 +684,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                     ),
                     const SizedBox(height: 24),
                   ],
-                  
+
                   // Barter Inputs OR Caption Input
                   if (_selectedCategory == PostCategory.barter) ...[
                     Container(
@@ -586,18 +692,25 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                       decoration: BoxDecoration(
                         color: AppColors.sudanGold.withValues(alpha: 0.05),
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppColors.sudanGold.withValues(alpha: 0.3)),
+                        border: Border.all(
+                            color: AppColors.sudanGold.withValues(alpha: 0.3)),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
                             children: [
-                              const Icon(Icons.handshake_outlined, color: AppColors.sudanGold),
+                              const Icon(Icons.handshake_outlined,
+                                  color: AppColors.sudanGold),
                               const SizedBox(width: 8),
                               Text(
-                                context.read<LocaleProvider>().isArabic ? 'سوق المقايضة (بدون أموال)' : 'Barter Market',
-                                style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.sudanGold, fontSize: 16),
+                                context.read<LocaleProvider>().isArabic
+                                    ? 'سوق المقايضة (بدون أموال)'
+                                    : 'Barter Market',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.sudanGold,
+                                    fontSize: 16),
                               ),
                             ],
                           ),
@@ -605,11 +718,17 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                           TextField(
                             controller: _barterOfferController,
                             decoration: InputDecoration(
-                              labelText: context.read<LocaleProvider>().isArabic ? 'ماذا تقدم؟ (خدمة أو أداة)' : 'What do you offer?',
-                              hintText: context.read<LocaleProvider>().isArabic ? 'مثال: صيانة سباكة كاملة' : 'Example: Full plumbing maintenance',
+                              labelText: context.read<LocaleProvider>().isArabic
+                                  ? 'ماذا تقدم؟ (خدمة أو أداة)'
+                                  : 'What do you offer?',
+                              hintText: context.read<LocaleProvider>().isArabic
+                                  ? 'مثال: صيانة سباكة كاملة'
+                                  : 'Example: Full plumbing maintenance',
                               filled: true,
                               fillColor: Theme.of(context).cardColor,
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                              border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide.none),
                             ),
                             maxLines: 2,
                           ),
@@ -617,11 +736,17 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                           TextField(
                             controller: _barterRequestController,
                             decoration: InputDecoration(
-                              labelText: context.read<LocaleProvider>().isArabic ? 'ماذا تطلب مقابل ذلك؟' : 'What do you need in return?',
-                              hintText: context.read<LocaleProvider>().isArabic ? 'مثال: تفصيل دولاب خشب' : 'Example: Wooden closet',
+                              labelText: context.read<LocaleProvider>().isArabic
+                                  ? 'ماذا تطلب مقابل ذلك؟'
+                                  : 'What do you need in return?',
+                              hintText: context.read<LocaleProvider>().isArabic
+                                  ? 'مثال: تفصيل دولاب خشب'
+                                  : 'Example: Wooden closet',
                               filled: true,
                               fillColor: Theme.of(context).cardColor,
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                              border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide.none),
                             ),
                             maxLines: 2,
                           ),
@@ -634,9 +759,14 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                       controller: _captionController,
                       maxLines: null,
                       decoration: InputDecoration(
-                        hintText: (!widget.showInCommunity && widget.showInProfile)
-                            ? (context.read<LocaleProvider>().isArabic ? 'ما هو آخر عمل أنجزته؟' : 'What is the latest work you completed?')
-                            : (context.read<LocaleProvider>().isArabic ? 'بماذا تفكر؟' : "What's on your mind?"),
+                        hintText:
+                            (!widget.showInCommunity && widget.showInProfile)
+                                ? (context.read<LocaleProvider>().isArabic
+                                    ? 'ما هو آخر عمل أنجزته؟'
+                                    : 'What is the latest work you completed?')
+                                : (context.read<LocaleProvider>().isArabic
+                                    ? 'بماذا تفكر؟'
+                                    : "What's on your mind?"),
                         border: InputBorder.none,
                         hintStyle: TextStyle(
                           color: AppColors.textSecondary.withValues(alpha: 0.5),
@@ -650,15 +780,21 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                   const SizedBox(height: 16),
 
                   // Price Input (Only for Shops)
-                  if (user?.role == UserRole.shop && !widget.showInCommunity && widget.showInProfile) ...[
+                  if (user?.role == UserRole.shop &&
+                      !widget.showInCommunity &&
+                      widget.showInProfile) ...[
                     TextField(
                       controller: _priceController,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
                       decoration: InputDecoration(
-                        hintText: context.read<LocaleProvider>().isArabic ? 'السعر (اختياري)' : 'Price (Optional)',
+                        hintText: context.read<LocaleProvider>().isArabic
+                            ? 'السعر (اختياري)'
+                            : 'Price (Optional)',
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
+                          borderSide: BorderSide(
+                              color: AppColors.primary.withValues(alpha: 0.3)),
                         ),
                         prefixIcon: const Icon(Icons.attach_money),
                       ),
@@ -674,20 +810,25 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                       decoration: BoxDecoration(
                         color: AppColors.secondary.withValues(alpha: 0.05),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.secondary.withValues(alpha: 0.1)),
+                        border: Border.all(
+                            color: AppColors.secondary.withValues(alpha: 0.1)),
                       ),
                       child: CheckboxListTile(
                         value: _showInProfile,
-                        onChanged: (v) => setState(() => _showInProfile = v ?? false),
+                        onChanged: (v) =>
+                            setState(() => _showInProfile = v ?? false),
                         title: Text(
-                          context.read<LocaleProvider>().isArabic ? 'إضافة إلى معرض أعمالي (الملف الشخصي)' : 'Add to my portfolio (Profile)',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                          context.read<LocaleProvider>().isArabic
+                              ? 'إضافة إلى معرض أعمالي (الملف الشخصي)'
+                              : 'Add to my portfolio (Profile)',
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 14),
                         ),
                         activeColor: AppColors.secondary,
                         controlAffinity: ListTileControlAffinity.leading,
                       ),
                     ),
-                  
+
                   // ─── بطاقة المنتج المرتبط ────────────────────────────
                   // تظهر عندما يأتي صاحب المتجر من شاشة تفاصيل المنتج
                   if (widget.linkedProduct != null)
@@ -704,17 +845,21 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                       decoration: BoxDecoration(
                         color: AppColors.secondary.withValues(alpha: 0.05),
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppColors.secondary.withValues(alpha: 0.2)),
+                        border: Border.all(
+                            color: AppColors.secondary.withValues(alpha: 0.2)),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
                             children: [
-                              Icon(Icons.poll, color: AppColors.secondary, size: 20),
+                              Icon(Icons.poll,
+                                  color: AppColors.secondary, size: 20),
                               const SizedBox(width: 8),
                               Text(
-                                context.read<LocaleProvider>().isArabic ? 'إضافة استطلاع رأي' : 'Add Poll',
+                                context.read<LocaleProvider>().isArabic
+                                    ? 'إضافة استطلاع رأي'
+                                    : 'Add Poll',
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   color: AppColors.secondary,
@@ -723,7 +868,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                               ),
                               const Spacer(),
                               IconButton(
-                                icon: const Icon(Icons.close, size: 20, color: Colors.grey),
+                                icon: const Icon(Icons.close,
+                                    size: 20, color: Colors.grey),
                                 onPressed: () {
                                   setState(() {
                                     _showPollFields = false;
@@ -736,11 +882,14 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                           TextField(
                             controller: _pollQuestionController,
                             decoration: InputDecoration(
-                              hintText: context.read<LocaleProvider>().isArabic ? 'سؤال الاستطلاع...' : 'Poll question...',
+                              hintText: context.read<LocaleProvider>().isArabic
+                                  ? 'سؤال الاستطلاع...'
+                                  : 'Poll question...',
                               filled: true,
                               fillColor: Theme.of(context).cardColor,
                               isDense: true,
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 14),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                                 borderSide: BorderSide.none,
@@ -748,7 +897,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                             ),
                           ),
                           const SizedBox(height: 12),
-                          ...List.generate(_pollOptionControllers.length, (index) {
+                          ...List.generate(_pollOptionControllers.length,
+                              (index) {
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 8.0),
                               child: Row(
@@ -757,13 +907,20 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                                     child: TextField(
                                       controller: _pollOptionControllers[index],
                                       decoration: InputDecoration(
-                                        hintText: context.read<LocaleProvider>().isArabic ? 'الخيار ${index + 1}' : 'Option ${index + 1}',
+                                        hintText: context
+                                                .read<LocaleProvider>()
+                                                .isArabic
+                                            ? 'الخيار ${index + 1}'
+                                            : 'Option ${index + 1}',
                                         filled: true,
                                         fillColor: Theme.of(context).cardColor,
                                         isDense: true,
-                                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                        contentPadding:
+                                            const EdgeInsets.symmetric(
+                                                horizontal: 16, vertical: 14),
                                         border: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(12),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
                                           borderSide: BorderSide.none,
                                         ),
                                       ),
@@ -771,11 +928,15 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                                   ),
                                   if (_pollOptionControllers.length > 2)
                                     IconButton(
-                                      icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
+                                      icon: const Icon(
+                                          Icons.remove_circle_outline,
+                                          color: Colors.red),
                                       onPressed: () {
                                         setState(() {
-                                          _pollOptionControllers[index].dispose();
-                                          _pollOptionControllers.removeAt(index);
+                                          _pollOptionControllers[index]
+                                              .dispose();
+                                          _pollOptionControllers
+                                              .removeAt(index);
                                         });
                                       },
                                     ),
@@ -787,17 +948,23 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                             TextButton.icon(
                               onPressed: () {
                                 setState(() {
-                                  _pollOptionControllers.add(TextEditingController());
+                                  _pollOptionControllers
+                                      .add(TextEditingController());
                                 });
                               },
                               icon: const Icon(Icons.add),
-                              label: Text(context.read<LocaleProvider>().isArabic ? 'إضافة خيار' : 'Add Option'),
+                              label: Text(
+                                  context.read<LocaleProvider>().isArabic
+                                      ? 'إضافة خيار'
+                                      : 'Add Option'),
                               style: TextButton.styleFrom(
                                 foregroundColor: AppColors.secondary,
                               ),
                             ),
                           SwitchListTile(
-                            title: Text(context.read<LocaleProvider>().isArabic ? 'اختيار متعدد' : 'Multiple Choice'),
+                            title: Text(context.read<LocaleProvider>().isArabic
+                                ? 'اختيار متعدد'
+                                : 'Multiple Choice'),
                             value: _isPollMultipleChoice,
                             onChanged: (val) {
                               setState(() {
@@ -805,14 +972,13 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                               });
                             },
                             contentPadding: EdgeInsets.zero,
-                            activeColor: AppColors.secondary,
+                            activeThumbColor: AppColors.secondary,
                           ),
                         ],
                       ),
                     ),
 
                   const SizedBox(height: 24),
-
 
                   // Images Preview (Mosaic Grid)
                   if (_selectedImages.isNotEmpty)
@@ -823,7 +989,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                         child: _buildSelectedMosaic(_selectedImages),
                       ),
                     )
-                  else if (widget.post != null && widget.post!.allImageUrls.isNotEmpty)
+                  else if (widget.post != null &&
+                      widget.post!.allImageUrls.isNotEmpty)
                     AspectRatio(
                       aspectRatio: 1.1,
                       child: ClipRRect(
@@ -835,7 +1002,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               ),
             ),
           ),
-          
+
           // Mentions List (Suggestions)
           if (_showMentions)
             Padding(
@@ -846,14 +1013,21 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                 onSelectUser: _addMention,
               ),
             ),
-          
+
           // Bottom Action Bar
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
               color: Theme.of(context).scaffoldBackgroundColor,
-              border: Border(top: BorderSide(color: AppColors.border.withValues(alpha: 0.3))),
-              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 8, offset: const Offset(0, -2))],
+              border: Border(
+                  top: BorderSide(
+                      color: AppColors.border.withValues(alpha: 0.3))),
+              boxShadow: [
+                BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 8,
+                    offset: const Offset(0, -2))
+              ],
             ),
             child: SafeArea(
               child: Row(
@@ -868,29 +1042,43 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                       child: Padding(
                         padding: const EdgeInsets.all(10),
                         child: Row(mainAxisSize: MainAxisSize.min, children: [
-                          const Icon(Icons.add_photo_alternate_outlined, color: AppColors.primary, size: 22),
+                          const Icon(Icons.add_photo_alternate_outlined,
+                              color: AppColors.primary, size: 22),
                           if (_selectedImages.isNotEmpty) ...[
                             const SizedBox(width: 6),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(8)),
-                              child: Text('${_selectedImages.length}/7', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                  color: AppColors.primary,
+                                  borderRadius: BorderRadius.circular(8)),
+                              child: Text('${_selectedImages.length}/7',
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold)),
                             ),
                           ],
                         ]),
                       ),
                     ),
                   ),
-                  
+
                   const SizedBox(width: 8),
 
                   // Poll button
                   if (_showInCommunity && widget.post == null)
                     Material(
-                      color: _showPollFields ? AppColors.secondary.withValues(alpha: 0.1) : Colors.transparent,
+                      color: _showPollFields
+                          ? AppColors.secondary.withValues(alpha: 0.1)
+                          : Colors.transparent,
                       borderRadius: BorderRadius.circular(12),
                       child: IconButton(
-                        icon: Icon(Icons.poll_outlined, color: _showPollFields ? AppColors.secondary : Colors.grey[600], size: 22),
+                        icon: Icon(Icons.poll_outlined,
+                            color: _showPollFields
+                                ? AppColors.secondary
+                                : Colors.grey[600],
+                            size: 22),
                         onPressed: () {
                           setState(() {
                             _showPollFields = !_showPollFields;
@@ -898,30 +1086,53 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                         },
                       ),
                     ),
-                  
+
                   const Spacer(),
-                  
+
                   // Submit Button
                   GestureDetector(
                     onTap: _isPosting ? null : _handleSubmit,
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 12),
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(colors: [AppColors.primary, Color(0xFF5f3dc4)]),
+                        gradient: const LinearGradient(
+                            colors: [AppColors.primary, Color(0xFF5f3dc4)]),
                         borderRadius: BorderRadius.circular(24),
-                        boxShadow: [BoxShadow(color: AppColors.primary.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 3))],
+                        boxShadow: [
+                          BoxShadow(
+                              color: AppColors.primary.withValues(alpha: 0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3))
+                        ],
                       ),
                       child: _isPosting
-                          ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                  color: Colors.white, strokeWidth: 2))
                           : Row(mainAxisSize: MainAxisSize.min, children: [
-                              Icon(widget.post != null ? Icons.check : Icons.send, color: Colors.white, size: 18),
+                              Icon(
+                                  widget.post != null
+                                      ? Icons.check
+                                      : Icons.send,
+                                  color: Colors.white,
+                                  size: 18),
                               const SizedBox(width: 8),
                               Text(
                                 widget.post != null
-                                    ? (context.read<LocaleProvider>().isArabic ? 'تحديث' : 'Update')
-                                    : (context.read<LocaleProvider>().isArabic ? 'نشر' : 'Post'),
-                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                                    ? (context.read<LocaleProvider>().isArabic
+                                        ? 'تحديث'
+                                        : 'Update')
+                                    : (context.read<LocaleProvider>().isArabic
+                                        ? 'نشر'
+                                        : 'Post'),
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15),
                               ),
                             ]),
                     ),
@@ -937,7 +1148,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
 
   Widget _buildSelectedMosaic(List<File> files) {
     if (files.length == 1) return _buildSelectedFileItem(files[0], 0);
-    
+
     if (files.length == 2) {
       return Row(
         children: [
@@ -991,7 +1202,11 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                       Container(
                         color: Colors.black45,
                         child: Center(
-                          child: Text('+${files.length - 4}', style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+                          child: Text('+${files.length - 4}',
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold)),
                         ),
                       ),
                   ],
@@ -1029,8 +1244,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   }
 
   Widget _buildExistingMosaic(List<String> urls) {
-     if (urls.length == 1) return _buildExistingUrlItem(urls[0], true);
-    
+    if (urls.length == 1) return _buildExistingUrlItem(urls[0], true);
+
     if (urls.length == 2) {
       return Row(
         children: [
@@ -1086,7 +1301,10 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                       Container(
                         color: Colors.black45,
                         child: Center(
-                          child: Text('+${urls.length - 4}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                          child: Text('+${urls.length - 4}',
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold)),
                         ),
                       ),
                   ],
@@ -1104,7 +1322,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       fit: StackFit.expand,
       children: [
         CachedNetworkImage(
-          imageUrl: CloudinaryService.getOptimizedUrl(url, width: 400, quality: 'auto'),
+          imageUrl: CloudinaryService.getOptimizedUrl(url,
+              width: 400, quality: 'auto'),
           fit: BoxFit.cover,
           placeholder: (_, __) => Container(color: Colors.grey[200]),
           errorWidget: (_, __, ___) => const Icon(Icons.broken_image),
@@ -1118,7 +1337,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               icon: const CircleAvatar(
                 backgroundColor: Colors.white70,
                 radius: 14,
-                child: Icon(Icons.add_photo_alternate, color: AppColors.primary, size: 18),
+                child: Icon(Icons.add_photo_alternate,
+                    color: AppColors.primary, size: 18),
               ),
             ),
           ),
@@ -1132,7 +1352,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
 
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) {
         return SafeArea(
           child: Padding(
@@ -1140,14 +1361,23 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 16), decoration: BoxDecoration(color: Colors.grey[400], borderRadius: BorderRadius.circular(2))),
+                Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                        color: Colors.grey[400],
+                        borderRadius: BorderRadius.circular(2))),
                 Row(
                   children: [
                     Icon(group.icon, color: group.color, size: 24),
                     const SizedBox(width: 8),
                     Text(
                       group.getName(locale),
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: group.color),
+                      style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: group.color),
                     ),
                   ],
                 ),
@@ -1161,9 +1391,12 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                       final isSelected = _selectedCategory == cat;
                       return ListTile(
                         leading: Container(
-                          width: 36, height: 36,
+                          width: 36,
+                          height: 36,
                           decoration: BoxDecoration(
-                            color: isSelected ? group.color : group.color.withValues(alpha: 0.1),
+                            color: isSelected
+                                ? group.color
+                                : group.color.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Icon(
@@ -1175,12 +1408,16 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                         title: Text(
                           cat.getName(locale),
                           style: TextStyle(
-                            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                            fontWeight:
+                                isSelected ? FontWeight.bold : FontWeight.w500,
                             color: isSelected ? group.color : null,
                           ),
                         ),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        tileColor: isSelected ? group.color.withValues(alpha: 0.06) : null,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                        tileColor: isSelected
+                            ? group.color.withValues(alpha: 0.06)
+                            : null,
                         onTap: () {
                           setState(() => _selectedCategory = cat);
                           Navigator.pop(ctx);
@@ -1209,8 +1446,8 @@ class _LinkedProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final productName = product.caption?.split('\n').first ??
-        (isArabic ? 'منتج' : 'Product');
+    final productName =
+        product.caption?.split('\n').first ?? (isArabic ? 'منتج' : 'Product');
     final imageUrl = product.allImageUrls.firstOrNull;
 
     return Container(
@@ -1310,8 +1547,7 @@ class _LinkedProductCard extends StatelessWidget {
             ),
 
             // أيقونة الربط
-            const Icon(Icons.link_rounded,
-                color: AppColors.primary, size: 22),
+            const Icon(Icons.link_rounded, color: AppColors.primary, size: 22),
           ],
         ),
       ),

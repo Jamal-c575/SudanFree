@@ -15,7 +15,7 @@ class UserProvider extends ChangeNotifier {
   final FirestoreService _firestoreService = FirestoreService();
   final CacheService _cacheService = CacheService();
   final PromotionService _promotionService = PromotionService();
-  
+
   List<String> _promotedUserIds = [];
   List<String> get promotedUserIds => _promotedUserIds;
 
@@ -27,15 +27,13 @@ class UserProvider extends ChangeNotifier {
   bool _isLoading = false;
   String? _errorMessage;
   String? _freelancerError; // خطأ جلب المستقلين
-  String? _shopError;       // خطأ جلب المتاجر
+  String? _shopError; // خطأ جلب المتاجر
   String _uploadStatus = ''; // حالة الرفع للعرض
-  
+
   // Listeners
   StreamSubscription? _freelancerSub;
   StreamSubscription? _shopSub;
-  
 
-  
   // Caching flags - تجنب إعادة التحميل
   bool _freelancersLoaded = false;
   bool _shopsLoaded = false;
@@ -67,7 +65,7 @@ class UserProvider extends ChangeNotifier {
   DocumentSnapshot? _lastShopDoc;
   bool _hasMoreShops = true;
   bool _isLoadingMoreShops = false;
-  
+
   bool get hasMoreFreelancers => _hasMoreFreelancers;
   bool get isLoadingMoreFreelancers => _isLoadingMoreFreelancers;
   bool get hasMoreShops => _hasMoreShops;
@@ -89,7 +87,7 @@ class UserProvider extends ChangeNotifier {
 
     // 3. Find Index
     int index = filtered.indexWhere((u) => u.id == userId);
-    
+
     // 4. Return rank (1-based) if in top 10, else null
     if (index != -1 && index < 10) {
       return index + 1;
@@ -122,7 +120,8 @@ class UserProvider extends ChangeNotifier {
     if (_freelancers.length + _shops.length < beforeCount) {
       // تحديث الكاش بعد الحذف
       try {
-        _cacheService.cacheFreelancers(_freelancers.map((e) => e.toJsonMap()).toList());
+        _cacheService
+            .cacheFreelancers(_freelancers.map((e) => e.toJsonMap()).toList());
       } catch (_) {}
       notifyListeners();
       debugPrint('UserProvider: removed stale user $userId from local list');
@@ -138,19 +137,25 @@ class UserProvider extends ChangeNotifier {
   }
 
   // Get freelancers with region priority (75% local, 25% discovery)
-  Future<void> fetchFreelancers({String? skill, bool forceRefresh = false}) async {
+  Future<void> fetchFreelancers(
+      {String? skill, bool forceRefresh = false}) async {
     // 1. Try Load from Cache First (Instant Display)
     if (_freelancers.isEmpty && !forceRefresh) {
       final cached = _cacheService.getCachedFreelancers();
       if (cached != null && cached.isNotEmpty) {
         // تصفية الحسابات التالفة بصمت — لا نوقف تحميل كل القائمة بسبب حساب واحد
-        _freelancers = cached.map((e) {
-          try { return UserModel.fromMap(e); }
-          catch (err) {
-            debugPrint('UserProvider: Skipped corrupted cache entry ${e['id']}: $err');
-            return null;
-          }
-        }).whereType<UserModel>().toList();
+        _freelancers = cached
+            .map((e) {
+              try {
+                return UserModel.fromMap(e);
+              } catch (err) {
+                debugPrint(
+                    'UserProvider: Skipped corrupted cache entry ${e['id']}: $err');
+                return null;
+              }
+            })
+            .whereType<UserModel>()
+            .toList();
         _freelancersLoaded = true;
         notifyListeners(); // Show cached data immediately
       }
@@ -159,27 +164,28 @@ class UserProvider extends ChangeNotifier {
     // إذا تم التحميل مسبقاً (سواء من الكاش او النت) ولم يمض وقت كافٍ، لا تعيد التحميل من النت
     if (_freelancersLoaded && !forceRefresh && _freelancers.isNotEmpty) {
       final now = DateTime.now();
-      if (_lastFreelancersRefresh != null && 
+      if (_lastFreelancersRefresh != null &&
           now.difference(_lastFreelancersRefresh!) < _refreshInterval) {
-        return; 
+        return;
       }
     }
-    
+
     if (_freelancers.isEmpty) {
       _isLoading = true;
       notifyListeners();
     }
-    
+
     debugPrint('UserProvider: Fetching freelancers (region-priority)...');
     _freelancerError = null;
-    
+
     try {
       if (_promotedUserIds.isEmpty) {
         final promos = await _promotionService.getActivePromotions();
         _promotedUserIds = promos.map((p) => p.userId).toList();
       }
 
-      final result = await _firestoreService.getFreelancersPaginated(limit: 100);
+      final result =
+          await _firestoreService.getFreelancersPaginated(limit: 100);
       List<UserModel> combined = result['users'] as List<UserModel>;
       _lastFreelancerDoc = result['lastDoc'] as DocumentSnapshot?;
       _hasMoreFreelancers = result['hasMore'] as bool;
@@ -188,11 +194,14 @@ class UserProvider extends ChangeNotifier {
       _isLoading = false;
       _freelancersLoaded = true;
       _lastFreelancersRefresh = DateTime.now();
-      
+
       try {
-        _cacheService.cacheFreelancers(_freelancers.map((e) => e.toJsonMap()).toList());
-      } catch (e) { debugPrint('UserProvider: Cache freelancers error: $e'); }
-      
+        _cacheService
+            .cacheFreelancers(_freelancers.map((e) => e.toJsonMap()).toList());
+      } catch (e) {
+        debugPrint('UserProvider: Cache freelancers error: $e');
+      }
+
       _shuffleWithPriority(_freelancers);
       notifyListeners();
     } catch (e) {
@@ -214,16 +223,19 @@ class UserProvider extends ChangeNotifier {
         startAfterDoc: _lastFreelancerDoc,
         limit: 15,
       );
-      
+
       final moreUsers = result['users'] as List<UserModel>;
       if (moreUsers.isNotEmpty) {
         _freelancers.addAll(moreUsers);
         _lastFreelancerDoc = result['lastDoc'] as DocumentSnapshot?;
         _hasMoreFreelancers = result['hasMore'] as bool;
-        
+
         try {
-          _cacheService.cacheFreelancers(_freelancers.map((e) => e.toJsonMap()).toList());
-        } catch (e) { debugPrint('UserProvider: Cache freelancers error: $e'); }
+          _cacheService.cacheFreelancers(
+              _freelancers.map((e) => e.toJsonMap()).toList());
+        } catch (e) {
+          debugPrint('UserProvider: Cache freelancers error: $e');
+        }
       } else {
         _hasMoreFreelancers = false;
       }
@@ -236,34 +248,35 @@ class UserProvider extends ChangeNotifier {
   }
 
   // Get shops with region priority (75% local, 25% discovery)
-  Future<void> fetchShops({ShopCategory? category, bool forceRefresh = false}) async {
+  Future<void> fetchShops(
+      {ShopCategory? category, bool forceRefresh = false}) async {
     // 1. Try Load from Cache First
     if (_shops.isEmpty && !forceRefresh) {
       final cached = _cacheService.getCachedShops();
       if (cached != null && cached.isNotEmpty) {
-         _shops = cached.map((e) => UserModel.fromMap(e)).toList();
-         _shopsLoaded = true;
-         notifyListeners();
+        _shops = cached.map((e) => UserModel.fromMap(e)).toList();
+        _shopsLoaded = true;
+        notifyListeners();
       }
     }
 
     // Check refresh interval
     if (_shopsLoaded && !forceRefresh && _shops.isNotEmpty) {
       final now = DateTime.now();
-      if (_lastShopsRefresh != null && 
+      if (_lastShopsRefresh != null &&
           now.difference(_lastShopsRefresh!) < _refreshInterval) {
         return;
       }
     }
-    
+
     if (_shops.isEmpty) {
       _isLoading = true;
       notifyListeners();
     }
-    
+
     debugPrint('UserProvider: Fetching shops (region-priority)...');
     _shopError = null;
-    
+
     try {
       if (_promotedUserIds.isEmpty) {
         final promos = await _promotionService.getActivePromotions();
@@ -279,11 +292,13 @@ class UserProvider extends ChangeNotifier {
       _isLoading = false;
       _shopsLoaded = true;
       _lastShopsRefresh = DateTime.now();
-      
+
       try {
         _cacheService.cacheShops(_shops.map((e) => e.toJsonMap()).toList());
-      } catch (e) { debugPrint('UserProvider: Cache shops error: $e'); }
-      
+      } catch (e) {
+        debugPrint('UserProvider: Cache shops error: $e');
+      }
+
       _shuffleWithPriority(_shops);
       notifyListeners();
     } catch (e) {
@@ -305,16 +320,18 @@ class UserProvider extends ChangeNotifier {
         startAfterDoc: _lastShopDoc,
         limit: 15,
       );
-      
+
       final moreUsers = result['users'] as List<UserModel>;
       if (moreUsers.isNotEmpty) {
         _shops.addAll(moreUsers);
         _lastShopDoc = result['lastDoc'] as DocumentSnapshot?;
         _hasMoreShops = result['hasMore'] as bool;
-        
+
         try {
           _cacheService.cacheShops(_shops.map((e) => e.toJsonMap()).toList());
-        } catch (e) { debugPrint('UserProvider: Cache shops error: $e'); }
+        } catch (e) {
+          debugPrint('UserProvider: Cache shops error: $e');
+        }
       } else {
         _hasMoreShops = false;
       }
@@ -329,18 +346,33 @@ class UserProvider extends ChangeNotifier {
   // Shuffle list prioritizing promoted, local state, high-rated, and randomness
   void _shuffleWithPriority(List<UserModel> list) {
     if (list.isEmpty) return;
-    
-    final promotedList = list.where((u) => _promotedUserIds.contains(u.id)).toList()..shuffle();
-    final nonPromotedList = list.where((u) => !_promotedUserIds.contains(u.id)).toList();
+
+    final promotedList =
+        list.where((u) => _promotedUserIds.contains(u.id)).toList()..shuffle();
+    final nonPromotedList =
+        list.where((u) => !_promotedUserIds.contains(u.id)).toList();
 
     // تقسيم القائمة غير المروجة إلى: محليين وغير محليين
-    final localList = nonPromotedList.where((u) => u.state == _currentUserState || u.role == UserRole.techService).toList();
-    final otherList = nonPromotedList.where((u) => u.state != _currentUserState && u.role != UserRole.techService).toList();
+    final localList = nonPromotedList
+        .where((u) =>
+            u.state == _currentUserState || u.role == UserRole.techService)
+        .toList();
+    final otherList = nonPromotedList
+        .where((u) =>
+            u.state != _currentUserState && u.role != UserRole.techService)
+        .toList();
 
     void sortAndShuffle(List<UserModel> sublist) {
-      final highRated = sublist.where((u) => u.rating >= 4.0).toList()..shuffle();
-      final midRated = sublist.where((u) => u.rating >= 2.0 && u.rating < 4.0).toList()..shuffle();
-      final lowRated = sublist.where((u) => u.rating < 2.0 || u.reviewsCount == 0).toList()..shuffle();
+      final highRated = sublist.where((u) => u.rating >= 4.0).toList()
+        ..shuffle();
+      final midRated = sublist
+          .where((u) => u.rating >= 2.0 && u.rating < 4.0)
+          .toList()
+        ..shuffle();
+      final lowRated = sublist
+          .where((u) => u.rating < 2.0 || u.reviewsCount == 0)
+          .toList()
+        ..shuffle();
       sublist.clear();
       sublist.addAll(highRated);
       sublist.addAll(midRated);
@@ -349,7 +381,7 @@ class UserProvider extends ChangeNotifier {
 
     sortAndShuffle(localList);
     sortAndShuffle(otherList);
-    
+
     list.clear();
     // 1. المروجين دائماً في البداية (Promoted)
     list.addAll(promotedList);
@@ -370,17 +402,19 @@ class UserProvider extends ChangeNotifier {
       if (await ImageCompressService.needsCompression(imageFile)) {
         compressedFile = await ImageCompressService.compressImage(imageFile);
       }
-      
-      final url = await StorageService().uploadProfileImage(userId, compressedFile);
-      
-      await _firestoreService.updateUserProfile(userId, {'profileImageUrl': url});
+
+      final url =
+          await StorageService().uploadProfileImage(userId, compressedFile);
+
+      await _firestoreService
+          .updateUserProfile(userId, {'profileImageUrl': url});
       await _firestoreService.updateUserProfileImages(userId, url, null);
 
       if (_viewedUser?.id == userId) {
         _viewedUser = _viewedUser?.copyWith(profileImageUrl: url);
       }
       _uploadStatus = 'تم بنجاح ✓';
-      
+
       _isLoading = false;
       notifyListeners();
       return url;
@@ -404,18 +438,20 @@ class UserProvider extends ChangeNotifier {
         compressedFile = await ImageCompressService.compressImage(imageFile);
       }
 
-      final url = await StorageService().uploadImage(compressedFile, folder: 'users/$userId/cover');
-      
+      final url = await StorageService()
+          .uploadImage(compressedFile, folder: 'users/$userId/cover');
+
       if (url != null) {
         _uploadStatus = 'تم التحديث بنجاح';
-        await _firestoreService.updateUserProfile(userId, {'coverImageUrl': url});
+        await _firestoreService
+            .updateUserProfile(userId, {'coverImageUrl': url});
         if (_viewedUser?.id == userId) {
           _viewedUser = _viewedUser?.copyWith(coverImageUrl: url);
         }
       } else {
         _uploadStatus = 'فشل الرفع';
       }
-      
+
       _isLoading = false;
       notifyListeners();
       return url;
@@ -431,7 +467,8 @@ class UserProvider extends ChangeNotifier {
   // Upload portfolio image
   Future<String?> uploadPortfolioImage(String userId, File imageFile) async {
     try {
-      final url = await StorageService().uploadPortfolioImage(userId, imageFile);
+      final url =
+          await StorageService().uploadPortfolioImage(userId, imageFile);
       return url;
     } catch (e) {
       _errorMessage = e.toString();
@@ -443,7 +480,8 @@ class UserProvider extends ChangeNotifier {
   // Upload portfolio video
   Future<String?> uploadPortfolioVideo(String userId, File videoFile) async {
     try {
-      final url = await StorageService().uploadPortfolioVideo(userId, videoFile);
+      final url =
+          await StorageService().uploadPortfolioVideo(userId, videoFile);
       return url;
     } catch (e) {
       _errorMessage = e.toString();
@@ -463,8 +501,6 @@ class UserProvider extends ChangeNotifier {
     _viewedUser = null;
     notifyListeners();
   }
-
-
 
   // Clear all data (on logout)
   void clear() {

@@ -49,23 +49,25 @@ class LinkableText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final defaultStyle = style ?? TextStyle(
-      fontSize: 14,
-      height: 1.4,
-      color: isDark ? Colors.white : Colors.black87,
-    );
-    
+    final defaultStyle = style ??
+        TextStyle(
+          fontSize: 14,
+          height: 1.4,
+          color: isDark ? Colors.white : Colors.black87,
+        );
+
     final linkStyle = defaultStyle.copyWith(
       color: isDark ? const Color(0xFF64B5F6) : AppColors.primary,
       decoration: TextDecoration.underline,
-      decorationColor: (isDark ? const Color(0xFF64B5F6) : AppColors.primary).withValues(alpha: 0.4),
+      decorationColor: (isDark ? const Color(0xFF64B5F6) : AppColors.primary)
+          .withValues(alpha: 0.4),
     );
-    
+
     final hashtagStyle = defaultStyle.copyWith(
       color: isDark ? const Color(0xFF81C784) : const Color(0xFF2E7D32),
       fontWeight: FontWeight.w600,
     );
-    
+
     final mentionStyle = defaultStyle.copyWith(
       color: isDark ? const Color(0xFFFFB74D) : const Color(0xFFF57C00),
       fontWeight: FontWeight.bold,
@@ -100,23 +102,27 @@ class LinkableText extends StatelessWidget {
         spans.add(TextSpan(
           text: urlMatch,
           style: linkStyle,
-          recognizer: TapGestureRecognizer()..onTap = () => _launchURL(urlMatch),
+          recognizer: TapGestureRecognizer()
+            ..onTap = () => _launchURL(urlMatch),
         ));
       } else if (hashtagMatch != null) {
         spans.add(TextSpan(
           text: hashtagMatch,
           style: hashtagStyle,
-          recognizer: TapGestureRecognizer()..onTap = () {
-            if (onHashtagTap != null) onHashtagTap!(hashtagMatch);
-          },
+          recognizer: TapGestureRecognizer()
+            ..onTap = () {
+              if (onHashtagTap != null) onHashtagTap!(hashtagMatch);
+            },
         ));
       } else if (mentionMatch != null) {
         spans.add(TextSpan(
           text: mentionMatch,
           style: mentionStyle,
-          recognizer: TapGestureRecognizer()..onTap = () {
-            if (onMentionTap != null) onMentionTap!(mentionMatch.substring(1)); // Remove '@'
-          },
+          recognizer: TapGestureRecognizer()
+            ..onTap = () {
+              if (onMentionTap != null)
+                onMentionTap!(mentionMatch.substring(1)); // Remove '@'
+            },
         ));
       }
 

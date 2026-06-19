@@ -49,7 +49,8 @@ class AdService {
   }
 
   /// Fetches the most relevant ad for a specific placement based on user's region/profession
-  Future<AdModel?> getTargetedAd(UserModel currentUser, {
+  Future<AdModel?> getTargetedAd(
+    UserModel currentUser, {
     AdPlacement placement = AdPlacement.homeBanner,
     String? targetCategory,
   }) async {
@@ -58,7 +59,7 @@ class AdService {
       final validatedCategory = sanitizeCategory(targetCategory);
 
       final now = Timestamp.now();
-      
+
       // Check cache first for category-specific ads
       if (validatedCategory != 'all') {
         final cacheKey = '${placement.name}_$validatedCategory';
@@ -74,9 +75,10 @@ class AdService {
           }
         }
       }
-      
+
       // Query 1: Ads targeted to this user's region AND profession for this placement
-      var targetedQuery = _firestore.collection('ads')
+      var targetedQuery = _firestore
+          .collection('ads')
           .where('isActive', isEqualTo: true)
           .where('placement', isEqualTo: placement.name)
           .where('targetState', isEqualTo: currentUser.state ?? 'all')
@@ -89,7 +91,8 @@ class AdService {
 
       // If no specific ad, try region-only
       if (snap.docs.isEmpty) {
-        var regionQuery = _firestore.collection('ads')
+        var regionQuery = _firestore
+            .collection('ads')
             .where('isActive', isEqualTo: true)
             .where('placement', isEqualTo: placement.name)
             .where('targetState', isEqualTo: currentUser.state ?? 'all')
@@ -102,7 +105,8 @@ class AdService {
 
       // If still no ad, get a global ad for this placement
       if (snap.docs.isEmpty) {
-        var globalQuery = _firestore.collection('ads')
+        var globalQuery = _firestore
+            .collection('ads')
             .where('isActive', isEqualTo: true)
             .where('placement', isEqualTo: placement.name)
             .where('targetState', isEqualTo: 'all')
@@ -115,7 +119,8 @@ class AdService {
 
       // Fallback: any active ad for this placement (ignore targeting)
       if (snap.docs.isEmpty) {
-        var fallbackQuery = _firestore.collection('ads')
+        var fallbackQuery = _firestore
+            .collection('ads')
             .where('isActive', isEqualTo: true)
             .where('placement', isEqualTo: placement.name)
             .where('expiryDate', isGreaterThan: now)
@@ -126,7 +131,8 @@ class AdService {
 
       // Legacy fallback: any active ad without placement field (old ads)
       if (snap.docs.isEmpty) {
-        var legacyQuery = _firestore.collection('ads')
+        var legacyQuery = _firestore
+            .collection('ads')
             .where('isActive', isEqualTo: true)
             .where('expiryDate', isGreaterThan: now)
             .orderBy('expiryDate')
@@ -140,18 +146,21 @@ class AdService {
         // Local filtering by category
         if (targetCategory != null) {
           // If a category is selected in the feed, find ads that match it, OR ads meant for "all" categories
-          final categoryAds = ads.where((ad) => 
-            ad.targetCategory == targetCategory || ad.targetCategory == 'all'
-          ).toList();
-          
+          final categoryAds = ads
+              .where((ad) =>
+                  ad.targetCategory == targetCategory ||
+                  ad.targetCategory == 'all')
+              .toList();
+
           if (categoryAds.isNotEmpty) {
             // Cache the results
             final cacheKey = '${placement.name}_$targetCategory';
             _categoryAdCache[cacheKey] = categoryAds;
             _cacheTimestamps[cacheKey] = DateTime.now();
-            
+
             // Apply frequency control
-            final availableAds = _filterByFrequency(categoryAds, currentUser.id);
+            final availableAds =
+                _filterByFrequency(categoryAds, currentUser.id);
             if (availableAds.isNotEmpty) {
               availableAds.sort((a, b) => b.priority.compareTo(a.priority));
               return availableAds.first;
@@ -170,7 +179,9 @@ class AdService {
   }
 
   /// Fetch multiple ads for a placement (e.g., carousel on home)
-  Future<List<AdModel>> getAdsForPlacement(UserModel currentUser, AdPlacement placement, {int limit = 5}) async {
+  Future<List<AdModel>> getAdsForPlacement(
+      UserModel currentUser, AdPlacement placement,
+      {int limit = 5}) async {
     try {
       final cacheKey = 'placement_${placement.name}';
       if (_isCacheValid(cacheKey)) {
@@ -182,7 +193,8 @@ class AdService {
 
       final now = Timestamp.now();
 
-      final snap = await _firestore.collection('ads')
+      final snap = await _firestore
+          .collection('ads')
           .where('isActive', isEqualTo: true)
           .where('placement', isEqualTo: placement.name)
           .where('expiryDate', isGreaterThan: now)
@@ -194,7 +206,7 @@ class AdService {
 
       final ads = snap.docs.map((d) => AdModel.fromFirestore(d)).toList();
       ads.sort((a, b) => b.priority.compareTo(a.priority));
-      
+
       _placementAdCache[cacheKey] = ads;
       _cacheTimestamps[cacheKey] = DateTime.now();
 
@@ -218,7 +230,7 @@ class AdService {
     // For now, simple implementation: limit to showing each ad max 3 times per session
     // In production, this could be stored in SharedPreferences or backend
     final shownAds = <String, int>{};
-    
+
     return ads.where((ad) {
       final count = shownAds[ad.id] ?? 0;
       if (count >= 3) return false;
@@ -239,7 +251,7 @@ class AdService {
     try {
       final prefs = await SharedPreferences.getInstance();
       final viewedAds = prefs.getStringList('viewed_ads') ?? [];
-      
+
       if (viewedAds.contains(adId)) return;
       viewedAds.add(adId);
       await prefs.setStringList('viewed_ads', viewedAds);
@@ -257,7 +269,7 @@ class AdService {
     try {
       final prefs = await SharedPreferences.getInstance();
       final clickedAds = prefs.getStringList('clicked_ads') ?? [];
-      
+
       if (clickedAds.contains(adId)) return;
       clickedAds.add(adId);
       await prefs.setStringList('clicked_ads', clickedAds);

@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
@@ -29,7 +28,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   int _postsCount = 0;
   int _jobsCount = 0;
   int _adsCount = 0;
-  int _notificationsSent = 0;
+  final int _notificationsSent = 0;
   Map<String, int> _rolesDistribution = {};
   Map<String, int> _statesDistribution = {};
 
@@ -45,20 +44,24 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       final usersSnap = await db.collection('users').get();
       final postsSnap = await db.collection('posts').count().get();
       final jobsSnap = await db.collection('jobs').count().get();
-      final adsSnap = await db.collection('ads').where('isActive', isEqualTo: true).count().get();
-      
+      final adsSnap = await db
+          .collection('ads')
+          .where('isActive', isEqualTo: true)
+          .count()
+          .get();
+
       // Calculate distributions
       int verified = 0;
       Map<String, int> roles = {};
       Map<String, int> states = {};
-      
+
       for (var doc in usersSnap.docs) {
         final data = doc.data();
         if (data['isVerified'] == true) verified++;
-        
+
         final role = data['role'] ?? 'client';
         roles[role] = (roles[role] ?? 0) + 1;
-        
+
         final state = data['state'] ?? 'غير محدد';
         states[state] = (states[state] ?? 0) + 1;
       }
@@ -101,7 +104,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
     if (currentUser.role != UserRole.admin) {
       return Scaffold(
-        appBar: AppBar(title: const Text('غير مصرح'), backgroundColor: Colors.red),
+        appBar:
+            AppBar(title: const Text('غير مصرح'), backgroundColor: Colors.red),
         body: Center(child: Text('هذه الصفحة مخصصة للمشرفين فقط')),
       );
     }
@@ -110,7 +114,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       length: 8,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('لوحة تحكم المشرف', style: TextStyle(fontWeight: FontWeight.bold)),
+          title: const Text('لوحة تحكم المشرف',
+              style: TextStyle(fontWeight: FontWeight.bold)),
           elevation: 0,
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
@@ -160,7 +165,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('نظرة عامة على النظام', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          const Text('نظرة عامة على النظام',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
           const SizedBox(height: 16),
           GridView.count(
             shrinkWrap: true,
@@ -170,40 +176,55 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             crossAxisSpacing: 16,
             childAspectRatio: 1.1,
             children: [
-              _buildStatCard('إجمالي المستخدمين', _usersCount.toString(), Icons.people, Colors.blue),
-              _buildStatCard('الموثقين', _verifiedCount.toString(), Icons.verified, Colors.green),
-              _buildStatCard('المنشورات', _postsCount.toString(), Icons.post_add, Colors.orange),
-              _buildStatCard('المشاريع والطلبات', _jobsCount.toString(), Icons.work, Colors.purple),
-              _buildStatCard('الإعلانات النشطة', _adsCount.toString(), Icons.campaign, Colors.teal),
+              _buildStatCard('إجمالي المستخدمين', _usersCount.toString(),
+                  Icons.people, Colors.blue),
+              _buildStatCard('الموثقين', _verifiedCount.toString(),
+                  Icons.verified, Colors.green),
+              _buildStatCard('المنشورات', _postsCount.toString(),
+                  Icons.post_add, Colors.orange),
+              _buildStatCard('المشاريع والطلبات', _jobsCount.toString(),
+                  Icons.work, Colors.purple),
+              _buildStatCard('الإعلانات النشطة', _adsCount.toString(),
+                  Icons.campaign, Colors.teal),
             ],
           ),
           const SizedBox(height: 24),
-          const Text('توزيع المستخدمين', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const Text('توزيع المستخدمين',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
-                  _buildListTileStat('حرفيين وفنيين', _rolesDistribution['freelancer'] ?? 0, Icons.engineering),
-                  _buildListTileStat('تقنيين ومبرمجين', _rolesDistribution['techService'] ?? 0, Icons.computer),
-                  _buildListTileStat('خدمات خاصة', _rolesDistribution['privateService'] ?? 0, Icons.design_services),
-                  _buildListTileStat('متاجر', _rolesDistribution['shop'] ?? 0, Icons.storefront),
-                  _buildListTileStat('عملاء', _rolesDistribution['client'] ?? 0, Icons.person),
+                  _buildListTileStat('حرفيين وفنيين',
+                      _rolesDistribution['freelancer'] ?? 0, Icons.engineering),
+                  _buildListTileStat('تقنيين ومبرمجين',
+                      _rolesDistribution['techService'] ?? 0, Icons.computer),
+                  _buildListTileStat(
+                      'خدمات خاصة',
+                      _rolesDistribution['privateService'] ?? 0,
+                      Icons.design_services),
+                  _buildListTileStat('متاجر', _rolesDistribution['shop'] ?? 0,
+                      Icons.storefront),
+                  _buildListTileStat(
+                      'عملاء', _rolesDistribution['client'] ?? 0, Icons.person),
                 ],
               ),
             ),
           ),
           const SizedBox(height: 24),
-          const Text('الولايات الأكثر نشاطاً', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const Text('الولايات الأكثر نشاطاً',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
-                children: _statesDistribution.entries.map((e) => 
-                  _buildListTileStat(e.key, e.value, Icons.location_on)
-                ).toList(),
+                children: _statesDistribution.entries
+                    .map((e) =>
+                        _buildListTileStat(e.key, e.value, Icons.location_on))
+                    .toList(),
               ),
             ),
           ),
@@ -212,27 +233,41 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
+  Widget _buildStatCard(
+      String title, String value, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: color.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 4))],
-        border: Border.all(color: color.withOpacity(0.2)),
+        boxShadow: [
+          BoxShadow(
+              color: color.withValues(alpha: 0.1),
+              blurRadius: 10,
+              offset: const Offset(0, 4))
+        ],
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
             padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle),
+            decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1), shape: BoxShape.circle),
             child: Icon(icon, color: color, size: 32),
           ),
           const Spacer(),
-          Text(value, style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: color)),
+          Text(value,
+              style: TextStyle(
+                  fontSize: 28, fontWeight: FontWeight.bold, color: color)),
           const SizedBox(height: 4),
-          Text(title, style: TextStyle(color: Colors.grey[800], fontSize: 13, fontWeight: FontWeight.w600), textAlign: TextAlign.center),
+          Text(title,
+              style: TextStyle(
+                  color: Colors.grey[800],
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600),
+              textAlign: TextAlign.center),
         ],
       ),
     );
@@ -247,7 +282,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           const SizedBox(width: 12),
           Text(title, style: const TextStyle(fontSize: 16)),
           const Spacer(),
-          Text(count.toString(), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          Text(count.toString(),
+              style:
+                  const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         ],
       ),
     );
@@ -272,19 +309,23 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   decoration: InputDecoration(
                     hintText: 'ابحث بالاسم أو الهاتف...',
                     prefixIcon: const Icon(Icons.search),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   ),
-                  onChanged: (v) => setState(() => _userSearchQuery = v.toLowerCase()),
+                  onChanged: (v) =>
+                      setState(() => _userSearchQuery = v.toLowerCase()),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
                 flex: 1,
                 child: DropdownButtonFormField<String>(
-                  value: _userRoleFilter,
+                  initialValue: _userRoleFilter,
                   decoration: InputDecoration(
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12)),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 12),
                   ),
                   items: const [
@@ -302,25 +343,34 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         ),
         Expanded(
           child: StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance.collection('users')
+            stream: FirebaseFirestore.instance
+                .collection('users')
                 .orderBy('createdAt', descending: true)
                 .limit(100) // Limit to 100 for performance
                 .snapshots(),
             builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) return const LoadingIndicator();
-              
-              var users = snapshot.data?.docs.map((d) => UserModel.fromFirestore(d)).toList() ?? [];
-              
+              if (snapshot.connectionState == ConnectionState.waiting)
+                return const LoadingIndicator();
+
+              var users = snapshot.data?.docs
+                      .map((d) => UserModel.fromFirestore(d))
+                      .toList() ??
+                  [];
+
               // Apply local filters
               users = users.where((u) {
-                final matchRole = _userRoleFilter == 'all' || u.role.name == _userRoleFilter;
-                final matchSearch = _userSearchQuery.isEmpty || 
-                                    u.name.toLowerCase().contains(_userSearchQuery) || 
-                                    (u.phoneNumber != null && u.phoneNumber!.contains(_userSearchQuery));
+                final matchRole =
+                    _userRoleFilter == 'all' || u.role.name == _userRoleFilter;
+                final matchSearch = _userSearchQuery.isEmpty ||
+                    u.name.toLowerCase().contains(_userSearchQuery) ||
+                    (u.phoneNumber != null &&
+                        u.phoneNumber!.contains(_userSearchQuery));
                 return matchRole && matchSearch;
               }).toList();
 
-              if (users.isEmpty) return _buildEmptyState(Icons.people_outline, 'لا يوجد مستخدمين');
+              if (users.isEmpty)
+                return _buildEmptyState(
+                    Icons.people_outline, 'لا يوجد مستخدمين');
 
               return ListView.builder(
                 padding: const EdgeInsets.all(12),
@@ -329,36 +379,46 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   final user = users[index];
                   return Card(
                     margin: const EdgeInsets.only(bottom: 8),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
                     child: ListTile(
                       leading: CircleAvatar(
-                        backgroundImage: user.profileImageUrl != null ? CachedNetworkImageProvider(user.profileImageUrl!) : null,
-                        child: user.profileImageUrl == null ? const Icon(Icons.person) : null,
+                        backgroundImage: user.profileImageUrl != null
+                            ? CachedNetworkImageProvider(user.profileImageUrl!)
+                            : null,
+                        child: user.profileImageUrl == null
+                            ? const Icon(Icons.person)
+                            : null,
                       ),
                       title: Row(
                         children: [
                           Expanded(
-                            child: Text(
-                              user.name, 
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                decoration: user.isBanned ? TextDecoration.lineThrough : null,
-                                color: user.isBanned ? Colors.grey : null
-                              ), 
-                              maxLines: 1, 
-                              overflow: TextOverflow.ellipsis
-                            )
-                          ),
-                          if (user.isVerified) const Icon(Icons.verified, color: Colors.blue, size: 16),
-                          if (user.isBanned) const Icon(Icons.block, color: Colors.red, size: 16),
+                              child: Text(user.name,
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      decoration: user.isBanned
+                                          ? TextDecoration.lineThrough
+                                          : null,
+                                      color:
+                                          user.isBanned ? Colors.grey : null),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis)),
+                          if (user.isVerified)
+                            const Icon(Icons.verified,
+                                color: Colors.blue, size: 16),
+                          if (user.isBanned)
+                            const Icon(Icons.block,
+                                color: Colors.red, size: 16),
                         ],
                       ),
-                      subtitle: Text('${user.getRoleDisplayName('ar')} | ${user.state ?? 'غير محدد'}'),
+                      subtitle: Text(
+                          '${user.getRoleDisplayName('ar')} | ${user.state ?? 'غير محدد'}'),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           IconButton(
-                            icon: const Icon(Icons.info_outline, color: Colors.blue),
+                            icon: const Icon(Icons.info_outline,
+                                color: Colors.blue),
                             onPressed: () => _showUserDetails(user),
                           ),
                         ],
@@ -378,7 +438,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) => DraggableScrollableSheet(
         initialChildSize: 0.7,
         minChildSize: 0.5,
@@ -395,14 +456,20 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   children: [
                     CircleAvatar(
                       radius: 50,
-                      backgroundImage: user.profileImageUrl != null ? CachedNetworkImageProvider(user.profileImageUrl!) : null,
-                      child: user.profileImageUrl == null ? const Icon(Icons.person, size: 50) : null,
+                      backgroundImage: user.profileImageUrl != null
+                          ? CachedNetworkImageProvider(user.profileImageUrl!)
+                          : null,
+                      child: user.profileImageUrl == null
+                          ? const Icon(Icons.person, size: 50)
+                          : null,
                     ),
                     if (user.isBanned)
                       Positioned.fill(
                         child: Container(
-                          decoration: const BoxDecoration(color: Colors.black45, shape: BoxShape.circle),
-                          child: const Icon(Icons.block, color: Colors.red, size: 50),
+                          decoration: const BoxDecoration(
+                              color: Colors.black45, shape: BoxShape.circle),
+                          child: const Icon(Icons.block,
+                              color: Colors.red, size: 50),
                         ),
                       ),
                   ],
@@ -410,41 +477,59 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               ),
               const SizedBox(height: 16),
               Center(
-                child: Text(user.name, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                child: Text(user.name,
+                    style: const TextStyle(
+                        fontSize: 22, fontWeight: FontWeight.bold)),
               ),
               Center(
-                child: Text(user.getRoleDisplayName('ar'), style: const TextStyle(color: AppColors.primary)),
+                child: Text(user.getRoleDisplayName('ar'),
+                    style: const TextStyle(color: AppColors.primary)),
               ),
               const Divider(height: 32),
-              _buildDetailRow(Icons.phone, 'الهاتف', user.phoneNumber ?? 'غير محدد'),
+              _buildDetailRow(
+                  Icons.phone, 'الهاتف', user.phoneNumber ?? 'غير محدد'),
               _buildDetailRow(Icons.email, 'البريد', user.email),
-              _buildDetailRow(Icons.work, 'المهنة', user.jobTitle ?? 'غير محدد'),
-              _buildDetailRow(Icons.location_on, 'الموقع', '${user.locality ?? ''} ${user.state ?? ''}'),
-              _buildDetailRow(Icons.star, 'التقييم', '${user.ratingDisplay} (${user.reviewsCount} مراجعة)'),
-              _buildDetailRow(Icons.date_range, 'تاريخ التسجيل', user.createdAt.toString().split(' ')[0]),
+              _buildDetailRow(
+                  Icons.work, 'المهنة', user.jobTitle ?? 'غير محدد'),
+              _buildDetailRow(Icons.location_on, 'الموقع',
+                  '${user.locality ?? ''} ${user.state ?? ''}'),
+              _buildDetailRow(Icons.star, 'التقييم',
+                  '${user.ratingDisplay} (${user.reviewsCount} مراجعة)'),
+              _buildDetailRow(Icons.date_range, 'تاريخ التسجيل',
+                  user.createdAt.toString().split(' ')[0]),
               const SizedBox(height: 32),
               Row(
                 children: [
                   Expanded(
                     child: ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: user.isBanned ? Colors.green : Colors.red, 
-                        foregroundColor: Colors.white
-                      ),
-                      icon: Icon(user.isBanned ? Icons.check_circle : Icons.block),
-                      label: Text(user.isBanned ? 'إلغاء حظر المستخدم' : 'حظر المستخدم'),
+                          backgroundColor:
+                              user.isBanned ? Colors.green : Colors.red,
+                          foregroundColor: Colors.white),
+                      icon: Icon(
+                          user.isBanned ? Icons.check_circle : Icons.block),
+                      label: Text(user.isBanned
+                          ? 'إلغاء حظر المستخدم'
+                          : 'حظر المستخدم'),
                       onPressed: () async {
-                         Navigator.pop(ctx);
-                         await FirebaseFirestore.instance.collection('users').doc(user.id).update({
-                           'isBanned': !user.isBanned,
-                         });
-                         if (mounted) {
-                           final scaffoldMessenger = ScaffoldMessenger.of(context);
-                           scaffoldMessenger.showSnackBar(SnackBar(
-                             content: Text(user.isBanned ? 'تم فك حظر المستخدم' : 'تم حظر المستخدم'),
-                             backgroundColor: user.isBanned ? Colors.green : Colors.red,
-                           ));
-                         }
+                        Navigator.pop(ctx);
+                        await FirebaseFirestore.instance
+                            .collection('users')
+                            .doc(user.id)
+                            .update({
+                          'isBanned': !user.isBanned,
+                        });
+                        if (mounted) {
+                          final scaffoldMessenger =
+                              ScaffoldMessenger.of(context);
+                          scaffoldMessenger.showSnackBar(SnackBar(
+                            content: Text(user.isBanned
+                                ? 'تم فك حظر المستخدم'
+                                : 'تم حظر المستخدم'),
+                            backgroundColor:
+                                user.isBanned ? Colors.green : Colors.red,
+                          ));
+                        }
                       },
                     ),
                   ),
@@ -465,8 +550,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         children: [
           Icon(icon, size: 20, color: Colors.grey[600]),
           const SizedBox(width: 12),
-          SizedBox(width: 100, child: Text(title, style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.bold))),
-          Expanded(child: Text(value, style: const TextStyle(fontWeight: FontWeight.w500))),
+          SizedBox(
+              width: 100,
+              child: Text(title,
+                  style: TextStyle(
+                      color: Colors.grey[600], fontWeight: FontWeight.bold))),
+          Expanded(
+              child: Text(value,
+                  style: const TextStyle(fontWeight: FontWeight.w500))),
         ],
       ),
     );
@@ -483,45 +574,57 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   bool _isSendingNotif = false;
 
   Widget _buildNotificationsManager() {
-    List<String> localities = _notifTargetState == 'all' 
-        ? [] 
+    List<String> localities = _notifTargetState == 'all'
+        ? []
         : SudanLocations.getLocalities(_notifTargetState);
 
     return Column(
       children: [
         Card(
           margin: const EdgeInsets.all(16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: Padding(
             padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('إرسال تنبيه مستهدف', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const Text('إرسال تنبيه مستهدف',
+                    style:
+                        TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 16),
                 TextField(
                   controller: _notifTitleCtrl,
-                  decoration: const InputDecoration(labelText: 'عنوان التنبيه', border: OutlineInputBorder()),
+                  decoration: const InputDecoration(
+                      labelText: 'عنوان التنبيه', border: OutlineInputBorder()),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: _notifMsgCtrl,
                   maxLines: 2,
-                  decoration: const InputDecoration(labelText: 'نص التنبيه', border: OutlineInputBorder()),
+                  decoration: const InputDecoration(
+                      labelText: 'نص التنبيه', border: OutlineInputBorder()),
                 ),
                 const SizedBox(height: 12),
                 Row(
                   children: [
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: _notifTargetRole,
-                        decoration: const InputDecoration(labelText: 'النوع', border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 10)),
+                        initialValue: _notifTargetRole,
+                        decoration: const InputDecoration(
+                            labelText: 'النوع',
+                            border: OutlineInputBorder(),
+                            contentPadding:
+                                EdgeInsets.symmetric(horizontal: 10)),
                         items: const [
                           DropdownMenuItem(value: 'all', child: Text('الكل')),
-                          DropdownMenuItem(value: 'freelancer', child: Text('حرفي')),
-                          DropdownMenuItem(value: 'techService', child: Text('تقني')),
+                          DropdownMenuItem(
+                              value: 'freelancer', child: Text('حرفي')),
+                          DropdownMenuItem(
+                              value: 'techService', child: Text('تقني')),
                           DropdownMenuItem(value: 'shop', child: Text('متجر')),
-                          DropdownMenuItem(value: 'client', child: Text('عميل')),
+                          DropdownMenuItem(
+                              value: 'client', child: Text('عميل')),
                         ],
                         onChanged: (v) => setState(() => _notifTargetRole = v!),
                       ),
@@ -529,11 +632,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: _notifTargetState,
-                        decoration: const InputDecoration(labelText: 'الولاية', border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 10)),
+                        initialValue: _notifTargetState,
+                        decoration: const InputDecoration(
+                            labelText: 'الولاية',
+                            border: OutlineInputBorder(),
+                            contentPadding:
+                                EdgeInsets.symmetric(horizontal: 10)),
                         items: [
-                          const DropdownMenuItem(value: 'all', child: Text('الكل')),
-                          ...SudanLocations.states.map((s) => DropdownMenuItem(value: s, child: Text(s))),
+                          const DropdownMenuItem(
+                              value: 'all', child: Text('الكل')),
+                          ...SudanLocations.states.map((s) =>
+                              DropdownMenuItem(value: s, child: Text(s))),
                         ],
                         onChanged: (v) {
                           setState(() {
@@ -550,9 +659,21 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   width: double.infinity,
                   height: 45,
                   child: ElevatedButton.icon(
-                    icon: _isSendingNotif ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Icon(Icons.send),
-                    label: Text(_isSendingNotif ? 'جاري الإرسال...' : 'إرسال التنبيه الآن', style: const TextStyle(fontSize: 16)),
-                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
+                    icon: _isSendingNotif
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                                color: Colors.white, strokeWidth: 2))
+                        : const Icon(Icons.send),
+                    label: Text(
+                        _isSendingNotif
+                            ? 'جاري الإرسال...'
+                            : 'إرسال التنبيه الآن',
+                        style: const TextStyle(fontSize: 16)),
+                    style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white),
                     onPressed: _isSendingNotif ? null : _sendBulkNotification,
                   ),
                 ),
@@ -564,20 +685,24 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Align(
             alignment: Alignment.centerRight,
-            child: Text('سجل التنبيهات المرسلة', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            child: Text('سجل التنبيهات المرسلة',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           ),
         ),
         Expanded(
           child: StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance.collection('bulk_notifications')
+            stream: FirebaseFirestore.instance
+                .collection('bulk_notifications')
                 .orderBy('createdAt', descending: true)
                 .snapshots(),
             builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) return const LoadingIndicator();
+              if (snapshot.connectionState == ConnectionState.waiting)
+                return const LoadingIndicator();
               final logs = snapshot.data?.docs ?? [];
-              
-              if (logs.isEmpty) return _buildEmptyState(Icons.history, 'لا يوجد سجل للتنبيهات');
-              
+
+              if (logs.isEmpty)
+                return _buildEmptyState(Icons.history, 'لا يوجد سجل للتنبيهات');
+
               return ListView.builder(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 itemCount: logs.length,
@@ -585,12 +710,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   final log = logs[index].data() as Map<String, dynamic>;
                   final logId = logs[index].id;
                   final time = log['createdAt'] as Timestamp?;
-                  
+
                   return Card(
                     margin: const EdgeInsets.only(bottom: 8),
                     child: ListTile(
-                      title: Text(log['title'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold)),
-                      subtitle: Text('${log['message']}\\nتم الإرسال لـ ${log['fcmSent'] ?? 0} مستخدم'),
+                      title: Text(log['title'] ?? '',
+                          style: const TextStyle(fontWeight: FontWeight.bold)),
+                      subtitle: Text(
+                          '${log['message']}\\nتم الإرسال لـ ${log['fcmSent'] ?? 0} مستخدم'),
                       isThreeLine: true,
                       trailing: IconButton(
                         icon: const Icon(Icons.delete, color: Colors.red),
@@ -614,12 +741,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         title: const Text('حذف السجل؟'),
         content: const Text('سيتم حذف هذا السجل من القائمة.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
           TextButton(
             onPressed: () async {
               Navigator.pop(ctx);
-              await FirebaseFirestore.instance.collection('bulk_notifications').doc(id).delete();
-            }, 
+              await FirebaseFirestore.instance
+                  .collection('bulk_notifications')
+                  .doc(id)
+                  .delete();
+            },
             child: const Text('حذف', style: TextStyle(color: Colors.red)),
           ),
         ],
@@ -630,14 +761,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   Future<void> _sendBulkNotification() async {
     if (_notifTitleCtrl.text.isEmpty || _notifMsgCtrl.text.isEmpty) {
       final scaffoldMessenger = ScaffoldMessenger.of(context);
-      scaffoldMessenger.showSnackBar(const SnackBar(content: Text('الرجاء إدخال العنوان والنص')));
+      scaffoldMessenger.showSnackBar(
+          const SnackBar(content: Text('الرجاء إدخال العنوان والنص')));
       return;
     }
 
     setState(() => _isSendingNotif = true);
 
     try {
-      final callable = FirebaseFunctions.instance.httpsCallable('adminSendNotification');
+      final callable =
+          FirebaseFunctions.instance.httpsCallable('adminSendNotification');
       final result = await callable.call(<String, dynamic>{
         'title': _notifTitleCtrl.text,
         'message': _notifMsgCtrl.text,
@@ -647,7 +780,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       });
 
       final data = result.data as Map<String, dynamic>;
-      
+
       if (mounted) {
         final scaffoldMessenger = ScaffoldMessenger.of(context);
         scaffoldMessenger.showSnackBar(SnackBar(
@@ -678,12 +811,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance.collection('ads').orderBy('createdAt', descending: true).snapshots(),
+        stream: FirebaseFirestore.instance
+            .collection('ads')
+            .orderBy('createdAt', descending: true)
+            .snapshots(),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) return const LoadingIndicator();
+          if (snapshot.connectionState == ConnectionState.waiting)
+            return const LoadingIndicator();
           final ads = snapshot.data?.docs ?? [];
 
-          if (ads.isEmpty) return _buildEmptyState(Icons.campaign_outlined, 'لا توجد إعلانات حالياً');
+          if (ads.isEmpty)
+            return _buildEmptyState(
+                Icons.campaign_outlined, 'لا توجد إعلانات حالياً');
 
           return ListView.builder(
             padding: const EdgeInsets.all(12),
@@ -693,29 +832,58 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               return Card(
                 elevation: 2,
                 margin: const EdgeInsets.only(bottom: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
                 child: Column(
                   children: [
                     if (ad.mediaUrl.isNotEmpty)
                       ClipRRect(
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                        child: ad.mediaType == AdMediaType.video 
-                          ? Container(height: 150, width: double.infinity, color: Colors.black87, child: const Icon(Icons.play_circle_fill, color: Colors.white, size: 48))
-                          : CachedNetworkImage(imageUrl: ad.mediaUrl, height: 150, width: double.infinity, fit: BoxFit.cover),
+                        borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(12)),
+                        child: ad.mediaType == AdMediaType.video
+                            ? Container(
+                                height: 150,
+                                width: double.infinity,
+                                color: Colors.black87,
+                                child: const Icon(Icons.play_circle_fill,
+                                    color: Colors.white, size: 48))
+                            : CachedNetworkImage(
+                                imageUrl: ad.mediaUrl,
+                                height: 150,
+                                width: double.infinity,
+                                fit: BoxFit.cover),
                       ),
                     ListTile(
-                      title: Text(ad.title, style: const TextStyle(fontWeight: FontWeight.bold)),
-                      subtitle: Text('${ad.targetState == 'all' ? 'كل السودان' : ad.targetState} | الدور: ${ad.targetRole == 'all' ? 'الكل' : ad.targetRole}'),
+                      title: Text(ad.title,
+                          style: const TextStyle(fontWeight: FontWeight.bold)),
+                      subtitle: Text(
+                          '${ad.targetState == 'all' ? 'كل السودان' : ad.targetState} | الدور: ${ad.targetRole == 'all' ? 'الكل' : ad.targetRole}'),
                       trailing: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(color: ad.isValid ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-                        child: Text(ad.isValid ? 'نشط' : 'منتهي', style: TextStyle(color: ad.isValid ? Colors.green : Colors.red, fontWeight: FontWeight.bold, fontSize: 12)),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                            color: ad.isValid
+                                ? Colors.green.withValues(alpha: 0.1)
+                                : Colors.red.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8)),
+                        child: Text(ad.isValid ? 'نشط' : 'منتهي',
+                            style: TextStyle(
+                                color: ad.isValid ? Colors.green : Colors.red,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12)),
                       ),
                     ),
                     const Divider(height: 1),
                     OverflowBar(
                       children: [
-                        TextButton.icon(icon: const Icon(Icons.delete, color: Colors.red), label: const Text('حذف', style: TextStyle(color: Colors.red)), onPressed: () => FirebaseFirestore.instance.collection('ads').doc(ad.id).delete()),
+                        TextButton.icon(
+                            icon: const Icon(Icons.delete, color: Colors.red),
+                            label: const Text('حذف',
+                                style: TextStyle(color: Colors.red)),
+                            onPressed: () => FirebaseFirestore.instance
+                                .collection('ads')
+                                .doc(ad.id)
+                                .delete()),
                       ],
                     ),
                   ],
@@ -750,148 +918,227 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setState) {
-          List<String> localities = targetState == 'all' ? [] : SudanLocations.getLocalities(targetState);
-          
-          return Padding(
-            padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom, left: 24, right: 24, top: 24),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Text('إضافة إعلان جديد', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 16),
-                  TextField(controller: titleCtrl, decoration: const InputDecoration(labelText: 'عنوان الإعلان', border: OutlineInputBorder())),
-                  const SizedBox(height: 12),
-                  TextField(controller: descCtrl, decoration: const InputDecoration(labelText: 'الوصف', border: OutlineInputBorder())),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<AdPlacement>(
-                    value: selectedPlacement,
-                    decoration: const InputDecoration(labelText: 'موقع عرض الإعلان', border: OutlineInputBorder()),
-                    items: const [
-                      DropdownMenuItem(value: AdPlacement.homeBanner, child: Text('بانر الرئيسية (أعلى)')),
-                      DropdownMenuItem(value: AdPlacement.communityFeed, child: Text('في مجتمع المنشورات')),
-                      DropdownMenuItem(value: AdPlacement.featuredService, child: Text('خدمة مميزة')),
-                      DropdownMenuItem(value: AdPlacement.featuredShop, child: Text('متجر مميز')),
-                    ],
-                    onChanged: (val) => setState(() => selectedPlacement = val!),
-                  ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<AdMediaType>(
-                    value: selectedMediaType,
-                    decoration: const InputDecoration(labelText: 'نوع الميديا', border: OutlineInputBorder()),
-                    items: const [
-                      DropdownMenuItem(value: AdMediaType.image, child: Text('صورة')),
-                      DropdownMenuItem(value: AdMediaType.video, child: Text('فيديو (mp4)')),
-                    ],
-                    onChanged: (val) => setState(() { selectedMediaType = val!; selectedVideoFile = null; }),
-                  ),
-                  const SizedBox(height: 12),
-                  if (selectedMediaType == AdMediaType.video) ...[
-                    OutlinedButton.icon(
-                      icon: const Icon(Icons.upload_file),
-                      label: Text(selectedVideoFile != null ? 'تم اختيار الفيديو' : 'اختر فيديو (mp4)'),
-                      onPressed: isUploadingVideo ? null : () async {
-                        final result = await FilePicker.pickFiles(type: FileType.video, allowedExtensions: ['mp4']);
-                        if (result != null && result.files.isNotEmpty) {
-                          setState(() => selectedVideoFile = result.files.first);
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 12),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => StatefulBuilder(builder: (context, setState) {
+        List<String> localities = targetState == 'all'
+            ? []
+            : SudanLocations.getLocalities(targetState);
+
+        return Padding(
+          padding: EdgeInsets.only(
+              bottom: MediaQuery.of(ctx).viewInsets.bottom,
+              left: 24,
+              right: 24,
+              top: 24),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text('إضافة إعلان جديد',
+                    style:
+                        TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 16),
+                TextField(
+                    controller: titleCtrl,
+                    decoration: const InputDecoration(
+                        labelText: 'عنوان الإعلان',
+                        border: OutlineInputBorder())),
+                const SizedBox(height: 12),
+                TextField(
+                    controller: descCtrl,
+                    decoration: const InputDecoration(
+                        labelText: 'الوصف', border: OutlineInputBorder())),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<AdPlacement>(
+                  initialValue: selectedPlacement,
+                  decoration: const InputDecoration(
+                      labelText: 'موقع عرض الإعلان',
+                      border: OutlineInputBorder()),
+                  items: const [
+                    DropdownMenuItem(
+                        value: AdPlacement.homeBanner,
+                        child: Text('بانر الرئيسية (أعلى)')),
+                    DropdownMenuItem(
+                        value: AdPlacement.communityFeed,
+                        child: Text('في مجتمع المنشورات')),
+                    DropdownMenuItem(
+                        value: AdPlacement.featuredService,
+                        child: Text('خدمة مميزة')),
+                    DropdownMenuItem(
+                        value: AdPlacement.featuredShop,
+                        child: Text('متجر مميز')),
                   ],
-                  TextField(controller: mediaUrlCtrl, decoration: const InputDecoration(labelText: 'أو ضع رابط مباشر للميديا (URL)', border: OutlineInputBorder())),
-                  const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Divider()),
-                  const Text('الاستهداف', style: TextStyle(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  DropdownButtonFormField<String>(
-                    value: targetRole,
-                    decoration: const InputDecoration(labelText: 'الجمهور المستهدف', border: OutlineInputBorder()),
-                    items: const [
-                      DropdownMenuItem(value: 'all', child: Text('جميع المستخدمين')),
-                      DropdownMenuItem(value: 'freelancer', child: Text('الحرفيين والفنيين فقط')),
-                      DropdownMenuItem(value: 'shop', child: Text('المتاجر فقط')),
-                      DropdownMenuItem(value: 'client', child: Text('العملاء فقط')),
-                    ],
-                    onChanged: (v) => setState(() => targetRole = v!),
+                  onChanged: (val) => setState(() => selectedPlacement = val!),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<AdMediaType>(
+                  initialValue: selectedMediaType,
+                  decoration: const InputDecoration(
+                      labelText: 'نوع الميديا', border: OutlineInputBorder()),
+                  items: const [
+                    DropdownMenuItem(
+                        value: AdMediaType.image, child: Text('صورة')),
+                    DropdownMenuItem(
+                        value: AdMediaType.video, child: Text('فيديو (mp4)')),
+                  ],
+                  onChanged: (val) => setState(() {
+                    selectedMediaType = val!;
+                    selectedVideoFile = null;
+                  }),
+                ),
+                const SizedBox(height: 12),
+                if (selectedMediaType == AdMediaType.video) ...[
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.upload_file),
+                    label: Text(selectedVideoFile != null
+                        ? 'تم اختيار الفيديو'
+                        : 'اختر فيديو (mp4)'),
+                    onPressed: isUploadingVideo
+                        ? null
+                        : () async {
+                            final result = await FilePicker.pickFiles(
+                                type: FileType.video,
+                                allowedExtensions: ['mp4']);
+                            if (result != null && result.files.isNotEmpty) {
+                              setState(
+                                  () => selectedVideoFile = result.files.first);
+                            }
+                          },
                   ),
                   const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    value: targetState,
-                    decoration: const InputDecoration(labelText: 'الولاية', border: OutlineInputBorder()),
-                    items: [
-                      const DropdownMenuItem(value: 'all', child: Text('كل السودان')),
-                      ...SudanLocations.states.map((s) => DropdownMenuItem(value: s, child: Text(s))),
-                    ],
-                    onChanged: (v) => setState(() { targetState = v!; targetLocality = 'all'; }),
-                  ),
-                  const SizedBox(height: 12),
-                  if (targetState != 'all' && localities.isNotEmpty)
-                    DropdownButtonFormField<String>(
-                      value: targetLocality,
-                      decoration: const InputDecoration(labelText: 'المحلية', border: OutlineInputBorder()),
-                      items: [
-                        const DropdownMenuItem(value: 'all', child: Text('كل المحليات')),
-                        ...localities.map((l) => DropdownMenuItem(value: l, child: Text(l))),
-                      ],
-                      onChanged: (v) => setState(() => targetLocality = v!),
-                    ),
-                  const SizedBox(height: 24),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 16)),
-                    onPressed: isUploadingVideo ? null : () async {
-                      if (titleCtrl.text.isEmpty) return;
-                      final nav = Navigator.of(ctx);
-                      String finalMediaUrl = mediaUrlCtrl.text.trim();
-
-                      if (selectedMediaType == AdMediaType.video && selectedVideoFile != null) {
-                        setState(() => isUploadingVideo = true);
-                        try {
-                          final storagePath = 'ads/videos/${DateTime.now().millisecondsSinceEpoch}_${selectedVideoFile!.name}';
-                          final ref = FirebaseStorage.instance.ref().child(storagePath);
-                          UploadTask uploadTask;
-                          if (selectedVideoFile!.path != null) {
-                            uploadTask = ref.putFile(File(selectedVideoFile!.path!));
-                          } else {
-                            uploadTask = ref.putData(selectedVideoFile!.bytes!);
-                          }
-                          final snapshot = await uploadTask;
-                          finalMediaUrl = await snapshot.ref.getDownloadURL();
-                        } catch (e) {
-                          if (mounted) setState(() => isUploadingVideo = false);
-                          return;
-                        }
-                      }
-
-                      await FirebaseFirestore.instance.collection('ads').add({
-                        'title': titleCtrl.text,
-                        'description': descCtrl.text,
-                        'mediaUrl': finalMediaUrl,
-                        'mediaType': selectedMediaType.name,
-                        'placement': selectedPlacement.name,
-                        'targetRole': targetRole,
-                        'targetState': targetState,
-                        'targetLocality': targetLocality,
-                        'targetRegion': targetState, // For backward compatibility
-                        'targetProfession': targetRole, // For backward compatibility
-                        'expiryDate': Timestamp.fromDate(DateTime.now().add(const Duration(days: 7))),
-                        'createdAt': FieldValue.serverTimestamp(),
-                        'isActive': true,
-                      });
-                      if (mounted) nav.pop();
-                    },
-                    child: isUploadingVideo ? const CircularProgressIndicator(color: Colors.white) : const Text('نشر الإعلان'),
-                  ),
-                  const SizedBox(height: 24),
                 ],
-              ),
+                TextField(
+                    controller: mediaUrlCtrl,
+                    decoration: const InputDecoration(
+                        labelText: 'أو ضع رابط مباشر للميديا (URL)',
+                        border: OutlineInputBorder())),
+                const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    child: Divider()),
+                const Text('الاستهداف',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  initialValue: targetRole,
+                  decoration: const InputDecoration(
+                      labelText: 'الجمهور المستهدف',
+                      border: OutlineInputBorder()),
+                  items: const [
+                    DropdownMenuItem(
+                        value: 'all', child: Text('جميع المستخدمين')),
+                    DropdownMenuItem(
+                        value: 'freelancer',
+                        child: Text('الحرفيين والفنيين فقط')),
+                    DropdownMenuItem(value: 'shop', child: Text('المتاجر فقط')),
+                    DropdownMenuItem(
+                        value: 'client', child: Text('العملاء فقط')),
+                  ],
+                  onChanged: (v) => setState(() => targetRole = v!),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: targetState,
+                  decoration: const InputDecoration(
+                      labelText: 'الولاية', border: OutlineInputBorder()),
+                  items: [
+                    const DropdownMenuItem(
+                        value: 'all', child: Text('كل السودان')),
+                    ...SudanLocations.states
+                        .map((s) => DropdownMenuItem(value: s, child: Text(s))),
+                  ],
+                  onChanged: (v) => setState(() {
+                    targetState = v!;
+                    targetLocality = 'all';
+                  }),
+                ),
+                const SizedBox(height: 12),
+                if (targetState != 'all' && localities.isNotEmpty)
+                  DropdownButtonFormField<String>(
+                    initialValue: targetLocality,
+                    decoration: const InputDecoration(
+                        labelText: 'المحلية', border: OutlineInputBorder()),
+                    items: [
+                      const DropdownMenuItem(
+                          value: 'all', child: Text('كل المحليات')),
+                      ...localities.map(
+                          (l) => DropdownMenuItem(value: l, child: Text(l))),
+                    ],
+                    onChanged: (v) => setState(() => targetLocality = v!),
+                  ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16)),
+                  onPressed: isUploadingVideo
+                      ? null
+                      : () async {
+                          if (titleCtrl.text.isEmpty) return;
+                          final nav = Navigator.of(ctx);
+                          String finalMediaUrl = mediaUrlCtrl.text.trim();
+
+                          if (selectedMediaType == AdMediaType.video &&
+                              selectedVideoFile != null) {
+                            setState(() => isUploadingVideo = true);
+                            try {
+                              final storagePath =
+                                  'ads/videos/${DateTime.now().millisecondsSinceEpoch}_${selectedVideoFile!.name}';
+                              final ref = FirebaseStorage.instance
+                                  .ref()
+                                  .child(storagePath);
+                              UploadTask uploadTask;
+                              if (selectedVideoFile!.path != null) {
+                                uploadTask =
+                                    ref.putFile(File(selectedVideoFile!.path!));
+                              } else {
+                                uploadTask =
+                                    ref.putData(selectedVideoFile!.bytes!);
+                              }
+                              final snapshot = await uploadTask;
+                              finalMediaUrl =
+                                  await snapshot.ref.getDownloadURL();
+                            } catch (e) {
+                              if (mounted)
+                                setState(() => isUploadingVideo = false);
+                              return;
+                            }
+                          }
+
+                          await FirebaseFirestore.instance
+                              .collection('ads')
+                              .add({
+                            'title': titleCtrl.text,
+                            'description': descCtrl.text,
+                            'mediaUrl': finalMediaUrl,
+                            'mediaType': selectedMediaType.name,
+                            'placement': selectedPlacement.name,
+                            'targetRole': targetRole,
+                            'targetState': targetState,
+                            'targetLocality': targetLocality,
+                            'targetRegion':
+                                targetState, // For backward compatibility
+                            'targetProfession':
+                                targetRole, // For backward compatibility
+                            'expiryDate': Timestamp.fromDate(
+                                DateTime.now().add(const Duration(days: 7))),
+                            'createdAt': FieldValue.serverTimestamp(),
+                            'isActive': true,
+                          });
+                          if (mounted) nav.pop();
+                        },
+                  child: isUploadingVideo
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text('نشر الإعلان'),
+                ),
+                const SizedBox(height: 24),
+              ],
             ),
-          );
-        }
-      ),
+          ),
+        );
+      }),
     );
   }
 
@@ -900,12 +1147,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   // ==========================================
   Widget _buildVerificationQueue() {
     return StreamBuilder<List<UserModel>>(
-      stream: FirebaseFirestore.instance.collection('users').where('verificationStatus', isEqualTo: 'pending').snapshots()
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .where('verificationStatus', isEqualTo: 'pending')
+          .snapshots()
           .map((s) => s.docs.map((d) => UserModel.fromFirestore(d)).toList()),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) return const LoadingIndicator();
+        if (snapshot.connectionState == ConnectionState.waiting)
+          return const LoadingIndicator();
         final users = snapshot.data ?? [];
-        if (users.isEmpty) return _buildEmptyState(Icons.verified_user_outlined, 'لا توجد طلبات توثيق معلقة');
+        if (users.isEmpty)
+          return _buildEmptyState(
+              Icons.verified_user_outlined, 'لا توجد طلبات توثيق معلقة');
 
         return ListView.builder(
           padding: const EdgeInsets.all(12),
@@ -915,12 +1168,19 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             return Card(
               margin: const EdgeInsets.only(bottom: 12),
               child: ListTile(
-                leading: CircleAvatar(backgroundImage: user.profileImageUrl != null ? CachedNetworkImageProvider(user.profileImageUrl!) : null),
-                title: Text(user.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: Text('${user.phoneNumber ?? ''}\\n${user.jobTitle ?? ''}'),
+                leading: CircleAvatar(
+                    backgroundImage: user.profileImageUrl != null
+                        ? CachedNetworkImageProvider(user.profileImageUrl!)
+                        : null),
+                title: Text(user.name,
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
+                subtitle:
+                    Text('${user.phoneNumber ?? ''}\\n${user.jobTitle ?? ''}'),
                 isThreeLine: true,
                 trailing: ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
+                  style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white),
                   onPressed: () => _showReviewDialog(context, user),
                   child: const Text('مراجعة'),
                 ),
@@ -941,19 +1201,24 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (user.idCardUrl != null)
-              CachedNetworkImage(imageUrl: user.idCardUrl!, height: 200, fit: BoxFit.cover)
+              CachedNetworkImage(
+                  imageUrl: user.idCardUrl!, height: 200, fit: BoxFit.cover)
             else
-              const Text('لم يتم رفع هوية', style: TextStyle(color: Colors.red)),
+              const Text('لم يتم رفع هوية',
+                  style: TextStyle(color: Colors.red)),
           ],
         ),
         actions: [
           TextButton(
-            onPressed: () => _updateVerification(user.id, VerificationStatus.rejected, ctx),
+            onPressed: () =>
+                _updateVerification(user.id, VerificationStatus.rejected, ctx),
             child: const Text('رفض', style: TextStyle(color: Colors.red)),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
-            onPressed: () => _updateVerification(user.id, VerificationStatus.verified, ctx),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green, foregroundColor: Colors.white),
+            onPressed: () =>
+                _updateVerification(user.id, VerificationStatus.verified, ctx),
             child: const Text('توثيق الحساب'),
           ),
         ],
@@ -961,7 +1226,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  Future<void> _updateVerification(String userId, VerificationStatus status, BuildContext ctx) async {
+  Future<void> _updateVerification(
+      String userId, VerificationStatus status, BuildContext ctx) async {
     await FirebaseFirestore.instance.collection('users').doc(userId).update({
       'verificationStatus': status.name,
       'isVerified': status == VerificationStatus.verified,
@@ -975,11 +1241,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   // ==========================================
   Widget _buildContractsLog() {
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance.collectionGroup('messages').where('type', isEqualTo: 'contract').orderBy('createdAt', descending: true).snapshots(),
+      stream: FirebaseFirestore.instance
+          .collectionGroup('messages')
+          .where('type', isEqualTo: 'contract')
+          .orderBy('createdAt', descending: true)
+          .snapshots(),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) return const LoadingIndicator();
+        if (snapshot.connectionState == ConnectionState.waiting)
+          return const LoadingIndicator();
         final contracts = snapshot.data?.docs ?? [];
-        if (contracts.isEmpty) return _buildEmptyState(Icons.handshake_outlined, 'لا توجد عقود مسجلة');
+        if (contracts.isEmpty)
+          return _buildEmptyState(
+              Icons.handshake_outlined, 'لا توجد عقود مسجلة');
 
         return ListView.builder(
           padding: const EdgeInsets.all(12),
@@ -987,15 +1260,22 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           itemBuilder: (context, index) {
             final data = contracts[index].data() as Map<String, dynamic>;
             final status = data['contractStatus'] ?? 'pending';
-            Color color = status == 'accepted' ? Colors.green : (status == 'rejected' ? Colors.red : Colors.orange);
-            
+            Color color = status == 'accepted'
+                ? Colors.green
+                : (status == 'rejected' ? Colors.red : Colors.orange);
+
             return Card(
               margin: const EdgeInsets.only(bottom: 12),
               child: ListTile(
-                leading: CircleAvatar(backgroundColor: color.withOpacity(0.2), child: Icon(Icons.handshake, color: color)),
-                title: Text(data['senderName'] ?? 'عقد عمل', style: const TextStyle(fontWeight: FontWeight.bold)),
+                leading: CircleAvatar(
+                    backgroundColor: color.withValues(alpha: 0.2),
+                    child: Icon(Icons.handshake, color: color)),
+                title: Text(data['senderName'] ?? 'عقد عمل',
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
                 subtitle: Text('السعر: ${data['contractPrice']} SDG'),
-                trailing: Text(status, style: TextStyle(color: color, fontWeight: FontWeight.bold)),
+                trailing: Text(status,
+                    style:
+                        TextStyle(color: color, fontWeight: FontWeight.bold)),
               ),
             );
           },
@@ -1009,11 +1289,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   // ==========================================
   Widget _buildDeletionQueue() {
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance.collection('deletion_requests').where('status', isEqualTo: 'pending').snapshots(),
+      stream: FirebaseFirestore.instance
+          .collection('deletion_requests')
+          .where('status', isEqualTo: 'pending')
+          .snapshots(),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) return const LoadingIndicator();
+        if (snapshot.connectionState == ConnectionState.waiting)
+          return const LoadingIndicator();
         final requests = snapshot.data?.docs ?? [];
-        if (requests.isEmpty) return _buildEmptyState(Icons.person_remove_outlined, 'لا توجد طلبات حذف');
+        if (requests.isEmpty)
+          return _buildEmptyState(
+              Icons.person_remove_outlined, 'لا توجد طلبات حذف');
 
         return ListView.builder(
           padding: const EdgeInsets.all(12),
@@ -1021,16 +1307,20 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           itemBuilder: (context, index) {
             final req = requests[index];
             final data = req.data() as Map<String, dynamic>;
-            
+
             return Card(
               margin: const EdgeInsets.only(bottom: 12),
               child: ListTile(
                 leading: const Icon(Icons.warning, color: Colors.red, size: 32),
-                title: Text(data['name'] ?? 'مستخدم', style: const TextStyle(fontWeight: FontWeight.bold)),
+                title: Text(data['name'] ?? 'مستخدم',
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
                 subtitle: Text('السبب: ${data['reason']}'),
                 trailing: ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
-                  onPressed: () => _deleteUserAccount(req.id, data['userId'], data['name']),
+                  style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      foregroundColor: Colors.white),
+                  onPressed: () =>
+                      _deleteUserAccount(req.id, data['userId'], data['name']),
                   child: const Text('حذف نهائي'),
                 ),
               ),
@@ -1041,7 +1331,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  Future<void> _deleteUserAccount(String reqId, String userId, String name) async {
+  Future<void> _deleteUserAccount(
+      String reqId, String userId, String name) async {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -1050,42 +1341,64 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           'سيتم حذف:\n• بيانات الحساب\n• جميع المنشورات\n• التقييمات والبلاغات\n• الإشعارات\n• طلب الحذف\n\nلا يمكن التراجع عن هذه العملية.',
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red, foregroundColor: Colors.white),
             onPressed: () async {
               Navigator.pop(ctx);
               // نعرض مؤشر تحميل
               if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('جاري حذف الحساب...'), duration: Duration(seconds: 60)),
+                const SnackBar(
+                    content: Text('جاري حذف الحساب...'),
+                    duration: Duration(seconds: 60)),
               );
               try {
                 final db = FirebaseFirestore.instance;
                 // نحذف دفعات باستخدام WriteBatch لضمان الاتساق
                 // ─── 1. حذف المنشورات ───
-                final posts = await db.collection('posts').where('userId', isEqualTo: userId).get();
+                final posts = await db
+                    .collection('posts')
+                    .where('userId', isEqualTo: userId)
+                    .get();
                 for (final post in posts.docs) {
                   await post.reference.delete();
                 }
                 // ─── 2. حذف التقييمات (كمُقيِّم أو مُقيَّم) ───
-                final reviewsBy = await db.collection('reviews').where('reviewerId', isEqualTo: userId).get();
-                final reviewsFor = await db.collection('reviews').where('freelancerId', isEqualTo: userId).get();
+                final reviewsBy = await db
+                    .collection('reviews')
+                    .where('reviewerId', isEqualTo: userId)
+                    .get();
+                final reviewsFor = await db
+                    .collection('reviews')
+                    .where('freelancerId', isEqualTo: userId)
+                    .get();
                 for (final r in [...reviewsBy.docs, ...reviewsFor.docs]) {
                   await r.reference.delete();
                 }
                 // ─── 3. حذف الإشعارات ───
-                final notifs = await db.collection('notifications').where('userId', isEqualTo: userId).get();
+                final notifs = await db
+                    .collection('notifications')
+                    .where('userId', isEqualTo: userId)
+                    .get();
                 for (final n in notifs.docs) {
                   await n.reference.delete();
                 }
                 // ─── 4. حذف البلاغات المقدمة من المستخدم ───
-                final reports = await db.collection('reports').where('reporterId', isEqualTo: userId).get();
+                final reports = await db
+                    .collection('reports')
+                    .where('reporterId', isEqualTo: userId)
+                    .get();
                 for (final r in reports.docs) {
                   await r.reference.delete();
                 }
                 // ─── 5. حذف العروض (Proposals) ───
-                final proposals = await db.collection('proposals').where('freelancerId', isEqualTo: userId).get();
+                final proposals = await db
+                    .collection('proposals')
+                    .where('freelancerId', isEqualTo: userId)
+                    .get();
                 for (final p in proposals.docs) {
                   await p.reference.delete();
                 }
@@ -1128,7 +1441,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   Widget _buildEmptyState(IconData icon, String msg) {
-    return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(icon, size: 64, color: Colors.grey), const SizedBox(height: 16), Text(msg, style: const TextStyle(color: Colors.grey, fontSize: 16))]));
+    return Center(
+        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+      Icon(icon, size: 64, color: Colors.grey),
+      const SizedBox(height: 16),
+      Text(msg, style: const TextStyle(color: Colors.grey, fontSize: 16))
+    ]));
   }
 
   // ==========================================
@@ -1136,107 +1454,163 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   // ==========================================
   Widget _buildAppSettings() {
     return StreamBuilder<DocumentSnapshot>(
-      stream: FirebaseFirestore.instance.collection('settings').doc('app_settings').snapshots(),
+      stream: FirebaseFirestore.instance
+          .collection('settings')
+          .doc('app_settings')
+          .snapshots(),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) return const LoadingIndicator();
-        
+        if (snapshot.connectionState == ConnectionState.waiting)
+          return const LoadingIndicator();
+
         final data = snapshot.data?.data() as Map<String, dynamic>? ?? {};
-        final whatsappCtrl = TextEditingController(text: data['whatsapp'] ?? 'https://wa.me/249900578357');
-        final facebookCtrl = TextEditingController(text: data['facebook'] ?? 'https://www.facebook.com/share/18J8UXiEDe/');
-        final telegramCtrl = TextEditingController(text: data['telegram'] ?? 'https://t.me/JamalJhome');
-        final websiteCtrl = TextEditingController(text: data['website'] ?? 'https://sudanfree.com/sudan-free.html/');
-        final shareTextArCtrl = TextEditingController(text: data['share_text_ar'] ?? 'جرب تطبيق سودان فري للعثور على فرص عمل ومستقلين موثوقين! حمل التطبيق الآن: https://sudanfree.com/sudan-free.html');
-        final shareTextEnCtrl = TextEditingController(text: data['share_text_en'] ?? 'Try SudanFree to find jobs and trusted freelancers! Download now: https://sudanfree.com/sudan-free.html');
+        final whatsappCtrl = TextEditingController(
+            text: data['whatsapp'] ?? 'https://wa.me/249900578357');
+        final facebookCtrl = TextEditingController(
+            text: data['facebook'] ??
+                'https://www.facebook.com/share/18J8UXiEDe/');
+        final telegramCtrl = TextEditingController(
+            text: data['telegram'] ?? 'https://t.me/JamalJhome');
+        final websiteCtrl = TextEditingController(
+            text: data['website'] ?? 'https://sudanfree.com/sudan-free.html/');
+        final shareTextArCtrl = TextEditingController(
+            text: data['share_text_ar'] ??
+                'جرب تطبيق سودان فري للعثور على فرص عمل ومستقلين موثوقين! حمل التطبيق الآن: https://sudanfree.com/sudan-free.html');
+        final shareTextEnCtrl = TextEditingController(
+            text: data['share_text_en'] ??
+                'Try SudanFree to find jobs and trusted freelancers! Download now: https://sudanfree.com/sudan-free.html');
 
         bool isSaving = false;
 
-        return StatefulBuilder(
-          builder: (context, setSettingsState) {
-            return SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Card(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('روابط التواصل والمشاركة', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 20),
-                      TextField(
-                        controller: whatsappCtrl,
-                        decoration: const InputDecoration(labelText: 'رابط واتساب', border: OutlineInputBorder(), prefixIcon: Icon(Icons.chat, color: Colors.green)),
+        return StatefulBuilder(builder: (context, setSettingsState) {
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Card(
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('روابط التواصل والمشاركة',
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 20),
+                    TextField(
+                      controller: whatsappCtrl,
+                      decoration: const InputDecoration(
+                          labelText: 'رابط واتساب',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.chat, color: Colors.green)),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: facebookCtrl,
+                      decoration: const InputDecoration(
+                          labelText: 'رابط فيسبوك',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.facebook, color: Colors.blue)),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: telegramCtrl,
+                      decoration: const InputDecoration(
+                          labelText: 'رابط تلجرام',
+                          border: OutlineInputBorder(),
+                          prefixIcon:
+                              Icon(Icons.send, color: Colors.blueAccent)),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: websiteCtrl,
+                      decoration: const InputDecoration(
+                          labelText: 'الموقع الإلكتروني',
+                          border: OutlineInputBorder(),
+                          prefixIcon:
+                              Icon(Icons.language, color: Colors.purple)),
+                    ),
+                    const SizedBox(height: 24),
+                    const Text('نص المشاركة (دعوة الأصدقاء)',
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: shareTextArCtrl,
+                      maxLines: 3,
+                      decoration: const InputDecoration(
+                          labelText: 'النص العربي',
+                          border: OutlineInputBorder()),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: shareTextEnCtrl,
+                      maxLines: 3,
+                      decoration: const InputDecoration(
+                          labelText: 'النص الإنجليزي',
+                          border: OutlineInputBorder()),
+                    ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton.icon(
+                        icon: isSaving
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                    color: Colors.white, strokeWidth: 2))
+                            : const Icon(Icons.save),
+                        label: Text(
+                            isSaving ? 'جاري الحفظ...' : 'حفظ الإعدادات',
+                            style: const TextStyle(fontSize: 16)),
+                        style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white),
+                        onPressed: isSaving
+                            ? null
+                            : () async {
+                                setSettingsState(() => isSaving = true);
+                                try {
+                                  await FirebaseFirestore.instance
+                                      .collection('settings')
+                                      .doc('app_settings')
+                                      .set({
+                                    'whatsapp': whatsappCtrl.text,
+                                    'facebook': facebookCtrl.text,
+                                    'telegram': telegramCtrl.text,
+                                    'website': websiteCtrl.text,
+                                    'share_text_ar': shareTextArCtrl.text,
+                                    'share_text_en': shareTextEnCtrl.text,
+                                    'updatedAt': FieldValue.serverTimestamp(),
+                                  }, SetOptions(merge: true));
+
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                            content: Text('تم الحفظ بنجاح'),
+                                            backgroundColor: Colors.green));
+                                  }
+                                } catch (e) {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                            content: Text('حدث خطأ: $e'),
+                                            backgroundColor: Colors.red));
+                                  }
+                                } finally {
+                                  if (context.mounted)
+                                    setSettingsState(() => isSaving = false);
+                                }
+                              },
                       ),
-                      const SizedBox(height: 16),
-                      TextField(
-                        controller: facebookCtrl,
-                        decoration: const InputDecoration(labelText: 'رابط فيسبوك', border: OutlineInputBorder(), prefixIcon: Icon(Icons.facebook, color: Colors.blue)),
-                      ),
-                      const SizedBox(height: 16),
-                      TextField(
-                        controller: telegramCtrl,
-                        decoration: const InputDecoration(labelText: 'رابط تلجرام', border: OutlineInputBorder(), prefixIcon: Icon(Icons.send, color: Colors.blueAccent)),
-                      ),
-                      const SizedBox(height: 16),
-                      TextField(
-                        controller: websiteCtrl,
-                        decoration: const InputDecoration(labelText: 'الموقع الإلكتروني', border: OutlineInputBorder(), prefixIcon: Icon(Icons.language, color: Colors.purple)),
-                      ),
-                      const SizedBox(height: 24),
-                      const Text('نص المشاركة (دعوة الأصدقاء)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: shareTextArCtrl,
-                        maxLines: 3,
-                        decoration: const InputDecoration(labelText: 'النص العربي', border: OutlineInputBorder()),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: shareTextEnCtrl,
-                        maxLines: 3,
-                        decoration: const InputDecoration(labelText: 'النص الإنجليزي', border: OutlineInputBorder()),
-                      ),
-                      const SizedBox(height: 24),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 50,
-                        child: ElevatedButton.icon(
-                          icon: isSaving ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Icon(Icons.save),
-                          label: Text(isSaving ? 'جاري الحفظ...' : 'حفظ الإعدادات', style: const TextStyle(fontSize: 16)),
-                          style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
-                          onPressed: isSaving ? null : () async {
-                            setSettingsState(() => isSaving = true);
-                            try {
-                              await FirebaseFirestore.instance.collection('settings').doc('app_settings').set({
-                                'whatsapp': whatsappCtrl.text,
-                                'facebook': facebookCtrl.text,
-                                'telegram': telegramCtrl.text,
-                                'website': websiteCtrl.text,
-                                'share_text_ar': shareTextArCtrl.text,
-                                'share_text_en': shareTextEnCtrl.text,
-                                'updatedAt': FieldValue.serverTimestamp(),
-                              }, SetOptions(merge: true));
-                              
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم الحفظ بنجاح'), backgroundColor: Colors.green));
-                              }
-                            } catch (e) {
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('حدث خطأ: $e'), backgroundColor: Colors.red));
-                              }
-                            } finally {
-                              if (context.mounted) setSettingsState(() => isSaving = false);
-                            }
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
-            );
-          }
-        );
+            ),
+          );
+        });
       },
     );
   }

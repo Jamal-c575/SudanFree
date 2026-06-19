@@ -6,7 +6,8 @@ class PaymentFirestoreService {
 
   // Create payment
   Future<String> createPayment(PaymentModel payment) async {
-    final docRef = await _firestore.collection('payments').add(payment.toFirestore());
+    final docRef =
+        await _firestore.collection('payments').add(payment.toFirestore());
     return docRef.id;
   }
 
@@ -26,22 +27,28 @@ class PaymentFirestoreService {
         .where('jobId', isEqualTo: jobId)
         .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs.map((doc) => PaymentModel.fromFirestore(doc)).toList());
+        .map((snapshot) => snapshot.docs
+            .map((doc) => PaymentModel.fromFirestore(doc))
+            .toList());
   }
 
   // Stream user payments
-  Stream<List<PaymentModel>> getUserPayments(String userId, {bool isClient = true}) {
+  Stream<List<PaymentModel>> getUserPayments(String userId,
+      {bool isClient = true}) {
     final field = isClient ? 'clientId' : 'freelancerId';
     return _firestore
         .collection('payments')
         .where(field, isEqualTo: userId)
         .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs.map((doc) => PaymentModel.fromFirestore(doc)).toList());
+        .map((snapshot) => snapshot.docs
+            .map((doc) => PaymentModel.fromFirestore(doc))
+            .toList());
   }
 
   // Update payment status
-  Future<void> updatePaymentStatus(String paymentId, PaymentStatus status) async {
+  Future<void> updatePaymentStatus(
+      String paymentId, PaymentStatus status) async {
     await _firestore.collection('payments').doc(paymentId).update({
       'status': status.name,
       'updatedAt': FieldValue.serverTimestamp(),

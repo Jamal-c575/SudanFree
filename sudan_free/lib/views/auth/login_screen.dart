@@ -98,7 +98,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 labelText: locale == 'ar' ? 'البريد الإلكتروني' : 'Email',
                 hintText: 'example@email.com',
                 prefixIcon: const Icon(Icons.email_outlined),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
           ],
@@ -114,7 +115,8 @@ class _LoginScreenState extends State<LoginScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
             ),
             onPressed: () async {
               final email = emailCtrl.text.trim();
@@ -133,7 +135,8 @@ class _LoginScreenState extends State<LoginScreen> {
                               : 'Reset link sent to your email ✉️')
                           : (authProvider.errorMessage ?? 'Failed'),
                     ),
-                    backgroundColor: success ? AppColors.success : AppColors.error,
+                    backgroundColor:
+                        success ? AppColors.success : AppColors.error,
                   ),
                 );
               }
@@ -150,7 +153,8 @@ class _LoginScreenState extends State<LoginScreen> {
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
         icon: const Icon(Icons.block, color: Colors.red, size: 48),
-        title: const Text('تم إيقاف حسابك', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('تم إيقاف حسابك',
+            style: TextStyle(fontWeight: FontWeight.bold)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -163,7 +167,8 @@ class _LoginScreenState extends State<LoginScreen> {
             Text(
               reason.isEmpty ? 'مخالفة الشروط والأحكام' : reason,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.red),
+              style: const TextStyle(
+                  fontSize: 15, fontWeight: FontWeight.bold, color: Colors.red),
             ),
             const SizedBox(height: 16),
             Container(
@@ -197,8 +202,12 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             onPressed: () async {
               try {
-                final doc = await FirebaseFirestore.instance.collection('settings').doc('app_settings').get();
-                final whatsapp = doc.data()?['whatsapp'] ?? 'https://wa.me/249900578357';
+                final doc = await FirebaseFirestore.instance
+                    .collection('settings')
+                    .doc('app_settings')
+                    .get();
+                final whatsapp =
+                    doc.data()?['whatsapp'] ?? 'https://wa.me/249900578357';
                 final url = Uri.parse(whatsapp);
                 if (await canLaunchUrl(url)) {
                   await launchUrl(url, mode: LaunchMode.externalApplication);
@@ -226,13 +235,16 @@ class _LoginScreenState extends State<LoginScreen> {
     final isLoading = authProvider.status == AuthStatus.loading;
 
     // Check if user was kicked out in real-time
-    if (authProvider.status == AuthStatus.error && authProvider.errorMessage != null) {
+    if (authProvider.status == AuthStatus.error &&
+        authProvider.errorMessage != null) {
       final err = authProvider.errorMessage!;
       if (err.startsWith('BANNED:') || err.startsWith('DEVICE_BANNED:')) {
         if (!_isBanDialogShowing) {
           _isBanDialogShowing = true;
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            _showBanDialog(err.replaceFirst('BANNED:', '').replaceFirst('DEVICE_BANNED:', ''));
+            _showBanDialog(err
+                .replaceFirst('BANNED:', '')
+                .replaceFirst('DEVICE_BANNED:', ''));
           });
         }
       }
@@ -249,9 +261,12 @@ class _LoginScreenState extends State<LoginScreen> {
               children: [
                 // Language Toggle (Top Right)
                 Align(
-                  alignment: locale == 'ar' ? Alignment.centerLeft : Alignment.centerRight,
+                  alignment: locale == 'ar'
+                      ? Alignment.centerLeft
+                      : Alignment.centerRight,
                   child: TextButton.icon(
-                    onPressed: () => context.read<LocaleProvider>().toggleLocale(),
+                    onPressed: () =>
+                        context.read<LocaleProvider>().toggleLocale(),
                     icon: const Icon(Icons.language, size: 20),
                     label: Text(locale == 'ar' ? 'English' : 'العربية'),
                     style: TextButton.styleFrom(
@@ -261,7 +276,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
 
                 const SizedBox(height: 24),
-                
+
                 // Logo and Title
                 Center(
                   child: Column(
@@ -278,32 +293,33 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(height: 24),
                       Text(
                         l10n.appName,
-                        style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primary,
-                        ),
+                        style:
+                            Theme.of(context).textTheme.displaySmall?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.primary,
+                                ),
                       ),
                       const SizedBox(height: 8),
                       Text(
                         l10n.platformSubtitle,
                         style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
+                              color: AppColors.textSecondary,
+                            ),
                       ),
                     ],
                   ),
                 ),
-                
+
                 const SizedBox(height: 48),
-                
+
                 // Login Form
                 Text(
                   l10n.login,
                   style: Theme.of(context).textTheme.headlineMedium,
                 ),
-                
+
                 const SizedBox(height: 24),
-                
+
                 // Email Field
                 CustomTextField(
                   label: l10n.email,
@@ -313,17 +329,22 @@ class _LoginScreenState extends State<LoginScreen> {
                   prefixIcon: Icons.email_outlined,
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return locale == 'ar' ? 'البريد الإلكتروني مطلوب' : 'Email is required';
+                      return locale == 'ar'
+                          ? 'البريد الإلكتروني مطلوب'
+                          : 'Email is required';
                     }
-                    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                      return locale == 'ar' ? 'بريد إلكتروني غير صالح' : 'Invalid email';
+                    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
+                        .hasMatch(value)) {
+                      return locale == 'ar'
+                          ? 'بريد إلكتروني غير صالح'
+                          : 'Invalid email';
                     }
                     return null;
                   },
                 ),
-                
+
                 const SizedBox(height: 16),
-                
+
                 // Password Field
                 PasswordTextField(
                   label: l10n.password,
@@ -331,37 +352,43 @@ class _LoginScreenState extends State<LoginScreen> {
                   controller: _passwordController,
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return locale == 'ar' ? 'كلمة المرور مطلوبة' : 'Password is required';
+                      return locale == 'ar'
+                          ? 'كلمة المرور مطلوبة'
+                          : 'Password is required';
                     }
                     if (value.length < 6) {
-                      return locale == 'ar' ? 'كلمة المرور قصيرة جداً' : 'Password too short';
+                      return locale == 'ar'
+                          ? 'كلمة المرور قصيرة جداً'
+                          : 'Password too short';
                     }
                     return null;
                   },
                 ),
-                
+
                 const SizedBox(height: 8),
-                
+
                 // Forgot Password
                 Align(
-                  alignment: locale == 'ar' ? Alignment.centerLeft : Alignment.centerRight,
+                  alignment: locale == 'ar'
+                      ? Alignment.centerLeft
+                      : Alignment.centerRight,
                   child: TextButton(
                     onPressed: () => _showForgotPasswordDialog(locale),
                     child: Text(l10n.forgotPassword),
                   ),
                 ),
-                
+
                 const SizedBox(height: 24),
-                
+
                 // Login Button
                 GradientButton(
                   text: l10n.login,
                   isLoading: isLoading,
                   onPressed: _handleLogin,
                 ),
-                
+
                 const SizedBox(height: 24),
-                
+
                 // Divider
                 Row(
                   children: [
@@ -371,16 +398,16 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: Text(
                         'أو',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
+                              color: AppColors.textSecondary,
+                            ),
                       ),
                     ),
                     const Expanded(child: Divider()),
                   ],
                 ),
-                
+
                 const SizedBox(height: 24),
-                
+
                 // Google Login Button
                 _GoogleSignInButton(
                   isLoading: isLoading,
@@ -389,19 +416,33 @@ class _LoginScreenState extends State<LoginScreen> {
                     final authProvider = context.read<AuthProvider>();
                     final scaffoldMessenger = ScaffoldMessenger.of(context);
                     final success = await authProvider.signInWithGoogle();
-                    
+
                     if (success && context.mounted) {
                       if (Navigator.canPop(context)) {
                         Navigator.popUntil(context, (route) => route.isFirst);
                       }
-                    } else if (authProvider.errorMessage != null && context.mounted) {
+                    } else if (authProvider.errorMessage != null &&
+                        context.mounted) {
                       final error = authProvider.errorMessage!;
                       if (error.startsWith('DEVICE_BANNED:')) {
-                        _showBanDialog(error.replaceFirst('DEVICE_BANNED:', ''));
+                        _showBanDialog(
+                            error.replaceFirst('DEVICE_BANNED:', ''));
                       } else {
+                        String friendlyError = error;
+                        if (error.contains('network_error') ||
+                            error.contains('ApiException: 7')) {
+                          friendlyError = locale == 'ar'
+                              ? 'عذراً، لا يوجد اتصال بالإنترنت. يرجى التحقق من الشبكة والمحاولة مرة أخرى.'
+                              : 'No internet connection. Please check your network and try again.';
+                        } else if (error.contains('sign_in_canceled') ||
+                            error.contains('canceled')) {
+                          friendlyError = locale == 'ar'
+                              ? 'تم إلغاء تسجيل الدخول'
+                              : 'Sign in canceled';
+                        }
                         scaffoldMessenger.showSnackBar(
                           SnackBar(
-                            content: Text(error),
+                            content: Text(friendlyError),
                             backgroundColor: AppColors.error,
                           ),
                         );
@@ -409,9 +450,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     }
                   },
                 ),
-                
+
                 const SizedBox(height: 16),
-                
+
                 // Facebook Login Button
                 _FacebookSignInButton(
                   isLoading: isLoading,
@@ -421,8 +462,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     scaffoldMessenger.showSnackBar(
                       SnackBar(
                         content: Text(
-                          locale == 'ar' 
-                              ? 'قريباً سيتم تفعيل المصادقة عبر فيسبوك' 
+                          locale == 'ar'
+                              ? 'قريباً سيتم تفعيل المصادقة عبر فيسبوك'
                               : 'Facebook authentication will be activated soon',
                         ),
                         backgroundColor: Colors.orange,
@@ -431,7 +472,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     );
                   },
                 ),
-                
+
                 const SizedBox(height: 24),
 
                 // Terms and Conditions Link
@@ -440,7 +481,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     onPressed: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const PrivacyPolicyScreen()),
+                        MaterialPageRoute(
+                            builder: (_) => const PrivacyPolicyScreen()),
                       );
                     },
                     child: Text(
@@ -453,7 +495,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                 ),
-                
+
                 // Register Link
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -466,14 +508,15 @@ class _LoginScreenState extends State<LoginScreen> {
                       onPressed: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                          MaterialPageRoute(
+                              builder: (_) => const RegisterScreen()),
                         );
                       },
                       child: Text(l10n.signup),
                     ),
                   ],
                 ),
-                
+
                 const SizedBox(height: 12),
               ],
             ),
@@ -525,11 +568,13 @@ class _GoogleSignInButton extends StatelessWidget {
                 ),
                 const SizedBox(width: 10),
                 Text(
-                  locale == 'ar' ? 'المتابعة باستخدام Google' : 'Continue with Google',
+                  locale == 'ar'
+                      ? 'المتابعة باستخدام Google'
+                      : 'Continue with Google',
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 15,
-                  ),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
                 ),
               ],
             ),
@@ -550,9 +595,9 @@ class _GoogleIconPainter extends CustomPainter {
 
     // Draw colored quarters
     final colors = [
-      (const Color(0xFF4285F4), -30.0, 120.0),  // Blue
-      (const Color(0xFF34A853), 90.0, 90.0),   // Green
-      (const Color(0xFFFBBC05), 180.0, 90.0),  // Yellow
+      (const Color(0xFF4285F4), -30.0, 120.0), // Blue
+      (const Color(0xFF34A853), 90.0, 90.0), // Green
+      (const Color(0xFFFBBC05), 180.0, 90.0), // Yellow
       (const Color(0xFFEA4335), 270.0, 120.0), // Red
     ];
 
@@ -631,12 +676,14 @@ class _FacebookSignInButton extends StatelessWidget {
                   const Icon(Icons.facebook, color: Colors.white, size: 24),
                   const SizedBox(width: 10),
                   Text(
-                    locale == 'ar' ? 'المتابعة باستخدام Facebook' : 'Continue with Facebook',
+                    locale == 'ar'
+                        ? 'المتابعة باستخدام Facebook'
+                        : 'Continue with Facebook',
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 15,
-                      color: Colors.white,
-                    ),
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
+                          color: Colors.white,
+                        ),
                   ),
                 ],
               ),

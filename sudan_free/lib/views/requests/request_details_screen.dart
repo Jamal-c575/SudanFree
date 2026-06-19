@@ -39,7 +39,8 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
     super.dispose();
   }
 
-  void _showOfferSheet(BuildContext context, UserModel currentUser, String locale) {
+  void _showOfferSheet(
+      BuildContext context, UserModel currentUser, String locale) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -47,12 +48,14 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
       builder: (ctx) => StatefulBuilder(
         builder: (context, setSheetState) {
           return Padding(
-            padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+            padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom),
             child: Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
                 color: Theme.of(context).cardColor,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(20)),
               ),
               child: SingleChildScrollView(
                 child: Column(
@@ -62,107 +65,152 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(locale == 'ar' ? 'قدم عرضك' : 'Submit your offer', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                        IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+                        Text(locale == 'ar' ? 'قدم عرضك' : 'Submit your offer',
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 18)),
+                        IconButton(
+                            icon: const Icon(Icons.close),
+                            onPressed: () => Navigator.pop(context)),
                       ],
                     ),
                     const SizedBox(height: 16),
                     CustomTextField(
                       controller: _offerController,
-                      hint: locale == 'ar' ? 'مرحباً، أنا مستعد لتنفيذ طلبك. لدي خبرة سابقة...' : 'Hello, I am ready to fulfill your request. I have previous experience...',
+                      hint: locale == 'ar'
+                          ? 'مرحباً، أنا مستعد لتنفيذ طلبك. لدي خبرة سابقة...'
+                          : 'Hello, I am ready to fulfill your request. I have previous experience...',
                       maxLines: 4,
                     ),
                     const SizedBox(height: 12),
                     CustomTextField(
                       controller: _priceController,
-                      hint: locale == 'ar' ? 'السعر التقديري (اختياري)' : 'Estimated Price (Optional)',
+                      hint: locale == 'ar'
+                          ? 'السعر التقديري (اختياري)'
+                          : 'Estimated Price (Optional)',
                       keyboardType: TextInputType.number,
                       prefixIcon: Icons.attach_money,
                     ),
                     const SizedBox(height: 12),
                     CustomTextField(
                       controller: _timeController,
-                      hint: locale == 'ar' ? 'المدة التقديرية لإنجاز العمل (اختياري)' : 'Estimated time to complete (Optional)',
+                      hint: locale == 'ar'
+                          ? 'المدة التقديرية لإنجاز العمل (اختياري)'
+                          : 'Estimated time to complete (Optional)',
                       prefixIcon: Icons.timer_outlined,
                     ),
                     const SizedBox(height: 24),
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: _isApplying ? null : () async {
-                          if (_offerController.text.trim().isEmpty) {
-                            final scaffoldMessenger = ScaffoldMessenger.of(context);
-                            scaffoldMessenger.showSnackBar(
-                              SnackBar(content: Text(locale == 'ar' ? 'الرجاء كتابة تفاصيل العرض' : 'Please write offer details'), backgroundColor: AppColors.warning),
-                            );
-                            return;
-                          }
-  
-                        setSheetState(() => _isApplying = true);
-                        final nav = Navigator.of(context);
-                        final messenger = ScaffoldMessenger.of(context);
-  
-                          try {
-                            // Server-side bid limit check
-                            final existingCount = await FirestoreService().getUserOfferCount(widget.request.id, currentUser.id);
-                            if (existingCount >= 2) {
-                              messenger.showSnackBar(
-                                SnackBar(
-                                  content: Text(locale == 'ar' ? 'لقد قدمت الحد الأقصى من العروض (عرضين) على هذا الطلب' : 'You have reached the maximum offers (2)'),
-                                  backgroundColor: Colors.orange,
-                                ),
-                              );
-                              nav.pop();
-                              return;
-                            }
+                        onPressed: _isApplying
+                            ? null
+                            : () async {
+                                if (_offerController.text.trim().isEmpty) {
+                                  final scaffoldMessenger =
+                                      ScaffoldMessenger.of(context);
+                                  scaffoldMessenger.showSnackBar(
+                                    SnackBar(
+                                        content: Text(locale == 'ar'
+                                            ? 'الرجاء كتابة تفاصيل العرض'
+                                            : 'Please write offer details'),
+                                        backgroundColor: AppColors.warning),
+                                  );
+                                  return;
+                                }
 
-                            final offer = OfferModel(
-                              id: '',
-                              requestId: widget.request.id,
-                              providerId: currentUser.id,
-                              providerName: currentUser.name,
-                              providerRole: currentUser.role.name,
-                              providerImageUrl: currentUser.profileImageUrl,
-                              providerJobTitle: currentUser.jobTitle ?? currentUser.getShopCategoryName(locale),
-                              title: locale == 'ar' ? 'عرض جديد' : 'New Offer',
-                              text: _offerController.text.trim(),
-                              price: _priceController.text.isNotEmpty ? double.tryParse(_priceController.text) : null,
-                              estimatedTime: _timeController.text.trim().isNotEmpty ? _timeController.text.trim() : null,
-                              createdAt: DateTime.now(),
-                            );
-  
-                            await FirestoreService().createOffer(offer);
-  
-                            if (mounted) {
-                              _offerController.clear();
-                              _priceController.clear();
-                              _timeController.clear();
-                              messenger.showSnackBar(
-                                SnackBar(content: Text(locale == 'ar' ? 'تم تقديم العرض بنجاح!' : 'Offer submitted successfully!'), backgroundColor: AppColors.success),
-                              );
-                              nav.pop();
-                              // Refresh the page to update bid count
-                              setState(() {});
-                            }
-                          } catch (e) {
-                            if (mounted) {
-                              messenger.showSnackBar(
-                                SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
-                              );
-                            }
-                          } finally {
-                            if (mounted) setSheetState(() => _isApplying = false);
-                          }
-                        },
+                                setSheetState(() => _isApplying = true);
+                                final nav = Navigator.of(context);
+                                final messenger = ScaffoldMessenger.of(context);
+
+                                try {
+                                  // Server-side bid limit check
+                                  final existingCount = await FirestoreService()
+                                      .getUserOfferCount(
+                                          widget.request.id, currentUser.id);
+                                  if (existingCount >= 2) {
+                                    messenger.showSnackBar(
+                                      SnackBar(
+                                        content: Text(locale == 'ar'
+                                            ? 'لقد قدمت الحد الأقصى من العروض (عرضين) على هذا الطلب'
+                                            : 'You have reached the maximum offers (2)'),
+                                        backgroundColor: Colors.orange,
+                                      ),
+                                    );
+                                    nav.pop();
+                                    return;
+                                  }
+
+                                  final offer = OfferModel(
+                                    id: '',
+                                    requestId: widget.request.id,
+                                    providerId: currentUser.id,
+                                    providerName: currentUser.name,
+                                    providerRole: currentUser.role.name,
+                                    providerImageUrl:
+                                        currentUser.profileImageUrl,
+                                    providerJobTitle: currentUser.jobTitle ??
+                                        currentUser.getShopCategoryName(locale),
+                                    title: locale == 'ar'
+                                        ? 'عرض جديد'
+                                        : 'New Offer',
+                                    text: _offerController.text.trim(),
+                                    price: _priceController.text.isNotEmpty
+                                        ? double.tryParse(_priceController.text)
+                                        : null,
+                                    estimatedTime:
+                                        _timeController.text.trim().isNotEmpty
+                                            ? _timeController.text.trim()
+                                            : null,
+                                    createdAt: DateTime.now(),
+                                  );
+
+                                  await FirestoreService().createOffer(offer);
+
+                                  if (mounted) {
+                                    _offerController.clear();
+                                    _priceController.clear();
+                                    _timeController.clear();
+                                    messenger.showSnackBar(
+                                      SnackBar(
+                                          content: Text(locale == 'ar'
+                                              ? 'تم تقديم العرض بنجاح!'
+                                              : 'Offer submitted successfully!'),
+                                          backgroundColor: AppColors.success),
+                                    );
+                                    nav.pop();
+                                    // Refresh the page to update bid count
+                                    setState(() {});
+                                  }
+                                } catch (e) {
+                                  if (mounted) {
+                                    messenger.showSnackBar(
+                                      SnackBar(
+                                          content: Text(e.toString()),
+                                          backgroundColor: Colors.red),
+                                    );
+                                  }
+                                } finally {
+                                  if (mounted)
+                                    setSheetState(() => _isApplying = false);
+                                }
+                              },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
                         ),
-                        child: _isApplying 
-                            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                            : Text(locale == 'ar' ? 'إرسال العرض' : 'Submit Offer', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                        child: _isApplying
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                    color: Colors.white, strokeWidth: 2))
+                            : Text(
+                                locale == 'ar' ? 'إرسال العرض' : 'Submit Offer',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold, fontSize: 16)),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -176,16 +224,16 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
     );
   }
 
-
-
   @override
   Widget build(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
     final currentUser = authProvider.user;
     final locale = context.watch<LocaleProvider>().locale.languageCode;
-    
+
     final isMyRequest = currentUser?.id == widget.request.clientId;
-    final canApply = currentUser != null && currentUser.role != UserRole.client && !isMyRequest;
+    final canApply = currentUser != null &&
+        currentUser.role != UserRole.client &&
+        !isMyRequest;
 
     return Scaffold(
       appBar: AppBar(
@@ -214,7 +262,8 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
         child: SafeArea(
           child: canApply
               ? FutureBuilder<int>(
-                  future: FirestoreService().getUserOfferCount(widget.request.id, currentUser.id),
+                  future: FirestoreService()
+                      .getUserOfferCount(widget.request.id, currentUser.id),
                   builder: (context, snapshot) {
                     final existingOffers = snapshot.data ?? 0;
                     if (existingOffers >= 2) {
@@ -225,34 +274,41 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
                           disabledBackgroundColor: Colors.grey[300],
                         ),
                         child: Text(
-                          locale == 'ar' ? 'لقد تجاوزت الحد المسموح للتقديم' : 'Apply limit reached',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          locale == 'ar'
+                              ? 'لقد تجاوزت الحد المسموح للتقديم'
+                              : 'Apply limit reached',
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 16),
                         ),
                       );
                     }
                     return ElevatedButton.icon(
-                      onPressed: () => _showOfferSheet(context, currentUser, locale),
+                      onPressed: () =>
+                          _showOfferSheet(context, currentUser, locale),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
                         minimumSize: const Size(double.infinity, 50),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
                       ),
                       icon: const Icon(Icons.local_offer_outlined),
                       label: Text(
                         locale == 'ar' ? 'قدم على هذا الطلب' : 'Submit Offer',
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 16),
                       ),
                     );
                   },
                 )
-              : (isMyRequest 
+              : (isMyRequest
                   ? ElevatedButton.icon(
                       onPressed: () {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => RequestOffersScreen(request: widget.request),
+                            builder: (_) =>
+                                RequestOffersScreen(request: widget.request),
                           ),
                         );
                       },
@@ -260,12 +316,14 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
                         backgroundColor: AppColors.secondary,
                         foregroundColor: Colors.white,
                         minimumSize: const Size(double.infinity, 50),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
                       ),
                       icon: const Icon(Icons.people_alt_outlined),
                       label: Text(
                         locale == 'ar' ? 'عرض المقدمين' : 'View Offers',
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 16),
                       ),
                     )
                   : const SizedBox.shrink()),
@@ -286,9 +344,15 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
                     children: [
                       CircleAvatar(
                         radius: 24,
-                        backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                        backgroundImage: widget.request.clientImageUrl != null ? CachedNetworkImageProvider(widget.request.clientImageUrl!) : null,
-                        child: widget.request.clientImageUrl == null ? const Icon(Icons.person, color: AppColors.primary) : null,
+                        backgroundColor:
+                            AppColors.primary.withValues(alpha: 0.1),
+                        backgroundImage: widget.request.clientImageUrl != null
+                            ? CachedNetworkImageProvider(
+                                widget.request.clientImageUrl!)
+                            : null,
+                        child: widget.request.clientImageUrl == null
+                            ? const Icon(Icons.person, color: AppColors.primary)
+                            : null,
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -297,25 +361,31 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
                           children: [
                             Text(
                               widget.request.clientName,
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold, fontSize: 18),
                             ),
                             Text(
                               _formatTimeAgo(widget.request.createdAt, locale),
-                              style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                              style: TextStyle(
+                                  color: Colors.grey[600], fontSize: 13),
                             ),
                           ],
                         ),
                       ),
                       if (widget.request.category != null)
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
                             color: AppColors.secondary.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
                             widget.request.category!,
-                            style: const TextStyle(color: AppColors.secondary, fontSize: 12, fontWeight: FontWeight.bold),
+                            style: const TextStyle(
+                                color: AppColors.secondary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold),
                           ),
                         ),
                     ],
@@ -348,22 +418,27 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
                             child: PageView.builder(
                               controller: _imagePageController,
                               itemCount: widget.request.allImageUrls.length,
-                              onPageChanged: (i) => setState(() => _currentImageIndex = i),
+                              onPageChanged: (i) =>
+                                  setState(() => _currentImageIndex = i),
                               itemBuilder: (context, index) {
                                 final url = widget.request.allImageUrls[index];
                                 return GestureDetector(
-                                  onTap: () => _showFullImage(context, widget.request.allImageUrls, index),
+                                  onTap: () => _showFullImage(context,
+                                      widget.request.allImageUrls, index),
                                   child: CachedNetworkImage(
                                     imageUrl: url,
                                     fit: BoxFit.cover,
                                     width: double.infinity,
                                     placeholder: (_, __) => Container(
                                       color: Colors.grey.withValues(alpha: 0.1),
-                                      child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                                      child: const Center(
+                                          child: CircularProgressIndicator(
+                                              strokeWidth: 2)),
                                     ),
                                     errorWidget: (_, __, ___) => Container(
                                       color: Colors.grey.withValues(alpha: 0.1),
-                                      child: const Icon(Icons.broken_image, color: Colors.grey, size: 48),
+                                      child: const Icon(Icons.broken_image,
+                                          color: Colors.grey, size: 48),
                                     ),
                                   ),
                                 );
@@ -380,7 +455,8 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
                                   widget.request.allImageUrls.length,
                                   (i) => AnimatedContainer(
                                     duration: const Duration(milliseconds: 250),
-                                    margin: const EdgeInsets.symmetric(horizontal: 3),
+                                    margin: const EdgeInsets.symmetric(
+                                        horizontal: 3),
                                     width: _currentImageIndex == i ? 20 : 7,
                                     height: 7,
                                     decoration: BoxDecoration(
@@ -398,18 +474,23 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
                             top: 10,
                             right: 10,
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
                                 color: Colors.black.withValues(alpha: 0.55),
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: Row(
                                 children: [
-                                  const Icon(Icons.photo_library_outlined, color: Colors.white, size: 13),
+                                  const Icon(Icons.photo_library_outlined,
+                                      color: Colors.white, size: 13),
                                   const SizedBox(width: 4),
                                   Text(
                                     '${_currentImageIndex + 1}/${widget.request.allImageUrls.length}',
-                                    style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                                    style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold),
                                   ),
                                 ],
                               ),
@@ -420,14 +501,18 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
                             bottom: 10,
                             right: 10,
                             child: GestureDetector(
-                              onTap: () => _showFullImage(context, widget.request.allImageUrls, _currentImageIndex),
+                              onTap: () => _showFullImage(
+                                  context,
+                                  widget.request.allImageUrls,
+                                  _currentImageIndex),
                               child: Container(
                                 padding: const EdgeInsets.all(6),
                                 decoration: BoxDecoration(
                                   color: Colors.black.withValues(alpha: 0.5),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
-                                child: const Icon(Icons.fullscreen, color: Colors.white, size: 18),
+                                child: const Icon(Icons.fullscreen,
+                                    color: Colors.white, size: 18),
                               ),
                             ),
                           ),
@@ -435,15 +520,18 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
                       ),
                     ),
                   ],
-                  if (widget.request.state != null || widget.request.locality != null) ...[
+                  if (widget.request.state != null ||
+                      widget.request.locality != null) ...[
                     const SizedBox(height: 16),
                     Row(
                       children: [
-                        const Icon(Icons.location_on_outlined, size: 18, color: Colors.grey),
+                        const Icon(Icons.location_on_outlined,
+                            size: 18, color: Colors.grey),
                         const SizedBox(width: 4),
                         Text(
                           '${widget.request.locality ?? ''} ${widget.request.state != null ? '- ${widget.request.state}' : ''}',
-                          style: const TextStyle(color: Colors.grey, fontSize: 13),
+                          style:
+                              const TextStyle(color: Colors.grey, fontSize: 13),
                         ),
                       ],
                     ),
@@ -451,7 +539,7 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
                 ],
               ),
             ),
-            
+
             // Delete Reminder for Client
             if (isMyRequest)
               Container(
@@ -464,14 +552,18 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.notifications_active_outlined, color: AppColors.warning),
+                    const Icon(Icons.notifications_active_outlined,
+                        color: AppColors.warning),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        locale == 'ar' 
-                            ? 'يرجى حذف الطلب من أيقونة السلة بالاعلى عند اكتفاءك وتلقي الخدمة المطلوبة.' 
+                        locale == 'ar'
+                            ? 'يرجى حذف الطلب من أيقونة السلة بالاعلى عند اكتفاءك وتلقي الخدمة المطلوبة.'
                             : 'Please delete the request from the trash icon above when you are satisfied and received the service.',
-                        style: TextStyle(color: AppColors.warning.withValues(alpha: 0.9), fontSize: 13, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                            color: AppColors.warning.withValues(alpha: 0.9),
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold),
                       ),
                     ),
                   ],
@@ -481,25 +573,34 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
             // تحذير الحد الأقصى من العروض (يظهر فقط للمزود إذا وصل للحد)
             if (canApply)
               FutureBuilder<int>(
-                future: FirestoreService().getUserOfferCount(widget.request.id, currentUser.id),
+                future: FirestoreService()
+                    .getUserOfferCount(widget.request.id, currentUser.id),
                 builder: (context, snapshot) {
                   final existingOffers = snapshot.data ?? 0;
                   if (existingOffers >= 2) {
                     return Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      margin: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 8),
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: Colors.orange.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+                        border: Border.all(
+                            color: Colors.orange.withValues(alpha: 0.3)),
                       ),
                       child: Row(
                         children: [
                           const Icon(Icons.info_outline, color: Colors.orange),
                           const SizedBox(width: 8),
-                          Expanded(child: Text(
-                            locale == 'ar' ? 'لقد قدمت الحد الأقصى من العروض (عرضين) على هذا الطلب' : 'You have reached the maximum offers (2) on this request',
-                            style: const TextStyle(color: Colors.orange, fontSize: 13, fontWeight: FontWeight.w600),
+                          Expanded(
+                              child: Text(
+                            locale == 'ar'
+                                ? 'لقد قدمت الحد الأقصى من العروض (عرضين) على هذا الطلب'
+                                : 'You have reached the maximum offers (2) on this request',
+                            style: const TextStyle(
+                                color: Colors.orange,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600),
                           )),
                         ],
                       ),
@@ -507,19 +608,28 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
                   }
                   if (existingOffers == 1) {
                     return Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      margin: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
                       decoration: BoxDecoration(
                         color: Colors.amber.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.warning_amber_rounded, color: Colors.amber, size: 18),
+                          const Icon(Icons.warning_amber_rounded,
+                              color: Colors.amber, size: 18),
                           const SizedBox(width: 6),
-                          Expanded(child: Text(
-                            locale == 'ar' ? 'هذا آخر عرض يمكنك تقديمه على هذا الطلب' : 'This is your last offer on this request',
-                            style: TextStyle(color: Colors.amber.shade800, fontSize: 12, fontWeight: FontWeight.w600),
+                          Expanded(
+                              child: Text(
+                            locale == 'ar'
+                                ? 'هذا آخر عرض يمكنك تقديمه على هذا الطلب'
+                                : 'This is your last offer on this request',
+                            style: TextStyle(
+                                color: Colors.amber.shade800,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600),
                           )),
                         ],
                       ),
@@ -533,11 +643,14 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: Text(
-                locale == 'ar' ? 'العروض المقدمة (${widget.request.offersCount})' : 'Submitted Offers (${widget.request.offersCount})',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                locale == 'ar'
+                    ? 'العروض المقدمة (${widget.request.offersCount})'
+                    : 'Submitted Offers (${widget.request.offersCount})',
+                style:
+                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
               ),
             ),
-            
+
             if (!isMyRequest)
               Container(
                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -545,15 +658,17 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
                 decoration: BoxDecoration(
                   color: AppColors.primary.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                  border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.2)),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.privacy_tip_outlined, color: AppColors.primary, size: 28),
+                    const Icon(Icons.privacy_tip_outlined,
+                        color: AppColors.primary, size: 28),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        locale == 'ar' 
+                        locale == 'ar'
                             ? 'هذا الطلب عليه ${widget.request.offersCount} عروض حالياً. كن من أوائل المتقدمين!'
                             : 'This request currently has ${widget.request.offersCount} offers. Be among the first to apply!',
                         style: const TextStyle(fontSize: 14, height: 1.5),
@@ -578,8 +693,8 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(locale == 'ar' ? 'حذف الطلب' : 'Delete Request'),
-        content: Text(locale == 'ar' 
-            ? 'هل أنت متأكد أنك تريد حذف هذا الطلب؟ لا يمكن التراجع عن هذا الإجراء.' 
+        content: Text(locale == 'ar'
+            ? 'هل أنت متأكد أنك تريد حذف هذا الطلب؟ لا يمكن التراجع عن هذا الإجراء.'
             : 'Are you sure you want to delete this request? This cannot be undone.'),
         actions: [
           TextButton(
@@ -601,11 +716,14 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
         if (!mounted) return;
         nav.pop(); // Go back to List
         messenger.showSnackBar(
-          SnackBar(content: Text(locale == 'ar' ? 'تم الحذف بنجاح' : 'Deleted Successfully'), backgroundColor: AppColors.success),
+          SnackBar(
+              content: Text(
+                  locale == 'ar' ? 'تم الحذف بنجاح' : 'Deleted Successfully'),
+              backgroundColor: AppColors.success),
         );
       } catch (e) {
         if (!mounted) return;
-         messenger.showSnackBar(
+        messenger.showSnackBar(
           SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
         );
       }
@@ -619,19 +737,25 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
     } else if (diff.inDays > 0) {
       return locale == 'ar' ? 'منذ ${diff.inDays} يوم' : '${diff.inDays}d ago';
     } else if (diff.inHours > 0) {
-      return locale == 'ar' ? 'منذ ${diff.inHours} ساعة' : '${diff.inHours}h ago';
+      return locale == 'ar'
+          ? 'منذ ${diff.inHours} ساعة'
+          : '${diff.inHours}h ago';
     } else if (diff.inMinutes > 0) {
-      return locale == 'ar' ? 'منذ ${diff.inMinutes} دقيقة' : '${diff.inMinutes}m ago';
+      return locale == 'ar'
+          ? 'منذ ${diff.inMinutes} دقيقة'
+          : '${diff.inMinutes}m ago';
     } else {
       return locale == 'ar' ? 'الآن' : 'Just now';
     }
   }
 
-  void _showFullImage(BuildContext context, List<String> imageUrls, int initialIndex) {
+  void _showFullImage(
+      BuildContext context, List<String> imageUrls, int initialIndex) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => _FullScreenImageViewer(imageUrls: imageUrls, initialIndex: initialIndex),
+        builder: (_) => _FullScreenImageViewer(
+            imageUrls: imageUrls, initialIndex: initialIndex),
       ),
     );
   }
@@ -642,7 +766,8 @@ class _FullScreenImageViewer extends StatefulWidget {
   final List<String> imageUrls;
   final int initialIndex;
 
-  const _FullScreenImageViewer({required this.imageUrls, required this.initialIndex});
+  const _FullScreenImageViewer(
+      {required this.imageUrls, required this.initialIndex});
 
   @override
   State<_FullScreenImageViewer> createState() => _FullScreenImageViewerState();
@@ -673,7 +798,8 @@ class _FullScreenImageViewerState extends State<_FullScreenImageViewer> {
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
         title: widget.imageUrls.length > 1
-            ? Text('${_currentIndex + 1} / ${widget.imageUrls.length}', style: const TextStyle(fontSize: 16))
+            ? Text('${_currentIndex + 1} / ${widget.imageUrls.length}',
+                style: const TextStyle(fontSize: 16))
             : null,
         elevation: 0,
       ),
@@ -692,7 +818,8 @@ class _FullScreenImageViewerState extends State<_FullScreenImageViewer> {
                 placeholder: (_, __) => const Center(
                   child: CircularProgressIndicator(color: Colors.white),
                 ),
-                errorWidget: (_, __, ___) => const Icon(Icons.broken_image, color: Colors.grey, size: 64),
+                errorWidget: (_, __, ___) => const Icon(Icons.broken_image,
+                    color: Colors.grey, size: 64),
               ),
             ),
           );
@@ -707,7 +834,8 @@ class RequestAudioPlayer extends StatefulWidget {
   final String audioUrl;
   final int duration;
 
-  const RequestAudioPlayer({super.key, required this.audioUrl, required this.duration});
+  const RequestAudioPlayer(
+      {super.key, required this.audioUrl, required this.duration});
 
   @override
   State<RequestAudioPlayer> createState() => _RequestAudioPlayerState();
@@ -733,7 +861,11 @@ class _RequestAudioPlayerState extends State<RequestAudioPlayer> {
       if (mounted && dur > Duration.zero) setState(() => _duration = dur);
     });
     _audioPlayer.onPlayerComplete.listen((_) {
-      if (mounted) setState(() { _isPlaying = false; _position = Duration.zero; });
+      if (mounted)
+        setState(() {
+          _isPlaying = false;
+          _position = Duration.zero;
+        });
     });
   }
 
@@ -768,8 +900,10 @@ class _RequestAudioPlayerState extends State<RequestAudioPlayer> {
             },
             child: Container(
               padding: const EdgeInsets.all(8),
-              decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
-              child: Icon(_isPlaying ? Icons.pause : Icons.play_arrow, color: Colors.white, size: 24),
+              decoration: const BoxDecoration(
+                  color: AppColors.primary, shape: BoxShape.circle),
+              child: Icon(_isPlaying ? Icons.pause : Icons.play_arrow,
+                  color: Colors.white, size: 24),
             ),
           ),
           const SizedBox(width: 12),
@@ -780,18 +914,26 @@ class _RequestAudioPlayerState extends State<RequestAudioPlayer> {
                 SliderTheme(
                   data: SliderThemeData(
                     trackHeight: 2,
-                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-                    overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
+                    thumbShape:
+                        const RoundSliderThumbShape(enabledThumbRadius: 6),
+                    overlayShape:
+                        const RoundSliderOverlayShape(overlayRadius: 12),
                     activeTrackColor: AppColors.primary,
-                    inactiveTrackColor: AppColors.primary.withValues(alpha: 0.3),
+                    inactiveTrackColor:
+                        AppColors.primary.withValues(alpha: 0.3),
                     thumbColor: AppColors.primary,
                   ),
                   child: Slider(
                     min: 0,
-                    max: _duration.inMilliseconds.toDouble() > 0 ? _duration.inMilliseconds.toDouble() : 1,
-                    value: _position.inMilliseconds.toDouble().clamp(0, _duration.inMilliseconds.toDouble()),
+                    max: _duration.inMilliseconds.toDouble() > 0
+                        ? _duration.inMilliseconds.toDouble()
+                        : 1,
+                    value: _position.inMilliseconds
+                        .toDouble()
+                        .clamp(0, _duration.inMilliseconds.toDouble()),
                     onChanged: (val) async {
-                      await _audioPlayer.seek(Duration(milliseconds: val.toInt()));
+                      await _audioPlayer
+                          .seek(Duration(milliseconds: val.toInt()));
                     },
                   ),
                 ),
@@ -800,8 +942,16 @@ class _RequestAudioPlayerState extends State<RequestAudioPlayer> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(_formatDuration(_position), style: const TextStyle(fontSize: 10, color: AppColors.primary, fontWeight: FontWeight.bold)),
-                      Text(_formatDuration(_duration), style: const TextStyle(fontSize: 10, color: AppColors.primary, fontWeight: FontWeight.bold)),
+                      Text(_formatDuration(_position),
+                          style: const TextStyle(
+                              fontSize: 10,
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.bold)),
+                      Text(_formatDuration(_duration),
+                          style: const TextStyle(
+                              fontSize: 10,
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.bold)),
                     ],
                   ),
                 ),

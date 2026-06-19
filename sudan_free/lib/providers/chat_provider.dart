@@ -15,11 +15,11 @@ class ChatProvider extends ChangeNotifier {
   List<ChatModel> _chats = [];
   List<MessageModel> _messages = [];
   ChatModel? _currentChat;
-  
+
   bool _isLoading = false;
   bool _isSending = false;
   String? _errorMessage;
-  
+
   StreamSubscription? _chatsSubscription;
   StreamSubscription? _messagesSubscription;
 
@@ -38,7 +38,7 @@ class ChatProvider extends ChangeNotifier {
   // Fetch user's chats ONCE (Get instead of Listen to save costs)
   Future<void> fetchChats(String userId) async {
     if (_isLoading && _chats.isNotEmpty) return;
-    
+
     _isLoading = true;
     notifyListeners();
 
@@ -104,7 +104,8 @@ class ChatProvider extends ChangeNotifier {
 
     // Listen to messages
     _messagesSubscription?.cancel();
-    _messagesSubscription = _firestoreService.getChatMessages(chat.id).listen((messages) {
+    _messagesSubscription =
+        _firestoreService.getChatMessages(chat.id).listen((messages) {
       _messages = messages;
       notifyListeners();
     }, onError: (error) {
@@ -376,10 +377,12 @@ class ChatProvider extends ChangeNotifier {
         final notification = NotificationModel(
           id: '',
           userId: receiverId,
-          type: NotificationType.system,
+          type: NotificationType.message,
           title: '📄 عقد اتفاق جديد من $senderName',
-          message: 'تم إرسال عقد اتفاق جديد. يرجى مراجعة التفاصيل والسعر بعناية والموافقة عليها ليكون العقد رسمياً.',
+          message:
+              'تم إرسال عقد اتفاق جديد. يرجى مراجعة التفاصيل والسعر بعناية والموافقة عليها ليكون العقد رسمياً.',
           createdAt: Timestamp.now(),
+          relatedId: _currentChat!.id,
         );
         await _firestoreService.sendNotification(notification);
       } catch (e) {
@@ -398,11 +401,13 @@ class ChatProvider extends ChangeNotifier {
   }
 
   // Update contract status
-  Future<void> updateContractStatus(String messageId, String status, {String? jobId, String? chatId}) async {
+  Future<void> updateContractStatus(String messageId, String status,
+      {String? jobId, String? chatId}) async {
     try {
       final data = <String, dynamic>{'contractStatus': status};
       if (jobId != null) data['jobId'] = jobId;
-      await _firestoreService.updateMessage(messageId, data, chatId: chatId ?? _currentChat?.id);
+      await _firestoreService.updateMessage(messageId, data,
+          chatId: chatId ?? _currentChat?.id);
     } catch (e) {
       _errorMessage = e.toString();
       notifyListeners();
@@ -412,7 +417,8 @@ class ChatProvider extends ChangeNotifier {
   // Delete a chat message safely through the provider
   Future<void> deleteMessage(String messageId, {String? chatId}) async {
     try {
-      await _firestoreService.deleteMessage(messageId, chatId: chatId ?? _currentChat?.id);
+      await _firestoreService.deleteMessage(messageId,
+          chatId: chatId ?? _currentChat?.id);
     } catch (e) {
       _errorMessage = e.toString();
       notifyListeners();
@@ -420,7 +426,8 @@ class ChatProvider extends ChangeNotifier {
   }
 
   // Edit a chat message content
-  Future<void> editMessage(String messageId, String content, {String? chatId}) async {
+  Future<void> editMessage(String messageId, String content,
+      {String? chatId}) async {
     try {
       await _firestoreService.updateMessage(
         messageId,
@@ -437,13 +444,17 @@ class ChatProvider extends ChangeNotifier {
   }
 
   // Update contract details (for editing)
-  Future<void> updateContractDetails(String messageId, String details, double price) async {
+  Future<void> updateContractDetails(
+      String messageId, String details, double price) async {
     try {
-      await _firestoreService.updateMessage(messageId, {
-        'contractDetails': details,
-        'contractPrice': price,
-        'contractStatus': 'pending', // Revert to pending if edited
-      }, chatId: _currentChat?.id);
+      await _firestoreService.updateMessage(
+          messageId,
+          {
+            'contractDetails': details,
+            'contractPrice': price,
+            'contractStatus': 'pending', // Revert to pending if edited
+          },
+          chatId: _currentChat?.id);
     } catch (e) {
       _errorMessage = e.toString();
       notifyListeners();
@@ -451,12 +462,16 @@ class ChatProvider extends ChangeNotifier {
   }
 
   // Request cancellation
-  Future<void> requestContractCancellation(String messageId, String requesterId) async {
+  Future<void> requestContractCancellation(
+      String messageId, String requesterId) async {
     try {
-      await _firestoreService.updateMessage(messageId, {
-        'contractStatus': 'cancel_requested',
-        'cancelRequesterId': requesterId,
-      }, chatId: _currentChat?.id);
+      await _firestoreService.updateMessage(
+          messageId,
+          {
+            'contractStatus': 'cancel_requested',
+            'cancelRequesterId': requesterId,
+          },
+          chatId: _currentChat?.id);
     } catch (e) {
       _errorMessage = e.toString();
       notifyListeners();

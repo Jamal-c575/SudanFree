@@ -10,11 +10,12 @@ class ErrorService {
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  Future<void> logError(dynamic exception, StackTrace? stack, {String? context}) async {
+  Future<void> logError(dynamic exception, StackTrace? stack,
+      {String? context}) async {
     // Log to console always
     debugPrint('ErrorService: Caught error: $exception');
     if (stack != null) debugPrint('Stack: $stack');
-    
+
     // Log to Firestore even in debug for this version as requested
     try {
       final packageInfo = await PackageInfo.fromPlatform();

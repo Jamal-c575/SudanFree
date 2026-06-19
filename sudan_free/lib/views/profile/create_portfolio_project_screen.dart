@@ -10,18 +10,21 @@ import '../../services/firestore_service.dart';
 import '../../services/storage_service.dart';
 import '../../providers/locale_provider.dart';
 import '../../models/user_model.dart';
-
+import '../../core/utils/job_titles_utils.dart';
 class CreatePortfolioProjectScreen extends StatefulWidget {
   final String? squadId;
   final List<String>? defaultCollaboratorIds;
 
-  const CreatePortfolioProjectScreen({super.key, this.squadId, this.defaultCollaboratorIds});
+  const CreatePortfolioProjectScreen(
+      {super.key, this.squadId, this.defaultCollaboratorIds});
 
   @override
-  State<CreatePortfolioProjectScreen> createState() => _CreatePortfolioProjectScreenState();
+  State<CreatePortfolioProjectScreen> createState() =>
+      _CreatePortfolioProjectScreenState();
 }
 
-class _CreatePortfolioProjectScreenState extends State<CreatePortfolioProjectScreen> {
+class _CreatePortfolioProjectScreenState
+    extends State<CreatePortfolioProjectScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
@@ -39,15 +42,69 @@ class _CreatePortfolioProjectScreenState extends State<CreatePortfolioProjectScr
 
   // Category options with icons and colors
   static const List<Map<String, dynamic>> _categories = [
-    {'key': 'design', 'ar': 'تصميم', 'en': 'Design', 'icon': Icons.palette, 'color': Color(0xFF6c5ce7)},
-    {'key': 'programming', 'ar': 'برمجة', 'en': 'Programming', 'icon': Icons.code, 'color': Color(0xFF0984e3)},
-    {'key': 'maintenance', 'ar': 'صيانة', 'en': 'Maintenance', 'icon': Icons.build, 'color': Color(0xFFe17055)},
-    {'key': 'construction', 'ar': 'بناء وتشييد', 'en': 'Construction', 'icon': Icons.construction, 'color': Color(0xFF00b894)},
-    {'key': 'electrical', 'ar': 'كهرباء', 'en': 'Electrical', 'icon': Icons.electric_bolt, 'color': Color(0xFFfdcb6e)},
-    {'key': 'plumbing', 'ar': 'سباكة', 'en': 'Plumbing', 'icon': Icons.plumbing, 'color': Color(0xFF00cec9)},
-    {'key': 'painting', 'ar': 'دهان وطلاء', 'en': 'Painting', 'icon': Icons.format_paint, 'color': Color(0xFFa29bfe)},
-    {'key': 'carpentry', 'ar': 'نجارة', 'en': 'Carpentry', 'icon': Icons.carpenter, 'color': Color(0xFF636e72)},
-    {'key': 'other', 'ar': 'أخرى', 'en': 'Other', 'icon': Icons.category, 'color': Color(0xFF74b9ff)},
+    {
+      'key': 'design',
+      'ar': 'تصميم',
+      'en': 'Design',
+      'icon': Icons.palette,
+      'color': Color(0xFF6c5ce7)
+    },
+    {
+      'key': 'programming',
+      'ar': 'برمجة',
+      'en': 'Programming',
+      'icon': Icons.code,
+      'color': Color(0xFF0984e3)
+    },
+    {
+      'key': 'maintenance',
+      'ar': 'صيانة',
+      'en': 'Maintenance',
+      'icon': Icons.build,
+      'color': Color(0xFFe17055)
+    },
+    {
+      'key': 'construction',
+      'ar': 'بناء وتشييد',
+      'en': 'Construction',
+      'icon': Icons.construction,
+      'color': Color(0xFF00b894)
+    },
+    {
+      'key': 'electrical',
+      'ar': 'كهرباء',
+      'en': 'Electrical',
+      'icon': Icons.electric_bolt,
+      'color': Color(0xFFfdcb6e)
+    },
+    {
+      'key': 'plumbing',
+      'ar': 'سباكة',
+      'en': 'Plumbing',
+      'icon': Icons.plumbing,
+      'color': Color(0xFF00cec9)
+    },
+    {
+      'key': 'painting',
+      'ar': 'دهان وطلاء',
+      'en': 'Painting',
+      'icon': Icons.format_paint,
+      'color': Color(0xFFa29bfe)
+    },
+    {
+      'key': 'carpentry',
+      'ar': 'نجارة',
+      'en': 'Carpentry',
+      'icon': Icons.carpenter,
+      'color': Color(0xFF636e72)
+    },
+    {
+      'key': 'other',
+      'ar': 'أخرى',
+      'en': 'Other',
+      'icon': Icons.category,
+      'color': Color(0xFF74b9ff)
+    },
   ];
 
   @override
@@ -57,13 +114,16 @@ class _CreatePortfolioProjectScreenState extends State<CreatePortfolioProjectScr
   }
 
   Future<void> _loadDefaultCollaborators() async {
-    if (widget.defaultCollaboratorIds != null && widget.defaultCollaboratorIds!.isNotEmpty) {
+    if (widget.defaultCollaboratorIds != null &&
+        widget.defaultCollaboratorIds!.isNotEmpty) {
       try {
-        final members = await FirestoreService().getUsersByIds(widget.defaultCollaboratorIds!);
+        final members = await FirestoreService()
+            .getUsersByIds(widget.defaultCollaboratorIds!);
         if (mounted) {
           setState(() {
             for (var m in members) {
-              _selectedCollaborators.add({'id': m.id, 'name': m.name, 'imageUrl': m.profileImageUrl});
+              _selectedCollaborators.add(
+                  {'id': m.id, 'name': m.name, 'imageUrl': m.profileImageUrl});
             }
           });
         }
@@ -91,27 +151,43 @@ class _CreatePortfolioProjectScreenState extends State<CreatePortfolioProjectScr
 
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(color: Colors.grey[400], borderRadius: BorderRadius.circular(2))),
+            Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                    color: Colors.grey[400],
+                    borderRadius: BorderRadius.circular(2))),
             ListTile(
-              leading: Container(padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
-                child: const Icon(Icons.photo_library_outlined, color: AppColors.primary)),
+              leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12)),
+                  child: const Icon(Icons.photo_library_outlined,
+                      color: AppColors.primary)),
               title: Text(_isAr(context) ? 'المعرض' : 'Gallery'),
-              subtitle: Text(_isAr(context) ? 'اختر عدة صور' : 'Pick multiple', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+              subtitle: Text(_isAr(context) ? 'اختر عدة صور' : 'Pick multiple',
+                  style: TextStyle(fontSize: 12, color: Colors.grey[500])),
               onTap: () => Navigator.pop(ctx, ImageSource.gallery),
             ),
             ListTile(
-              leading: Container(padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
-                child: const Icon(Icons.camera_alt_outlined, color: Colors.orange)),
+              leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                      color: Colors.orange.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12)),
+                  child: const Icon(Icons.camera_alt_outlined,
+                      color: Colors.orange)),
               title: Text(_isAr(context) ? 'الكاميرا' : 'Camera'),
-              subtitle: Text(_isAr(context) ? 'التقط صورة' : 'Take a photo', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+              subtitle: Text(_isAr(context) ? 'التقط صورة' : 'Take a photo',
+                  style: TextStyle(fontSize: 12, color: Colors.grey[500])),
               onTap: () => Navigator.pop(ctx, ImageSource.camera),
             ),
           ]),
@@ -122,12 +198,16 @@ class _CreatePortfolioProjectScreenState extends State<CreatePortfolioProjectScr
 
     final picker = ImagePicker();
     if (source == ImageSource.camera) {
-      final image = await picker.pickImage(source: ImageSource.camera, imageQuality: 70, maxWidth: 1200);
-      if (image != null && mounted) setState(() => _selectedImages.add(File(image.path)));
+      final image = await picker.pickImage(
+          source: ImageSource.camera, imageQuality: 70, maxWidth: 1200);
+      if (image != null && mounted)
+        setState(() => _selectedImages.add(File(image.path)));
     } else {
-      final images = await picker.pickMultiImage(imageQuality: 70, maxWidth: 1200);
+      final images =
+          await picker.pickMultiImage(imageQuality: 70, maxWidth: 1200);
       if (images.isNotEmpty && mounted) {
-        setState(() => _selectedImages.addAll(images.take(remaining).map((img) => File(img.path))));
+        setState(() => _selectedImages
+            .addAll(images.take(remaining).map((img) => File(img.path))));
       }
     }
   }
@@ -137,7 +217,9 @@ class _CreatePortfolioProjectScreenState extends State<CreatePortfolioProjectScr
     if (_selectedImages.isEmpty) {
       final scaffoldMessenger = ScaffoldMessenger.of(context);
       scaffoldMessenger.showSnackBar(SnackBar(
-        content: Text(_isAr(context) ? 'يرجى إضافة صورة واحدة على الأقل' : 'Please add at least one image'),
+        content: Text(_isAr(context)
+            ? 'يرجى إضافة صورة واحدة على الأقل'
+            : 'Please add at least one image'),
         backgroundColor: Colors.orange,
       ));
       return;
@@ -146,7 +228,11 @@ class _CreatePortfolioProjectScreenState extends State<CreatePortfolioProjectScr
     final user = context.read<AuthProvider>().user;
     if (user == null) return;
 
-    setState(() { _isLoading = true; _loadingStatus = _isAr(context) ? 'جاري رفع الصور...' : 'Uploading images...'; });
+    setState(() {
+      _isLoading = true;
+      _loadingStatus =
+          _isAr(context) ? 'جاري رفع الصور...' : 'Uploading images...';
+    });
 
     try {
       final List<String> uploadedUrls = [];
@@ -161,7 +247,8 @@ class _CreatePortfolioProjectScreenState extends State<CreatePortfolioProjectScr
         uploadedUrls.add(url);
       }
 
-      setState(() => _loadingStatus = _isAr(context) ? 'جاري حفظ المشروع...' : 'Saving project...');
+      setState(() => _loadingStatus =
+          _isAr(context) ? 'جاري حفظ المشروع...' : 'Saving project...');
 
       final project = PortfolioProjectModel(
         id: '',
@@ -171,9 +258,14 @@ class _CreatePortfolioProjectScreenState extends State<CreatePortfolioProjectScr
         category: _selectedCategory,
         status: _selectedStatus,
         projectType: _selectedType,
-        purpose: _purposeController.text.trim().isNotEmpty ? _purposeController.text.trim() : null,
-        externalLink: _linkController.text.trim().isNotEmpty ? _linkController.text.trim() : null,
-        collaborators: _selectedCollaborators.isNotEmpty ? _selectedCollaborators : null,
+        purpose: _purposeController.text.trim().isNotEmpty
+            ? _purposeController.text.trim()
+            : null,
+        externalLink: _linkController.text.trim().isNotEmpty
+            ? _linkController.text.trim()
+            : null,
+        collaborators:
+            _selectedCollaborators.isNotEmpty ? _selectedCollaborators : null,
         imageUrls: uploadedUrls,
         createdAt: DateTime.now(),
       );
@@ -183,7 +275,9 @@ class _CreatePortfolioProjectScreenState extends State<CreatePortfolioProjectScr
       if (mounted) {
         final scaffoldMessenger = ScaffoldMessenger.of(context);
         scaffoldMessenger.showSnackBar(SnackBar(
-          content: Text(_isAr(context) ? 'تمت إضافة المشروع بنجاح! ✅' : 'Project added successfully! ✅'),
+          content: Text(_isAr(context)
+              ? 'تمت إضافة المشروع بنجاح! ✅'
+              : 'Project added successfully! ✅'),
           backgroundColor: AppColors.success,
         ));
         if (context.mounted) Navigator.pop(context);
@@ -197,7 +291,11 @@ class _CreatePortfolioProjectScreenState extends State<CreatePortfolioProjectScr
         ));
       }
     } finally {
-      if (mounted) setState(() { _isLoading = false; _loadingStatus = ''; });
+      if (mounted)
+        setState(() {
+          _isLoading = false;
+          _loadingStatus = '';
+        });
     }
   }
 
@@ -206,7 +304,9 @@ class _CreatePortfolioProjectScreenState extends State<CreatePortfolioProjectScr
     if (user == null || user.partnerIds.isEmpty) {
       final scaffoldMessenger = ScaffoldMessenger.of(context);
       scaffoldMessenger.showSnackBar(SnackBar(
-        content: Text(_isAr(context) ? 'ليس لديك زملاء مضافين حالياً' : 'You have no colleagues added currently'),
+        content: Text(_isAr(context)
+            ? 'ليس لديك زملاء مضافين حالياً'
+            : 'You have no colleagues added currently'),
         backgroundColor: Colors.orange,
       ));
       return;
@@ -215,46 +315,65 @@ class _CreatePortfolioProjectScreenState extends State<CreatePortfolioProjectScr
     final partnersFuture = FirestoreService().getUsersByIds(user.partnerIds);
 
     showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setSheetState) {
+        context: context,
+        shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        builder: (context) {
+          return StatefulBuilder(builder: (context, setSheetState) {
             return Container(
               padding: const EdgeInsets.all(16),
               height: MediaQuery.of(context).size.height * 0.6,
               child: Column(
                 children: [
-                  Text(_isAr(context) ? 'اختر الشركاء في المشروع' : 'Select Project Partners', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text(
+                      _isAr(context)
+                          ? 'اختر الشركاء في المشروع'
+                          : 'Select Project Partners',
+                      style: const TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 16),
                   Expanded(
                     child: FutureBuilder<List<UserModel>>(
                       future: partnersFuture,
                       builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-                        if (!snapshot.hasData || snapshot.data!.isEmpty) return const Center(child: Text('لا يوجد شركاء'));
-                        
+                        if (snapshot.connectionState == ConnectionState.waiting)
+                          return const Center(
+                              child: CircularProgressIndicator());
+                        if (!snapshot.hasData || snapshot.data!.isEmpty)
+                          return const Center(child: Text('لا يوجد شركاء'));
+
                         final partners = snapshot.data!;
                         return ListView.builder(
                           itemCount: partners.length,
                           itemBuilder: (context, index) {
                             final p = partners[index];
-                            final isSelected = _selectedCollaborators.any((c) => c['id'] == p.id);
+                            final isSelected = _selectedCollaborators
+                                .any((c) => c['id'] == p.id);
                             return ListTile(
                               leading: CircleAvatar(
-                                backgroundImage: p.profileImageUrl != null ? CachedNetworkImageProvider(p.profileImageUrl!) : null,
-                                child: p.profileImageUrl == null ? const Icon(Icons.person) : null,
+                                backgroundImage: p.profileImageUrl != null
+                                    ? CachedNetworkImageProvider(
+                                        p.profileImageUrl!)
+                                    : null,
+                                child: p.profileImageUrl == null
+                                    ? const Icon(Icons.person)
+                                    : null,
                               ),
                               title: Text(p.name),
-                              subtitle: Text(p.jobTitle ?? ''),
+                              subtitle: Text(p.jobTitle != null ? JobTitlesUtils.getLocalizedTitle(p.jobTitle!, _l(context)) : ''),
                               trailing: Checkbox(
                                 value: isSelected,
                                 onChanged: (val) {
                                   if (val == true) {
-                                    _selectedCollaborators.add({'id': p.id, 'name': p.name, 'imageUrl': p.profileImageUrl});
+                                    _selectedCollaborators.add({
+                                      'id': p.id,
+                                      'name': p.name,
+                                      'imageUrl': p.profileImageUrl
+                                    });
                                     setSheetState(() {});
                                   } else {
-                                    _selectedCollaborators.removeWhere((c) => c['id'] == p.id);
+                                    _selectedCollaborators
+                                        .removeWhere((c) => c['id'] == p.id);
                                     setSheetState(() {});
                                   }
                                 },
@@ -268,16 +387,15 @@ class _CreatePortfolioProjectScreenState extends State<CreatePortfolioProjectScr
                   const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: () => Navigator.pop(context),
-                    style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 50)),
+                    style: ElevatedButton.styleFrom(
+                        minimumSize: const Size(double.infinity, 50)),
                     child: Text(_isAr(context) ? 'تأكيد' : 'Confirm'),
                   )
                 ],
               ),
             );
-          }
-        );
-      }
-    ).then((_) {
+          });
+        }).then((_) {
       if (mounted) {
         setState(() {});
       }
@@ -304,9 +422,18 @@ class _CreatePortfolioProjectScreenState extends State<CreatePortfolioProjectScr
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               color: AppColors.primary.withValues(alpha: 0.1),
               child: Row(children: [
-                const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary)),
+                const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: AppColors.primary)),
                 const SizedBox(width: 12),
-                Expanded(child: Text(_loadingStatus, style: const TextStyle(color: AppColors.primary, fontSize: 13, fontWeight: FontWeight.w600))),
+                Expanded(
+                    child: Text(_loadingStatus,
+                        style: const TextStyle(
+                            color: AppColors.primary,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600))),
               ]),
             ),
 
@@ -319,22 +446,30 @@ class _CreatePortfolioProjectScreenState extends State<CreatePortfolioProjectScr
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // ─── Title ───
-                    _buildSectionLabel(isArabic ? 'عنوان المشروع' : 'Project Title', Icons.title),
+                    _buildSectionLabel(
+                        isArabic ? 'عنوان المشروع' : 'Project Title',
+                        Icons.title),
                     const SizedBox(height: 8),
                     TextFormField(
                       controller: _titleController,
                       decoration: _inputDecoration(
-                        hint: isArabic ? 'مثال: تركيب نظام كهرباء لمنزل' : 'e.g. Home electrical system installation',
+                        hint: isArabic
+                            ? 'مثال: تركيب نظام كهرباء لمنزل'
+                            : 'e.g. Home electrical system installation',
                         icon: Icons.edit,
                         isDark: isDark,
                       ),
-                      validator: (v) => v == null || v.isEmpty ? (isArabic ? 'مطلوب' : 'Required') : null,
+                      validator: (v) => v == null || v.isEmpty
+                          ? (isArabic ? 'مطلوب' : 'Required')
+                          : null,
                     ),
 
                     const SizedBox(height: 20),
 
                     // ─── Category Chips ───
-                    _buildSectionLabel(isArabic ? 'تصنيف المشروع' : 'Project Category', Icons.category),
+                    _buildSectionLabel(
+                        isArabic ? 'تصنيف المشروع' : 'Project Category',
+                        Icons.category),
                     const SizedBox(height: 10),
                     Wrap(
                       spacing: 8,
@@ -343,23 +478,35 @@ class _CreatePortfolioProjectScreenState extends State<CreatePortfolioProjectScr
                         final isSelected = _selectedCategory == cat['key'];
                         final Color color = cat['color'];
                         return GestureDetector(
-                          onTap: () => setState(() => _selectedCategory = isSelected ? null : cat['key']),
+                          onTap: () => setState(() => _selectedCategory =
+                              isSelected ? null : cat['key']),
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 200),
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 8),
                             decoration: BoxDecoration(
-                              color: isSelected ? color : color.withValues(alpha: 0.08),
+                              color: isSelected
+                                  ? color
+                                  : color.withValues(alpha: 0.08),
                               borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: isSelected ? color : color.withValues(alpha: 0.3)),
+                              border: Border.all(
+                                  color: isSelected
+                                      ? color
+                                      : color.withValues(alpha: 0.3)),
                             ),
-                            child: Row(mainAxisSize: MainAxisSize.min, children: [
-                              Icon(cat['icon'] as IconData, size: 16, color: isSelected ? Colors.white : color),
+                            child:
+                                Row(mainAxisSize: MainAxisSize.min, children: [
+                              Icon(cat['icon'] as IconData,
+                                  size: 16,
+                                  color: isSelected ? Colors.white : color),
                               const SizedBox(width: 6),
                               Text(
                                 locale == 'ar' ? cat['ar'] : cat['en'],
                                 style: TextStyle(
                                   color: isSelected ? Colors.white : color,
-                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                                  fontWeight: isSelected
+                                      ? FontWeight.bold
+                                      : FontWeight.w600,
                                   fontSize: 13,
                                 ),
                               ),
@@ -380,18 +527,34 @@ class _CreatePortfolioProjectScreenState extends State<CreatePortfolioProjectScr
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _buildSectionLabel(isArabic ? 'حالة المشروع' : 'Project Status', Icons.task_alt),
+                              _buildSectionLabel(
+                                  isArabic ? 'حالة المشروع' : 'Project Status',
+                                  Icons.task_alt),
                               const SizedBox(height: 8),
                               DropdownButtonFormField<String>(
                                 // ignore: deprecated_member_use
                                 value: _selectedStatus,
-                                decoration: _inputDecoration(hint: isArabic ? 'اختر الحالة' : 'Select Status', isDark: isDark),
+                                decoration: _inputDecoration(
+                                    hint: isArabic
+                                        ? 'اختر الحالة'
+                                        : 'Select Status',
+                                    isDark: isDark),
                                 items: [
-                                  DropdownMenuItem(value: 'completed', child: Text(isArabic ? 'مكتمل' : 'Completed')),
-                                  DropdownMenuItem(value: 'ongoing', child: Text(isArabic ? 'قيد التنفيذ' : 'Ongoing')),
+                                  DropdownMenuItem(
+                                      value: 'completed',
+                                      child: Text(
+                                          isArabic ? 'مكتمل' : 'Completed')),
+                                  DropdownMenuItem(
+                                      value: 'ongoing',
+                                      child: Text(isArabic
+                                          ? 'قيد التنفيذ'
+                                          : 'Ongoing')),
                                 ],
-                                onChanged: (val) => setState(() => _selectedStatus = val),
-                                validator: (v) => v == null ? (isArabic ? 'مطلوب' : 'Required') : null,
+                                onChanged: (val) =>
+                                    setState(() => _selectedStatus = val),
+                                validator: (v) => v == null
+                                    ? (isArabic ? 'مطلوب' : 'Required')
+                                    : null,
                               ),
                             ],
                           ),
@@ -401,20 +564,39 @@ class _CreatePortfolioProjectScreenState extends State<CreatePortfolioProjectScr
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _buildSectionLabel(isArabic ? 'نوع المشروع' : 'Project Type', Icons.work_outline),
+                              _buildSectionLabel(
+                                  isArabic ? 'نوع المشروع' : 'Project Type',
+                                  Icons.work_outline),
                               const SizedBox(height: 8),
                               DropdownButtonFormField<String>(
                                 // ignore: deprecated_member_use
                                 value: _selectedType,
-                                decoration: _inputDecoration(hint: isArabic ? 'اختر النوع' : 'Select Type', isDark: isDark),
+                                decoration: _inputDecoration(
+                                    hint:
+                                        isArabic ? 'اختر النوع' : 'Select Type',
+                                    isDark: isDark),
                                 items: [
-                                  DropdownMenuItem(value: 'personal', child: Text(isArabic ? 'شخصي' : 'Personal')),
-                                  DropdownMenuItem(value: 'client', child: Text(isArabic ? 'لعميل' : 'Client')),
-                                  DropdownMenuItem(value: 'startup', child: Text(isArabic ? 'شركة ناشئة' : 'Startup')),
-                                  DropdownMenuItem(value: 'other', child: Text(isArabic ? 'أخرى' : 'Other')),
+                                  DropdownMenuItem(
+                                      value: 'personal',
+                                      child:
+                                          Text(isArabic ? 'شخصي' : 'Personal')),
+                                  DropdownMenuItem(
+                                      value: 'client',
+                                      child:
+                                          Text(isArabic ? 'لعميل' : 'Client')),
+                                  DropdownMenuItem(
+                                      value: 'startup',
+                                      child: Text(
+                                          isArabic ? 'شركة ناشئة' : 'Startup')),
+                                  DropdownMenuItem(
+                                      value: 'other',
+                                      child: Text(isArabic ? 'أخرى' : 'Other')),
                                 ],
-                                onChanged: (val) => setState(() => _selectedType = val),
-                                validator: (v) => v == null ? (isArabic ? 'مطلوب' : 'Required') : null,
+                                onChanged: (val) =>
+                                    setState(() => _selectedType = val),
+                                validator: (v) => v == null
+                                    ? (isArabic ? 'مطلوب' : 'Required')
+                                    : null,
                               ),
                             ],
                           ),
@@ -424,28 +606,40 @@ class _CreatePortfolioProjectScreenState extends State<CreatePortfolioProjectScr
                     const SizedBox(height: 20),
 
                     // ─── Description ───
-                    _buildSectionLabel(isArabic ? 'وصف المشروع' : 'Project Description', Icons.description),
+                    _buildSectionLabel(
+                        isArabic ? 'وصف المشروع' : 'Project Description',
+                        Icons.description),
                     const SizedBox(height: 8),
                     TextFormField(
                       controller: _descriptionController,
                       maxLines: 4,
                       decoration: _inputDecoration(
-                        hint: isArabic ? 'اكتب تفاصيل عن المشروع وما قمت بإنجازه...' : 'Write details about your project...',
+                        hint: isArabic
+                            ? 'اكتب تفاصيل عن المشروع وما قمت بإنجازه...'
+                            : 'Write details about your project...',
                         isDark: isDark,
                       ),
-                      validator: (v) => v == null || v.isEmpty ? (isArabic ? 'مطلوب' : 'Required') : null,
+                      validator: (v) => v == null || v.isEmpty
+                          ? (isArabic ? 'مطلوب' : 'Required')
+                          : null,
                     ),
 
                     const SizedBox(height: 20),
-                    
+
                     // ─── Purpose ───
-                    _buildSectionLabel(isArabic ? 'أهداف المشروع / ما يهدف إليه' : 'Project Purpose', Icons.flag_outlined),
+                    _buildSectionLabel(
+                        isArabic
+                            ? 'أهداف المشروع / ما يهدف إليه'
+                            : 'Project Purpose',
+                        Icons.flag_outlined),
                     const SizedBox(height: 8),
                     TextFormField(
                       controller: _purposeController,
                       maxLines: 2,
                       decoration: _inputDecoration(
-                        hint: isArabic ? 'ما المشكلة التي يحلها هذا المشروع؟' : 'What problem does this project solve?',
+                        hint: isArabic
+                            ? 'ما المشكلة التي يحلها هذا المشروع؟'
+                            : 'What problem does this project solve?',
                         isDark: isDark,
                       ),
                     ),
@@ -453,7 +647,11 @@ class _CreatePortfolioProjectScreenState extends State<CreatePortfolioProjectScr
                     const SizedBox(height: 20),
 
                     // ─── External Link ───
-                    _buildSectionLabel(isArabic ? 'رابط المشروع (اختياري)' : 'Project Link (Optional)', Icons.link),
+                    _buildSectionLabel(
+                        isArabic
+                            ? 'رابط المشروع (اختياري)'
+                            : 'Project Link (Optional)',
+                        Icons.link),
                     const SizedBox(height: 8),
                     TextFormField(
                       controller: _linkController,
@@ -468,31 +666,47 @@ class _CreatePortfolioProjectScreenState extends State<CreatePortfolioProjectScr
                     const SizedBox(height: 20),
 
                     // ─── Collaborators ───
-                    _buildSectionLabel(isArabic ? 'شركاء أو منفذي المشروع' : 'Project Partners', Icons.group),
+                    _buildSectionLabel(
+                        isArabic
+                            ? 'شركاء أو منفذي المشروع'
+                            : 'Project Partners',
+                        Icons.group),
                     const SizedBox(height: 8),
                     InkWell(
                       onTap: _showCollaboratorsPicker,
                       borderRadius: BorderRadius.circular(12),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 14),
                         decoration: BoxDecoration(
                           color: isDark ? Colors.grey[800] : Colors.grey[100],
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
+                          border: Border.all(
+                              color: Colors.grey.withValues(alpha: 0.3)),
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.person_add_alt_1, color: AppColors.primary),
+                            const Icon(Icons.person_add_alt_1,
+                                color: AppColors.primary),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Text(
-                                _selectedCollaborators.isEmpty 
-                                    ? (isArabic ? 'أضف زملاء شاركوا في التنفيذ' : 'Add colleagues who worked on this')
-                                    : (isArabic ? 'تم اختيار ${_selectedCollaborators.length} شركاء' : '${_selectedCollaborators.length} partners selected'),
-                                style: TextStyle(color: _selectedCollaborators.isEmpty ? Colors.grey : AppColors.textPrimary, fontSize: 14),
+                                _selectedCollaborators.isEmpty
+                                    ? (isArabic
+                                        ? 'أضف زملاء شاركوا في التنفيذ'
+                                        : 'Add colleagues who worked on this')
+                                    : (isArabic
+                                        ? 'تم اختيار ${_selectedCollaborators.length} شركاء'
+                                        : '${_selectedCollaborators.length} partners selected'),
+                                style: TextStyle(
+                                    color: _selectedCollaborators.isEmpty
+                                        ? Colors.grey
+                                        : AppColors.textPrimary,
+                                    fontSize: 14),
                               ),
                             ),
-                            const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+                            const Icon(Icons.arrow_forward_ios,
+                                size: 16, color: Colors.grey),
                           ],
                         ),
                       ),
@@ -503,18 +717,25 @@ class _CreatePortfolioProjectScreenState extends State<CreatePortfolioProjectScr
                         child: Wrap(
                           spacing: 8,
                           runSpacing: 8,
-                          children: _selectedCollaborators.map((c) => Chip(
-                            avatar: CircleAvatar(
-                              backgroundImage: c['imageUrl'] != null ? CachedNetworkImageProvider(c['imageUrl']) : null,
-                              child: c['imageUrl'] == null ? const Icon(Icons.person, size: 16) : null,
-                            ),
-                            label: Text(c['name']),
-                            onDeleted: () {
-                              setState(() {
-                                _selectedCollaborators.remove(c);
-                              });
-                            },
-                          )).toList(),
+                          children: _selectedCollaborators
+                              .map((c) => Chip(
+                                    avatar: CircleAvatar(
+                                      backgroundImage: c['imageUrl'] != null
+                                          ? CachedNetworkImageProvider(
+                                              c['imageUrl'])
+                                          : null,
+                                      child: c['imageUrl'] == null
+                                          ? const Icon(Icons.person, size: 16)
+                                          : null,
+                                    ),
+                                    label: Text(c['name']),
+                                    onDeleted: () {
+                                      setState(() {
+                                        _selectedCollaborators.remove(c);
+                                      });
+                                    },
+                                  ))
+                              .toList(),
                         ),
                       ),
 
@@ -523,11 +744,17 @@ class _CreatePortfolioProjectScreenState extends State<CreatePortfolioProjectScr
                     // ─── Images Section ───
                     Row(
                       children: [
-                        _buildSectionLabel(isArabic ? 'صور المشروع' : 'Project Images', Icons.photo_library),
+                        _buildSectionLabel(
+                            isArabic ? 'صور المشروع' : 'Project Images',
+                            Icons.photo_library),
                         const Spacer(),
                         Text('${_selectedImages.length}/$_maxImages',
-                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold,
-                            color: _selectedImages.length >= _maxImages ? Colors.orange : AppColors.primary)),
+                            style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: _selectedImages.length >= _maxImages
+                                    ? Colors.orange
+                                    : AppColors.primary)),
                       ],
                     ),
                     const SizedBox(height: 10),
@@ -537,43 +764,65 @@ class _CreatePortfolioProjectScreenState extends State<CreatePortfolioProjectScr
                         height: 110,
                         child: ListView.builder(
                           scrollDirection: Axis.horizontal,
-                          itemCount: _selectedImages.length + (_selectedImages.length < _maxImages ? 1 : 0),
+                          itemCount: _selectedImages.length +
+                              (_selectedImages.length < _maxImages ? 1 : 0),
                           itemBuilder: (ctx, i) {
                             if (i == _selectedImages.length) {
                               return GestureDetector(
                                 onTap: _pickImages,
                                 child: Container(
-                                  width: 100, height: 110,
+                                  width: 100,
+                                  height: 110,
                                   margin: const EdgeInsets.only(left: 8),
                                   decoration: BoxDecoration(
-                                    color: AppColors.primary.withValues(alpha: 0.06),
+                                    color: AppColors.primary
+                                        .withValues(alpha: 0.06),
                                     borderRadius: BorderRadius.circular(14),
-                                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.3), style: BorderStyle.solid),
+                                    border: Border.all(
+                                        color: AppColors.primary
+                                            .withValues(alpha: 0.3),
+                                        style: BorderStyle.solid),
                                   ),
-                                  child: const Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                                    Icon(Icons.add_photo_alternate, color: AppColors.primary, size: 28),
-                                    SizedBox(height: 4),
-                                    Text('+', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
-                                  ]),
+                                  child: const Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.add_photo_alternate,
+                                            color: AppColors.primary, size: 28),
+                                        SizedBox(height: 4),
+                                        Text('+',
+                                            style: TextStyle(
+                                                color: AppColors.primary,
+                                                fontWeight: FontWeight.bold)),
+                                      ]),
                                 ),
                               );
                             }
                             return Stack(children: [
                               Container(
-                                width: 110, height: 110,
+                                width: 110,
+                                height: 110,
                                 margin: const EdgeInsets.only(left: 8),
                                 child: ClipRRect(
                                   borderRadius: BorderRadius.circular(14),
-                                  child: Image.file(_selectedImages[i], fit: BoxFit.cover),
+                                  child: Image.file(_selectedImages[i],
+                                      fit: BoxFit.cover),
                                 ),
                               ),
-                              Positioned(top: 4, right: 4,
+                              Positioned(
+                                top: 4,
+                                right: 4,
                                 child: GestureDetector(
-                                  onTap: () => setState(() => _selectedImages.removeAt(i)),
+                                  onTap: () => setState(
+                                      () => _selectedImages.removeAt(i)),
                                   child: Container(
                                     padding: const EdgeInsets.all(4),
-                                    decoration: BoxDecoration(color: Colors.red.withValues(alpha: 0.85), shape: BoxShape.circle),
-                                    child: const Icon(Icons.close, color: Colors.white, size: 14),
+                                    decoration: BoxDecoration(
+                                        color:
+                                            Colors.red.withValues(alpha: 0.85),
+                                        shape: BoxShape.circle),
+                                    child: const Icon(Icons.close,
+                                        color: Colors.white, size: 14),
                                   ),
                                 ),
                               ),
@@ -585,25 +834,45 @@ class _CreatePortfolioProjectScreenState extends State<CreatePortfolioProjectScr
                       GestureDetector(
                         onTap: _pickImages,
                         child: Container(
-                          width: double.infinity, height: 130,
+                          width: double.infinity,
+                          height: 130,
                           decoration: BoxDecoration(
                             color: AppColors.primary.withValues(alpha: 0.04),
                             borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: AppColors.primary.withValues(alpha: 0.25), style: BorderStyle.solid),
+                            border: Border.all(
+                                color:
+                                    AppColors.primary.withValues(alpha: 0.25),
+                                style: BorderStyle.solid),
                           ),
-                          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                            Container(
-                              padding: const EdgeInsets.all(14),
-                              decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.1), shape: BoxShape.circle),
-                              child: const Icon(Icons.cloud_upload_outlined, size: 32, color: AppColors.primary),
-                            ),
-                            const SizedBox(height: 10),
-                            Text(isArabic ? 'اضغط لإضافة صور المشروع' : 'Tap to add project images',
-                              style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600, fontSize: 14)),
-                            const SizedBox(height: 4),
-                            Text(isArabic ? 'حد أقصى $_maxImages صور' : 'Maximum $_maxImages images',
-                              style: TextStyle(color: Colors.grey[500], fontSize: 12)),
-                          ]),
+                          child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(14),
+                                  decoration: BoxDecoration(
+                                      color: AppColors.primary
+                                          .withValues(alpha: 0.1),
+                                      shape: BoxShape.circle),
+                                  child: const Icon(Icons.cloud_upload_outlined,
+                                      size: 32, color: AppColors.primary),
+                                ),
+                                const SizedBox(height: 10),
+                                Text(
+                                    isArabic
+                                        ? 'اضغط لإضافة صور المشروع'
+                                        : 'Tap to add project images',
+                                    style: const TextStyle(
+                                        color: AppColors.primary,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 14)),
+                                const SizedBox(height: 4),
+                                Text(
+                                    isArabic
+                                        ? 'حد أقصى $_maxImages صور'
+                                        : 'Maximum $_maxImages images',
+                                    style: TextStyle(
+                                        color: Colors.grey[500], fontSize: 12)),
+                              ]),
                         ),
                       ),
 
@@ -618,18 +887,31 @@ class _CreatePortfolioProjectScreenState extends State<CreatePortfolioProjectScr
                           duration: const Duration(milliseconds: 200),
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           decoration: BoxDecoration(
-                            gradient: const LinearGradient(colors: [AppColors.primary, Color(0xFF5f3dc4)]),
+                            gradient: const LinearGradient(
+                                colors: [AppColors.primary, Color(0xFF5f3dc4)]),
                             borderRadius: BorderRadius.circular(16),
-                            boxShadow: [BoxShadow(color: AppColors.primary.withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 4))],
+                            boxShadow: [
+                              BoxShadow(
+                                  color:
+                                      AppColors.primary.withValues(alpha: 0.3),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 4))
+                            ],
                           ),
-                          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                            Icon(_isLoading ? null : Icons.rocket_launch, color: Colors.white, size: 20),
-                            const SizedBox(width: 10),
-                            Text(
-                              isArabic ? 'نشر المشروع' : 'Publish Project',
-                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
-                            ),
-                          ]),
+                          child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(_isLoading ? null : Icons.rocket_launch,
+                                    color: Colors.white, size: 20),
+                                const SizedBox(width: 10),
+                                Text(
+                                  isArabic ? 'نشر المشروع' : 'Publish Project',
+                                  style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white),
+                                ),
+                              ]),
                         ),
                       ),
                     ),
@@ -648,19 +930,27 @@ class _CreatePortfolioProjectScreenState extends State<CreatePortfolioProjectScr
     return Row(children: [
       Icon(icon, size: 18, color: AppColors.primary),
       const SizedBox(width: 8),
-      Text(text, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+      Text(text,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
     ]);
   }
 
-  InputDecoration _inputDecoration({required String hint, IconData? icon, required bool isDark}) {
+  InputDecoration _inputDecoration(
+      {required String hint, IconData? icon, required bool isDark}) {
     return InputDecoration(
       hintText: hint,
       hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
-      prefixIcon: icon != null ? Icon(icon, color: AppColors.primary, size: 20) : null,
+      prefixIcon:
+          icon != null ? Icon(icon, color: AppColors.primary, size: 20) : null,
       filled: true,
-      fillColor: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.grey.withValues(alpha: 0.06),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
-      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppColors.primary, width: 1.5)),
+      fillColor: isDark
+          ? Colors.white.withValues(alpha: 0.04)
+          : Colors.grey.withValues(alpha: 0.06),
+      border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+      focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: AppColors.primary, width: 1.5)),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     );
   }

@@ -11,11 +11,11 @@ class PaymentProvider extends ChangeNotifier {
 
   List<PaymentModel> _payments = [];
   PaymentModel? _selectedPayment;
-  
+
   bool _isLoading = false;
   bool _isUploading = false;
   String? _errorMessage;
-  
+
   StreamSubscription? _paymentsSubscription;
 
   List<PaymentModel> get payments => _payments;
@@ -25,11 +25,11 @@ class PaymentProvider extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
 
   // Get pending payments
-  List<PaymentModel> get pendingPayments => 
+  List<PaymentModel> get pendingPayments =>
       _payments.where((p) => p.isPending).toList();
 
   // Get verified payments
-  List<PaymentModel> get verifiedPayments => 
+  List<PaymentModel> get verifiedPayments =>
       _payments.where((p) => p.isVerified).toList();
 
   // Fetch user payments (as client)
@@ -38,7 +38,9 @@ class PaymentProvider extends ChangeNotifier {
     notifyListeners();
 
     _paymentsSubscription?.cancel();
-    _paymentsSubscription = _firestoreService.getUserPayments(clientId, isClient: true).listen((payments) {
+    _paymentsSubscription = _firestoreService
+        .getUserPayments(clientId, isClient: true)
+        .listen((payments) {
       _payments = payments;
       _isLoading = false;
       notifyListeners();
@@ -55,7 +57,9 @@ class PaymentProvider extends ChangeNotifier {
     notifyListeners();
 
     _paymentsSubscription?.cancel();
-    _paymentsSubscription = _firestoreService.getUserPayments(freelancerId, isClient: false).listen((payments) {
+    _paymentsSubscription = _firestoreService
+        .getUserPayments(freelancerId, isClient: false)
+        .listen((payments) {
       _payments = payments;
       _isLoading = false;
       notifyListeners();
@@ -72,7 +76,8 @@ class PaymentProvider extends ChangeNotifier {
     notifyListeners();
 
     _paymentsSubscription?.cancel();
-    _paymentsSubscription = _firestoreService.getJobPayments(jobId).listen((payments) {
+    _paymentsSubscription =
+        _firestoreService.getJobPayments(jobId).listen((payments) {
       _payments = payments;
       _isLoading = false;
       notifyListeners();
@@ -102,7 +107,7 @@ class PaymentProvider extends ChangeNotifier {
 
     try {
       final now = DateTime.now();
-      
+
       // Create payment first
       final payment = PaymentModel(
         id: '',
@@ -126,13 +131,13 @@ class PaymentProvider extends ChangeNotifier {
 
       // Update payment with receipt URL
       await _firestoreService.updatePaymentStatus(
-        paymentId, 
+        paymentId,
         PaymentStatus.pending,
       );
 
       // We need to update the receipt URL separately
       // This is a simplified approach - in production, do this in a transaction
-      
+
       _isUploading = false;
       notifyListeners();
       return paymentId;
@@ -162,7 +167,8 @@ class PaymentProvider extends ChangeNotifier {
   }
 
   // Update payment status (admin function)
-  Future<bool> updatePaymentStatus(String paymentId, PaymentStatus status, {String? adminNote}) async {
+  Future<bool> updatePaymentStatus(String paymentId, PaymentStatus status,
+      {String? adminNote}) async {
     try {
       await _firestoreService.updatePaymentStatus(paymentId, status);
       // Wait, let's keep it simple and just drop adminNote since we didn't add it in FirestoreService

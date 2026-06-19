@@ -9,10 +9,14 @@ class AppErrorHandler {
   /// تحويل رسائل Firebase/Firestore إلى رسائل عربية واضحة
   static String toArabic(dynamic error) {
     final msg = error.toString().toLowerCase();
-    if (msg.contains('network') || msg.contains('unavailable') || msg.contains('timeout')) {
+    if (msg.contains('network') ||
+        msg.contains('unavailable') ||
+        msg.contains('timeout')) {
       return 'تعذّر الاتصال بالشبكة. تحقق من اتصالك بالإنترنت.';
     }
-    if (msg.contains('permission') || msg.contains('unauthorized') || msg.contains('unauthenticated')) {
+    if (msg.contains('permission') ||
+        msg.contains('unauthorized') ||
+        msg.contains('unauthenticated')) {
       return 'ليس لديك صلاحية لتنفيذ هذا الإجراء.';
     }
     if (msg.contains('not-found') || msg.contains('not found')) {
@@ -72,7 +76,8 @@ class AppErrorHandler {
           children: [
             const Icon(Icons.error_outline, color: Colors.white, size: 20),
             const SizedBox(width: 8),
-            Expanded(child: Text(message, style: const TextStyle(fontSize: 13))),
+            Expanded(
+                child: Text(message, style: const TextStyle(fontSize: 13))),
           ],
         ),
         backgroundColor: color ?? Colors.red.shade700,
@@ -91,9 +96,11 @@ class AppErrorHandler {
       SnackBar(
         content: Row(
           children: [
-            const Icon(Icons.check_circle_outline, color: Colors.white, size: 20),
+            const Icon(Icons.check_circle_outline,
+                color: Colors.white, size: 20),
             const SizedBox(width: 8),
-            Expanded(child: Text(message, style: const TextStyle(fontSize: 13))),
+            Expanded(
+                child: Text(message, style: const TextStyle(fontSize: 13))),
           ],
         ),
         backgroundColor: Colors.green.shade700,

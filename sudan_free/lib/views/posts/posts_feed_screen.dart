@@ -37,7 +37,8 @@ class PostsFeedScreen extends StatefulWidget {
   State<PostsFeedScreen> createState() => _PostsFeedScreenState();
 }
 
-class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAliveClientMixin {
+class _PostsFeedScreenState extends State<PostsFeedScreen>
+    with AutomaticKeepAliveClientMixin {
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
@@ -48,11 +49,11 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
   Timer? _scrollDebounceTimer;
 
   // ── Smart Ad System ──
-  List<AdModel> _ads = [];           // جميع الإعلانات النشطة
-  bool _isFirstLoad = true;          // تحديد موضع الإعلان عند التحميل الأول
+  List<AdModel> _ads = []; // جميع الإعلانات النشطة
+  bool _isFirstLoad = true; // تحديد موضع الإعلان عند التحميل الأول
   final _random = Random();
   final AdService _adService = AdService();
-  final _fs = FirestoreService();    // singleton — لا تُنشئ في كل build
+  final _fs = FirestoreService(); // singleton — لا تُنشئ في كل build
 
   // ── Cached Mixed Feed (avoid recalculating on every build) ──
   List<dynamic>? _cachedMixedFeed;
@@ -75,14 +76,15 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
       context.read<AuthProvider>().fetchPartners();
       _fetchAds();
       _sendHeartbeat();
-      _heartbeatTimer = Timer.periodic(const Duration(minutes: 15), (_) => _sendHeartbeat());
-      
+      _heartbeatTimer =
+          Timer.periodic(const Duration(minutes: 15), (_) => _sendHeartbeat());
+
       final user = context.read<AuthProvider>().user;
       final isClient = user?.role == UserRole.client;
-      
+
       SmartGuideService.showMicroTip(
         context,
-        messageAr: isClient 
+        messageAr: isClient
             ? 'استلهم أفكاراً جديدة من أحدث الأعمال، وتفاعل مع المبدعين ✨'
             : 'اجعل أعمالك تتحدث عنك! شارك إبداعاتك لتلفت انتباه العملاء 🚀',
         messageEn: isClient
@@ -92,7 +94,7 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
         icon: Icons.forum_rounded,
       );
     });
-    
+
     // Infinite scroll is now handled via NotificationListener in the build method
   }
 
@@ -101,7 +103,8 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
     final pinnedGroupStr = prefs.getString('pinned_category_group');
     if (pinnedGroupStr != null) {
       try {
-        _selectedGroup = PostCategoryGroup.values.firstWhere((e) => e.name == pinnedGroupStr);
+        _selectedGroup = PostCategoryGroup.values
+            .firstWhere((e) => e.name == pinnedGroupStr);
         _pinnedGroup = _selectedGroup;
       } catch (_) {}
     }
@@ -111,7 +114,8 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
     }
   }
 
-  Future<void> _pinCategory(PostCategoryGroup? group, {bool isUnpin = false}) async {
+  Future<void> _pinCategory(PostCategoryGroup? group,
+      {bool isUnpin = false}) async {
     final prefs = await SharedPreferences.getInstance();
     if (group == null) {
       await prefs.remove('pinned_category_group');
@@ -120,24 +124,27 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
       await prefs.setString('pinned_category_group', group.name);
       HapticFeedback.mediumImpact();
     }
-    
+
     if (!mounted) return;
-    
+
     final locale = context.read<LocaleProvider>().locale.languageCode;
     setState(() {
       _pinnedGroup = group;
     });
-    
-    final msgAr = isUnpin ? 'تم إلغاء تثبيت الفئة' : 'تم تثبيت هذه الفئة لتكون الافتراضية 📌';
-    final msgEn = isUnpin ? 'Category unpinned' : 'Category pinned as default 📌';
+
+    final msgAr = isUnpin
+        ? 'تم إلغاء تثبيت الفئة'
+        : 'تم تثبيت هذه الفئة لتكون الافتراضية 📌';
+    final msgEn =
+        isUnpin ? 'Category unpinned' : 'Category pinned as default 📌';
     final scaffoldMessenger = ScaffoldMessenger.of(context);
-      scaffoldMessenger.showSnackBar(
-        SnackBar(
-          content: Text(locale == 'ar' ? msgAr : msgEn),
-          backgroundColor: isUnpin ? Colors.grey[800] : AppColors.primary,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+    scaffoldMessenger.showSnackBar(
+      SnackBar(
+        content: Text(locale == 'ar' ? msgAr : msgEn),
+        backgroundColor: isUnpin ? Colors.grey[800] : AppColors.primary,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   Future<void> _fetchAds() async {
@@ -165,12 +172,15 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
   }
 
   /// يبني قائمة مدمجة من المنشورات والإعلانات بشكل ذكي (مع تخزين مؤقت)
-  List<dynamic> _buildMixedFeed(List<PostModel> originalPosts, List<String> promotedIds) {
+  List<dynamic> _buildMixedFeed(
+      List<PostModel> originalPosts, List<String> promotedIds) {
     // 1. Reorder posts: 70% promoted, 30% normal
     final List<PostModel> posts = [];
-    final promoted = originalPosts.where((p) => promotedIds.contains(p.userId)).toList();
-    final normal = originalPosts.where((p) => !promotedIds.contains(p.userId)).toList();
-    
+    final promoted =
+        originalPosts.where((p) => promotedIds.contains(p.userId)).toList();
+    final normal =
+        originalPosts.where((p) => !promotedIds.contains(p.userId)).toList();
+
     int pIdx = 0;
     int nIdx = 0;
     while (pIdx < promoted.length || nIdx < normal.length) {
@@ -187,9 +197,12 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
     if (_ads.isEmpty || _searchQuery.isNotEmpty) return posts;
 
     // Check if we can reuse cached result
-    final postsHash = posts.length.hashCode ^ (posts.isNotEmpty ? posts.first.id.hashCode : 0);
+    final postsHash = posts.length.hashCode ^
+        (posts.isNotEmpty ? posts.first.id.hashCode : 0);
     final adsHash = _ads.length.hashCode;
-    if (_cachedMixedFeed != null && postsHash == _lastPostsHashCode && adsHash == _lastAdsHashCode) {
+    if (_cachedMixedFeed != null &&
+        postsHash == _lastPostsHashCode &&
+        adsHash == _lastAdsHashCode) {
       return _cachedMixedFeed!;
     }
 
@@ -202,7 +215,8 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
     }
 
     // ─ باقي المنشورات مع توزيع الإعلانات بشكل عشوائي (4–8 منشورات)
-    int nextAdAfter = _isFirstLoad ? (4 + _random.nextInt(5)) : (2 + _random.nextInt(3));
+    int nextAdAfter =
+        _isFirstLoad ? (4 + _random.nextInt(5)) : (2 + _random.nextInt(3));
     int postsSinceLastAd = 0;
 
     for (final post in posts) {
@@ -218,7 +232,7 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
 
     // تأكد من ظهور إعلان واحد على الأقل إذا كانت المنشورات قليلة جداً
     if (adIndex == 0 && _ads.isNotEmpty && posts.isNotEmpty) {
-       mixed.add(_ads[adIndex++]);
+      mixed.add(_ads[adIndex++]);
     }
 
     // Cache the result
@@ -250,16 +264,19 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
 
   List<PostModel> _filterPosts(List<PostModel> posts) {
     final blockedUsers = context.read<AuthProvider>().user?.blockedUsers ?? [];
-    
+
     final filtered = posts.where((post) {
       if (blockedUsers.contains(post.userId)) return false;
       if (_searchQuery.isNotEmpty) {
-        final query = SmartSearchService.normalizeArabic(_searchQuery.toLowerCase());
+        final query =
+            SmartSearchService.normalizeArabic(_searchQuery.toLowerCase());
         final postCaption = post.caption != null
             ? SmartSearchService.normalizeArabic(post.caption!.toLowerCase())
             : '';
-        final postUser = SmartSearchService.normalizeArabic(post.userName.toLowerCase());
-        if (!postCaption.contains(query) && !postUser.contains(query)) return false;
+        final postUser =
+            SmartSearchService.normalizeArabic(post.userName.toLowerCase());
+        if (!postCaption.contains(query) && !postUser.contains(query))
+          return false;
       }
       if (_selectedGroup != null) {
         if (post.category == null) return false;
@@ -287,9 +304,10 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
     final currentUser = authProvider.user;
     final allPosts = postsProvider.posts;
     final posts = _filterPosts(allPosts);
-    
+
     // Restrict clients from posting
-    final bool canPost = currentUser != null && currentUser.role != UserRole.client;
+    final bool canPost =
+        currentUser != null && currentUser.role != UserRole.client;
 
     return Scaffold(
       body: Stack(
@@ -313,12 +331,15 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
-                        color: Theme.of(context).brightness == Brightness.dark ? Colors.white : AppColors.primary,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white
+                            : AppColors.primary,
                       ),
                     ),
                     actions: [
                       IconButton(
-                        icon: Icon(Icons.search, color: Theme.of(context).iconTheme.color),
+                        icon: Icon(Icons.search,
+                            color: Theme.of(context).iconTheme.color),
                         onPressed: () {
                           setState(() {
                             _showSearch = !_showSearch;
@@ -328,21 +349,25 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
                       const SizedBox(width: 8),
                     ],
                   ),
-                  
+
                   // Search Bar (expandable)
                   if (_showSearch)
                     SliverToBoxAdapter(
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
                         child: Column(
                           children: [
                             // Smart Search Input with autocomplete
                             SmartSearchField(
                               controller: _searchController,
-                              hintText: locale == 'ar' ? 'ابحث في المنشورات...' : 'Search posts...',
+                              hintText: locale == 'ar'
+                                  ? 'ابحث في المنشورات...'
+                                  : 'Search posts...',
                               searchContext: SearchContext.community,
                               accentColor: AppColors.primary,
-                              onSearch: (val) => setState(() => _searchQuery = val),
+                              onSearch: (val) =>
+                                  setState(() => _searchQuery = val),
                             ),
                             const SizedBox(height: 6),
                             // Category Group Chips
@@ -357,13 +382,17 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
                                     () {
                                       setState(() => _selectedGroup = null);
                                       _fetchAds();
-                                      context.read<PostsProvider>().fetchPosts(categoryGroup: null);
+                                      context
+                                          .read<PostsProvider>()
+                                          .fetchPosts(categoryGroup: null);
                                     },
                                     onLongPress: () {
                                       if (_pinnedGroup == null) return;
                                       _pinCategory(null, isUnpin: true);
                                       setState(() => _selectedGroup = null);
-                                      context.read<PostsProvider>().fetchPosts(categoryGroup: null);
+                                      context
+                                          .read<PostsProvider>()
+                                          .fetchPosts(categoryGroup: null);
                                     },
                                     isPinned: _pinnedGroup == null,
                                   ),
@@ -374,17 +403,24 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
                                       () {
                                         setState(() => _selectedGroup = group);
                                         _fetchAds();
-                                        context.read<PostsProvider>().fetchPosts(categoryGroup: group);
+                                        context
+                                            .read<PostsProvider>()
+                                            .fetchPosts(categoryGroup: group);
                                       },
                                       onLongPress: () {
                                         if (_pinnedGroup == group) {
                                           _pinCategory(null, isUnpin: true);
                                           setState(() => _selectedGroup = null);
-                                          context.read<PostsProvider>().fetchPosts(categoryGroup: null);
+                                          context
+                                              .read<PostsProvider>()
+                                              .fetchPosts(categoryGroup: null);
                                         } else {
                                           _pinCategory(group);
-                                          setState(() => _selectedGroup = group);
-                                          context.read<PostsProvider>().fetchPosts(categoryGroup: group);
+                                          setState(
+                                              () => _selectedGroup = group);
+                                          context
+                                              .read<PostsProvider>()
+                                              .fetchPosts(categoryGroup: group);
                                         }
                                       },
                                       isPinned: _pinnedGroup == group,
@@ -399,12 +435,13 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
                     ),
 
                   // Trending Posts Section
-                  if (postsProvider.trendingPosts.isNotEmpty && _selectedGroup == null && _searchQuery.isEmpty)
+                  if (postsProvider.trendingPosts.isNotEmpty &&
+                      _selectedGroup == null &&
+                      _searchQuery.isEmpty)
                     SliverToBoxAdapter(
-                      child: _buildTrendingSection(context, postsProvider.trendingPosts, locale),
+                      child: _buildTrendingSection(
+                          context, postsProvider.trendingPosts, locale),
                     ),
-
-
                 ],
                 body: NotificationListener<ScrollNotification>(
                   onNotification: (ScrollNotification scrollInfo) {
@@ -425,118 +462,141 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
                     return false;
                   },
                   child: (postsProvider.isLoading && !postsProvider.hasPosts)
-                    ? ListView.builder(
-                        itemCount: 4,
-                        padding: const EdgeInsets.all(12),
-                        itemBuilder: (_, __) => const PostCardShimmer(),
-                      )
-                    : posts.isEmpty && !postsProvider.isLoading
-                        ? _searchQuery.isNotEmpty || _selectedGroup != null
-                            ? _buildNoSearchResults(context, locale)
-                            : _buildEmptyState(context, locale, canPost)
-                        : RefreshIndicator(
-                            onRefresh: () async {
-                              setState(() => _isFirstLoad = false);
-                              _fetchAds();
-                              return postsProvider.fetchPosts(forceRefresh: true);
-                            },
-                            child: Builder(builder: (context) {
-                              final promotedIds = context.read<UserProvider>().promotedUserIds;
-                              final mixedFeed = _buildMixedFeed(posts, promotedIds);
-                              final bottomInset = MediaQuery.of(context).padding.bottom;
-                              final navBarMargin = bottomInset > 30 ? bottomInset + 8 : bottomInset + 14;
-                              const navBarHeight = 62.0;
-                              final navBarTop = navBarMargin + navBarHeight;
+                      ? ListView.builder(
+                          itemCount: 4,
+                          padding: const EdgeInsets.all(12),
+                          itemBuilder: (_, __) => const PostCardShimmer(),
+                        )
+                      : posts.isEmpty && !postsProvider.isLoading
+                          ? _searchQuery.isNotEmpty || _selectedGroup != null
+                              ? _buildNoSearchResults(context, locale)
+                              : _buildEmptyState(context, locale, canPost)
+                          : RefreshIndicator(
+                              onRefresh: () async {
+                                setState(() => _isFirstLoad = false);
+                                _fetchAds();
+                                return postsProvider.fetchPosts(
+                                    forceRefresh: true);
+                              },
+                              child: Builder(builder: (context) {
+                                final promotedIds = context
+                                    .read<UserProvider>()
+                                    .promotedUserIds;
+                                final mixedFeed =
+                                    _buildMixedFeed(posts, promotedIds);
+                                final bottomInset =
+                                    MediaQuery.of(context).padding.bottom;
+                                final navBarMargin = bottomInset > 30
+                                    ? bottomInset + 8
+                                    : bottomInset + 14;
+                                const navBarHeight = 62.0;
+                                final navBarTop = navBarMargin + navBarHeight;
 
-                              return ListView.builder(
-                                key: const PageStorageKey('posts_feed_list'),
-                                padding: EdgeInsets.only(top: 6, bottom: navBarTop + 80),
-                                cacheExtent: 1200, // زيادة العمق المخزَّن للتمرير السلس
-                                itemCount: mixedFeed.length + 1, // +1 للـ footer
-                                itemBuilder: (context, index) {
-                                  // ── Footer: مؤشر التحميل في الأسفل فقط ──
-                                  // يظهر تحت آخر منشور بدون أي layout shift
-                                  if (index == mixedFeed.length) {
-                                    return postsProvider.isLoadingMore
-                                        ? const Padding(
-                                            padding: EdgeInsets.symmetric(vertical: 24),
-                                            child: Center(
-                                              child: SizedBox(
-                                                width: 28,
-                                                height: 28,
-                                                child: CircularProgressIndicator(strokeWidth: 2.5),
-                                              ),
-                                            ),
-                                          )
-                                        : postsProvider.hasMore
-                                            ? const SizedBox(height: 8)
-                                            : Padding(
-                                                padding: const EdgeInsets.symmetric(vertical: 20),
-                                                child: Center(
-                                                  child: Text(
-                                                    '',
-                                                    style: TextStyle(color: Colors.grey[400], fontSize: 12),
-                                                  ),
+                                return ListView.builder(
+                                  key: const PageStorageKey('posts_feed_list'),
+                                  padding: EdgeInsets.only(
+                                      top: 6, bottom: navBarTop + 80),
+                                  cacheExtent:
+                                      1200, // زيادة العمق المخزَّن للتمرير السلس
+                                  itemCount:
+                                      mixedFeed.length + 1, // +1 للـ footer
+                                  itemBuilder: (context, index) {
+                                    // ── Footer: مؤشر التحميل في الأسفل فقط ──
+                                    // يظهر تحت آخر منشور بدون أي layout shift
+                                    if (index == mixedFeed.length) {
+                                      return postsProvider.isLoadingMore
+                                          ? const Padding(
+                                              padding: EdgeInsets.symmetric(
+                                                  vertical: 24),
+                                              child: Center(
+                                                child: SizedBox(
+                                                  width: 28,
+                                                  height: 28,
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                          strokeWidth: 2.5),
                                                 ),
-                                              );
-                                  }
+                                              ),
+                                            )
+                                          : postsProvider.hasMore
+                                              ? const SizedBox(height: 8)
+                                              : Padding(
+                                                  padding: const EdgeInsets
+                                                      .symmetric(vertical: 20),
+                                                  child: Center(
+                                                    child: Text(
+                                                      '',
+                                                      style: TextStyle(
+                                                          color:
+                                                              Colors.grey[400],
+                                                          fontSize: 12),
+                                                    ),
+                                                  ),
+                                                );
+                                    }
 
-                                  final item = mixedFeed[index];
+                                    final item = mixedFeed[index];
 
-                                  if (item is AdModel) {
-                                    return ClipRect(
-                                      key: ValueKey('ad_${item.id}'),
-                                      child: AdWidget(
-                                        ad: item,
-                                        onTap: () {
-                                          _adService.recordClick(item.id);
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(builder: (_) => AdDetailsScreen(ad: item)),
-                                          );
-                                        },
-                                      ),
-                                    );
-                                  }
-
-                                  final post = item as PostModel;
-                                  final postIndex = mixedFeed
-                                      .sublist(0, index)
-                                      .whereType<PostModel>()
-                                      .length;
-
-                                  return Column(
-                                    key: ValueKey('post_${post.id}'),
-                                    children: [
-                                      StaggeredAnimatedWidget(
-                                        index: postIndex,
-                                        listId: 'posts_feed',
-                                        child: PostCard(
-                                          post: post,
-                                          currentUserId: currentUser?.id ?? '',
-                                          locale: locale,
-                                          isPromoted: promotedIds.contains(post.userId),
+                                    if (item is AdModel) {
+                                      return ClipRect(
+                                        key: ValueKey('ad_${item.id}'),
+                                        child: AdWidget(
+                                          ad: item,
+                                          onTap: () {
+                                            _adService.recordClick(item.id);
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                  builder: (_) =>
+                                                      AdDetailsScreen(
+                                                          ad: item)),
+                                            );
+                                          },
                                         ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                    ],
-                                  );
-                                },
-                              );
-                            }),
-                          ),
-                  ),
+                                      );
+                                    }
+
+                                    final post = item as PostModel;
+                                    final postIndex = mixedFeed
+                                        .sublist(0, index)
+                                        .whereType<PostModel>()
+                                        .length;
+
+                                    return Column(
+                                      key: ValueKey('post_${post.id}'),
+                                      children: [
+                                        StaggeredAnimatedWidget(
+                                          index: postIndex,
+                                          listId: 'posts_feed',
+                                          child: PostCard(
+                                            post: post,
+                                            currentUserId:
+                                                currentUser?.id ?? '',
+                                            locale: locale,
+                                            isPromoted: promotedIds
+                                                .contains(post.userId),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                      ],
+                                    );
+                                  },
+                                );
+                              }),
+                            ),
+                ),
               ),
             ),
           ),
-          
+
           // 2. زر النشر الذكي والمتحرك
           if (canPost)
             SmartDraggableFab(
               heroTag: 'create_post_fab',
               icon: Icons.add_photo_alternate_outlined,
               locale: locale,
-              initialBottom: MediaQuery.of(context).padding.bottom + 82.0, // navBar + safe area
+              initialBottom: MediaQuery.of(context).padding.bottom +
+                  82.0, // navBar + safe area
               onPressed: () {
                 Navigator.push(
                   context,
@@ -554,7 +614,8 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
     );
   }
 
-  Widget _buildCategoryChip(String label, bool isSelected, VoidCallback onTap, {VoidCallback? onLongPress, bool isPinned = false}) {
+  Widget _buildCategoryChip(String label, bool isSelected, VoidCallback onTap,
+      {VoidCallback? onLongPress, bool isPinned = false}) {
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: GestureDetector(
@@ -564,9 +625,13 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
           borderRadius: BorderRadius.circular(20),
           blur: 15,
-          opacity: isSelected ? (Theme.of(context).brightness == Brightness.dark ? 0.3 : 0.4) : (Theme.of(context).brightness == Brightness.dark ? 0.1 : 0.2),
+          opacity: isSelected
+              ? (Theme.of(context).brightness == Brightness.dark ? 0.3 : 0.4)
+              : (Theme.of(context).brightness == Brightness.dark ? 0.1 : 0.2),
           color: isSelected ? AppColors.primary : Theme.of(context).cardColor,
-          border: Border.all(color: AppColors.primary.withValues(alpha: isSelected ? 0.5 : 0.1)),
+          border: Border.all(
+              color:
+                  AppColors.primary.withValues(alpha: isSelected ? 0.5 : 0.1)),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -577,8 +642,8 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
                     ? Padding(
                         padding: const EdgeInsets.only(left: 4),
                         child: Icon(
-                          Icons.push_pin, 
-                          size: 14, 
+                          Icons.push_pin,
+                          size: 14,
                           color: isSelected ? Colors.white : AppColors.primary,
                         ),
                       )
@@ -588,9 +653,11 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
                 duration: const Duration(milliseconds: 300),
                 curve: Curves.easeInOut,
                 style: TextStyle(
-                  color: isSelected 
-                      ? Colors.white 
-                      : (Theme.of(context).brightness == Brightness.dark ? Colors.white70 : AppColors.textSecondary),
+                  color: isSelected
+                      ? Colors.white
+                      : (Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white70
+                          : AppColors.textSecondary),
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                   fontSize: 12,
                 ),
@@ -611,14 +678,20 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
           Icon(Icons.search_off, size: 64, color: Colors.grey[300]),
           const SizedBox(height: 16),
           Text(
-            locale == 'ar' 
-                ? (_searchQuery.isNotEmpty ? 'لا توجد نتائج لـ "$_searchQuery"' : 'لا توجد نتائج')
-                : (_searchQuery.isNotEmpty ? 'No results for "$_searchQuery"' : 'No results found'),
+            locale == 'ar'
+                ? (_searchQuery.isNotEmpty
+                    ? 'لا توجد نتائج لـ "$_searchQuery"'
+                    : 'لا توجد نتائج')
+                : (_searchQuery.isNotEmpty
+                    ? 'No results for "$_searchQuery"'
+                    : 'No results found'),
             style: TextStyle(color: Colors.grey[600], fontSize: 16),
           ),
           const SizedBox(height: 8),
           Text(
-            locale == 'ar' ? 'جرّب كلمات أخرى أو تحقق من الإملاء' : 'Try different keywords or check spelling',
+            locale == 'ar'
+                ? 'جرّب كلمات أخرى أو تحقق من الإملاء'
+                : 'Try different keywords or check spelling',
             style: TextStyle(color: Colors.grey[400], fontSize: 13),
           ),
         ],
@@ -633,16 +706,19 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
       title: l10n.noPosts,
       subtitle: canPost ? l10n.beFirstToShare : l10n.followToSeePosts,
       actionLabel: canPost ? l10n.createPost : null,
-      onAction: canPost ? () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const CreatePostScreen()),
-        );
-      } : null,
+      onAction: canPost
+          ? () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const CreatePostScreen()),
+              );
+            }
+          : null,
     );
   }
 
-  Widget _buildTrendingSection(BuildContext context, List<PostModel> trendingPosts, String locale) {
+  Widget _buildTrendingSection(
+      BuildContext context, List<PostModel> trendingPosts, String locale) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -663,7 +739,8 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
                   color: AppColors.primary.withValues(alpha: 0.1),
                   image: post.allImageUrls.isNotEmpty
                       ? DecorationImage(
-                          image: CachedNetworkImageProvider(post.allImageUrls.first),
+                          image: CachedNetworkImageProvider(
+                              post.allImageUrls.first),
                           fit: BoxFit.cover,
                         )
                       : null,
@@ -673,7 +750,10 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
                   borderRadius: BorderRadius.circular(12),
                   child: InkWell(
                     onTap: () {
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => PostDetailsScreen(post: post)));
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => PostDetailsScreen(post: post)));
                     },
                     borderRadius: BorderRadius.circular(12),
                     child: Container(
@@ -697,29 +777,43 @@ class _PostsFeedScreenState extends State<PostsFeedScreen> with AutomaticKeepAli
                           Container(
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              border: Border.all(color: AppColors.primary, width: 1.5),
+                              border: Border.all(
+                                  color: AppColors.primary, width: 1.5),
                             ),
                             child: CircleAvatar(
                               radius: 14,
                               backgroundColor: Colors.grey[300],
-                              backgroundImage: post.userImageUrl != null ? CachedNetworkImageProvider(post.userImageUrl!) : null,
-                              child: post.userImageUrl == null ? const Icon(Icons.person, size: 14, color: Colors.grey) : null,
+                              backgroundImage: post.userImageUrl != null
+                                  ? CachedNetworkImageProvider(
+                                      post.userImageUrl!)
+                                  : null,
+                              child: post.userImageUrl == null
+                                  ? const Icon(Icons.person,
+                                      size: 14, color: Colors.grey)
+                                  : null,
                             ),
                           ),
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              if (post.caption != null && post.caption!.isNotEmpty)
+                              if (post.caption != null &&
+                                  post.caption!.isNotEmpty)
                                 Text(
                                   post.caption!,
-                                  style: const TextStyle(color: Colors.white, fontSize: 10, height: 1.2),
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      height: 1.2),
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               const SizedBox(height: 4),
                               Text(
                                 post.userName,
-                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11),
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 11),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),

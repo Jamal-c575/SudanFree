@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:photo_view/photo_view.dart';
 
-
 class ImageViewerScreen extends StatelessWidget {
   final String imageUrl;
   final String? heroTag;
@@ -19,7 +18,7 @@ class ImageViewerScreen extends StatelessWidget {
       body: Stack(
         children: [
           Center(
-            child: heroTag != null 
+            child: heroTag != null
                 ? Hero(
                     tag: heroTag!,
                     child: _buildPhotoView(),
@@ -28,7 +27,8 @@ class ImageViewerScreen extends StatelessWidget {
           ),
           Positioned(
             top: MediaQuery.of(context).padding.top + 10,
-            left: 10, // Close button on left for RTL consistency if needed, but usually top-left or top-right. Let's stick to standard top-left back/close.
+            left:
+                10, // Close button on left for RTL consistency if needed, but usually top-left or top-right. Let's stick to standard top-left back/close.
             child: CircleAvatar(
               backgroundColor: Colors.black.withValues(alpha: 0.5),
               child: IconButton(

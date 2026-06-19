@@ -27,7 +27,8 @@ class CustomDropdown extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        Text(label,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
         const SizedBox(height: 8),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -46,13 +47,19 @@ class CustomDropdown extends StatelessWidget {
                     Icon(prefixIcon, size: 20, color: AppColors.primary),
                     const SizedBox(width: 8),
                   ],
-                  Expanded(child: Text(hint ?? '', style: TextStyle(color: Colors.grey[500]))),
+                  Expanded(
+                      child: Text(hint ?? '',
+                          style: TextStyle(color: Colors.grey[500]))),
                 ],
               ),
-              items: items.map((item) => DropdownMenuItem<String>(
-                value: item,
-                child: Text(itemLabelBuilder != null ? itemLabelBuilder!(item) : item),
-              )).toList(),
+              items: items
+                  .map((item) => DropdownMenuItem<String>(
+                        value: item,
+                        child: Text(itemLabelBuilder != null
+                            ? itemLabelBuilder!(item)
+                            : item),
+                      ))
+                  .toList(),
               onChanged: onChanged,
             ),
           ),

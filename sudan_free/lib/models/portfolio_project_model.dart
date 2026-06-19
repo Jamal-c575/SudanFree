@@ -62,7 +62,9 @@ class PortfolioProjectModel {
       projectType: data['projectType'],
       purpose: data['purpose'],
       externalLink: data['externalLink'],
-      collaborators: data['collaborators'] != null ? List<dynamic>.from(data['collaborators']) : null,
+      collaborators: data['collaborators'] != null
+          ? List<dynamic>.from(data['collaborators'])
+          : null,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }

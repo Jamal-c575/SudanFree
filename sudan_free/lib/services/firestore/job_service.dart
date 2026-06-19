@@ -4,7 +4,6 @@ import '../../models/job_model.dart';
 import '../../models/proposal_model.dart';
 import '../../models/offer_model.dart';
 
-
 class JobFirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
@@ -23,9 +22,20 @@ class JobFirestoreService {
     return null;
   }
 
+  // Get job stream by ID
+  Stream<JobModel?> getJobStream(String jobId) {
+    return _firestore.collection('jobs').doc(jobId).snapshots().map((doc) {
+      if (doc.exists) {
+        return JobModel.fromFirestore(doc);
+      }
+      return null;
+    });
+  }
+
   // Check if there is a completed job between client and freelancer
   Future<bool> hasCompletedJob(String clientId, String freelancerId) async {
-    final snapshot = await _firestore.collection('jobs')
+    final snapshot = await _firestore
+        .collection('jobs')
         .where('clientId', isEqualTo: clientId)
         .where('assignedFreelancerId', isEqualTo: freelancerId)
         .where('status', isEqualTo: JobStatus.completed.name)
@@ -42,7 +52,8 @@ class JobFirestoreService {
     String? status,
     int limit = 50,
   }) {
-    Query query = _firestore.collection('jobs').orderBy('createdAt', descending: true);
+    Query query =
+        _firestore.collection('jobs').orderBy('createdAt', descending: true);
 
     if (category != null) query = query.where('category', isEqualTo: category);
     if (state != null) query = query.where('state', isEqualTo: state);
@@ -60,7 +71,8 @@ class JobFirestoreService {
     String? state,
     int limit = 15,
   }) async {
-    Query query = _firestore.collection('jobs')
+    Query query = _firestore
+        .collection('jobs')
         .orderBy('createdAt', descending: true)
         .limit(limit);
 
@@ -69,7 +81,8 @@ class JobFirestoreService {
     if (startAfterDoc != null) query = query.startAfterDocument(startAfterDoc);
 
     final snapshot = await query.get();
-    final jobs = snapshot.docs.map((doc) => JobModel.fromFirestore(doc)).toList();
+    final jobs =
+        snapshot.docs.map((doc) => JobModel.fromFirestore(doc)).toList();
 
     return {
       'jobs': jobs,
@@ -80,15 +93,18 @@ class JobFirestoreService {
 
   // Create Offer
   Future<void> createOffer(OfferModel offer) async {
-    final docRef = _firestore.collection('requests').doc(offer.requestId).collection('offers').doc();
+    final docRef = _firestore
+        .collection('requests')
+        .doc(offer.requestId)
+        .collection('offers')
+        .doc();
     final data = offer.toMap();
     data['id'] = docRef.id;
-    
+
     final batch = _firestore.batch();
     batch.set(docRef, data);
-    batch.update(_firestore.collection('requests').doc(offer.requestId), {
-       'offersCount': FieldValue.increment(1)
-    });
+    batch.update(_firestore.collection('requests').doc(offer.requestId),
+        {'offersCount': FieldValue.increment(1)});
     await batch.commit();
   }
 
@@ -127,7 +143,7 @@ class JobFirestoreService {
   // Accept Proposal (Start Project)
   Future<void> acceptProposal(ProposalModel proposal) async {
     final batch = _firestore.batch();
-    
+
     // Update proposal status
     batch.update(_firestore.collection('proposals').doc(proposal.id), {
       'status': 'accepted',
@@ -171,7 +187,8 @@ class JobFirestoreService {
   }
 
   // Update Milestones
-  Future<void> updateMilestones(String jobId, List<MilestoneModel> milestones) async {
+  Future<void> updateMilestones(
+      String jobId, List<MilestoneModel> milestones) async {
     await _firestore.collection('jobs').doc(jobId).update({
       'milestones': milestones.map((m) => m.toMap()).toList(),
       'updatedAt': FieldValue.serverTimestamp(),
@@ -180,24 +197,29 @@ class JobFirestoreService {
 
   // Get Freelancer Jobs (Including supervised jobs)
   Stream<List<JobModel>> getFreelancerJobs(String freelancerId) {
-    return _firestore.collection('jobs')
+    return _firestore
+        .collection('jobs')
         .where(Filter.or(
-            Filter('assignedFreelancerId', isEqualTo: freelancerId),
-            Filter('supervisorId', isEqualTo: freelancerId),
+          Filter('assignedFreelancerId', isEqualTo: freelancerId),
+          Filter('supervisorId', isEqualTo: freelancerId),
         ))
-        .snapshots().map((snapshot) {
-          final jobs = snapshot.docs.map((doc) => JobModel.fromFirestore(doc)).toList();
-          jobs.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-          return jobs;
-        });
+        .snapshots()
+        .map((snapshot) {
+      final jobs =
+          snapshot.docs.map((doc) => JobModel.fromFirestore(doc)).toList();
+      jobs.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return jobs;
+    });
   }
 
   // Get Client Jobs
   Stream<List<JobModel>> getClientJobs(String clientId) {
-    return _firestore.collection('jobs')
+    return _firestore
+        .collection('jobs')
         .where('clientId', isEqualTo: clientId)
         .orderBy('createdAt', descending: true)
-        .snapshots().map((snapshot) =>
+        .snapshots()
+        .map((snapshot) =>
             snapshot.docs.map((doc) => JobModel.fromFirestore(doc)).toList());
   }
 
@@ -208,28 +230,36 @@ class JobFirestoreService {
 
   // Get Job Proposals
   Stream<List<ProposalModel>> getJobProposals(String jobId) {
-    return _firestore.collection('proposals')
+    return _firestore
+        .collection('proposals')
         .where('jobId', isEqualTo: jobId)
         .orderBy('createdAt', descending: true)
-        .snapshots().map((snapshot) =>
-            snapshot.docs.map((doc) => ProposalModel.fromFirestore(doc)).toList());
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => ProposalModel.fromFirestore(doc))
+            .toList());
   }
 
   // Get Freelancer Proposals
   Stream<List<ProposalModel>> getFreelancerProposals(String freelancerId) {
-    return _firestore.collection('proposals')
+    return _firestore
+        .collection('proposals')
         .where('freelancerId', isEqualTo: freelancerId)
         .orderBy('createdAt', descending: true)
-        .snapshots().map((snapshot) =>
-            snapshot.docs.map((doc) => ProposalModel.fromFirestore(doc)).toList());
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => ProposalModel.fromFirestore(doc))
+            .toList());
   }
 
   // Create Proposal
   Future<String> createProposal(ProposalModel proposal) async {
-    final docRef = await _firestore.collection('proposals').add(proposal.toFirestore());
-    await _firestore.collection('jobs').doc(proposal.jobId).update({
-      'proposalsCount': FieldValue.increment(1)
-    });
+    final docRef =
+        await _firestore.collection('proposals').add(proposal.toFirestore());
+    await _firestore
+        .collection('jobs')
+        .doc(proposal.jobId)
+        .update({'proposalsCount': FieldValue.increment(1)});
     return docRef.id;
   }
 
@@ -246,7 +276,8 @@ class JobFirestoreService {
   /// يحسب السعر العادل (Fair Market Value) بناءً على متوسط الوظائف السابقة المكتملة
   Future<double?> calculateFairPrice(JobCategory category) async {
     try {
-      final snapshot = await _firestore.collection('jobs')
+      final snapshot = await _firestore
+          .collection('jobs')
           .where('category', isEqualTo: category.name)
           .where('status', isEqualTo: JobStatus.completed.name)
           .orderBy('createdAt', descending: true)
@@ -287,11 +318,11 @@ class JobFirestoreService {
   double calculateDistancePremium(double distanceKm) {
     const double baseFare = 1000.0; // تسعيرة فتح العداد الأساسية (جنيه)
     const double perKmRate = 500.0; // تسعيرة الكيلومتر (جنيه)
-    
+
     if (distanceKm <= 2.0) {
       return baseFare; // مسافة قريبة جداً
     }
-    
+
     return baseFare + ((distanceKm - 2.0) * perKmRate);
   }
 }

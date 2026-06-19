@@ -1,7 +1,7 @@
 name: sudan_free
 description: A freelance marketplace for Sudan - connecting freelancers with clients.
 publish_to: 'none'
-version: 1.0.0+2
+version: 1.0.1+3
 
 environment:
   sdk: ^3.6.0
@@ -79,6 +79,7 @@ dependencies:
   qr_flutter: ^4.1.0
   flutter_linkify: ^6.0.0
   any_link_preview: ^3.0.3
+  flutter_image_compress: ^2.4.0
 
 dev_dependencies:
   flutter_test:

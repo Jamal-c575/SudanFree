@@ -12,7 +12,7 @@ class RankUtils {
     if (totalStars < 100) {
       return null;
     }
-    
+
     if (totalStars >= 1000) {
       return RankInfo(
         title: locale == 'ar' ? 'أسطورة' : 'Legend',
@@ -49,7 +49,8 @@ class RankUtils {
         nextMilestone: 500,
         progress: (totalStars - 300) / 200,
       );
-    } else { // 100-299
+    } else {
+      // 100-299
       return RankInfo(
         title: locale == 'ar' ? 'محترف' : 'Professional',
         color: const Color(0xFFFF9800), // Orange
@@ -62,13 +63,14 @@ class RankUtils {
   }
 
   /// Get a motivational message based on progress
-  static String getMotivationalMessage(int totalStars, int? nextMilestone, String locale) {
+  static String getMotivationalMessage(
+      int totalStars, int? nextMilestone, String locale) {
     if (nextMilestone == null) {
-      return locale == 'ar' 
-          ? '🏆 أنت في القمة! واصل التميز' 
+      return locale == 'ar'
+          ? '🏆 أنت في القمة! واصل التميز'
           : '🏆 You\'re at the top! Keep excelling';
     }
-    
+
     final remaining = nextMilestone - totalStars;
     return locale == 'ar'
         ? 'باقي $remaining ⭐ للرتبة التالية'

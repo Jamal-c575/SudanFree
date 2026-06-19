@@ -335,6 +335,20 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
+          "fieldPath": "isFulfilled",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "expiresAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "requests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
           "fieldPath": "clientId",
           "order": "ASCENDING"
         },
@@ -781,6 +795,12 @@
           "queryScope": "COLLECTION_GROUP"
         }
       ]
+    },
+    {
+      "collectionGroup": "requests",
+      "fieldPath": "expiresAt",
+      "ttl": true,
+      "indexes": []
     }
   ]
 }

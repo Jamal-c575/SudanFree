@@ -28,17 +28,15 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 void main() {
   runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
-
+    
     // Configure image caching to prevent OOM
     imageCache.maximumSize = ImageCacheConfig.maxMemoryCacheCount;
-    imageCache.maximumSizeBytes =
-        ImageCacheConfig.maxMemoryCacheSizeMB * 1024 * 1024;
-
+    imageCache.maximumSizeBytes = ImageCacheConfig.maxMemoryCacheSizeMB * 1024 * 1024;
+    
     // Initialize OneSignal with the current package API
     try {
       await OneSignal.Debug.setLogLevel(OSLogLevel.verbose);
-      const oneSignalAppId = String.fromEnvironment('ONESIGNAL_APP_ID',
-          defaultValue: '5b1ec6d9-34d2-44ee-b985-d58a598e71d7');
+      const oneSignalAppId = String.fromEnvironment('ONESIGNAL_APP_ID', defaultValue: '5b1ec6d9-34d2-44ee-b985-d58a598e71d7');
       OneSignal.initialize(oneSignalAppId);
       // Prompt for permission on iOS only
       try {
@@ -57,28 +55,24 @@ void main() {
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
-
+      
       // Enable Offline Persistence for Firestore (Do this immediately after Firebase init)
       FirebaseFirestore.instance.settings = const Settings(
-        persistenceEnabled: true,
+        persistenceEnabled: true, 
         cacheSizeBytes: 50 * 1024 * 1024, // 50 MB limit instead of unlimited
       );
 
       // Setup background message handler
-      FirebaseMessaging.onBackgroundMessage(
-          _firebaseMessagingBackgroundHandler);
-
+      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+      
       // Initialize notifications with a timeout so it doesn't freeze the app if offline
       try {
         final notificationService = NotificationService();
-        await notificationService
-            .initialize()
-            .timeout(const Duration(seconds: 3));
+        await notificationService.initialize().timeout(const Duration(seconds: 3));
       } catch (e) {
-        debugPrint(
-            'Notification service init timed out or failed (likely offline): $e');
+        debugPrint('Notification service init timed out or failed (likely offline): $e');
       }
-
+      
       initTrace.putAttribute('status', 'success');
     } catch (e, stack) {
       debugPrint('Firebase initialization error: $e');
@@ -88,7 +82,7 @@ void main() {
         await ErrorService().logError(e, stack, context: 'FirebaseInit');
       } catch (_) {}
     }
-
+    
     // Initialize cache service
     try {
       final cacheService = CacheService();
@@ -99,115 +93,59 @@ void main() {
     }
 
     initTrace.stop();
-
+    
     // Setup global error handling for Flutter framework errors
     FlutterError.onError = (FlutterErrorDetails details) {
       FlutterError.presentError(details);
-      AppErrorHandler.log(details.exception, details.stack,
-          context: 'FlutterError');
+      AppErrorHandler.log(details.exception, details.stack, context: 'FlutterError');
     };
-
+    
     // Catch asynchronous errors (Flutter 3.3+)
     PlatformDispatcher.instance.onError = (error, stack) {
       AppErrorHandler.log(error, stack, context: 'PlatformDispatcher');
       return true; // prevent default behavior
     };
 
-    // Replace the Red Screen of Death with a custom UI that shows the exact error
+    // Replace the Red Screen of Death with a custom friendly error UI
     ErrorWidget.builder = (FlutterErrorDetails details) {
-      return MaterialApp(
-        debugShowCheckedModeBanner: false,
-        home: Scaffold(
-          backgroundColor: Colors.white,
-          body: SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(Icons.error_outline, color: Colors.red, size: 50),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'حدث خطأ غير متوقع (Crash)',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
-                    textDirection: TextDirection.rtl,
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'الرجاء التقاط صورة لهذه الشاشة وإرسالها للمطور:',
-                    style: TextStyle(color: Colors.black87),
-                    textDirection: TextDirection.rtl,
-                  ),
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    color: Colors.grey[200],
-                    child: SelectableText(
-                      '${details.exceptionAsString()}\n\n${details.stack}',
-                      style: const TextStyle(fontSize: 10, color: Colors.red, fontFamily: 'monospace'),
-                      textDirection: TextDirection.ltr,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+      bool inDebug = false;
+      assert(() { inDebug = true; return true; }());
+      if (inDebug) {
+        return ErrorWidget(details.exception);
+      }
+      return Scaffold(
+        body: Center(
+          child: Padding(
+             padding: const EdgeInsets.all(20),
+             child: Column(
+               mainAxisAlignment: MainAxisAlignment.center,
+               children: [
+                 const Icon(Icons.error_outline, color: Colors.red, size: 50),
+                 const SizedBox(height: 16),
+                 const Text(
+                   'حدث خطأ غير متوقع',
+                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                 ),
+                 const SizedBox(height: 8),
+                 Text(
+                   'تم إرسال تقرير بالخطأ إلى فريق الدعم. نعتذر عن الإزعاج.',
+                   textAlign: TextAlign.center,
+                   style: TextStyle(color: Colors.grey[600]),
+                 ),
+               ],
+             )
+          )
         ),
       );
     };
-
+    
     // Setup timeago for Arabic
     timeago.setLocaleMessages('ar', timeago.ArMessages());
-
+    
     runApp(const SudanFreeApp());
   }, (error, stack) {
     // Catch all other asynchronous errors
     debugPrint('Caught global error: $error');
     AppErrorHandler.log(error, stack, context: 'GlobalAsyncError');
-    
-    // Show fatal error on screen if app context allows it, or log it
-    runApp(
-      MaterialApp(
-        debugShowCheckedModeBanner: false,
-        home: Scaffold(
-          backgroundColor: Colors.white,
-          body: SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 50),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'خطأ قاتل في الخلفية (Fatal Error)',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
-                    textDirection: TextDirection.rtl,
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'الرجاء التقاط صورة لهذه الشاشة:',
-                    style: TextStyle(color: Colors.black87),
-                    textDirection: TextDirection.rtl,
-                  ),
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    color: Colors.grey[200],
-                    child: SelectableText(
-                      '$error\n\n$stack',
-                      style: const TextStyle(fontSize: 10, color: Colors.red, fontFamily: 'monospace'),
-                      textDirection: TextDirection.ltr,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
   });
 }

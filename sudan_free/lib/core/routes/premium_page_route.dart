@@ -28,7 +28,8 @@ class PremiumPageRoute<T> extends PageRouteBuilder<T> {
           },
         );
 
-  static Widget _slideUp(Animation<double> animation, Animation<double> secondaryAnimation, Widget child) {
+  static Widget _slideUp(Animation<double> animation,
+      Animation<double> secondaryAnimation, Widget child) {
     final offsetAnimation = Tween<Offset>(
       begin: const Offset(0, 0.15),
       end: Offset.zero,
@@ -54,7 +55,8 @@ class PremiumPageRoute<T> extends PageRouteBuilder<T> {
     );
   }
 
-  static Widget _slideRight(Animation<double> animation, Animation<double> secondaryAnimation, Widget child) {
+  static Widget _slideRight(Animation<double> animation,
+      Animation<double> secondaryAnimation, Widget child) {
     final offsetAnimation = Tween<Offset>(
       begin: const Offset(0.25, 0),
       end: Offset.zero,

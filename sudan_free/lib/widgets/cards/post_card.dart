@@ -48,11 +48,11 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
   int _currentImageIndex = 0;
   bool? _localIsLiked;
   int? _localTotalReactions;
-  
+
   // Like animation
   late AnimationController _likeAnimController;
   late Animation<double> _likeScaleAnim;
-  
+
   // Heart overlay animation
   bool _showHeartOverlay = false;
   late AnimationController _heartOverlayController;
@@ -71,7 +71,8 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
     _likeScaleAnim = TweenSequence<double>([
       TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.3), weight: 50),
       TweenSequenceItem(tween: Tween(begin: 1.3, end: 1.0), weight: 50),
-    ]).animate(CurvedAnimation(parent: _likeAnimController, curve: Curves.easeInOut));
+    ]).animate(
+        CurvedAnimation(parent: _likeAnimController, curve: Curves.easeInOut));
 
     _heartOverlayController = AnimationController(
       vsync: this,
@@ -81,8 +82,9 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
       TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.2), weight: 30),
       TweenSequenceItem(tween: Tween(begin: 1.2, end: 1.0), weight: 30),
       TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.0), weight: 40),
-    ]).animate(CurvedAnimation(parent: _heartOverlayController, curve: Curves.easeInOut));
-    
+    ]).animate(CurvedAnimation(
+        parent: _heartOverlayController, curve: Curves.easeInOut));
+
     _heartOverlayController.addStatusListener((status) {
       if (status == AnimationStatus.completed) {
         setState(() => _showHeartOverlay = false);
@@ -94,7 +96,8 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
   @override
   void didUpdateWidget(covariant PostCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.post.id != widget.post.id || oldWidget.post.totalReactions != widget.post.totalReactions) {
+    if (oldWidget.post.id != widget.post.id ||
+        oldWidget.post.totalReactions != widget.post.totalReactions) {
       _localIsLiked = null;
       _localTotalReactions = null;
     }
@@ -108,14 +111,15 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
   }
 
   void _toggleLike({bool forceLike = false}) {
-    final isLiked = _localIsLiked ?? widget.post.reactions.containsKey(widget.currentUserId);
+    final isLiked = _localIsLiked ??
+        widget.post.reactions.containsKey(widget.currentUserId);
     final totalReactions = _localTotalReactions ?? widget.post.totalReactions;
 
     if (forceLike && isLiked) return; // Already liked
 
     HapticFeedback.lightImpact();
     _likeAnimController.forward(from: 0);
-    
+
     if (forceLike) {
       setState(() {
         _showHeartOverlay = true;
@@ -126,35 +130,42 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
     } else {
       setState(() {
         _localIsLiked = !isLiked;
-        _localTotalReactions = isLiked 
-             ? (totalReactions > 0 ? totalReactions - 1 : 0)
-             : totalReactions + 1;
+        _localTotalReactions = isLiked
+            ? (totalReactions > 0 ? totalReactions - 1 : 0)
+            : totalReactions + 1;
       });
     }
 
     final type = (forceLike || !isLiked) ? 'like' : 'unlike';
     context.read<PostsProvider>().reactToPost(
-      widget.post.id,
-      widget.currentUserId,
-      context.read<AuthProvider>().user?.name ?? '',
-      widget.post.userId,
-      type,
-    );
+          widget.post.id,
+          widget.currentUserId,
+          context.read<AuthProvider>().user?.name ?? '',
+          widget.post.userId,
+          type,
+        );
   }
 
   String _getTimeAgo(DateTime time) {
     final now = DateTime.now();
     final diff = now.difference(time);
-    
+
     if (diff.inMinutes < 60) {
-      if (diff.inMinutes <= 0) return widget.locale == 'ar' ? 'الآن' : 'Just now';
-      return widget.locale == 'ar' ? 'قبل ${diff.inMinutes} دقيقة' : '${diff.inMinutes}m ago';
+      if (diff.inMinutes <= 0)
+        return widget.locale == 'ar' ? 'الآن' : 'Just now';
+      return widget.locale == 'ar'
+          ? 'قبل ${diff.inMinutes} دقيقة'
+          : '${diff.inMinutes}m ago';
     } else if (diff.inHours < 24) {
-      return widget.locale == 'ar' ? 'قبل ${diff.inHours} ساعة' : '${diff.inHours}h ago';
+      return widget.locale == 'ar'
+          ? 'قبل ${diff.inHours} ساعة'
+          : '${diff.inHours}h ago';
     } else if (diff.inDays == 1 || (diff.inDays == 0 && now.day != time.day)) {
       return widget.locale == 'ar' ? 'أمس' : 'Yesterday';
     } else if (diff.inDays < 7) {
-      return widget.locale == 'ar' ? 'قبل ${diff.inDays} أيام' : '${diff.inDays}d ago';
+      return widget.locale == 'ar'
+          ? 'قبل ${diff.inDays} أيام'
+          : '${diff.inDays}d ago';
     } else {
       return '${time.year}/${time.month.toString().padLeft(2, '0')}/${time.day.toString().padLeft(2, '0')}';
     }
@@ -171,7 +182,7 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
 
   Widget _buildGridImage(String url, {double? height, bool isHero = false}) {
     Widget image;
-    
+
     if (url.startsWith('/')) {
       // Local pending file
       image = Image.file(
@@ -182,21 +193,27 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
       );
     } else {
       // Network file
-      final detailUrl = CloudinaryService.getOptimizedUrl(url, width: 1200, quality: 'auto');
+      final detailUrl =
+          CloudinaryService.getOptimizedUrl(url, width: 1200, quality: 'auto');
       if (!_precachedUrls.contains(detailUrl)) {
         _precachedUrls.add(detailUrl);
         precacheImage(CachedNetworkImageProvider(detailUrl), context);
       }
 
       image = CachedNetworkImage(
-        imageUrl: CloudinaryService.getOptimizedUrl(url, width: 600, quality: 'auto'),
+        imageUrl:
+            CloudinaryService.getOptimizedUrl(url, width: 600, quality: 'auto'),
         fit: BoxFit.cover,
         width: double.infinity,
         height: height,
         memCacheWidth: 800, // Memory Optimization
         placeholder: (_, __) => Container(
           color: AppColors.border.withValues(alpha: 0.1),
-          child: const Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))),
+          child: const Center(
+              child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2))),
         ),
         errorWidget: (_, __, ___) => Container(
           color: AppColors.border.withValues(alpha: 0.1),
@@ -251,8 +268,8 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
                 height: _currentImageIndex == index ? 8 : 6,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: _currentImageIndex == index 
-                      ? AppColors.primary 
+                  color: _currentImageIndex == index
+                      ? AppColors.primary
                       : AppColors.border.withValues(alpha: 0.5),
                 ),
               );
@@ -265,7 +282,9 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.post.userName.isEmpty || widget.post.userName == '?' || widget.post.userId.isEmpty) {
+    if (widget.post.userName.isEmpty ||
+        widget.post.userName == '?' ||
+        widget.post.userId.isEmpty) {
       return const SizedBox.shrink();
     }
 
@@ -273,7 +292,8 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
     final hasImage = widget.post.allImageUrls.isNotEmpty;
     final isOwner = widget.currentUserId == widget.post.userId;
     final isPending = widget.post.id.startsWith('pending_');
-    final isLiked = _localIsLiked ?? widget.post.reactions.containsKey(widget.currentUserId);
+    final isLiked = _localIsLiked ??
+        widget.post.reactions.containsKey(widget.currentUserId);
     final totalReactions = _localTotalReactions ?? widget.post.totalReactions;
 
     return GlassContainer(
@@ -287,7 +307,6 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
             // ─── Header ─────────────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 14, 8, 10),
@@ -295,24 +314,36 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
                 children: [
                   // Avatar
                   GestureDetector(
-                    onTap: () => Navigator.push(context,
-                        MaterialPageRoute(builder: (_) => ProfileScreen(userId: widget.post.userId))),
+                    onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) =>
+                                ProfileScreen(userId: widget.post.userId))),
                     child: Stack(
                       children: [
                         CircleAvatar(
                           radius: 22,
-                          backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                          backgroundColor:
+                              AppColors.primary.withValues(alpha: 0.1),
                           backgroundImage: widget.post.userImageUrl != null
                               ? CachedNetworkImageProvider(
-                                  CloudinaryService.getOptimizedUrl(widget.post.userImageUrl!, width: 100, quality: 'auto'),
+                                  CloudinaryService.getOptimizedUrl(
+                                      widget.post.userImageUrl!,
+                                      width: 100,
+                                      quality: 'auto'),
                                   maxWidth: 150,
                                   maxHeight: 150,
                                 )
                               : null,
                           child: widget.post.userImageUrl == null
                               ? Text(
-                                  widget.post.userName.isNotEmpty ? widget.post.userName[0].toUpperCase() : '?',
-                                  style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 16),
+                                  widget.post.userName.isNotEmpty
+                                      ? widget.post.userName[0].toUpperCase()
+                                      : '?',
+                                  style: const TextStyle(
+                                      color: AppColors.primary,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16),
                                 )
                               : null,
                         ),
@@ -322,8 +353,11 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
                             right: 0,
                             child: Container(
                               padding: const EdgeInsets.all(1),
-                              decoration: BoxDecoration(color: Theme.of(context).cardColor, shape: BoxShape.circle),
-                              child: const Icon(Icons.verified, size: 14, color: AppColors.primary),
+                              decoration: BoxDecoration(
+                                  color: Theme.of(context).cardColor,
+                                  shape: BoxShape.circle),
+                              child: const Icon(Icons.verified,
+                                  size: 14, color: AppColors.primary),
                             ),
                           ),
                       ],
@@ -334,8 +368,11 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
                   // Name + title + time
                   Expanded(
                     child: GestureDetector(
-                      onTap: () => Navigator.push(context,
-                          MaterialPageRoute(builder: (_) => ProfileScreen(userId: widget.post.userId))),
+                      onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) =>
+                                  ProfileScreen(userId: widget.post.userId))),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -344,24 +381,31 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
                               Flexible(
                                 child: Text(
                                   widget.post.userName,
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                               if (widget.isPromoted)
                                 const Padding(
-                                  padding: EdgeInsets.symmetric(horizontal: 4.0),
-                                  child: Icon(Icons.star_rounded, color: AppColors.sudanGold, size: 16),
+                                  padding:
+                                      EdgeInsets.symmetric(horizontal: 4.0),
+                                  child: Icon(Icons.star_rounded,
+                                      color: AppColors.sudanGold, size: 16),
                                 ),
-                              if (widget.post.userJobTitle != null && widget.post.userJobTitle!.isNotEmpty) ...[
+                              if (widget.post.userJobTitle != null &&
+                                  widget.post.userJobTitle!.isNotEmpty) ...[
                                 const SizedBox(width: 6),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 6, vertical: 2),
                                   decoration: BoxDecoration(
                                     color: widget.post.userRole == 'shop'
                                         ? Colors.amber.withValues(alpha: 0.15)
-                                        : AppColors.primary.withValues(alpha: 0.1),
+                                        : AppColors.primary
+                                            .withValues(alpha: 0.1),
                                     borderRadius: BorderRadius.circular(20),
                                   ),
                                   child: Text(
@@ -369,7 +413,9 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
                                     style: TextStyle(
                                       fontSize: 10,
                                       fontWeight: FontWeight.bold,
-                                      color: widget.post.userRole == 'shop' ? Colors.amber.shade700 : AppColors.primary,
+                                      color: widget.post.userRole == 'shop'
+                                          ? Colors.amber.shade700
+                                          : AppColors.primary,
                                     ),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
@@ -381,23 +427,31 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
                           const SizedBox(height: 2),
                           Row(
                             children: [
-                              Icon(Icons.access_time_rounded, size: 11, color: Colors.grey[500]),
+                              Icon(Icons.access_time_rounded,
+                                  size: 11, color: Colors.grey[500]),
                               const SizedBox(width: 3),
                               Text(
                                 _getTimeAgo(widget.post.createdAt),
-                                style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                                style: TextStyle(
+                                    fontSize: 11, color: Colors.grey[500]),
                               ),
                               if (widget.post.category != null) ...[
                                 const SizedBox(width: 8),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 7, vertical: 2),
                                   decoration: BoxDecoration(
-                                    color: AppColors.secondary.withValues(alpha: 0.08),
+                                    color: AppColors.secondary
+                                        .withValues(alpha: 0.08),
                                     borderRadius: BorderRadius.circular(20),
                                   ),
                                   child: Text(
-                                    _getCategoryName(widget.post.category!, widget.locale),
-                                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.secondary),
+                                    _getCategoryName(
+                                        widget.post.category!, widget.locale),
+                                    style: const TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.secondary),
                                   ),
                                 ),
                               ],
@@ -413,13 +467,16 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 10),
                       child: SizedBox(
-                        width: 18, height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: AppColors.primary),
                       ),
                     )
                   else if (isOwner)
                     IconButton(
-                      icon: Icon(Icons.more_vert, size: 20, color: Colors.grey[500]),
+                      icon: Icon(Icons.more_vert,
+                          size: 20, color: Colors.grey[500]),
                       onPressed: () => _showOptions(context),
                       visualDensity: VisualDensity.compact,
                     ),
@@ -434,11 +491,15 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.push_pin_rounded, size: 11, color: AppColors.secondary),
+                    Icon(Icons.push_pin_rounded,
+                        size: 11, color: AppColors.secondary),
                     const SizedBox(width: 4),
                     Text(
                       widget.locale == 'ar' ? 'مُثبت' : 'Pinned',
-                      style: TextStyle(fontSize: 11, color: AppColors.secondary, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.secondary,
+                          fontWeight: FontWeight.bold),
                     ),
                   ],
                 ),
@@ -448,7 +509,8 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
             if (widget.post.caption != null && widget.post.caption!.isNotEmpty)
               Padding(
                 padding: EdgeInsets.fromLTRB(14, 0, 14, hasImage ? 10 : 0),
-                child: ExpandableCaption(caption: widget.post.caption!, locale: widget.locale),
+                child: ExpandableCaption(
+                    caption: widget.post.caption!, locale: widget.locale),
               ),
 
             // ─── Image Carousel (edge-to-edge) ────────────────────────────
@@ -464,7 +526,9 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
                         Icons.favorite,
                         color: Colors.white,
                         size: 100,
-                        shadows: [Shadow(color: Colors.black26, blurRadius: 10)],
+                        shadows: [
+                          Shadow(color: Colors.black26, blurRadius: 10)
+                        ],
                       ),
                     ),
                 ],
@@ -472,7 +536,8 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
 
             // ─── Poll Widget ──────────────────────────────────────────────
             if (widget.post.poll != null)
-              PollWidget(post: widget.post, currentUserId: widget.currentUserId),
+              PollWidget(
+                  post: widget.post, currentUserId: widget.currentUserId),
 
             // ─── Actions Bar ─────────────────────────────────────────────
             if (widget.showActions) ...[
@@ -485,7 +550,9 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
                       scale: _likeScaleAnim,
                       child: _buildIconAction(
                         context,
-                        icon: isLiked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                        icon: isLiked
+                            ? Icons.favorite_rounded
+                            : Icons.favorite_border_rounded,
                         label: totalReactions > 0 ? '$totalReactions' : '',
                         color: isLiked ? Colors.red : Colors.grey[600]!,
                         onTap: _toggleLike,
@@ -496,14 +563,18 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
                     _buildIconAction(
                       context,
                       icon: Icons.chat_bubble_outline_rounded,
-                      label: widget.post.commentsCount > 0 ? '${widget.post.commentsCount}' : '',
+                      label: widget.post.commentsCount > 0
+                          ? '${widget.post.commentsCount}'
+                          : '',
                       color: Colors.grey[600]!,
                       onTap: () {
                         showModalBottomSheet(
                           context: context,
                           isScrollControlled: true,
                           backgroundColor: Colors.transparent,
-                          builder: (_) => CommentsSheet(postId: widget.post.id, postOwnerId: widget.post.userId),
+                          builder: (_) => CommentsSheet(
+                              postId: widget.post.id,
+                              postOwnerId: widget.post.userId),
                         );
                       },
                     ),
@@ -512,7 +583,9 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
                     _buildIconAction(
                       context,
                       icon: Icons.ios_share_rounded,
-                      label: widget.post.sharesCount > 0 ? '${widget.post.sharesCount}' : '',
+                      label: widget.post.sharesCount > 0
+                          ? '${widget.post.sharesCount}'
+                          : '',
                       color: Colors.grey[600]!,
                       onTap: () => _handleExternalShare(context),
                       isLoading: _isSharing,
@@ -544,12 +617,18 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (isLoading)
-              SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: color))
+              SizedBox(
+                  width: 18,
+                  height: 18,
+                  child:
+                      CircularProgressIndicator(strokeWidth: 2, color: color))
             else
               Icon(icon, size: 22, color: color),
             if (label.isNotEmpty) ...[
               const SizedBox(width: 4),
-              Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: color)),
+              Text(label,
+                  style: TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.w600, color: color)),
             ],
           ],
         ),
@@ -557,32 +636,35 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
     );
   }
 
-
-
   void _handleExternalShare(BuildContext context) async {
     if (_isSharing) return;
-    
+
     HapticFeedback.lightImpact();
     setState(() => _isSharing = true);
-    
+
     final String text = widget.post.caption ?? '';
     // Use the direct download link with postId parameter
-    final String appLink = 'https://sudanfree.com/sudan-free.html?postId=${widget.post.id}';
-    
-    String shareContent = '${widget.post.userName} ${widget.locale == 'ar' ? 'شارك منشوراً على سودان فري' : 'shared a post on SudanFree'}:\n\n';
-    
+    final String appLink =
+        'https://sudanfree.com/sudan-free.html?postId=${widget.post.id}';
+
+    String shareContent =
+        '${widget.post.userName} ${widget.locale == 'ar' ? 'شارك منشوراً على سودان فري' : 'shared a post on SudanFree'}:\n\n';
+
     if (text.isNotEmpty) {
       shareContent += '$text\n\n';
     }
-    
-    shareContent += '${widget.locale == 'ar' ? 'حمل التطبيق وشاهد المنشور' : 'Download app to view post'}:\n$appLink';
+
+    shareContent +=
+        '${widget.locale == 'ar' ? 'حمل التطبيق وشاهد المنشور' : 'Download app to view post'}:\n$appLink';
 
     try {
       // Text only share
       // ignore: deprecated_member_use
       await Share.share(
         shareContent,
-        subject: widget.locale == 'ar' ? 'منشور من سودان فري' : 'Post from SudanFree',
+        subject: widget.locale == 'ar'
+            ? 'منشور من سودان فري'
+            : 'Post from SudanFree',
       );
 
       if (!context.mounted) return;
@@ -604,34 +686,44 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
       ),
       builder: (ctx) {
         final user = context.read<AuthProvider>().user;
-        final bool canUsePortfolio = user?.role == UserRole.freelancer || 
-                                     user?.role == UserRole.shop ||
-                                     user?.role == UserRole.techService;
-        
+        final bool canUsePortfolio = user?.role == UserRole.freelancer ||
+            user?.role == UserRole.shop ||
+            user?.role == UserRole.techService;
+
         return Wrap(
           children: [
             if (canUsePortfolio)
               ListTile(
                 leading: Icon(
-                  widget.post.showInProfile ? Icons.business_center_outlined : Icons.add_photo_alternate_outlined, 
-                  color: AppColors.secondary
-                ),
-                title: Text(widget.post.showInProfile 
-                    ? (widget.locale == 'ar' ? 'إزالة من معرض الأعمال' : 'Remove from Portfolio')
-                    : (widget.locale == 'ar' ? 'إضافة إلى معرض الأعمال' : 'Add to Portfolio')),
+                    widget.post.showInProfile
+                        ? Icons.business_center_outlined
+                        : Icons.add_photo_alternate_outlined,
+                    color: AppColors.secondary),
+                title: Text(widget.post.showInProfile
+                    ? (widget.locale == 'ar'
+                        ? 'إزالة من معرض الأعمال'
+                        : 'Remove from Portfolio')
+                    : (widget.locale == 'ar'
+                        ? 'إضافة إلى معرض الأعمال'
+                        : 'Add to Portfolio')),
                 onTap: () async {
                   Navigator.pop(ctx);
-                  final success = await context.read<PostsProvider>().updatePost(
-                    postId: widget.post.id,
-                    showInProfile: !widget.post.showInProfile,
-                  );
+                  final success =
+                      await context.read<PostsProvider>().updatePost(
+                            postId: widget.post.id,
+                            showInProfile: !widget.post.showInProfile,
+                          );
                   if (context.mounted) {
                     final scaffoldMessenger = ScaffoldMessenger.of(context);
                     scaffoldMessenger.showSnackBar(
                       SnackBar(
-                        content: Text(success 
-                            ? (widget.locale == 'ar' ? 'تم التحديث بنجاح' : 'Updated successfully')
-                            : (widget.locale == 'ar' ? 'فشل التحديث' : 'Update failed')),
+                        content: Text(success
+                            ? (widget.locale == 'ar'
+                                ? 'تم التحديث بنجاح'
+                                : 'Updated successfully')
+                            : (widget.locale == 'ar'
+                                ? 'فشل التحديث'
+                                : 'Update failed')),
                         backgroundColor: success ? Colors.green : Colors.red,
                       ),
                     );
@@ -656,14 +748,20 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
               title: Text(widget.locale == 'ar' ? 'حذف' : 'Delete'),
               onTap: () async {
                 Navigator.pop(ctx);
-                final success = await context.read<PostsProvider>().deletePost(widget.post.id);
+                final success = await context
+                    .read<PostsProvider>()
+                    .deletePost(widget.post.id);
                 if (context.mounted) {
                   final scaffoldMessenger = ScaffoldMessenger.of(context);
                   scaffoldMessenger.showSnackBar(
                     SnackBar(
-                      content: Text(success 
-                          ? (widget.locale == 'ar' ? 'تم الحذف بنجاح' : 'Deleted successfully')
-                          : (widget.locale == 'ar' ? 'فشل الحذف' : 'Deletion failed')),
+                      content: Text(success
+                          ? (widget.locale == 'ar'
+                              ? 'تم الحذف بنجاح'
+                              : 'Deleted successfully')
+                          : (widget.locale == 'ar'
+                              ? 'فشل الحذف'
+                              : 'Deletion failed')),
                       backgroundColor: success ? Colors.green : Colors.red,
                     ),
                   );
@@ -678,7 +776,8 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
 
   String _getCategoryName(String categoryName, String locale) {
     try {
-      final category = PostCategory.values.firstWhere((e) => e.name == categoryName);
+      final category =
+          PostCategory.values.firstWhere((e) => e.name == categoryName);
       return category.getName(locale);
     } catch (_) {
       return categoryName;
@@ -722,8 +821,8 @@ class _ExpandableCaptionState extends State<ExpandableCaption> {
             LinkableText(
               text: widget.caption,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                height: 1.4,
-              ),
+                    height: 1.4,
+                  ),
               maxLines: _isExpanded ? null : _maxLines,
               onHashtagTap: (hashtag) {
                 // Navigate to search screen with the hashtag
@@ -744,33 +843,46 @@ class _ExpandableCaptionState extends State<ExpandableCaption> {
                 );
               },
             ),
-            
             if (_extractFirstUrl(widget.caption) != null)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
-                child: InternalLinkPreviewWidget.isInternalLink(_extractFirstUrl(widget.caption)!)
-                    ? InternalLinkPreviewWidget(url: _extractFirstUrl(widget.caption)!)
+                child: InternalLinkPreviewWidget.isInternalLink(
+                        _extractFirstUrl(widget.caption)!)
+                    ? InternalLinkPreviewWidget(
+                        url: _extractFirstUrl(widget.caption)!)
                     : ClipRRect(
                         borderRadius: BorderRadius.circular(8),
                         child: AnyLinkPreview(
                           link: _extractFirstUrl(widget.caption)!,
                           displayDirection: UIDirection.uiDirectionHorizontal,
-                          backgroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.white.withValues(alpha: 0.05) : Colors.grey[100],
+                          backgroundColor:
+                              Theme.of(context).brightness == Brightness.dark
+                                  ? Colors.white.withValues(alpha: 0.05)
+                                  : Colors.grey[100],
                           errorWidget: const SizedBox.shrink(),
                           errorImage: '',
                           cache: const Duration(days: 7),
                           placeholderWidget: Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: Theme.of(context).brightness == Brightness.dark ? Colors.white.withValues(alpha: 0.05) : Colors.grey[100],
+                              color: Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? Colors.white.withValues(alpha: 0.05)
+                                  : Colors.grey[100],
                             ),
                             child: Row(
                               children: [
-                                Icon(Icons.link, color: AppColors.primary.withValues(alpha: 0.5)),
+                                Icon(Icons.link,
+                                    color: AppColors.primary
+                                        .withValues(alpha: 0.5)),
                                 const SizedBox(width: 8),
                                 Text(
-                                  Theme.of(context).brightness == Brightness.dark ? 'Loading link...' : 'جاري قراءة الرابط...',
-                                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                                  Theme.of(context).brightness ==
+                                          Brightness.dark
+                                      ? 'Loading link...'
+                                      : 'جاري قراءة الرابط...',
+                                  style: const TextStyle(
+                                      color: Colors.grey, fontSize: 12),
                                 ),
                               ],
                             ),
@@ -778,8 +890,9 @@ class _ExpandableCaptionState extends State<ExpandableCaption> {
                         ),
                       ),
               ),
-
-            if (!_isExpanded && (widget.caption.length > 150 || (widget.caption.split('\n').length > _maxLines)))
+            if (!_isExpanded &&
+                (widget.caption.length > 150 ||
+                    (widget.caption.split('\n').length > _maxLines)))
               Padding(
                 padding: const EdgeInsets.only(top: 4.0),
                 child: Text(
@@ -813,4 +926,3 @@ class _ExpandableCaptionState extends State<ExpandableCaption> {
     return null;
   }
 }
-

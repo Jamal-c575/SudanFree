@@ -8,6 +8,7 @@ import '../views/profile/profile_screen.dart';
 import '../views/profile/freelancer_profile_screen.dart';
 import '../views/profile/shop_profile_screen.dart';
 import '../views/requests/request_details_screen.dart';
+import '../views/jobs/active_job_tracking_screen.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'dart:io';
 
@@ -17,7 +18,8 @@ class NotificationService {
   NotificationService._internal();
 
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
-  final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin _localNotifications =
+      FlutterLocalNotificationsPlugin();
 
   // Initialize notifications
   Future<void> initialize() async {
@@ -37,8 +39,9 @@ class NotificationService {
     // 2. Setup Local Notifications (for Foreground)
     const androidInit = AndroidInitializationSettings('sudan1');
     const iosInit = DarwinInitializationSettings();
-    const initSettings = InitializationSettings(android: androidInit, iOS: iosInit);
-    
+    const initSettings =
+        InitializationSettings(android: androidInit, iOS: iosInit);
+
     await _localNotifications.initialize(
       initSettings,
       onDidReceiveNotificationResponse: (details) {
@@ -110,7 +113,7 @@ class NotificationService {
 
     if (notification != null) {
       final isChat = data['type'] == 'chat_message';
-      
+
       await _localNotifications.show(
         notification.hashCode,
         notification.title,
@@ -122,7 +125,9 @@ class NotificationService {
             importance: Importance.max,
             priority: Priority.high,
             icon: 'sudan1',
-            channelDescription: isChat ? 'إشعارات الرسائل والدردشة الخاصة' : 'الإشعارات العامة للتطبيق',
+            channelDescription: isChat
+                ? 'إشعارات الرسائل والدردشة الخاصة'
+                : 'الإشعارات العامة للتطبيق',
           ),
           iOS: const DarwinNotificationDetails(
             presentAlert: true,
@@ -156,28 +161,75 @@ class NotificationService {
       if (type == 'message' || type == 'contract') {
         final chat = await firestore.getChatById(relatedId);
         if (chat != null && context.mounted) {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => ChatScreen(chat: chat)));
+          Navigator.push(context,
+              MaterialPageRoute(builder: (_) => ChatScreen(chat: chat)));
         }
       } else if (type == 'comment' || type == 'like' || type == 'mention') {
         final post = await firestore.getPost(relatedId);
         if (post != null && context.mounted) {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => PostDetailsScreen(post: post)));
+          Navigator.push(context,
+              MaterialPageRoute(builder: (_) => PostDetailsScreen(post: post)));
         }
       } else if (type == 'partnerRequest' || type == 'follow') {
         final user = await firestore.getUser(relatedId);
         if (user != null && context.mounted) {
           if (user.isFreelancer) {
-            Navigator.push(context, MaterialPageRoute(builder: (_) => FreelancerProfileScreen(user: user, isMe: false)));
+            Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) =>
+                        FreelancerProfileScreen(user: user, isMe: false)));
           } else if (user.isShop) {
-            Navigator.push(context, MaterialPageRoute(builder: (_) => ShopProfileScreen(user: user, isMe: false)));
+            Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) =>
+                        ShopProfileScreen(user: user, isMe: false)));
           } else {
-            Navigator.push(context, MaterialPageRoute(builder: (_) => ProfileScreen(userId: user.id)));
+            Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => ProfileScreen(userId: user.id)));
           }
         }
       } else if (type == 'offer') {
         final req = await firestore.getRequestById(relatedId);
         if (req != null && context.mounted) {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => RequestDetailsScreen(request: req)));
+          Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => RequestDetailsScreen(request: req)));
+        }
+      } else if (type == 'system' || type == 'assignment') {
+        // Try user first, if not found, try job
+        final user = await firestore.getUser(relatedId);
+        if (user != null && context.mounted) {
+          if (user.isFreelancer) {
+            Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) =>
+                        FreelancerProfileScreen(user: user, isMe: false)));
+          } else if (user.isShop) {
+            Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) =>
+                        ShopProfileScreen(user: user, isMe: false)));
+          } else {
+            Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => ProfileScreen(userId: user.id)));
+          }
+        } else {
+          final job = await firestore.getJob(relatedId);
+          if (job != null && context.mounted) {
+            Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => ActiveJobTrackingScreen(jobId: job.id)));
+          }
         }
       }
     } catch (e) {

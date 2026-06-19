@@ -1,6 +1,19 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-enum NotificationType { like, comment, rating, message, follow, mention, fraudWarning, reviewRequest, system, offer, partnerRequest, assignment }
+enum NotificationType {
+  like,
+  comment,
+  rating,
+  message,
+  follow,
+  mention,
+  fraudWarning,
+  reviewRequest,
+  system,
+  offer,
+  partnerRequest,
+  assignment
+}
 
 class NotificationModel {
   final String id;
@@ -10,7 +23,8 @@ class NotificationModel {
   final String message;
   final bool isRead;
   final Timestamp createdAt;
-  final Timestamp? sendAfter; // For delayed push notifications (e.g. 5 mins delay)
+  final Timestamp?
+      sendAfter; // For delayed push notifications (e.g. 5 mins delay)
   final String? relatedId; // e.g. reviewId, postId
 
   NotificationModel({

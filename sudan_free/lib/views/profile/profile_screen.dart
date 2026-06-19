@@ -43,7 +43,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final authUser = authProvider.user;
 
     // Case 1: Viewing own profile (param userId is null OR matches auth user id)
-    if (widget.userId == null || (authUser != null && widget.userId == authUser.id)) {
+    if (widget.userId == null ||
+        (authUser != null && widget.userId == authUser.id)) {
       setState(() {
         _user = authUser;
         _isLoading = false;
@@ -52,7 +53,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
 
     // Case 2: Viewing someone else
-    setState(() { _isLoading = true; _loadError = null; });
+    setState(() {
+      _isLoading = true;
+      _loadError = null;
+    });
     try {
       final fetchedUser = await FirestoreService().getUser(widget.userId!);
       if (mounted) {
@@ -80,8 +84,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (_isUploadingImage || _user == null) return;
 
     final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
-    
+    final pickedFile =
+        await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+
     if (pickedFile == null || !mounted) return;
 
     setState(() => _isUploadingImage = true);
@@ -90,8 +95,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final file = File(pickedFile.path);
       final url = await StorageService().uploadProfileImage(_user!.id, file);
 
-      await FirestoreService().updateUserProfile(_user!.id, {'profileImageUrl': url});
-      
+      await FirestoreService()
+          .updateUserProfile(_user!.id, {'profileImageUrl': url});
+
       if (mounted) {
         final auth = context.read<AuthProvider>();
         await auth.refreshUserProfile();
@@ -117,12 +123,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     // Watch auth user updates if we are viewing ourselves
     final authUser = context.watch<AuthProvider>().user;
-    if (widget.userId == null || (authUser != null && widget.userId == authUser.id)) {
-       // Only update _user if it's already set (to avoid overriding loading state initially)
-       if (_user != null) _user = authUser;
+    if (widget.userId == null ||
+        (authUser != null && widget.userId == authUser.id)) {
+      // Only update _user if it's already set (to avoid overriding loading state initially)
+      if (_user != null) _user = authUser;
     }
 
-    if (_isLoading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    if (_isLoading)
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     if (_user == null) {
       final errorLocale = Localizations.localeOf(context).languageCode;
       return Scaffold(
@@ -133,11 +141,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.person_off_rounded, size: 64, color: Colors.grey.shade400),
+                Icon(Icons.person_off_rounded,
+                    size: 64, color: Colors.grey.shade400),
                 const SizedBox(height: 16),
                 Text(
-                  errorLocale == 'ar' ? 'تعذّر تحميل هذا الحساب' : 'Could not load this account',
-                  style: TextStyle(color: Colors.grey.shade600, fontSize: 16, fontWeight: FontWeight.bold),
+                  errorLocale == 'ar'
+                      ? 'تعذّر تحميل هذا الحساب'
+                      : 'Could not load this account',
+                  style: TextStyle(
+                      color: Colors.grey.shade600,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold),
                   textAlign: TextAlign.center,
                 ),
                 if (_loadError != null) ...[
@@ -151,7 +165,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     child: SelectableText(
                       _loadError!,
-                      style: TextStyle(color: Colors.red.shade700, fontSize: 11),
+                      style:
+                          TextStyle(color: Colors.red.shade700, fontSize: 11),
                       textAlign: TextAlign.center,
                     ),
                   ),
@@ -169,7 +184,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ElevatedButton.icon(
                       onPressed: _loadUser,
                       icon: const Icon(Icons.refresh),
-                      label: Text(errorLocale == 'ar' ? 'إعادة المحاولة' : 'Retry'),
+                      label: Text(
+                          errorLocale == 'ar' ? 'إعادة المحاولة' : 'Retry'),
                     ),
                   ],
                 ),
@@ -186,12 +202,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     switch (_user!.role) {
       case UserRole.shop:
         return ShopProfileScreen(user: _user!, isMe: isMe);
-      
+
       case UserRole.freelancer:
       case UserRole.techService:
       case UserRole.privateService:
         return FreelancerProfileScreen(user: _user!, isMe: isMe);
-      
+
       default:
         // Simple profile view for clients (who don't have public profiles usually)
         return _buildClientProfile(context, _user!, isMe);
@@ -201,7 +217,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildClientProfile(BuildContext context, UserModel user, bool isMe) {
     final locale = Localizations.localeOf(context).languageCode;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Scaffold(
       appBar: AppBar(
         title: Text(locale == 'ar' ? 'الملف الشخصي' : 'Profile'),
@@ -216,17 +232,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
               alignment: Alignment.bottomRight,
               children: [
                 GestureDetector(
-                  onTap: isMe && !_isUploadingImage ? _pickAndUploadImage : null,
+                  onTap:
+                      isMe && !_isUploadingImage ? _pickAndUploadImage : null,
                   child: CircleAvatar(
                     radius: 65,
                     backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                    backgroundImage: user.profileImageUrl != null ? CachedNetworkImageProvider(user.profileImageUrl!) : null,
-                    child: _isUploadingImage 
+                    backgroundImage: user.profileImageUrl != null
+                        ? CachedNetworkImageProvider(user.profileImageUrl!)
+                        : null,
+                    child: _isUploadingImage
                         ? const CircularProgressIndicator()
                         : user.profileImageUrl == null
                             ? Text(
-                                user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
-                                style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: AppColors.primary),
+                                user.name.isNotEmpty
+                                    ? user.name[0].toUpperCase()
+                                    : '?',
+                                style: const TextStyle(
+                                    fontSize: 36,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.primary),
                               )
                             : null,
                   ),
@@ -242,9 +266,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         decoration: BoxDecoration(
                           color: AppColors.primary,
                           shape: BoxShape.circle,
-                          border: Border.all(color: Theme.of(context).scaffoldBackgroundColor, width: 3),
+                          border: Border.all(
+                              color: Theme.of(context).scaffoldBackgroundColor,
+                              width: 3),
                         ),
-                        child: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
+                        child: const Icon(Icons.camera_alt,
+                            color: Colors.white, size: 20),
                       ),
                     ),
                   ),
@@ -257,7 +284,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Flexible(
                   child: Text(
                     user.name,
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                    style: Theme.of(context)
+                        .textTheme
+                        .headlineSmall
+                        ?.copyWith(fontWeight: FontWeight.bold),
                   ),
                 ),
                 SmartVerificationBadge(user: user, size: 24),
@@ -271,11 +301,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => MapExplorerScreen(targetUser: user)),
+                      MaterialPageRoute(
+                          builder: (_) => MapExplorerScreen(targetUser: user)),
                     );
                   },
                   icon: const Icon(Icons.map, size: 18),
-                  label: Text(locale == 'ar' ? 'عرض على الخريطة' : 'Open on Map'),
+                  label:
+                      Text(locale == 'ar' ? 'عرض على الخريطة' : 'Open on Map'),
                 ),
               ],
             ),
@@ -285,21 +317,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
               decoration: BoxDecoration(
                 color: isDark ? Colors.white10 : Colors.grey[100],
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: isDark ? Colors.white24 : Colors.grey.shade300),
+                border: Border.all(
+                    color: isDark ? Colors.white24 : Colors.grey.shade300),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.verified_user, size: 16, color: isDark ? Colors.white60 : Colors.grey),
+                  Icon(Icons.verified_user,
+                      size: 16, color: isDark ? Colors.white60 : Colors.grey),
                   const SizedBox(width: 6),
                   Text(
                     locale == 'ar' ? 'حساب عميل' : 'Client Account',
-                    style: TextStyle(color: isDark ? Colors.white60 : Colors.grey.shade600, fontSize: 13),
+                    style: TextStyle(
+                        color: isDark ? Colors.white60 : Colors.grey.shade600,
+                        fontSize: 13),
                   ),
                 ],
               ),
             ),
-            
+
             // Location info if available
             if (user.state != null) ...[
               const SizedBox(height: 20),
@@ -309,59 +345,81 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 decoration: BoxDecoration(
                   color: Theme.of(context).cardColor,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: isDark ? Colors.white12 : Colors.grey.shade200),
+                  border: Border.all(
+                      color: isDark ? Colors.white12 : Colors.grey.shade200),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.location_on, color: AppColors.primary.withValues(alpha: 0.7), size: 20),
+                    Icon(Icons.location_on,
+                        color: AppColors.primary.withValues(alpha: 0.7),
+                        size: 20),
                     const SizedBox(width: 8),
                     Text(
                       '${user.state}${user.locality != null ? ' - ${user.locality}' : ''}',
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
-                      const Spacer(),
-                      TextButton.icon(
-                        onPressed: () {
-                          if (context.mounted) {
-                            Navigator.push(context, MaterialPageRoute(builder: (_) => MapExplorerScreen(targetUser: user)));
-                          }
-                        },
-                        icon: const Icon(Icons.map_rounded),
-                        label: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'افتح على الخريطة' : 'Open on Map'),
-                      ),
+                    const Spacer(),
+                    TextButton.icon(
+                      onPressed: () {
+                        if (context.mounted) {
+                          Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) =>
+                                      MapExplorerScreen(targetUser: user)));
+                        }
+                      },
+                      icon: const Icon(Icons.map_rounded),
+                      label: Text(
+                          Localizations.localeOf(context).languageCode == 'ar'
+                              ? 'افتح على الخريطة'
+                              : 'Open on Map'),
+                    ),
                   ],
                 ),
               ),
             ],
-            
+
             if (isMe) ...[
               const SizedBox(height: 28),
-              
+
               // Favorites Button
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FavoritesScreen())),
+                  onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const FavoritesScreen())),
                   icon: const Icon(Icons.favorite, color: Colors.white),
-                  label: Text(locale == 'ar' ? 'مفضلاتي' : 'My Favorites', style: const TextStyle(color: Colors.white)),
+                  label: Text(locale == 'ar' ? 'مفضلاتي' : 'My Favorites',
+                      style: const TextStyle(color: Colors.white)),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
                   ),
                 ),
               ),
               const SizedBox(height: 12),
-              
+
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
-                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProfileSetupScreen(existingUser: user))),
+                  onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) =>
+                              ProfileSetupScreen(existingUser: user))),
                   icon: const Icon(Icons.edit),
-                  label: Text(locale == 'ar' ? 'تعديل الملف / ترقية الحساب' : 'Edit Profile / Upgrade Account'),
+                  label: Text(locale == 'ar'
+                      ? 'تعديل الملف / ترقية الحساب'
+                      : 'Edit Profile / Upgrade Account'),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
                   ),
                 ),
               ),
@@ -371,6 +429,4 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
   }
-
-
 }

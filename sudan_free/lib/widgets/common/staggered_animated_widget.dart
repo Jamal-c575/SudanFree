@@ -21,12 +21,14 @@ class StaggeredAnimatedWidget extends StatefulWidget {
   });
 
   @override
-  State<StaggeredAnimatedWidget> createState() => _StaggeredAnimatedWidgetState();
+  State<StaggeredAnimatedWidget> createState() =>
+      _StaggeredAnimatedWidgetState();
 }
 
-class _StaggeredAnimatedWidgetState extends State<StaggeredAnimatedWidget> with SingleTickerProviderStateMixin {
+class _StaggeredAnimatedWidgetState extends State<StaggeredAnimatedWidget>
+    with SingleTickerProviderStateMixin {
   static final Set<String> _animatedItems = {};
-  
+
   late AnimationController _controller;
   late Animation<double> _opacityAnimation;
   late Animation<Offset> _slideAnimation;
@@ -41,8 +43,8 @@ class _StaggeredAnimatedWidgetState extends State<StaggeredAnimatedWidget> with 
     );
 
     _slideAnimation = Tween<Offset>(
-      begin: widget.direction == Axis.vertical 
-          ? Offset(0, widget.offset / 100) 
+      begin: widget.direction == Axis.vertical
+          ? Offset(0, widget.offset / 100)
           : Offset(widget.offset / 100, 0),
       end: Offset.zero,
     ).animate(
@@ -54,22 +56,22 @@ class _StaggeredAnimatedWidgetState extends State<StaggeredAnimatedWidget> with 
 
   void _startAnimation() {
     final itemKey = '${widget.listId}-${widget.index}';
-    
+
     // If already animated, show immediately
     if (_animatedItems.contains(itemKey)) {
       _controller.value = 1.0;
       return;
     }
-    
+
     // Only stagger the first 4 visible items for a nice initial impression.
-    // Everything beyond that animates immediately with no delay — 
+    // Everything beyond that animates immediately with no delay —
     // this eliminates the visible gap when scrolling fast.
     if (widget.index > 3) {
       _controller.forward();
       _animatedItems.add(itemKey);
       return;
     }
-    
+
     final startDelay = widget.delay * widget.index;
     Future.delayed(startDelay, () {
       if (mounted) {

@@ -16,8 +16,9 @@ class StorageService {
       // استخراج الامتداد من المسار
       final filePath = imageFile.path;
       final dotIndex = filePath.lastIndexOf('.');
-      final ext = dotIndex != -1 ? filePath.substring(dotIndex).toLowerCase() : '.jpg';
-      
+      final ext =
+          dotIndex != -1 ? filePath.substring(dotIndex).toLowerCase() : '.jpg';
+
       final fileName = '${_uuid.v4()}$ext';
       final ref = _storage.ref().child('$folder/$fileName');
 
@@ -26,7 +27,8 @@ class StorageService {
       // ضغط الصورة محلياً إذا كانت كبيرة لتوفير البيانات وتسريع الرفع
       File fileToUpload = imageFile;
       if (ext == '.jpg' || ext == '.jpeg' || ext == '.png' || ext == '.webp') {
-        if (await ImageCompressService.needsCompression(imageFile, maxSizeKB: 300)) {
+        if (await ImageCompressService.needsCompression(imageFile,
+            maxSizeKB: 300)) {
           debugPrint('StorageService: compressing image before upload...');
           fileToUpload = await ImageCompressService.compressImage(imageFile);
         }
@@ -70,7 +72,8 @@ class StorageService {
   }
 
   Future<String> uploadPortfolioVideo(String userId, File file) async {
-    final url = await uploadImage(file, folder: 'users/portfolio_videos/$userId');
+    final url =
+        await uploadImage(file, folder: 'users/portfolio_videos/$userId');
     if (url == null) throw Exception('فشل رفع فيديو المعرض');
     return url;
   }
@@ -88,18 +91,21 @@ class StorageService {
   }
 
   Future<String> uploadIdCard(String userId, File file) async {
-    final url = await uploadImage(file, folder: 'users/verifications/$userId/id');
+    final url =
+        await uploadImage(file, folder: 'users/verifications/$userId/id');
     if (url == null) throw Exception('فشل رفع صورة الهوية');
     return url;
   }
 
   Future<String> uploadVerificationSelfie(String userId, File file) async {
-    final url = await uploadImage(file, folder: 'users/verifications/$userId/selfie');
+    final url =
+        await uploadImage(file, folder: 'users/verifications/$userId/selfie');
     if (url == null) throw Exception('فشل رفع الصورة الشخصية');
     return url;
   }
 
-  Future<String> uploadChatAttachment(String chatId, File file, String type) async {
+  Future<String> uploadChatAttachment(
+      String chatId, File file, String type) async {
     final url = await uploadImage(file, folder: 'chats/$chatId');
     if (url == null) throw Exception('فشل رفع مرفق المحادثة');
     return url;
@@ -113,14 +119,22 @@ class StorageService {
   String _contentType(String ext) {
     switch (ext) {
       case '.jpg':
-      case '.jpeg': return 'image/jpeg';
-      case '.png': return 'image/png';
-      case '.webp': return 'image/webp';
-      case '.gif': return 'image/gif';
-      case '.mp4': return 'video/mp4';
-      case '.mov': return 'video/quicktime';
-      case '.m4a': return 'audio/mp4';
-      default: return 'application/octet-stream';
+      case '.jpeg':
+        return 'image/jpeg';
+      case '.png':
+        return 'image/png';
+      case '.webp':
+        return 'image/webp';
+      case '.gif':
+        return 'image/gif';
+      case '.mp4':
+        return 'video/mp4';
+      case '.mov':
+        return 'video/quicktime';
+      case '.m4a':
+        return 'audio/mp4';
+      default:
+        return 'application/octet-stream';
     }
   }
 }

@@ -1,8 +1,10 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../l10n/generated/app_localizations.dart';
-
 import '../../services/smart_guide_service.dart';
+import '../../widgets/common/glass_container.dart';
+import '../../widgets/common/glass_card.dart';
 
 /// شاشة نصائح السلامة - Safety Tips Screen
 class SafetyTipsScreen extends StatefulWidget {
@@ -30,20 +32,45 @@ class _SafetyTipsScreenState extends State<SafetyTipsScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: Text(l10n.safetyTipsTitle),
         centerTitle: true,
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        flexibleSpace: ClipRRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(color: Colors.transparent),
+          ),
+        ),
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: isDark
+                ? [const Color(0xFF0F172A), const Color(0xFF1E293B)]
+                : [AppColors.primaryLight.withValues(alpha: 0.3), Colors.white],
+          ),
+        ),
+        child: SafeArea(
+          child: ListView(
+            padding: const EdgeInsets.all(16),
         children: [
           // Header
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [AppColors.primary, AppColors.primary.withValues(alpha: 0.8)],
+                colors: [
+                  AppColors.primary,
+                  AppColors.primary.withValues(alpha: 0.8)
+                ],
               ),
               borderRadius: BorderRadius.circular(16),
             ),
@@ -54,9 +81,9 @@ class _SafetyTipsScreenState extends State<SafetyTipsScreen> {
                 Text(
                   l10n.protectYourself,
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
                   textAlign: TextAlign.center,
                 ),
               ],
@@ -72,41 +99,43 @@ class _SafetyTipsScreenState extends State<SafetyTipsScreen> {
             color: Colors.blue,
           ),
           const SizedBox(height: 12),
-          
+
           _SafetyTip(
             icon: Icons.money,
             iconColor: Colors.green,
             title: l10n.safetyTipAskDeposit,
             description: l10n.safetyTipAskDepositDesc,
           ),
-          
+
           _SafetyTip(
             icon: Icons.phone_callback,
             iconColor: Colors.orange,
             title: l10n.safetyTipConfirmCall,
             description: l10n.safetyTipConfirmCallDesc,
           ),
-          
+
           _SafetyTip(
             icon: Icons.location_on,
             iconColor: Colors.red,
             title: l10n.safetyTipVerifyAddress,
             description: l10n.safetyTipVerifyAddressDesc,
           ),
-          
+
           _SafetyTip(
             icon: Icons.receipt_long,
             iconColor: Colors.purple,
             title: l10n.safetyTipKeepProof,
             description: l10n.safetyTipKeepProofDesc,
           ),
-          
+
           _SafetyTip(
             icon: Icons.location_off,
             iconColor: Colors.indigo,
-            title: Localizations.localeOf(context).languageCode == 'ar' ? 'خصوصية موقعك على الخريطة' : 'Map Location Privacy',
-            description: Localizations.localeOf(context).languageCode == 'ar' 
-                ? 'يمكنك دائماً إخفاء موقعك من الخريطة بالذهاب إلى "الإعدادات -> الظهور على الخريطة" لإيقافه.' 
+            title: Localizations.localeOf(context).languageCode == 'ar'
+                ? 'خصوصية موقعك على الخريطة'
+                : 'Map Location Privacy',
+            description: Localizations.localeOf(context).languageCode == 'ar'
+                ? 'يمكنك دائماً إخفاء موقعك من الخريطة بالذهاب إلى "الإعدادات -> الظهور على الخريطة" لإيقافه.'
                 : 'You can always hide your location from the map by going to "Settings -> Show on Map".',
           ),
 
@@ -119,21 +148,21 @@ class _SafetyTipsScreenState extends State<SafetyTipsScreen> {
             color: Colors.teal,
           ),
           const SizedBox(height: 12),
-          
+
           _SafetyTip(
             icon: Icons.star,
             iconColor: Colors.amber,
             title: l10n.safetyTipCheckReviews,
             description: l10n.safetyTipCheckReviewsDesc,
           ),
-          
+
           _SafetyTip(
             icon: Icons.photo_library,
             iconColor: Colors.blue,
             title: l10n.safetyTipSeePortfolio,
             description: l10n.safetyTipSeePortfolioDesc,
           ),
-          
+
           _SafetyTip(
             icon: Icons.handshake,
             iconColor: Colors.green,
@@ -146,74 +175,83 @@ class _SafetyTipsScreenState extends State<SafetyTipsScreen> {
           // Contracts and Communication Section
           _SectionTitle(
             icon: Icons.handshake,
-            title: Localizations.localeOf(context).languageCode == 'ar' ? 'العقود والتواصل' : 'Contracts & Communication',
+            title: Localizations.localeOf(context).languageCode == 'ar'
+                ? 'العقود والتواصل'
+                : 'Contracts & Communication',
             color: Colors.deepPurple,
           ),
           const SizedBox(height: 12),
-          
+
           _SafetyTip(
             icon: Icons.chat_bubble_outline,
             iconColor: Colors.blue,
-            title: Localizations.localeOf(context).languageCode == 'ar' ? 'استخدام المحادثة الداخلية' : 'Use Internal Chat',
-            description: Localizations.localeOf(context).languageCode == 'ar' 
-                ? 'استخدم المحادثة داخل التطبيق حصرياً لإنشاء وتنسيق العقود، وتجنب استخدامها للمحادثات الطويلة لحفظ بياناتك.' 
+            title: Localizations.localeOf(context).languageCode == 'ar'
+                ? 'استخدام المحادثة الداخلية'
+                : 'Use Internal Chat',
+            description: Localizations.localeOf(context).languageCode == 'ar'
+                ? 'استخدم المحادثة داخل التطبيق حصرياً لإنشاء وتنسيق العقود، وتجنب استخدامها للمحادثات الطويلة لحفظ بياناتك.'
                 : 'Use in-app chat exclusively for creating and formatting contracts, avoid long chats to save data.',
           ),
-          
+
           _SafetyTip(
             icon: Icons.verified_user,
             iconColor: Colors.green,
-            title: Localizations.localeOf(context).languageCode == 'ar' ? 'حفظ الحقوق بالعقود' : 'Protect Rights with Contracts',
-            description: Localizations.localeOf(context).languageCode == 'ar' 
-                ? 'استخدم ميزة "إنشاء عقد" في المحادثة لتوثيق الخدمة والسعر. العقد المقبول يُعد إثباتاً للاتفاق بين الطرفين.' 
+            title: Localizations.localeOf(context).languageCode == 'ar'
+                ? 'حفظ الحقوق بالعقود'
+                : 'Protect Rights with Contracts',
+            description: Localizations.localeOf(context).languageCode == 'ar'
+                ? 'استخدم ميزة "إنشاء عقد" في المحادثة لتوثيق الخدمة والسعر. العقد المقبول يُعد إثباتاً للاتفاق بين الطرفين.'
                 : 'Use "Create Contract" feature in chat to document service and price. An accepted contract serves as proof.',
           ),
 
           const SizedBox(height: 24),
 
           // Warning Box
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.red.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.warning, color: Colors.red, size: 32),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        l10n.warning,
-                        style: const TextStyle(
-                          color: Colors.red,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
+          GlassCard(
+            borderRadius: 12,
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.warning, color: Colors.red, size: 32),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          l10n.warning,
+                          style: const TextStyle(
+                            color: Colors.red,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        l10n.safetyWarningDesc,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Theme.of(context).brightness == Brightness.dark
-                              ? const Color(0xFFCBD5E1)
-                              : null,
+                        const SizedBox(height: 4),
+                        Text(
+                          l10n.safetyWarningDesc,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isDark ? const Color(0xFFCBD5E1) : Colors.black87,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
 
           const SizedBox(height: 32),
         ],
+      ),
+      ),
       ),
     );
   }
@@ -246,8 +284,8 @@ class _SectionTitle extends StatelessWidget {
         Text(
           title,
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+                fontWeight: FontWeight.bold,
+              ),
         ),
       ],
     );
@@ -269,27 +307,14 @@ class _SafetyTip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Theme.of(context).brightness == Brightness.dark
-            ? Border.all(color: Colors.white.withValues(alpha: 0.08))
-            : null,
-        boxShadow: Theme.of(context).brightness == Brightness.dark
-            ? null  // بدون ظل في الوضع المظلم
-            : [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: GlassCard(
+        borderRadius: 12,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
             padding: const EdgeInsets.all(10),
@@ -307,23 +332,26 @@ class _SafetyTip extends StatelessWidget {
                 Text(
                   title,
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                        fontWeight: FontWeight.bold,
+                      ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   description,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).brightness == Brightness.dark
-                        ? const Color(0xFFCBD5E1)  // فاتح وواضح في الوضع المظلم
-                        : AppColors.textSecondary,
-                    height: 1.4,
-                  ),
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? const Color(
+                                0xFFCBD5E1) // فاتح وواضح في الوضع المظلم
+                            : AppColors.textSecondary,
+                        height: 1.4,
+                      ),
                 ),
               ],
             ),
           ),
-        ],
+          ],
+          ),
+        ),
       ),
     );
   }

@@ -61,12 +61,20 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
                 minScale: 0.5,
                 maxScale: 4.0,
                 child: Hero(
-                  tag: index == widget.initialIndex ? 'hero_image_$index' : 'no_hero_$index',
+                  tag: index == widget.initialIndex
+                      ? 'hero_image_$index'
+                      : 'no_hero_$index',
                   child: CachedNetworkImage(
-                    imageUrl: CloudinaryService.getOptimizedUrl(widget.imageUrls[index], width: 1200, quality: 'auto'),
+                    imageUrl: CloudinaryService.getOptimizedUrl(
+                        widget.imageUrls[index],
+                        width: 1200,
+                        quality: 'auto'),
                     fit: BoxFit.contain,
-                    placeholder: (_, __) => const Center(child: CircularProgressIndicator(color: Colors.white)),
-                    errorWidget: (_, __, ___) => const Center(child: Icon(Icons.broken_image, color: Colors.white, size: 50)),
+                    placeholder: (_, __) => const Center(
+                        child: CircularProgressIndicator(color: Colors.white)),
+                    errorWidget: (_, __, ___) => const Center(
+                        child: Icon(Icons.broken_image,
+                            color: Colors.white, size: 50)),
                   ),
                 ),
               );
@@ -87,7 +95,9 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
                     height: _currentIndex == index ? 10 : 8,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: _currentIndex == index ? Theme.of(context).primaryColor : Colors.white54,
+                      color: _currentIndex == index
+                          ? Theme.of(context).primaryColor
+                          : Colors.white54,
                     ),
                   ),
                 ),

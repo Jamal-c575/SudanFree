@@ -26,7 +26,9 @@ class CustomTextField extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (label.isNotEmpty) ...[
-          Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          Text(label,
+              style:
+                  const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           const SizedBox(height: 8),
         ],
         TextField(
@@ -35,7 +37,9 @@ class CustomTextField extends StatelessWidget {
           keyboardType: keyboardType,
           decoration: InputDecoration(
             hintText: hint,
-            prefixIcon: prefixIcon != null ? Icon(prefixIcon, color: AppColors.primary) : null,
+            prefixIcon: prefixIcon != null
+                ? Icon(prefixIcon, color: AppColors.primary)
+                : null,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(color: AppColors.border),
@@ -50,7 +54,8 @@ class CustomTextField extends StatelessWidget {
             ),
             filled: true,
             fillColor: Theme.of(context).cardColor,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           ),
         ),
       ],

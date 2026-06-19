@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 
@@ -9,17 +8,18 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMixin {
+class _SplashScreenState extends State<SplashScreen>
+    with TickerProviderStateMixin {
   late AnimationController _entryController;
   late AnimationController _shakeController;
   late AnimationController _breathingController;
-  
+
   late Animation<double> _opacityAnimation;
 
   @override
   void initState() {
     super.initState();
-    
+
     // Breathing background (10 seconds)
     _breathingController = AnimationController(
       vsync: this,
@@ -43,7 +43,9 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
     // are defined but only _opacityAnimation is used in current build.
 
     _opacityAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _entryController, curve: const Interval(0.0, 0.5, curve: Curves.easeIn)),
+      CurvedAnimation(
+          parent: _entryController,
+          curve: const Interval(0.0, 0.5, curve: Curves.easeIn)),
     );
 
     _startAnimationSequence();
@@ -89,7 +91,10 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                 color: Colors.white,
                 letterSpacing: 2.0,
                 shadows: [
-                  Shadow(color: Colors.black38, offset: Offset(0, 4), blurRadius: 10),
+                  Shadow(
+                      color: Colors.black38,
+                      offset: Offset(0, 4),
+                      blurRadius: 10),
                 ],
               ),
             ),
@@ -126,41 +131,45 @@ class HandPainter extends CustomPainter {
     if (isRightHand) {
       // Right hand (darker for depth)
       paint.color = Colors.white.withValues(alpha: 0.7);
-      
+
       final path = Path();
       // Draw wrist and palm
       path.moveTo(size.width * 0.8, size.height);
       path.lineTo(size.width * 0.4, size.height * 0.6);
-      path.quadraticBezierTo(size.width * 0.2, size.height * 0.4, size.width * 0.4, size.height * 0.2);
-      path.quadraticBezierTo(size.width * 0.6, size.height * 0.1, size.width * 0.8, size.height * 0.3);
+      path.quadraticBezierTo(size.width * 0.2, size.height * 0.4,
+          size.width * 0.4, size.height * 0.2);
+      path.quadraticBezierTo(size.width * 0.6, size.height * 0.1,
+          size.width * 0.8, size.height * 0.3);
       path.lineTo(size.width, size.height * 0.5);
       path.lineTo(size.width * 0.8, size.height);
-      
+
       canvas.drawPath(path, paint);
-      
+
       // Add some shading
       paint.color = Colors.black.withValues(alpha: 0.1);
       canvas.drawCircle(Offset(size.width * 0.6, size.height * 0.4), 15, paint);
     } else {
       // Left hand fingers overlapping (bright white)
       paint.color = Colors.white;
-      
+
       final path = Path();
       // Draw wrist and overlapping fingers
       path.moveTo(size.width * 0.2, 0);
       path.lineTo(size.width * 0.6, size.height * 0.4);
-      path.quadraticBezierTo(size.width * 0.8, size.height * 0.6, size.width * 0.6, size.height * 0.8);
-      path.quadraticBezierTo(size.width * 0.4, size.height * 0.9, size.width * 0.2, size.height * 0.7);
+      path.quadraticBezierTo(size.width * 0.8, size.height * 0.6,
+          size.width * 0.6, size.height * 0.8);
+      path.quadraticBezierTo(size.width * 0.4, size.height * 0.9,
+          size.width * 0.2, size.height * 0.7);
       path.lineTo(0, size.height * 0.5);
       path.lineTo(size.width * 0.2, 0);
-      
+
       canvas.drawPath(path, paint);
-      
+
       // Draw finger separations to create depth
       paint.color = AppColors.primary.withValues(alpha: 0.3);
       paint.style = PaintingStyle.stroke;
       paint.strokeWidth = 3.0;
-      
+
       canvas.drawLine(
         Offset(size.width * 0.4, size.height * 0.4),
         Offset(size.width * 0.7, size.height * 0.5),

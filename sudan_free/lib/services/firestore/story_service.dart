@@ -6,16 +6,19 @@ class StoryFirestoreService {
 
   // Add story
   Future<String> addStory(StoryModel story) async {
-    final docRef = await _firestore.collection('stories').add(story.toFirestore());
+    final docRef =
+        await _firestore.collection('stories').add(story.toFirestore());
     return docRef.id;
   }
 
   // Get active stories
   Stream<List<StoryModel>> getActiveStories() {
-    final twentyFourHoursAgo = DateTime.now().subtract(const Duration(hours: 24));
+    final twentyFourHoursAgo =
+        DateTime.now().subtract(const Duration(hours: 24));
     return _firestore
         .collection('stories')
-        .where('createdAt', isGreaterThan: Timestamp.fromDate(twentyFourHoursAgo))
+        .where('createdAt',
+            isGreaterThan: Timestamp.fromDate(twentyFourHoursAgo))
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map((s) => s.docs.map((d) => StoryModel.fromFirestore(d)).toList());

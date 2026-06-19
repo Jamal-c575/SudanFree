@@ -4,7 +4,7 @@
 /// All models must use these helpers instead of direct casts.
 /// Every method has a fallback default and never throws.
 /// ─────────────────────────────────────────────────────────────────────────────
-library safe_parse;
+library;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
@@ -134,10 +134,10 @@ class SafeParse {
     if (v == null) return [];
     if (v is List) {
       return v
-          .where((e) => e is Map)
+          .whereType<Map>()
           .map((e) {
             try {
-              return Map<String, dynamic>.from(e as Map);
+              return Map<String, dynamic>.from(e);
             } catch (_) {
               return <String, dynamic>{};
             }
@@ -216,7 +216,8 @@ class SafeParse {
     if (v is DateTime) return v.toIso8601String();
     if (v is Map) {
       return Map.fromEntries(
-        v.entries.map((e) => MapEntry(e.key.toString(), _sanitizeValue(e.value))),
+        v.entries
+            .map((e) => MapEntry(e.key.toString(), _sanitizeValue(e.value))),
       );
     }
     if (v is List) return v.map(_sanitizeValue).toList();
@@ -225,9 +226,11 @@ class SafeParse {
 
   // ── Logging ────────────────────────────────────────────────────────────────
 
-  static void logParseError(String model, String field, dynamic value, Object error) {
+  static void logParseError(
+      String model, String field, dynamic value, Object error) {
     if (kDebugMode) {
-      debugPrint('⚠️ [SafeParse] $model.$field: value=$value (${value.runtimeType}) → $error');
+      debugPrint(
+          '⚠️ [SafeParse] $model.$field: value=$value (${value.runtimeType}) → $error');
     }
   }
 }

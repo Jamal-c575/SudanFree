@@ -5,6 +5,7 @@ import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
 class VideoAdWidget extends StatefulWidget {
   final String videoUrl;
+
   /// Called when user taps anywhere on video except the mute button
   final VoidCallback? onTapDetails;
 
@@ -31,7 +32,7 @@ class _VideoAdWidgetState extends State<VideoAdWidget> {
     try {
       // ── Caching logic: تنزيل وحفظ الفيديو محلياً لتوفير باقة الإنترنت ──
       final file = await DefaultCacheManager().getSingleFile(widget.videoUrl);
-      
+
       _controller = VideoPlayerController.file(file);
       await _controller!.initialize();
       _controller!.setLooping(false);
@@ -52,8 +53,9 @@ class _VideoAdWidgetState extends State<VideoAdWidget> {
 
   void _videoListener() {
     if (_controller == null) return;
-    final bool isEnded = _controller!.value.position >= _controller!.value.duration &&
-        _controller!.value.duration > Duration.zero;
+    final bool isEnded =
+        _controller!.value.position >= _controller!.value.duration &&
+            _controller!.value.duration > Duration.zero;
     if (_isEnded != isEnded && mounted) {
       setState(() => _isEnded = isEnded);
     }
@@ -157,7 +159,8 @@ class _VideoAdWidgetState extends State<VideoAdWidget> {
                     color: Colors.black.withValues(alpha: 0.6),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.replay, color: Colors.white, size: 40),
+                  child:
+                      const Icon(Icons.replay, color: Colors.white, size: 40),
                 ),
               ),
 

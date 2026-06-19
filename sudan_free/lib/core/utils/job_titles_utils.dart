@@ -115,28 +115,52 @@ class JobTitlesUtils {
         if (c.name.toLowerCase() == title.toLowerCase()) return true;
         // Check if the title matches the English display name
         final dummyJob = JobModel(
-          id: '', clientId: '', clientName: '', title: '', description: '',
-          category: c, budgetMin: 0, budgetMax: 0,
-          deadline: DateTime.now(), createdAt: DateTime.now(), updatedAt: DateTime.now(),
+          id: '',
+          clientId: '',
+          clientName: '',
+          title: '',
+          description: '',
+          category: c,
+          budgetMin: 0,
+          budgetMax: 0,
+          deadline: DateTime.now(),
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
         );
-        return dummyJob.getCategoryDisplayName('en').toLowerCase() == title.toLowerCase();
+        return dummyJob.getCategoryDisplayName('en').toLowerCase() ==
+            title.toLowerCase();
       });
       final dummyJob = JobModel(
-        id: '', clientId: '', clientName: '', title: '', description: '',
-        category: category, budgetMin: 0, budgetMax: 0,
-        deadline: DateTime.now(), createdAt: DateTime.now(), updatedAt: DateTime.now(),
+        id: '',
+        clientId: '',
+        clientName: '',
+        title: '',
+        description: '',
+        category: category,
+        budgetMin: 0,
+        budgetMax: 0,
+        deadline: DateTime.now(),
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
       );
       return dummyJob.getCategoryDisplayName(locale);
     } catch (_) {
       // Fallback to static map
       final searchTitle = title.trim().toLowerCase();
       // Handle camel case keys to match space-separated user input
-      final String noSpaceSearch = searchTitle.replaceAll(' ', '').replaceAll('-', '').replaceAll('/', '');
+      final String noSpaceSearch = searchTitle
+          .replaceAll(' ', '')
+          .replaceAll('-', '')
+          .replaceAll('/', '');
       if (locale == 'ar') {
         final Map<String, String> lowerEnToAr = {};
         enToAr.forEach((k, v) {
           lowerEnToAr[k.toLowerCase()] = v;
-          lowerEnToAr[k.toLowerCase().replaceAll(' ', '').replaceAll('-', '').replaceAll('/', '')] = v;
+          lowerEnToAr[k
+              .toLowerCase()
+              .replaceAll(' ', '')
+              .replaceAll('-', '')
+              .replaceAll('/', '')] = v;
         });
         return lowerEnToAr[searchTitle] ?? title;
       } else {

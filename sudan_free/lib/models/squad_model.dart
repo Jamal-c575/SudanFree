@@ -16,25 +16,41 @@ extension SquadCategoryExt on SquadCategory {
   String getName(String locale) {
     if (locale == 'ar') {
       switch (this) {
-        case SquadCategory.construction: return 'مقاولات وبناء';
-        case SquadCategory.software: return 'تقنية وبرمجيات';
-        case SquadCategory.events: return 'تنظيم مناسبات';
-        case SquadCategory.media: return 'تصوير وإعلام';
-        case SquadCategory.maintenance: return 'صيانة عامة';
-        case SquadCategory.education: return 'تعليم وتدريب';
-        case SquadCategory.logistics: return 'نقل ولوجستيات';
-        case SquadCategory.other: return 'أخرى';
+        case SquadCategory.construction:
+          return 'مقاولات وبناء';
+        case SquadCategory.software:
+          return 'تقنية وبرمجيات';
+        case SquadCategory.events:
+          return 'تنظيم مناسبات';
+        case SquadCategory.media:
+          return 'تصوير وإعلام';
+        case SquadCategory.maintenance:
+          return 'صيانة عامة';
+        case SquadCategory.education:
+          return 'تعليم وتدريب';
+        case SquadCategory.logistics:
+          return 'نقل ولوجستيات';
+        case SquadCategory.other:
+          return 'أخرى';
       }
     }
     switch (this) {
-      case SquadCategory.construction: return 'Construction & Building';
-      case SquadCategory.software: return 'Tech & Software';
-      case SquadCategory.events: return 'Events Planning';
-      case SquadCategory.media: return 'Media & Photography';
-      case SquadCategory.maintenance: return 'General Maintenance';
-      case SquadCategory.education: return 'Education & Training';
-      case SquadCategory.logistics: return 'Logistics & Transport';
-      case SquadCategory.other: return 'Other';
+      case SquadCategory.construction:
+        return 'Construction & Building';
+      case SquadCategory.software:
+        return 'Tech & Software';
+      case SquadCategory.events:
+        return 'Events Planning';
+      case SquadCategory.media:
+        return 'Media & Photography';
+      case SquadCategory.maintenance:
+        return 'General Maintenance';
+      case SquadCategory.education:
+        return 'Education & Training';
+      case SquadCategory.logistics:
+        return 'Logistics & Transport';
+      case SquadCategory.other:
+        return 'Other';
     }
   }
 }
@@ -87,7 +103,8 @@ class SquadModel {
       completedJobs: SafeParse.integer(data['completedJobs']),
       rating: SafeParse.decimal(data['rating']),
       createdAt: SafeParse.dateTime(data['createdAt']),
-      category: SafeParse.enumValue(SquadCategory.values, data['category'], SquadCategory.other),
+      category: SafeParse.enumValue(
+          SquadCategory.values, data['category'], SquadCategory.other),
       state: SafeParse.nullableString(data['state']),
       locality: SafeParse.nullableString(data['locality']),
       isAvailable: SafeParse.boolean(data['isAvailable'], true),

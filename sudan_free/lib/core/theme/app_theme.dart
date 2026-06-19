@@ -9,7 +9,6 @@ class AppTheme {
     brightness: Brightness.light,
     primaryColor: AppColors.primary,
     scaffoldBackgroundColor: AppColors.background,
-    
     colorScheme: ColorScheme.light(
       primary: AppColors.primary,
       secondary: AppColors.secondary,
@@ -20,9 +19,7 @@ class AppTheme {
       onSurface: AppColors.textPrimary,
       onError: Colors.white,
     ),
-    
     fontFamily: 'Tajawal',
-    
     textTheme: const TextTheme(
       displayLarge: TextStyle(
         fontSize: 32,
@@ -100,7 +97,6 @@ class AppTheme {
         color: AppColors.textLight,
       ),
     ),
-    
     appBarTheme: const AppBarTheme(
       elevation: 0,
       centerTitle: true,
@@ -118,7 +114,6 @@ class AppTheme {
         color: AppColors.textPrimary,
       ),
     ),
-    
     cardTheme: CardThemeData(
       elevation: 0,
       color: AppColors.cardBackground,
@@ -127,7 +122,6 @@ class AppTheme {
         side: const BorderSide(color: AppColors.border, width: 1),
       ),
     ),
-    
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
         elevation: 0,
@@ -144,7 +138,6 @@ class AppTheme {
         ),
       ),
     ),
-    
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
         elevation: 0,
@@ -161,7 +154,6 @@ class AppTheme {
         ),
       ),
     ),
-    
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
         foregroundColor: AppColors.primary,
@@ -172,7 +164,6 @@ class AppTheme {
         ),
       ),
     ),
-    
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: AppColors.surface,
@@ -206,7 +197,6 @@ class AppTheme {
         color: AppColors.textLight,
       ),
     ),
-    
     chipTheme: ChipThemeData(
       backgroundColor: AppColors.background,
       selectedColor: AppColors.primary.withValues(alpha: 0.2),
@@ -220,7 +210,6 @@ class AppTheme {
         side: const BorderSide(color: AppColors.border),
       ),
     ),
-    
     bottomNavigationBarTheme: const BottomNavigationBarThemeData(
       backgroundColor: AppColors.surface,
       selectedItemColor: AppColors.primary,
@@ -228,13 +217,11 @@ class AppTheme {
       type: BottomNavigationBarType.fixed,
       elevation: 8,
     ),
-    
     floatingActionButtonTheme: const FloatingActionButtonThemeData(
       backgroundColor: AppColors.primary,
       foregroundColor: Colors.white,
       elevation: 4,
     ),
-    
     snackBarTheme: SnackBarThemeData(
       backgroundColor: AppColors.textPrimary,
       contentTextStyle: const TextStyle(
@@ -246,14 +233,12 @@ class AppTheme {
       ),
       behavior: SnackBarBehavior.floating,
     ),
-    
     dialogTheme: DialogThemeData(
       backgroundColor: AppColors.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadius.lg),
       ),
     ),
-    
     bottomSheetTheme: const BottomSheetThemeData(
       backgroundColor: AppColors.surface,
       shape: RoundedRectangleBorder(
@@ -271,7 +256,6 @@ class AppTheme {
     primaryColor: AppColors.primary,
     scaffoldBackgroundColor: AppColors.backgroundDark,
     dividerColor: AppColors.borderDark.withValues(alpha: 0.5),
-    
     colorScheme: ColorScheme.dark(
       primary: AppColors.primary,
       secondary: AppColors.secondary,
@@ -286,9 +270,7 @@ class AppTheme {
       secondaryContainer: Color(0xFF334155),
       onSecondaryContainer: Colors.white,
     ),
-    
     fontFamily: 'Tajawal',
-    
     textTheme: const TextTheme(
       displayLarge: TextStyle(
         fontSize: 32,
@@ -370,7 +352,6 @@ class AppTheme {
         color: Color(0xFF94A3B8),
       ),
     ),
-    
     appBarTheme: const AppBarTheme(
       elevation: 0,
       centerTitle: true,
@@ -389,7 +370,6 @@ class AppTheme {
         color: AppColors.textDark,
       ),
     ),
-    
     cardTheme: CardThemeData(
       elevation: 0,
       color: AppColors.cardBackgroundDark,
@@ -397,18 +377,16 @@ class AppTheme {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadius.md),
         side: BorderSide(
-          color: AppColors.borderDark.withValues(alpha: 0.8), 
+          color: AppColors.borderDark.withValues(alpha: 0.8),
           width: 1.5, // Slightly thicker border for clarity
         ),
       ),
     ),
-    
     dividerTheme: DividerThemeData(
       thickness: 1,
       color: AppColors.borderDark.withValues(alpha: 0.5),
       space: 1,
     ),
-    
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
         elevation: 2, // Added slight elevation for dark mode depth
@@ -426,7 +404,6 @@ class AppTheme {
         ),
       ),
     ),
-
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
         foregroundColor: AppColors.textDark,
@@ -442,18 +419,19 @@ class AppTheme {
         ),
       ),
     ),
-    
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: AppColors.surfaceDark,
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppRadius.md),
-        borderSide: BorderSide(color: AppColors.borderDark.withValues(alpha: 0.8)),
+        borderSide:
+            BorderSide(color: AppColors.borderDark.withValues(alpha: 0.8)),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppRadius.md),
-        borderSide: BorderSide(color: AppColors.borderDark.withValues(alpha: 0.8)),
+        borderSide:
+            BorderSide(color: AppColors.borderDark.withValues(alpha: 0.8)),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppRadius.md),
@@ -471,15 +449,14 @@ class AppTheme {
       prefixIconColor: AppColors.primaryLight,
       suffixIconColor: AppColors.primaryLight,
     ),
-    
     bottomNavigationBarTheme: const BottomNavigationBarThemeData(
       backgroundColor: AppColors.surfaceDark,
-      selectedItemColor: AppColors.primaryLight, // Using lighter primary for better contrast
+      selectedItemColor:
+          AppColors.primaryLight, // Using lighter primary for better contrast
       unselectedItemColor: Color(0xFF94A3B8),
       type: BottomNavigationBarType.fixed,
       elevation: 12,
     ),
-    
     snackBarTheme: SnackBarThemeData(
       backgroundColor: AppColors.surfaceDark,
       contentTextStyle: const TextStyle(
@@ -492,7 +469,6 @@ class AppTheme {
       ),
       behavior: SnackBarBehavior.floating,
     ),
-    
     dialogTheme: DialogThemeData(
       backgroundColor: AppColors.surfaceDark,
       elevation: 24,
@@ -501,7 +477,6 @@ class AppTheme {
         side: BorderSide(color: AppColors.borderDark),
       ),
     ),
-    
     bottomSheetTheme: const BottomSheetThemeData(
       backgroundColor: AppColors.surfaceDark,
       elevation: 16,
@@ -512,7 +487,6 @@ class AppTheme {
         ),
       ),
     ),
-    
     iconTheme: const IconThemeData(
       color: AppColors.textDark,
       size: 24,

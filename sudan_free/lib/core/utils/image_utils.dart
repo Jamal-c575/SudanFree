@@ -5,7 +5,7 @@ import '../constants/app_colors.dart';
 /// Utility for optimized image loading with memory-aware caching
 class ImageUtils {
   /// Get a cached network image with optimized memory settings
-  /// 
+  ///
   /// Parameters:
   /// - [imageUrl]: The URL of the image to display
   /// - [fit]: How to fit the image (default: BoxFit.cover)
@@ -61,7 +61,8 @@ class ImageUtils {
   }) {
     return CircleAvatar(
       radius: radius,
-      backgroundColor: backgroundColor ?? AppColors.border.withValues(alpha: 0.1),
+      backgroundColor:
+          backgroundColor ?? AppColors.border.withValues(alpha: 0.1),
       backgroundImage: CachedNetworkImageProvider(imageUrl),
       onBackgroundImageError: (exception, stackTrace) {
         debugPrint('Error loading circular image: $exception');

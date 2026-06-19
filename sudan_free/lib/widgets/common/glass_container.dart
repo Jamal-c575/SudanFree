@@ -2,11 +2,12 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/theme_provider.dart';
+import '../../core/constants/app_colors.dart';
 
 class GlassContainer extends StatelessWidget {
   final Widget child;
-  final double blur;
-  final double opacity;
+  final double? blur;
+  final double? opacity;
   final BorderRadius? borderRadius;
   final EdgeInsetsGeometry? padding;
   final EdgeInsetsGeometry? margin;
@@ -19,8 +20,8 @@ class GlassContainer extends StatelessWidget {
   const GlassContainer({
     super.key,
     required this.child,
-    this.blur = 10.0,
-    this.opacity = 0.15,
+    this.blur,
+    this.opacity,
     this.borderRadius,
     this.padding,
     this.margin,
@@ -34,15 +35,26 @@ class GlassContainer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isGlassEnabled = context.watch<ThemeProvider>().isGlassmorphismEnabled;
-    
-    final baseColor = color ?? (isDark ? Colors.white : Colors.black);
+    final isGlassEnabled =
+        context.watch<ThemeProvider>().isGlassmorphismEnabled;
 
-    final resolvedBorderRadius = shape == BoxShape.circle 
-      ? null 
-      : (borderRadius ?? BorderRadius.circular(16));
+    // Premium Adaptive Glass Settings
+    final double activeBlur = blur ?? 20.0;
+    final double activeOpacity = opacity ?? (isDark ? 0.08 : 0.05);
 
-    final innerContainer = Container(
+    // Adaptive Colors
+    final Color baseColor = color ?? (isDark ? Colors.white : AppColors.primary);
+    final Color borderColor = isDark
+        ? Colors.white.withValues(alpha: 0.2)
+        : AppColors.primary.withValues(alpha: 0.2);
+
+    final resolvedBorderRadius = shape == BoxShape.circle
+        ? null
+        : (borderRadius ?? BorderRadius.circular(20));
+
+    final innerContainer = AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
       width: width,
       height: height,
       padding: padding,
@@ -50,21 +62,42 @@ class GlassContainer extends StatelessWidget {
         shape: shape,
         borderRadius: resolvedBorderRadius,
         color: isGlassEnabled ? null : (color ?? Theme.of(context).cardColor),
-        gradient: isGlassEnabled ? LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            baseColor.withOpacity(opacity + 0.15),
-            baseColor.withOpacity((opacity - 0.05).clamp(0.0, 1.0)),
-          ],
-        ) : null,
+        gradient: isGlassEnabled
+            ? LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  baseColor.withValues(alpha: activeOpacity),
+                  baseColor.withValues(
+                      alpha: (activeOpacity * 0.5).clamp(0.0, 1.0)),
+                ],
+              )
+            : null,
+        boxShadow: isGlassEnabled
+            ? [
+                BoxShadow(
+                  color: isDark
+                      ? const Color(0xFF38BDF8).withValues(alpha: 0.15) // Neon Cyan glow
+                      : AppColors.primary.withValues(alpha: 0.15), // Primary color glow
+                  blurRadius: isDark ? 30 : 20,
+                  spreadRadius: isDark ? 1 : 0,
+                  offset: isDark ? Offset.zero : const Offset(0, 4),
+                )
+              ]
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                )
+              ],
         border: border ??
-            Border.all(
-              color: isGlassEnabled 
-                  ? (isDark ? Colors.white.withOpacity(0.15) : Colors.white.withOpacity(0.5)) 
-                  : baseColor.withOpacity(isDark ? 0.1 : 0.05),
-              width: 1.5,
-            ),
+            (isGlassEnabled
+                ? Border.all(color: borderColor, width: 1.0)
+                : Border.all(
+                    color: isDark ? Colors.white.withValues(alpha: 0.2) : AppColors.primary.withValues(alpha: 0.1),
+                    width: 1.0,
+                  )),
       ),
       child: child,
     );
@@ -72,11 +105,14 @@ class GlassContainer extends StatelessWidget {
     return Padding(
       padding: margin ?? EdgeInsets.zero,
       child: isGlassEnabled
-          ? ClipRRect(
-              borderRadius: resolvedBorderRadius ?? BorderRadius.zero,
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
-                child: innerContainer,
+          ? RepaintBoundary(
+              child: ClipRRect(
+                borderRadius: resolvedBorderRadius ?? BorderRadius.zero,
+                child: BackdropFilter(
+                  filter:
+                      ImageFilter.blur(sigmaX: activeBlur, sigmaY: activeBlur),
+                  child: innerContainer,
+                ),
               ),
             )
           : innerContainer,

@@ -23,10 +23,10 @@ class DeviceService {
 
     try {
       if (Platform.isAndroid) {
-        final androidInfo = await _deviceInfo.androidInfo.timeout(const Duration(seconds: 3));
+        final androidInfo = await _deviceInfo.androidInfo;
         _cachedDeviceId = androidInfo.id; // Android hardware ID
       } else if (Platform.isIOS) {
-        final iosInfo = await _deviceInfo.iosInfo.timeout(const Duration(seconds: 3));
+        final iosInfo = await _deviceInfo.iosInfo;
         _cachedDeviceId = iosInfo.identifierForVendor ?? 'unknown_ios';
       } else {
         _cachedDeviceId = 'unknown_platform';
@@ -44,12 +44,8 @@ class DeviceService {
   Future<String?> checkDeviceBan() async {
     try {
       final deviceId = await getDeviceId();
-      final doc = await _firestore
-          .collection('banned_devices')
-          .doc(deviceId)
-          .get()
-          .timeout(const Duration(seconds: 5));
-
+      final doc = await _firestore.collection('banned_devices').doc(deviceId).get();
+      
       if (doc.exists) {
         final data = doc.data();
         return data?['reason'] as String? ?? 'تم حظر هذا الجهاز';

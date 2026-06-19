@@ -30,18 +30,18 @@ class PostsFirestoreService {
     if (categoryGroup != null) {
       final groupCats = PostCategory.getCategoriesForGroup(categoryGroup);
       final Set<String> categoriesSet = groupCats.map((c) => c.name).toSet();
-      
+
       // Support legacy posts that saved the group name
       categoriesSet.add(categoryGroup.name);
       categoriesSet.add(categoryGroup.getName('ar'));
       categoriesSet.add(categoryGroup.getName('en'));
-      
+
       // Support legacy localized subcategory names
       for (final cat in groupCats) {
         categoriesSet.add(cat.getName('ar'));
         categoriesSet.add(cat.getName('en'));
       }
-      
+
       // Firestore whereIn has a strict limit of 30 items
       final categories = categoriesSet.take(30).toList();
 
@@ -130,7 +130,8 @@ class PostsFirestoreService {
   }
 
   // React to post
-  Future<void> reactToPost(String postId, String userId, String reactionType) async {
+  Future<void> reactToPost(
+      String postId, String userId, String reactionType) async {
     await _firestore.collection('posts').doc(postId).update({
       'reactions.$userId': reactionType,
     });
@@ -165,7 +166,7 @@ class PostsFirestoreService {
   // Increment Post Views with rate limiting
   Future<void> incrementPostViews(String postId, [String? viewerId]) async {
     if (viewerId == null) return;
-    
+
     final postRef = _firestore.collection('posts').doc(postId);
     final viewsRef = postRef.collection('views').doc(viewerId);
     final viewsSnap = await viewsRef.get();
@@ -198,10 +199,15 @@ class PostsFirestoreService {
   // ==================== COMMENTS ====================
 
   // Add Comment
-  Future<void> addComment(CommentModel comment, {String? postOwnerId, String? parentUserId}) async {
+  Future<void> addComment(CommentModel comment,
+      {String? postOwnerId, String? parentUserId}) async {
     final batch = _firestore.batch();
-    final commentRef = _firestore.collection('posts').doc(comment.postId).collection('comments').doc();
-    
+    final commentRef = _firestore
+        .collection('posts')
+        .doc(comment.postId)
+        .collection('comments')
+        .doc();
+
     final commentWithId = CommentModel(
       id: commentRef.id,
       postId: comment.postId,
@@ -215,21 +221,24 @@ class PostsFirestoreService {
       isReply: comment.isReply,
       mentionedNames: comment.mentionedNames,
     );
-    
+
     batch.set(commentRef, commentWithId.toFirestore());
     batch.update(_firestore.collection('posts').doc(comment.postId), {
       'commentsCount': FieldValue.increment(1),
     });
 
     // Notify post owner about a new top-level comment
-    if (!comment.isReply && postOwnerId != null && postOwnerId != comment.userId) {
+    if (!comment.isReply &&
+        postOwnerId != null &&
+        postOwnerId != comment.userId) {
       final notifRef = _firestore.collection('notifications').doc();
       final notification = NotificationModel(
         id: notifRef.id,
         userId: postOwnerId,
         type: NotificationType.comment,
         title: 'تعليق جديد',
-        message: 'علق ${comment.userName} على منشورك: "${comment.content.length > 40 ? '${comment.content.substring(0, 40)}...' : comment.content}"',
+        message:
+            'علق ${comment.userName} على منشورك: "${comment.content.length > 40 ? '${comment.content.substring(0, 40)}...' : comment.content}"',
         createdAt: Timestamp.now(),
         relatedId: comment.postId,
       );
@@ -237,14 +246,17 @@ class PostsFirestoreService {
     }
 
     // Notify the user being replied to
-    if (comment.isReply && parentUserId != null && parentUserId != comment.userId) {
+    if (comment.isReply &&
+        parentUserId != null &&
+        parentUserId != comment.userId) {
       final notifRef = _firestore.collection('notifications').doc();
       final notification = NotificationModel(
         id: notifRef.id,
         userId: parentUserId,
         type: NotificationType.comment, // Can be comment type for replies
         title: 'رد جديد',
-        message: 'رد ${comment.userName} على تعليقك: "${comment.content.length > 40 ? '${comment.content.substring(0, 40)}...' : comment.content}"',
+        message:
+            'رد ${comment.userName} على تعليقك: "${comment.content.length > 40 ? '${comment.content.substring(0, 40)}...' : comment.content}"',
         createdAt: Timestamp.now(),
         relatedId: comment.postId,
       );
@@ -263,20 +275,34 @@ class PostsFirestoreService {
         .orderBy('createdAt', descending: true)
         .limit(50)
         .snapshots()
-        .map((snapshot) => snapshot.docs.map((doc) => CommentModel.fromFirestore(doc)).toList());
+        .map((snapshot) => snapshot.docs
+            .map((doc) => CommentModel.fromFirestore(doc))
+            .toList());
   }
+
   // Toggle Comment Like
-  Future<void> toggleCommentLike(String postId, String commentId, String userId, bool isLiked) async {
-    final commentRef = _firestore.collection('posts').doc(postId).collection('comments').doc(commentId);
+  Future<void> toggleCommentLike(
+      String postId, String commentId, String userId, bool isLiked) async {
+    final commentRef = _firestore
+        .collection('posts')
+        .doc(postId)
+        .collection('comments')
+        .doc(commentId);
     await commentRef.update({
-      'likedBy': isLiked ? FieldValue.arrayUnion([userId]) : FieldValue.arrayRemove([userId])
+      'likedBy': isLiked
+          ? FieldValue.arrayUnion([userId])
+          : FieldValue.arrayRemove([userId])
     });
   }
 
   // Delete Comment
   Future<void> deleteComment(String postId, String commentId) async {
     final batch = _firestore.batch();
-    final commentRef = _firestore.collection('posts').doc(postId).collection('comments').doc(commentId);
+    final commentRef = _firestore
+        .collection('posts')
+        .doc(postId)
+        .collection('comments')
+        .doc(commentId);
     batch.delete(commentRef);
     batch.update(_firestore.collection('posts').doc(postId), {
       'commentsCount': FieldValue.increment(-1),

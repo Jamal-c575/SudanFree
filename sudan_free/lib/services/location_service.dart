@@ -14,19 +14,20 @@ class LocationService {
     try {
       // Try to fetch from Firestore
       // Structure: Collection 'locations' -> Doc 'sudan' -> Field 'states' (Map<String, List<dynamic>>)
-      final doc = await _firestore.collection('settings').doc('locations').get();
+      final doc =
+          await _firestore.collection('settings').doc('locations').get();
 
       if (doc.exists && doc.data() != null) {
         final data = doc.data()!;
         if (data.containsKey('states')) {
           final Map<String, dynamic> statesMap = data['states'];
-          
+
           // Convert to typed map
           final Map<String, List<String>> locations = {};
           statesMap.forEach((key, value) {
-             locations[key] = List<String>.from(value);
+            locations[key] = List<String>.from(value);
           });
-          
+
           _cachedLocations = locations;
           return locations;
         }

@@ -9,7 +9,8 @@ class KeepAliveTabView extends StatefulWidget {
   State<KeepAliveTabView> createState() => _KeepAliveTabViewState();
 }
 
-class _KeepAliveTabViewState extends State<KeepAliveTabView> with AutomaticKeepAliveClientMixin {
+class _KeepAliveTabViewState extends State<KeepAliveTabView>
+    with AutomaticKeepAliveClientMixin {
   @override
   bool get wantKeepAlive => true;
 

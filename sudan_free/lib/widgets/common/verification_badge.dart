@@ -3,10 +3,10 @@ import '../../core/constants/app_colors.dart';
 import '../../models/user_model.dart';
 
 /// شارة تحقق متعددة المستويات — تعرض مستوى ثقة المستخدم بصرياً
-/// 
+///
 /// المستويات:
 /// - 🟢 Level 1: Phone Verified → علامة صح خضراء
-/// - 🔵 Level 2: Identity Verified → شارة زرقاء 
+/// - 🔵 Level 2: Identity Verified → شارة زرقاء
 /// - 🟡 Level 3: Top Pro → شارة ذهبية مع تأثير pulse
 class VerificationBadge extends StatelessWidget {
   final bool isVerified;
@@ -21,7 +21,7 @@ class VerificationBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (!isVerified) return const SizedBox.shrink();
-    
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4.0),
       child: Icon(
@@ -116,9 +116,13 @@ class SmartVerificationBadge extends StatelessWidget {
   String _getTooltipText(_BadgeLevel level, bool isAr) {
     switch (level) {
       case _BadgeLevel.premium:
-        return isAr ? '👑 حساب مميز — متجر موثق وملكي' : '👑 Premium — Verified Royal Account';
+        return isAr
+            ? '👑 حساب مميز — متجر موثق وملكي'
+            : '👑 Premium — Verified Royal Account';
       case _BadgeLevel.topPro:
-        return isAr ? '⭐ محترف متميز — موثق وذو تقييم عالٍ' : '⭐ Top Pro — Verified with excellent ratings';
+        return isAr
+            ? '⭐ محترف متميز — موثق وذو تقييم عالٍ'
+            : '⭐ Top Pro — Verified with excellent ratings';
       case _BadgeLevel.identityVerified:
         return isAr ? '✅ تم التحقق من الهوية' : '✅ Identity Verified';
       case _BadgeLevel.phoneVerified:
@@ -138,7 +142,8 @@ class _TopProBadge extends StatefulWidget {
   State<_TopProBadge> createState() => _TopProBadgeState();
 }
 
-class _TopProBadgeState extends State<_TopProBadge> with SingleTickerProviderStateMixin {
+class _TopProBadgeState extends State<_TopProBadge>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _glowAnimation;
 
@@ -173,7 +178,8 @@ class _TopProBadgeState extends State<_TopProBadge> with SingleTickerProviderSta
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.sudanGold.withValues(alpha: _glowAnimation.value * 0.5),
+                  color: AppColors.sudanGold
+                      .withValues(alpha: _glowAnimation.value * 0.5),
                   blurRadius: widget.size * 0.6,
                   spreadRadius: 0.5,
                 ),
@@ -240,9 +246,12 @@ class ReputationScoreWidget extends StatelessWidget {
   /// حساب نقاط السمعة (0 — 100)
   double get _score {
     double raw = (user.rating * 20) // max 100
-        + (user.completedJobs * 2).clamp(0, 60) // max 60
-        + (user.reviewsCount * 3).clamp(0, 40) // max 40
-        - (user.negativeReports * 10); // penalty
+        +
+        (user.completedJobs * 2).clamp(0, 60) // max 60
+        +
+        (user.reviewsCount * 3).clamp(0, 40) // max 40
+        -
+        (user.negativeReports * 10); // penalty
     return raw.clamp(0, 100);
   }
 

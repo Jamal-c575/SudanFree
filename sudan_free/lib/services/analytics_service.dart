@@ -9,12 +9,14 @@ class AnalyticsService {
   final FirebaseAnalytics _analytics = FirebaseAnalytics.instance;
 
   /// Navigator observer for automatic screen tracking
-  NavigatorObserver get observer => FirebaseAnalyticsObserver(analytics: _analytics);
+  NavigatorObserver get observer =>
+      FirebaseAnalyticsObserver(analytics: _analytics);
 
   // ==================== SCREEN & NAVIGATION ====================
 
   // Track page views
-  Future<void> logScreenView({required String screenName, String? screenClass}) async {
+  Future<void> logScreenView(
+      {required String screenName, String? screenClass}) async {
     try {
       await _analytics.logScreenView(
         screenName: screenName,
@@ -204,7 +206,8 @@ class AnalyticsService {
   // ==================== POSTS ====================
 
   /// Track post creation for content engagement
-  Future<void> logPostCreated(String postId, String? category, bool hasImage) async {
+  Future<void> logPostCreated(
+      String postId, String? category, bool hasImage) async {
     try {
       await _analytics.logEvent(
         name: 'post_created',
@@ -269,9 +272,12 @@ class AnalyticsService {
   }) async {
     try {
       await _analytics.setUserId(id: userId);
-      if (role != null) await _analytics.setUserProperty(name: 'user_role', value: role);
-      if (region != null) await _analytics.setUserProperty(name: 'user_region', value: region);
-      if (jobTitle != null) await _analytics.setUserProperty(name: 'job_title', value: jobTitle);
+      if (role != null)
+        await _analytics.setUserProperty(name: 'user_role', value: role);
+      if (region != null)
+        await _analytics.setUserProperty(name: 'user_region', value: region);
+      if (jobTitle != null)
+        await _analytics.setUserProperty(name: 'job_title', value: jobTitle);
     } catch (e) {
       debugPrint('Analytics Error: $e');
     }

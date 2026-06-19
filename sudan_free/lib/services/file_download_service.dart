@@ -18,13 +18,13 @@ class FileDownloadService {
     required String fileName,
   }) async {
     if (Platform.isAndroid) {
-      // For Android 13+ or saving to app-specific dirs, we don't strictly need storage permissions, 
+      // For Android 13+ or saving to app-specific dirs, we don't strictly need storage permissions,
       // but we will request basic storage permission just in case for older Android versions.
       var status = await Permission.storage.status;
       if (!status.isGranted) {
         status = await Permission.storage.request();
       }
-      
+
       // We no longer require manageExternalStorage to avoid "All files access" prompt.
     }
 
@@ -44,7 +44,8 @@ class FileDownloadService {
   static Future<String> _getSavePath(String fileName) async {
     if (Platform.isAndroid) {
       try {
-        final dirs = await getExternalStorageDirectories(type: StorageDirectory.downloads);
+        final dirs = await getExternalStorageDirectories(
+            type: StorageDirectory.downloads);
         if (dirs != null && dirs.isNotEmpty) {
           return '${dirs.first.path}/$fileName';
         }
@@ -83,14 +84,15 @@ class _DownloadProgressDialog extends StatefulWidget {
   });
 
   @override
-  State<_DownloadProgressDialog> createState() => _DownloadProgressDialogState();
+  State<_DownloadProgressDialog> createState() =>
+      _DownloadProgressDialogState();
 }
 
 class _DownloadProgressDialogState extends State<_DownloadProgressDialog> {
   double _progress = 0.0;
   String _status = 'جاري التحميل...';
   bool _isDone = false;
-  
+
   bool _hasError = false;
 
   @override
@@ -123,7 +125,8 @@ class _DownloadProgressDialogState extends State<_DownloadProgressDialog> {
         if (totalBytes > 0 && mounted) {
           setState(() {
             _progress = receivedBytes / totalBytes;
-            _status = '${_formatBytes(receivedBytes)} / ${_formatBytes(totalBytes)}';
+            _status =
+                '${_formatBytes(receivedBytes)} / ${_formatBytes(totalBytes)}';
           });
         }
       }
@@ -136,7 +139,6 @@ class _DownloadProgressDialogState extends State<_DownloadProgressDialog> {
           _progress = 1.0;
           _status = 'اكتمل التحميل ✓';
           _isDone = true;
-          
         });
       }
 
@@ -247,7 +249,8 @@ class _DownloadProgressDialogState extends State<_DownloadProgressDialog> {
               alignment: Alignment.centerLeft,
               child: TextButton(
                 onPressed: () => Navigator.of(context).pop(),
-                child: const Text('إلغاء', style: TextStyle(color: Colors.grey)),
+                child:
+                    const Text('إلغاء', style: TextStyle(color: Colors.grey)),
               ),
             ),
           ],

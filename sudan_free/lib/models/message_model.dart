@@ -17,11 +17,12 @@ class MessageModel {
   final bool isRead;
   final bool isEdited;
   final DateTime createdAt;
-  
+
   // Contract specific fields
   final String? contractDetails;
   final double? contractPrice;
-  final String? contractStatus; // pending, accepted, rejected, cancel_requested, cancelled
+  final String?
+      contractStatus; // pending, accepted, rejected, cancel_requested, cancelled
   final String? cancelRequesterId; // ID of the user who requested cancellation
   final String? jobId; // Associated job ID when contract is accepted
   // ── Optimistic UI fields (local only, not stored in Firestore) ──
@@ -193,9 +194,12 @@ class ChatModel {
           final raw = data['participantImages'];
           if (raw is! Map) return <String, String?>{};
           return Map.fromEntries(
-            raw.entries.map((e) => MapEntry(e.key.toString(), e.value?.toString())),
+            raw.entries
+                .map((e) => MapEntry(e.key.toString(), e.value?.toString())),
           );
-        } catch (_) { return <String, String?>{}; }
+        } catch (_) {
+          return <String, String?>{};
+        }
       })(),
       lastMessage: SafeParse.nullableString(data['lastMessage']),
       lastMessageTime: SafeParse.nullableDateTime(data['lastMessageTime']),
@@ -214,7 +218,8 @@ class ChatModel {
       'participantNames': participantNames,
       'participantImages': participantImages,
       'lastMessage': lastMessage,
-      'lastMessageTime': lastMessageTime != null ? Timestamp.fromDate(lastMessageTime!) : null,
+      'lastMessageTime':
+          lastMessageTime != null ? Timestamp.fromDate(lastMessageTime!) : null,
       'lastSenderId': lastSenderId,
       'unreadCount': unreadCount,
       'jobId': jobId,
@@ -225,7 +230,8 @@ class ChatModel {
   }
 
   String getOtherParticipantId(String currentUserId) {
-    return participants.firstWhere((id) => id != currentUserId, orElse: () => '');
+    return participants.firstWhere((id) => id != currentUserId,
+        orElse: () => '');
   }
 
   String getOtherParticipantName(String currentUserId) {

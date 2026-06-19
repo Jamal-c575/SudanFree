@@ -9,10 +9,9 @@ import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 class AuthService {
   FirebaseAuth get _auth => FirebaseAuth.instance;
   FirebaseFirestore get _firestore => FirebaseFirestore.instance;
-
+  
   final GoogleSignIn _googleSignIn = GoogleSignIn(
-    serverClientId:
-        '233114260-kht4nnnsp9icmnmbsb87pp7fjvf93ike.apps.googleusercontent.com',
+    serverClientId: '233114260-kht4nnnsp9icmnmbsb87pp7fjvf93ike.apps.googleusercontent.com',
   );
 
   // Sign in with Google
@@ -23,8 +22,7 @@ class AuthService {
       if (googleUser == null) return null; // User cancelled
 
       // Obtain the auth details from the request
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication.timeout(const Duration(seconds: 10));
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
 
       // Create a new credential
       final credential = GoogleAuthProvider.credential(
@@ -33,7 +31,7 @@ class AuthService {
       );
 
       // Sign in to Firebase with the Google credential
-      return await _auth.signInWithCredential(credential).timeout(const Duration(seconds: 15));
+      return await _auth.signInWithCredential(credential);
     } catch (e) {
       // Handle errors
       debugPrint('Google Sign-In Error: $e');
@@ -147,7 +145,7 @@ class AuthService {
     try {
       final user = _auth.currentUser;
       if (user == null) throw Exception('No user logged in');
-
+      
       final credential = PhoneAuthProvider.credential(
         verificationId: verificationId,
         smsCode: smsCode,
@@ -166,22 +164,14 @@ class AuthService {
   // Get user profile
   Future<UserModel?> getUserProfile(String userId) async {
     try {
-      final doc = await _firestore
-          .collection('users')
-          .doc(userId)
-          .get()
-          .timeout(const Duration(seconds: 5));
+      final doc = await _firestore.collection('users').doc(userId).get().timeout(const Duration(seconds: 5));
       if (doc.exists) {
         return UserModel.fromFirestore(doc);
       }
     } catch (e) {
       // If it times out or fails (e.g. offline), try from cache
       try {
-        final doc = await _firestore
-            .collection('users')
-            .doc(userId)
-            .get(const GetOptions(source: Source.cache))
-            .timeout(const Duration(seconds: 2));
+        final doc = await _firestore.collection('users').doc(userId).get(const GetOptions(source: Source.cache));
         if (doc.exists) {
           return UserModel.fromFirestore(doc);
         }
@@ -191,8 +181,7 @@ class AuthService {
   }
 
   // Update user profile
-  Future<void> updateUserProfile(
-      String userId, Map<String, dynamic> data) async {
+  Future<void> updateUserProfile(String userId, Map<String, dynamic> data) async {
     // Delegate to centralized FirestoreService which will regenerate search keywords
     await FirestoreService().updateUserProfile(userId, data);
   }
@@ -205,8 +194,7 @@ class AuthService {
 
   // Sign out
   Future<void> signOut() async {
-    await _googleSignIn
-        .signOut(); // فصل حساب قوقل ليظهر اختيار الحساب في المرة القادمة
+    await _googleSignIn.signOut(); // فصل حساب قوقل ليظهر اختيار الحساب في المرة القادمة
     await _auth.signOut();
   }
 
@@ -218,16 +206,16 @@ class AuthService {
     try {
       // 1. Delete user data from Firestore (Cascading)
       await FirestoreService().deleteAllUserData(user.uid);
-
+      
       // 2. Delete user from Authentication
       await user.delete();
     } on FirebaseAuthException catch (e) {
       if (e.code == 'requires-recent-login') {
-        throw Exception('requires-recent-login');
+         throw Exception('requires-recent-login');
       }
       throw _handleAuthException(e);
     } catch (e) {
-      throw Exception('Failed to delete account: $e');
+       throw Exception('Failed to delete account: $e');
     }
   }
 

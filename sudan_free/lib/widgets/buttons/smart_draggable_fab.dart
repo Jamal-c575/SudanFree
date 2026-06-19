@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -31,13 +32,17 @@ class SmartDraggableFab extends StatefulWidget {
   State<SmartDraggableFab> createState() => _SmartDraggableFabState();
 }
 
-class _SmartDraggableFabState extends State<SmartDraggableFab> with SingleTickerProviderStateMixin {
+class _SmartDraggableFabState extends State<SmartDraggableFab>
+    with TickerProviderStateMixin {
   late double _x;
   late double _y;
   bool _isInitialized = false;
   bool _isDragging = false;
   bool _isDocked = false;
-  Offset _dragDelta = Offset.zero;
+
+  double _rotation = 0.0;
+  double _stretch = 0.0;
+  double _scale = 1.0;
 
   late AnimationController _springController;
   late Animation<Offset> _springAnimation;
@@ -47,7 +52,8 @@ class _SmartDraggableFabState extends State<SmartDraggableFab> with SingleTicker
     super.initState();
     _springController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 800), // Slower, smoother animation
+      duration: const Duration(
+          milliseconds: 1200), // Slower, smoother rolling animation
     );
     _springController.addListener(() {
       if (_springController.isAnimating) {
@@ -59,7 +65,10 @@ class _SmartDraggableFabState extends State<SmartDraggableFab> with SingleTicker
     });
     _springController.addStatusListener((status) {
       if (status == AnimationStatus.completed) {
-        HapticFeedback.lightImpact(); // Small bump when hitting the edge
+        HapticFeedback.lightImpact(); // Water drop hits the edge
+        setState(() {
+          _rotation = 0.0; // Reset rotation when it settles
+        });
       }
     });
   }
@@ -70,16 +79,15 @@ class _SmartDraggableFabState extends State<SmartDraggableFab> with SingleTicker
     if (!_isInitialized) {
       final size = MediaQuery.of(context).size;
       final fabWidth = widget.label != null ? 150.0 : 56.0;
-      
+
       if (widget.initialLeft != null) {
         _x = widget.initialLeft!;
       } else if (widget.initialRight != null) {
         _x = size.width - widget.initialRight! - fabWidth;
       } else {
-        // Default based on locale
         _x = widget.locale == 'ar' ? 16.0 : size.width - 16.0 - fabWidth;
       }
-      
+
       _y = size.height - widget.initialBottom - 56;
       _isInitialized = true;
     }
@@ -93,10 +101,11 @@ class _SmartDraggableFabState extends State<SmartDraggableFab> with SingleTicker
 
   void _onPanStart(DragStartDetails details) {
     if (_isDocked) return;
-    HapticFeedback.selectionClick();
+    HapticFeedback.heavyImpact(); // Heavy vibration on touch
     setState(() {
       _isDragging = true;
-      _dragDelta = Offset.zero;
+      _scale = 1.1; // Enlarge slightly
+      _stretch = 0.0;
     });
   }
 
@@ -105,13 +114,20 @@ class _SmartDraggableFabState extends State<SmartDraggableFab> with SingleTicker
     setState(() {
       _x += details.delta.dx;
       _y += details.delta.dy;
-      _dragDelta = details.delta;
+
+      // Calculate water drop effect (rotation and stretch based on drag direction and speed)
+      if (details.delta.distance > 0.5) {
+        _rotation = details.delta.direction;
+        _stretch = (details.delta.distance * 0.02)
+            .clamp(0.0, 0.3); // Stretch like water
+      }
 
       // Keep within screen bounds
       final size = MediaQuery.of(context).size;
       final widthLimit = widget.label != null && !_isDragging ? 150.0 : 56.0;
       _x = _x.clamp(0.0, size.width - widthLimit);
-      _y = _y.clamp(MediaQuery.of(context).padding.top + 16.0, size.height - 56.0 - 16.0);
+      _y = _y.clamp(
+          MediaQuery.of(context).padding.top + 16.0, size.height - 56.0 - 16.0);
     });
   }
 
@@ -120,7 +136,8 @@ class _SmartDraggableFabState extends State<SmartDraggableFab> with SingleTicker
     HapticFeedback.selectionClick();
     setState(() {
       _isDragging = false;
-      _dragDelta = Offset.zero; // Reset stretch
+      _scale = 1.0;
+      _stretch = 0.0; // Snap back from stretch
     });
     _snapToNearestEdge();
   }
@@ -128,18 +145,22 @@ class _SmartDraggableFabState extends State<SmartDraggableFab> with SingleTicker
   void _snapToNearestEdge() {
     final size = MediaQuery.of(context).size;
     final isCloserToLeft = _x < size.width / 2;
-    
-    // Snap to 16.0 padding from edge
+
     final targetX = isCloserToLeft ? 16.0 : size.width - 16.0 - 56.0;
-    final targetY = _y.clamp(MediaQuery.of(context).padding.top + 16.0, size.height - 56.0 - 16.0);
+    final targetY = _y.clamp(
+        MediaQuery.of(context).padding.top + 16.0, size.height - 56.0 - 16.0);
+
+    // If it's rolling towards the edge, point it in that direction
+    setState(() {
+      _rotation = isCloserToLeft ? math.pi : 0.0;
+    });
 
     _springAnimation = Tween<Offset>(
       begin: Offset(_x, _y),
       end: Offset(targetX, targetY),
     ).animate(CurvedAnimation(
-      parent: _springController, 
-      // ElasticOut gives a "jelly/water bouncing" effect when it hits the edge
-      curve: const ElasticOutCurve(0.6),
+      parent: _springController,
+      curve: Curves.easeOutQuart, // Slow, smooth sliding roll
     ));
 
     _springController.forward(from: 0);
@@ -148,14 +169,15 @@ class _SmartDraggableFabState extends State<SmartDraggableFab> with SingleTicker
   void _dockToNearestEdge() {
     final size = MediaQuery.of(context).size;
     final isCloserToLeft = _x < size.width / 2;
-    
-    final targetX = isCloserToLeft ? 0.0 : size.width - 32.0; // 32 is docked size
+
+    final targetX = isCloserToLeft ? 0.0 : size.width - 32.0;
     final targetY = _y;
 
     _springAnimation = Tween<Offset>(
       begin: Offset(_x, _y),
       end: Offset(targetX, targetY),
-    ).animate(CurvedAnimation(parent: _springController, curve: Curves.elasticOut));
+    ).animate(
+        CurvedAnimation(parent: _springController, curve: Curves.easeOutCubic));
 
     setState(() {
       _isDocked = true;
@@ -166,14 +188,15 @@ class _SmartDraggableFabState extends State<SmartDraggableFab> with SingleTicker
   void _restoreFromDock() {
     final size = MediaQuery.of(context).size;
     final isLeft = _x < size.width / 2;
-    
-    final targetX = isLeft ? 16.0 : size.width - 72.0; // Restored X padding
+
+    final targetX = isLeft ? 16.0 : size.width - 72.0;
     final targetY = _y;
 
     _springAnimation = Tween<Offset>(
       begin: Offset(_x, _y),
       end: Offset(targetX, targetY),
-    ).animate(CurvedAnimation(parent: _springController, curve: Curves.easeOutCubic));
+    ).animate(
+        CurvedAnimation(parent: _springController, curve: Curves.easeOutCubic));
 
     setState(() {
       _isDocked = false;
@@ -185,7 +208,8 @@ class _SmartDraggableFabState extends State<SmartDraggableFab> with SingleTicker
   Widget build(BuildContext context) {
     if (!_isInitialized) return const SizedBox();
 
-    final isGlassEnabled = context.watch<ThemeProvider>().isGlassmorphismEnabled;
+    final isGlassEnabled =
+        context.watch<ThemeProvider>().isGlassmorphismEnabled;
 
     Widget fabContent = Material(
       color: Colors.transparent,
@@ -195,6 +219,7 @@ class _SmartDraggableFabState extends State<SmartDraggableFab> with SingleTicker
             HapticFeedback.lightImpact();
             _restoreFromDock();
           } else {
+            HapticFeedback.mediumImpact();
             widget.onPressed();
           }
         },
@@ -216,20 +241,24 @@ class _SmartDraggableFabState extends State<SmartDraggableFab> with SingleTicker
                     mainAxisSize: MainAxisSize.min,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      if (widget.label != null && !_isDragging && !_springController.isAnimating) ...[
+                      if (widget.label != null &&
+                          !_isDragging &&
+                          !_springController.isAnimating) ...[
                         const SizedBox(width: 16),
                         Icon(widget.icon, color: Colors.white),
                         const SizedBox(width: 8),
                         Text(
                           widget.label!,
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                          style: const TextStyle(
+                              color: Colors.white, fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(width: 16),
                       ] else ...[
                         SizedBox(
                           width: 56,
                           height: 56,
-                          child: Center(child: Icon(widget.icon, color: Colors.white)),
+                          child: Center(
+                              child: Icon(widget.icon, color: Colors.white)),
                         ),
                       ]
                     ],
@@ -238,10 +267,6 @@ class _SmartDraggableFabState extends State<SmartDraggableFab> with SingleTicker
         ),
       ),
     );
-
-    // Calculate jelly stretch transformation
-    final double scaleX = 1.0 + (_dragDelta.dx.abs() * 0.015).clamp(0.0, 0.2) - (_dragDelta.dy.abs() * 0.005).clamp(0.0, 0.1);
-    final double scaleY = 1.0 + (_dragDelta.dy.abs() * 0.015).clamp(0.0, 0.2) - (_dragDelta.dx.abs() * 0.005).clamp(0.0, 0.1);
 
     return Positioned(
       left: _x,
@@ -252,40 +277,63 @@ class _SmartDraggableFabState extends State<SmartDraggableFab> with SingleTicker
         onPanEnd: _onPanEnd,
         onLongPress: () {
           if (!_isDocked) {
-            HapticFeedback.mediumImpact();
+            HapticFeedback.heavyImpact();
             _dockToNearestEdge();
           }
         },
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 100), // Fast response for stretch transform
-          curve: Curves.easeOut,
-          transform: Matrix4.identity()..scale(scaleX, scaleY),
+          duration:
+              const Duration(milliseconds: 150), // Smooth recovery from stretch
+          curve: Curves.easeOutBack,
+          // Apply Water Drop Transform: Scale + Rotate + Stretch
+          transform: Matrix4.identity()
+            ..scale(_scale)
+            ..rotateZ(_rotation)
+            ..scale(1.0 + _stretch,
+                1.0 - (_stretch * 0.5)) // Stretch in direction of movement
+            ..rotateZ(-_rotation), // Inverse rotate so content stays upright
           transformAlignment: Alignment.center,
-          width: _isDocked ? 32 : (widget.label != null && !_isDragging && !_springController.isAnimating ? null : 56),
+          width: _isDocked
+              ? 32
+              : (widget.label != null &&
+                      !_isDragging &&
+                      !_springController.isAnimating
+                  ? null
+                  : 56),
           height: _isDocked ? 32 : 56,
           decoration: BoxDecoration(
-            color: isGlassEnabled 
-                ? AppColors.primary.withValues(alpha: _isDocked ? 0.3 : 0.6)
-                : (_isDocked ? AppColors.primary.withValues(alpha: 0.5) : AppColors.primary),
-            borderRadius: BorderRadius.circular(_isDocked ? 12 : (_isDragging ? 32 : 28)), // Slightly rounder when dragging
-            border: isGlassEnabled 
-                ? Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1.5)
+            color: isGlassEnabled
+                ? AppColors.primary.withValues(alpha: _isDocked ? 0.3 : 0.8)
+                : (_isDocked
+                    ? AppColors.primary.withValues(alpha: 0.5)
+                    : AppColors.primary),
+            borderRadius: BorderRadius.circular(
+                _isDocked ? 12 : 28), // Always perfectly round unless docked
+            border: isGlassEnabled
+                ? Border.all(
+                    color: Colors.white.withValues(alpha: 0.4), width: 1.5)
                 : null,
             boxShadow: _isDragging || _isDocked
-                ? []
+                ? [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.4),
+                      blurRadius: 15,
+                      spreadRadius: 2,
+                    )
+                  ]
                 : [
                     BoxShadow(
                       color: AppColors.primary.withValues(alpha: 0.3),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
+                      blurRadius: 10,
+                      offset: const Offset(0, 5),
                     )
                   ],
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(_isDocked ? 12 : (_isDragging ? 32 : 28)),
+            borderRadius: BorderRadius.circular(_isDocked ? 12 : 28),
             child: isGlassEnabled
                 ? BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                    filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
                     child: fabContent,
                   )
                 : fabContent,
@@ -295,4 +343,3 @@ class _SmartDraggableFabState extends State<SmartDraggableFab> with SingleTicker
     );
   }
 }
-

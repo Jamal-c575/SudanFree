@@ -14,16 +14,17 @@ import '../../widgets/common/staggered_animated_widget.dart';
 import '../../services/smart_search_service.dart';
 import '../../widgets/inputs/smart_search_field.dart';
 import '../../services/smart_guide_service.dart';
-
+import 'package:geolocator/geolocator.dart';
 
 class BrowseFreelancersScreen extends StatefulWidget {
   const BrowseFreelancersScreen({super.key});
 
   @override
-  State<BrowseFreelancersScreen> createState() => _BrowseFreelancersScreenState();
+  State<BrowseFreelancersScreen> createState() =>
+      _BrowseFreelancersScreenState();
 }
 
-class _BrowseFreelancersScreenState extends State<BrowseFreelancersScreen> 
+class _BrowseFreelancersScreenState extends State<BrowseFreelancersScreen>
     with AutomaticKeepAliveClientMixin {
   String? _selectedState;
   JobCategory? _selectedCategory;
@@ -31,6 +32,7 @@ class _BrowseFreelancersScreenState extends State<BrowseFreelancersScreen>
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  String _sortBy = 'recommended';
 
   @override
   bool get wantKeepAlive => true; // الحفاظ على الحالة عند التنقل
@@ -42,15 +44,18 @@ class _BrowseFreelancersScreenState extends State<BrowseFreelancersScreen>
       context.read<UserProvider>().fetchFreelancers();
       SmartGuideService.showMicroTip(
         context,
-        messageAr: 'استكشف نخبة الحرفيين واضغط على أي ملف لبدء التواصل فوراً 📱',
-        messageEn: 'Explore top professionals and tap any profile to connect instantly 📱',
+        messageAr:
+            'استكشف نخبة الحرفيين واضغط على أي ملف لبدء التواصل فوراً 📱',
+        messageEn:
+            'Explore top professionals and tap any profile to connect instantly 📱',
         tipId: 'freelancers_first_visit',
         icon: Icons.touch_app_rounded,
       );
     });
-    
+
     _scrollController.addListener(() {
-      if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+      if (_scrollController.position.pixels >=
+          _scrollController.position.maxScrollExtent - 200) {
         context.read<UserProvider>().fetchMoreFreelancers();
       }
     });
@@ -87,41 +92,74 @@ class _BrowseFreelancersScreenState extends State<BrowseFreelancersScreen>
         }
       }
       // Category filter
-      if (_selectedCategory != null && !f.skills.contains(_selectedCategory!.name)) return false;
+      if (_selectedCategory != null &&
+          !f.skills.contains(_selectedCategory!.name)) return false;
       return true;
     }).toList();
 
-    // Sort by client interest match (matching interests appear first)
     final currentUser = context.read<AuthProvider>().user;
-    if (currentUser != null && currentUser.serviceInterests.isNotEmpty && _searchQuery.isEmpty && _selectedCategory == null) {
+
+    if (_sortBy == 'top_rated') {
+      filtered.sort((a, b) => b.rating.compareTo(a.rating));
+    } else if (_sortBy == 'nearest' &&
+        currentUser != null &&
+        currentUser.latitude != null &&
+        currentUser.longitude != null) {
       filtered.sort((a, b) {
-        final aMatch = a.skills.any((s) => currentUser.serviceInterests.contains(s));
-        final bMatch = b.skills.any((s) => currentUser.serviceInterests.contains(s));
-        if (aMatch && !bMatch) return -1;
-        if (!aMatch && bMatch) return 1;
-        return 0;
+        if (a.latitude == null || a.longitude == null) return 1;
+        if (b.latitude == null || b.longitude == null) return -1;
+        final distA = Geolocator.distanceBetween(currentUser.latitude!,
+            currentUser.longitude!, a.latitude!, a.longitude!);
+        final distB = Geolocator.distanceBetween(currentUser.latitude!,
+            currentUser.longitude!, b.latitude!, b.longitude!);
+        return distA.compareTo(distB);
       });
+    } else {
+      // Sort by client interest match (matching interests appear first)
+      if (currentUser != null &&
+          currentUser.serviceInterests.isNotEmpty &&
+          _searchQuery.isEmpty &&
+          _selectedCategory == null) {
+        filtered.sort((a, b) {
+          final aMatch =
+              a.skills.any((s) => currentUser.serviceInterests.contains(s));
+          final bMatch =
+              b.skills.any((s) => currentUser.serviceInterests.contains(s));
+          if (aMatch && !bMatch) return -1;
+          if (!aMatch && bMatch) return 1;
+          return 0;
+        });
+      }
     }
     return filtered;
   }
 
-  Widget _buildAverageCostBanner(List<UserModel> filteredFreelancers, String locale) {
+  Widget _buildAverageCostBanner(
+      List<UserModel> filteredFreelancers, String locale) {
     if (_searchQuery.isEmpty) return const SizedBox.shrink();
-    
+
     final currentUser = context.read<AuthProvider>().user;
     if (currentUser == null) return const SizedBox.shrink();
 
-    final withRates = filteredFreelancers.where((f) => f.hourlyRate != null && f.hourlyRate! > 0).toList();
+    final withRates = filteredFreelancers
+        .where((f) => f.hourlyRate != null && f.hourlyRate! > 0)
+        .toList();
     if (withRates.isEmpty) return const SizedBox.shrink();
 
     // 1. Try Locality
-    var localRates = withRates.where((f) => f.locality == currentUser.locality).toList();
-    String locationText = locale == 'ar' ? 'في منطقتك (${currentUser.locality ?? ''})' : 'in your locality (${currentUser.locality ?? ''})';
+    var localRates =
+        withRates.where((f) => f.locality == currentUser.locality).toList();
+    String locationText = locale == 'ar'
+        ? 'في منطقتك (${currentUser.locality ?? ''})'
+        : 'in your locality (${currentUser.locality ?? ''})';
 
     // 2. Try State if Locality is empty
     if (localRates.isEmpty && currentUser.state != null) {
-      localRates = withRates.where((f) => f.state == currentUser.state).toList();
-      locationText = locale == 'ar' ? 'في ولايتك (${currentUser.state})' : 'in your state (${currentUser.state})';
+      localRates =
+          withRates.where((f) => f.state == currentUser.state).toList();
+      locationText = locale == 'ar'
+          ? 'في ولايتك (${currentUser.state})'
+          : 'in your state (${currentUser.state})';
     }
 
     // 3. Fallback to all
@@ -130,15 +168,17 @@ class _BrowseFreelancersScreenState extends State<BrowseFreelancersScreen>
       locationText = locale == 'ar' ? 'بشكل عام' : 'in general';
     }
 
-    final average = localRates.map((f) => f.hourlyRate!).reduce((a, b) => a + b) / localRates.length;
+    final average =
+        localRates.map((f) => f.hourlyRate!).reduce((a, b) => a + b) /
+            localRates.length;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.primary.withOpacity(0.1),
+        color: AppColors.primary.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
@@ -146,10 +186,14 @@ class _BrowseFreelancersScreenState extends State<BrowseFreelancersScreen>
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              locale == 'ar' 
-                ? 'سيكلفك طلب هذه الخدمة بالتقريب ${average.toStringAsFixed(0)} SDG للساعة $locationText.'
-                : 'Requesting this service will cost you approximately ${average.toStringAsFixed(0)} SDG/hr $locationText.',
-              style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary, fontSize: 13, height: 1.3),
+              locale == 'ar'
+                  ? 'سيكلفك طلب هذه الخدمة بالتقريب ${average.toStringAsFixed(0)} SDG للساعة $locationText.'
+                  : 'Requesting this service will cost you approximately ${average.toStringAsFixed(0)} SDG/hr $locationText.',
+              style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primary,
+                  fontSize: 13,
+                  height: 1.3),
             ),
           ),
         ],
@@ -179,7 +223,9 @@ class _BrowseFreelancersScreenState extends State<BrowseFreelancersScreen>
                   Expanded(
                     child: SmartSearchField(
                       controller: _searchController,
-                      hintText: locale == 'ar' ? 'ابحث عن فني، كهربائي، مدرس...' : 'Search freelancer...',
+                      hintText: locale == 'ar'
+                          ? 'ابحث عن فني، كهربائي، مدرس...'
+                          : 'Search freelancer...',
                       searchContext: SearchContext.freelancers,
                       accentColor: AppColors.primary,
                       onSearch: (val) => setState(() => _searchQuery = val),
@@ -191,21 +237,22 @@ class _BrowseFreelancersScreenState extends State<BrowseFreelancersScreen>
                     child: Icon(
                       Icons.tune,
                       size: 24,
-                      color: (_selectedState != null || _selectedCategory != null)
-                          ? AppColors.primary
-                          : AppColors.textSecondary,
+                      color:
+                          (_selectedState != null || _selectedCategory != null)
+                              ? AppColors.primary
+                              : AppColors.textSecondary,
                     ),
                   ),
                 ],
               ),
             ),
-            
+
             _buildAverageCostBanner(freelancers, locale),
-            
+
             // Expandable Filters
             AnimatedContainer(
               duration: const Duration(milliseconds: 300),
-              height: _showFilters ? 160 : 0,
+              height: _showFilters ? 260 : 0,
               child: SingleChildScrollView(
                 physics: const NeverScrollableScrollPhysics(),
                 child: Padding(
@@ -219,7 +266,8 @@ class _BrowseFreelancersScreenState extends State<BrowseFreelancersScreen>
                         decoration: BoxDecoration(
                           color: Theme.of(context).cardColor,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppColors.border.withValues(alpha: 0.3)),
+                          border: Border.all(
+                              color: AppColors.border.withValues(alpha: 0.3)),
                         ),
                         child: DropdownButtonHideUnderline(
                           child: DropdownButton<String>(
@@ -227,27 +275,85 @@ class _BrowseFreelancersScreenState extends State<BrowseFreelancersScreen>
                             isExpanded: true,
                             hint: Row(
                               children: [
-                                const Icon(Icons.location_on_outlined, size: 18, color: AppColors.textSecondary),
+                                const Icon(Icons.location_on_outlined,
+                                    size: 18, color: AppColors.textSecondary),
                                 const SizedBox(width: 8),
-                                Text(locale == 'ar' ? 'اختر الولاية' : 'Select Location'),
+                                Text(locale == 'ar'
+                                    ? 'اختر الولاية'
+                                    : 'Select Location'),
                               ],
                             ),
                             items: [
                               DropdownMenuItem<String>(
                                 value: null,
-                                child: Text(locale == 'ar' ? 'كل الولايات' : 'All States'),
+                                child: Text(locale == 'ar'
+                                    ? 'كل الولايات'
+                                    : 'All States'),
                               ),
-                              ...SudanLocations.states.map((s) => 
-                                DropdownMenuItem(value: s, child: Text(SudanLocations.getStateName(s, locale)))
-                              ),
+                              ...SudanLocations.states.map((s) =>
+                                  DropdownMenuItem(
+                                      value: s,
+                                      child: Text(SudanLocations.getStateName(
+                                          s, locale)))),
                             ],
-                            onChanged: (v) => setState(() => _selectedState = v),
+                            onChanged: (v) =>
+                                setState(() => _selectedState = v),
                           ),
                         ),
                       ),
-                      
+
                       const SizedBox(height: 12),
-                      
+
+                      // Sort By Chips
+                      Text(locale == 'ar' ? 'ترتيب حسب' : 'Sort by',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              color: AppColors.textSecondary)),
+                      const SizedBox(height: 6),
+                      SizedBox(
+                        height: 40,
+                        child: ListView(
+                          scrollDirection: Axis.horizontal,
+                          children: [
+                            _FilterChip(
+                              label:
+                                  locale == 'ar' ? 'مقترح لك' : 'Recommended',
+                              isSelected: _sortBy == 'recommended',
+                              onTap: () =>
+                                  setState(() => _sortBy = 'recommended'),
+                            ),
+                            _FilterChip(
+                              label: locale == 'ar'
+                                  ? 'الأعلى تقييماً'
+                                  : 'Top Rated',
+                              isSelected: _sortBy == 'top_rated',
+                              onTap: () =>
+                                  setState(() => _sortBy = 'top_rated'),
+                            ),
+                            _FilterChip(
+                              label:
+                                  locale == 'ar' ? 'الأقرب مسافة' : 'Nearest',
+                              isSelected: _sortBy == 'nearest',
+                              onTap: () {
+                                final user = context.read<AuthProvider>().user;
+                                if (user?.latitude == null) {
+                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                      content: Text(locale == 'ar'
+                                          ? 'يجب تفعيل موقعك في ملفك الشخصي أولاً'
+                                          : 'Enable location in your profile first'),
+                                      backgroundColor: Colors.orange));
+                                  return;
+                                }
+                                setState(() => _sortBy = 'nearest');
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 12),
+
                       // Category Chips
                       SizedBox(
                         height: 40,
@@ -257,25 +363,29 @@ class _BrowseFreelancersScreenState extends State<BrowseFreelancersScreen>
                             _FilterChip(
                               label: locale == 'ar' ? 'الكل' : 'All',
                               isSelected: _selectedCategory == null,
-                              onTap: () => setState(() => _selectedCategory = null),
+                              onTap: () =>
+                                  setState(() => _selectedCategory = null),
                             ),
                             ...JobCategory.values.map((cat) => _FilterChip(
-                              label: _getCategoryName(cat, locale),
-                              isSelected: _selectedCategory == cat,
-                              onTap: () => setState(() => _selectedCategory = cat),
-                            )),
+                                  label: _getCategoryName(cat, locale),
+                                  isSelected: _selectedCategory == cat,
+                                  onTap: () =>
+                                      setState(() => _selectedCategory = cat),
+                                )),
                           ],
                         ),
                       ),
-                      
+
                       const SizedBox(height: 8),
-                      
-                      // Clear filters
-                      if (_selectedState != null || _selectedCategory != null)
+
+                      if (_selectedState != null ||
+                          _selectedCategory != null ||
+                          _sortBy != 'recommended')
                         TextButton.icon(
                           onPressed: () => setState(() {
                             _selectedState = null;
                             _selectedCategory = null;
+                            _sortBy = 'recommended';
                           }),
                           icon: const Icon(Icons.clear, size: 16),
                           label: Text(locale == 'ar' ? 'مسح الفلاتر' : 'Clear'),
@@ -286,11 +396,12 @@ class _BrowseFreelancersScreenState extends State<BrowseFreelancersScreen>
                 ),
               ),
             ),
-            
+
             // Results
             Expanded(
               child: userProvider.freelancerError != null
-                  ? _buildErrorState(context, locale, userProvider.freelancerError!)
+                  ? _buildErrorState(
+                      context, locale, userProvider.freelancerError!)
                   : (!hasData && userProvider.isLoading)
                       ? ListView.builder(
                           itemCount: 6,
@@ -300,22 +411,30 @@ class _BrowseFreelancersScreenState extends State<BrowseFreelancersScreen>
                       : freelancers.isEmpty && !userProvider.isLoading
                           ? _buildEmptyState(context, locale)
                           : RefreshIndicator(
-                              onRefresh: () async => userProvider.fetchFreelancers(forceRefresh: true),
+                              onRefresh: () async => userProvider
+                                  .fetchFreelancers(forceRefresh: true),
                               child: ListView.builder(
                                 controller: _scrollController,
                                 padding: const EdgeInsets.only(bottom: 96),
-                                itemCount: freelancers.length + (userProvider.isLoadingMoreFreelancers ? 1 : 0),
+                                itemCount: freelancers.length +
+                                    (userProvider.isLoadingMoreFreelancers
+                                        ? 1
+                                        : 0),
                                 itemBuilder: (context, index) {
                                   if (index == freelancers.length) {
                                     return const Padding(
-                                      padding: EdgeInsets.symmetric(vertical: 20),
-                                      child: Center(child: CircularProgressIndicator()),
+                                      padding:
+                                          EdgeInsets.symmetric(vertical: 20),
+                                      child: Center(
+                                          child: CircularProgressIndicator()),
                                     );
                                   }
                                   final freelancer = freelancers[index];
-                                  final currentUser = context.read<AuthProvider>().user;
+                                  final currentUser =
+                                      context.read<AuthProvider>().user;
                                   return StaggeredAnimatedWidget(
-                                    key: ValueKey('freelancer_${freelancer.id}'),
+                                    key:
+                                        ValueKey('freelancer_${freelancer.id}'),
                                     index: index,
                                     listId: 'freelancers_list',
                                     child: FreelancerCard(
@@ -323,11 +442,13 @@ class _BrowseFreelancersScreenState extends State<BrowseFreelancersScreen>
                                       locale: locale,
                                       currentUserId: currentUser?.id,
                                       currentUserName: currentUser?.name,
-                                      isPromoted: userProvider.promotedUserIds.contains(freelancer.id),
+                                      isPromoted: userProvider.promotedUserIds
+                                          .contains(freelancer.id),
                                       onTap: () => Navigator.push(
                                         context,
                                         MaterialPageRoute(
-                                          builder: (_) => ProfileScreen(userId: freelancer.id),
+                                          builder: (_) => ProfileScreen(
+                                              userId: freelancer.id),
                                         ),
                                       ),
                                     ),
@@ -350,14 +471,20 @@ class _BrowseFreelancersScreenState extends State<BrowseFreelancersScreen>
           Icon(Icons.search_off, size: 64, color: Colors.grey[300]),
           const SizedBox(height: 16),
           Text(
-            locale == 'ar' 
-                ? (_searchQuery.isNotEmpty ? 'لا توجد نتائج لـ "$_searchQuery"' : 'لا توجد نتائج')
-                : (_searchQuery.isNotEmpty ? 'No results for "$_searchQuery"' : 'No results found'),
+            locale == 'ar'
+                ? (_searchQuery.isNotEmpty
+                    ? 'لا توجد نتائج لـ "$_searchQuery"'
+                    : 'لا توجد نتائج')
+                : (_searchQuery.isNotEmpty
+                    ? 'No results for "$_searchQuery"'
+                    : 'No results found'),
             style: TextStyle(color: Colors.grey[600], fontSize: 16),
           ),
           const SizedBox(height: 8),
           Text(
-            locale == 'ar' ? 'جرّب كلمات أخرى أو تحقق من الإملاء' : 'Try different keywords or check spelling',
+            locale == 'ar'
+                ? 'جرّب كلمات أخرى أو تحقق من الإملاء'
+                : 'Try different keywords or check spelling',
             style: TextStyle(color: Colors.grey[400], fontSize: 13),
           ),
         ],
@@ -375,18 +502,25 @@ class _BrowseFreelancersScreenState extends State<BrowseFreelancersScreen>
             const Icon(Icons.error_outline, size: 80, color: AppColors.error),
             const SizedBox(height: 16),
             Text(
-              locale == 'ar' ? 'حدث خطأ في جلب البيانات' : 'Error fetching data',
+              locale == 'ar'
+                  ? 'حدث خطأ في جلب البيانات'
+                  : 'Error fetching data',
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 12),
             Text(
               error,
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyMedium
+                  ?.copyWith(color: AppColors.textSecondary),
             ),
             const SizedBox(height: 24),
             ElevatedButton(
-              onPressed: () => context.read<UserProvider>().fetchFreelancers(forceRefresh: true),
+              onPressed: () => context
+                  .read<UserProvider>()
+                  .fetchFreelancers(forceRefresh: true),
               child: Text(locale == 'ar' ? 'إعادة المحاولة' : 'Retry'),
             ),
           ],
@@ -398,16 +532,16 @@ class _BrowseFreelancersScreenState extends State<BrowseFreelancersScreen>
   String _getCategoryName(JobCategory category, String locale) {
     // Create a dummy job model to access the helper method
     final job = JobModel(
-      id: '', 
-      clientId: '', 
-      clientName: '', 
-      title: '', 
+      id: '',
+      clientId: '',
+      clientName: '',
+      title: '',
       description: '',
-      category: category, 
-      budgetMin: 0, 
-      budgetMax: 0, 
+      category: category,
+      budgetMin: 0,
+      budgetMax: 0,
       deadline: DateTime.now(),
-      createdAt: DateTime.now(), 
+      createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
     );
     return job.getCategoryDisplayName(locale);
@@ -424,8 +558,6 @@ class _FilterChip extends StatelessWidget {
     required this.isSelected,
     required this.onTap,
   });
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -445,9 +577,11 @@ class _FilterChip extends StatelessWidget {
           child: Text(
             label,
             style: TextStyle(
-              color: isSelected 
-                  ? Colors.white 
-                  : (Theme.of(context).brightness == Brightness.dark ? Colors.white70 : AppColors.textSecondary),
+              color: isSelected
+                  ? Colors.white
+                  : (Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white70
+                      : AppColors.textSecondary),
               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               fontSize: 13,
             ),

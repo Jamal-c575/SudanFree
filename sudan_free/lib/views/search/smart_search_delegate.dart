@@ -210,18 +210,23 @@ class SmartSearchDelegate extends SearchDelegate<UserModel?> {
               child: Material(
                 color: Colors.transparent,
                 child: InkWell(
-                  onTap: () => Navigator.push(context,
-                      MaterialPageRoute(builder: (_) => const BrowseFreelancersScreen())),
+                  onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const BrowseFreelancersScreen())),
                   borderRadius: BorderRadius.circular(12),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.handyman, size: 18, color: AppColors.primary),
+                        const Icon(Icons.handyman,
+                            size: 18, color: AppColors.primary),
                         const SizedBox(width: 8),
                         Text(isAr ? 'الحرفيين' : 'Freelancers',
-                            style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary)),
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primary)),
                       ],
                     ),
                   ),
@@ -239,18 +244,23 @@ class SmartSearchDelegate extends SearchDelegate<UserModel?> {
               child: Material(
                 color: Colors.transparent,
                 child: InkWell(
-                  onTap: () => Navigator.push(context,
-                      MaterialPageRoute(builder: (_) => const BrowseShopsScreen())),
+                  onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const BrowseShopsScreen())),
                   borderRadius: BorderRadius.circular(12),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.storefront, size: 18, color: AppColors.secondary),
+                        const Icon(Icons.storefront,
+                            size: 18, color: AppColors.secondary),
                         const SizedBox(width: 8),
                         Text(isAr ? 'المتاجر' : 'Shops',
-                            style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.secondary)),
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.secondary)),
                       ],
                     ),
                   ),
@@ -302,7 +312,10 @@ class SmartSearchDelegate extends SearchDelegate<UserModel?> {
   Widget _buildEmptyState(BuildContext context, bool isAr) {
     final quickSearches = [
       {'label': isAr ? 'سباك' : 'Plumber', 'icon': Icons.plumbing},
-      {'label': isAr ? 'كهربائي' : 'Electrician', 'icon': Icons.electrical_services},
+      {
+        'label': isAr ? 'كهربائي' : 'Electrician',
+        'icon': Icons.electrical_services
+      },
       {'label': isAr ? 'نجار' : 'Carpenter', 'icon': Icons.carpenter},
       {'label': isAr ? 'دهان' : 'Painter', 'icon': Icons.format_paint},
       {'label': isAr ? 'ميكانيكي' : 'Mechanic', 'icon': Icons.build},
@@ -350,8 +363,8 @@ class SmartSearchDelegate extends SearchDelegate<UserModel?> {
                     style: const TextStyle(
                         fontSize: 13, fontWeight: FontWeight.w500)),
                 backgroundColor: AppColors.primary.withValues(alpha: 0.08),
-                side: BorderSide(
-                    color: AppColors.primary.withValues(alpha: 0.2)),
+                side:
+                    BorderSide(color: AppColors.primary.withValues(alpha: 0.2)),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20)),
                 onPressed: () {
@@ -367,8 +380,8 @@ class SmartSearchDelegate extends SearchDelegate<UserModel?> {
             decoration: BoxDecoration(
               color: AppColors.primary.withValues(alpha: 0.05),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                  color: AppColors.primary.withValues(alpha: 0.1)),
+              border:
+                  Border.all(color: AppColors.primary.withValues(alpha: 0.1)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -493,16 +506,15 @@ class _MarketPriceCard extends StatelessWidget {
                       isAr
                           ? 'بناءً على ${withRate.length} حرفي في نتائج البحث'
                           : 'Based on ${withRate.length} professionals in results',
-                      style: TextStyle(
-                          fontSize: 11, color: Colors.grey[500]),
+                      style: TextStyle(fontSize: 11, color: Colors.grey[500]),
                     ),
                   ],
                 ),
               ),
               // ── Big average price badge ──
               Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 12, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: AppColors.success,
                   borderRadius: BorderRadius.circular(20),
@@ -576,15 +588,12 @@ class _StatChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: color.withValues(alpha: highlight ? 0.15 : 0.08),
         borderRadius: BorderRadius.circular(8),
-        border: highlight
-            ? Border.all(color: color.withValues(alpha: 0.4))
-            : null,
+        border:
+            highlight ? Border.all(color: color.withValues(alpha: 0.4)) : null,
       ),
       child: Column(
         children: [
-          Text(label,
-              style: TextStyle(
-                  fontSize: 10, color: Colors.grey[500])),
+          Text(label, style: TextStyle(fontSize: 10, color: Colors.grey[500])),
           Text(value,
               style: TextStyle(
                 fontSize: 12,
@@ -618,8 +627,7 @@ class _DelayedSuggestionsWidget extends StatefulWidget {
       _DelayedSuggestionsWidgetState();
 }
 
-class _DelayedSuggestionsWidgetState
-    extends State<_DelayedSuggestionsWidget> {
+class _DelayedSuggestionsWidgetState extends State<_DelayedSuggestionsWidget> {
   List<String> _suggestions = [];
   bool _showEmptyState = false;
   Timer? _emptyStateTimer;
@@ -655,8 +663,7 @@ class _DelayedSuggestionsWidgetState
         });
       } else {
         _emptyStateTimer?.cancel();
-        _emptyStateTimer =
-            Timer(const Duration(milliseconds: 800), () {
+        _emptyStateTimer = Timer(const Duration(milliseconds: 800), () {
           if (mounted) {
             setState(() {
               _suggestions = [];
@@ -677,11 +684,13 @@ class _DelayedSuggestionsWidgetState
   IconData _icon(String s) {
     final l = s.toLowerCase();
     if (l.contains('سباك') || l.contains('plumb')) return Icons.plumbing;
-    if (l.contains('كهرب') || l.contains('electr')) return Icons.electrical_services;
+    if (l.contains('كهرب') || l.contains('electr'))
+      return Icons.electrical_services;
     if (l.contains('نجار') || l.contains('carpen')) return Icons.carpenter;
     if (l.contains('دهان') || l.contains('paint')) return Icons.format_paint;
     if (l.contains('ميكانيك') || l.contains('mechan')) return Icons.build;
-    if (l.contains('مصمم') || l.contains('design')) return Icons.design_services;
+    if (l.contains('مصمم') || l.contains('design'))
+      return Icons.design_services;
     if (l.contains('مبرمج') || l.contains('develop')) return Icons.code;
     if (l.contains('مطعم') || l.contains('restau')) return Icons.restaurant;
     if (l.contains('متجر') || l.contains('shop')) return Icons.store;
@@ -723,8 +732,8 @@ class _DelayedSuggestionsWidgetState
             child: Icon(_icon(s), color: AppColors.primary, size: 20),
           ),
           title: Text(s,
-              style: const TextStyle(
-                  fontSize: 15, fontWeight: FontWeight.w500)),
+              style:
+                  const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
           trailing: IconButton(
             icon: Icon(Icons.north_west, size: 16, color: Colors.grey[400]),
             onPressed: () => widget.onSuggestionTap(s),
@@ -783,8 +792,7 @@ class _SearchResultsListState extends State<_SearchResultsList> {
     return ListView.builder(
       controller: _scrollController,
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      itemCount:
-          widget.results.length + (search.isLoadingMore ? 1 : 0),
+      itemCount: widget.results.length + (search.isLoadingMore ? 1 : 0),
       itemBuilder: (context, index) {
         if (index == widget.results.length) {
           return const Padding(

@@ -8,8 +8,10 @@ import 'package:geocoding/geocoding.dart';
 enum RegionResult {
   /// User is confirmed inside Sudan
   insideSudan,
+
   /// User is confirmed outside Sudan
   outsideSudan,
+
   /// Detection failed entirely (all APIs failed, no GPS)
   unknown,
 }
@@ -38,7 +40,8 @@ class RegionDetectionResult {
   });
 
   bool get isInSudan => result == RegionResult.insideSudan;
-  bool get isOutsideSudan => result == RegionResult.outsideSudan || result == RegionResult.unknown;
+  bool get isOutsideSudan =>
+      result == RegionResult.outsideSudan || result == RegionResult.unknown;
 }
 
 /// Multi-layered region detection service.
@@ -52,16 +55,17 @@ class RegionDetectionService {
   static Future<RegionDetectionResult> detectByIP() async {
     // Try each API in order. First success wins.
     final detectors = <Future<RegionDetectionResult?> Function()>[
-      _detectViaIpApi,       // ip-api.com (fast, reliable)
-      _detectViaIpWhoIs,     // ipwho.is  (good fallback)
-      _detectViaFreeIpApi,   // freeipapi.com (original, kept as last resort)
+      _detectViaIpApi, // ip-api.com (fast, reliable)
+      _detectViaIpWhoIs, // ipwho.is  (good fallback)
+      _detectViaFreeIpApi, // freeipapi.com (original, kept as last resort)
     ];
 
     for (final detector in detectors) {
       try {
         final result = await detector();
         if (result != null) {
-          debugPrint('RegionDetection: Success via ${result.source.name} → ${result.result.name} (${result.countryCode})');
+          debugPrint(
+              'RegionDetection: Success via ${result.source.name} → ${result.result.name} (${result.countryCode})');
           return result;
         }
       } catch (e) {
@@ -71,7 +75,8 @@ class RegionDetectionService {
     }
 
     // ALL APIs failed → fail-closed (assume outside for security)
-    debugPrint('RegionDetection: All IP APIs failed → defaulting to outsideSudan');
+    debugPrint(
+        'RegionDetection: All IP APIs failed → defaulting to outsideSudan');
     return const RegionDetectionResult(
       result: RegionResult.unknown,
       source: DetectionSource.fallback,
@@ -94,7 +99,8 @@ class RegionDetectionService {
       if (permission == LocationPermission.deniedForever) return null;
 
       final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.medium),
+        locationSettings:
+            const LocationSettings(accuracy: LocationAccuracy.medium),
       ).timeout(const Duration(seconds: 15));
 
       final placemarks = await placemarkFromCoordinates(
@@ -110,7 +116,8 @@ class RegionDetectionService {
         final isSudan = countryCode == 'SD' || country.contains('sudan');
 
         return RegionDetectionResult(
-          result: isSudan ? RegionResult.insideSudan : RegionResult.outsideSudan,
+          result:
+              isSudan ? RegionResult.insideSudan : RegionResult.outsideSudan,
           source: DetectionSource.gps,
           countryName: place.country,
           countryCode: countryCode,
@@ -131,7 +138,8 @@ class RegionDetectionService {
   static Future<RegionDetectionResult?> _detectViaIpApi() async {
     try {
       final response = await http
-          .get(Uri.parse('http://ip-api.com/json/?fields=status,countryCode,country'))
+          .get(Uri.parse(
+              'http://ip-api.com/json/?fields=status,countryCode,country'))
           .timeout(_apiTimeout);
 
       if (response.statusCode == 200) {
@@ -140,7 +148,9 @@ class RegionDetectionService {
           final code = data['countryCode']?.toString().toUpperCase() ?? '';
           final name = data['country']?.toString() ?? '';
           return RegionDetectionResult(
-            result: _isSudanCode(code, name) ? RegionResult.insideSudan : RegionResult.outsideSudan,
+            result: _isSudanCode(code, name)
+                ? RegionResult.insideSudan
+                : RegionResult.outsideSudan,
             source: DetectionSource.ipApi,
             countryName: name,
             countryCode: code,
@@ -157,9 +167,8 @@ class RegionDetectionService {
   /// ipwho.is — no rate limit, reliable
   static Future<RegionDetectionResult?> _detectViaIpWhoIs() async {
     try {
-      final response = await http
-          .get(Uri.parse('https://ipwho.is/'))
-          .timeout(_apiTimeout);
+      final response =
+          await http.get(Uri.parse('https://ipwho.is/')).timeout(_apiTimeout);
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -167,7 +176,9 @@ class RegionDetectionService {
           final code = data['country_code']?.toString().toUpperCase() ?? '';
           final name = data['country']?.toString() ?? '';
           return RegionDetectionResult(
-            result: _isSudanCode(code, name) ? RegionResult.insideSudan : RegionResult.outsideSudan,
+            result: _isSudanCode(code, name)
+                ? RegionResult.insideSudan
+                : RegionResult.outsideSudan,
             source: DetectionSource.ipApi,
             countryName: name,
             countryCode: code,
@@ -194,7 +205,9 @@ class RegionDetectionService {
         final name = data['countryName']?.toString() ?? '';
         if (code.isNotEmpty || name.isNotEmpty) {
           return RegionDetectionResult(
-            result: _isSudanCode(code, name) ? RegionResult.insideSudan : RegionResult.outsideSudan,
+            result: _isSudanCode(code, name)
+                ? RegionResult.insideSudan
+                : RegionResult.outsideSudan,
             source: DetectionSource.ipApi,
             countryName: name,
             countryCode: code,

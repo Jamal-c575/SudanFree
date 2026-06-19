@@ -3,11 +3,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 /// نموذج تأييد المهارة — يمثل شهادة من مستخدم آخر بمهارة معينة
 class EndorsementModel {
   final String id;
-  final String endorserId;       // من أيّد هذه المهارة
+  final String endorserId; // من أيّد هذه المهارة
   final String endorserName;
   final String? endorserImageUrl;
-  final String skill;            // المهارة المُؤيَّدة
-  final String? comment;         // تعليق اختياري
+  final String skill; // المهارة المُؤيَّدة
+  final String? comment; // تعليق اختياري
   final DateTime createdAt;
   final bool isVerifiedPurchase; // هل أتم صفقة مع هذا الحرفي؟
 

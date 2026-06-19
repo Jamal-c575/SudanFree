@@ -70,7 +70,8 @@ class MentionOverlay extends StatelessWidget {
                       color: AppColors.primary.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(6),
                     ),
-                    child: const Icon(Icons.alternate_email, color: AppColors.primary, size: 14),
+                    child: const Icon(Icons.alternate_email,
+                        color: AppColors.primary, size: 14),
                   ),
                   const SizedBox(width: 8),
                   Text(
@@ -99,7 +100,8 @@ class MentionOverlay extends StatelessWidget {
               InkWell(
                 onTap: onSelectAll,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
@@ -108,8 +110,10 @@ class MentionOverlay extends StatelessWidget {
                       ],
                     ),
                     border: Border(
-                      top: BorderSide(color: Colors.grey.withValues(alpha: 0.1)),
-                      bottom: BorderSide(color: Colors.grey.withValues(alpha: 0.1)),
+                      top:
+                          BorderSide(color: Colors.grey.withValues(alpha: 0.1)),
+                      bottom:
+                          BorderSide(color: Colors.grey.withValues(alpha: 0.1)),
                     ),
                   ),
                   child: Row(
@@ -119,13 +123,17 @@ class MentionOverlay extends StatelessWidget {
                         height: 32,
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
-                            colors: [AppColors.sudanGold, AppColors.sudanGold.withValues(alpha: 0.7)],
+                            colors: [
+                              AppColors.sudanGold,
+                              AppColors.sudanGold.withValues(alpha: 0.7)
+                            ],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: const Icon(Icons.groups_rounded, color: Colors.white, size: 18),
+                        child: const Icon(Icons.groups_rounded,
+                            color: Colors.white, size: 18),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -141,7 +149,7 @@ class MentionOverlay extends StatelessWidget {
                               ),
                             ),
                             Text(
-                              locale == 'ar' 
+                              locale == 'ar'
                                   ? 'إشارة لجميع الزملاء (${partners.length})'
                                   : 'Mention all colleagues (${partners.length})',
                               style: TextStyle(
@@ -152,7 +160,8 @@ class MentionOverlay extends StatelessWidget {
                           ],
                         ),
                       ),
-                      Icon(Icons.chevron_right_rounded, color: Colors.grey[400], size: 20),
+                      Icon(Icons.chevron_right_rounded,
+                          color: Colors.grey[400], size: 20),
                     ],
                   ),
                 ),
@@ -206,7 +215,8 @@ class MentionOverlay extends StatelessWidget {
               color: Colors.grey.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(Icons.person_add_alt_1_rounded, color: Colors.grey[400], size: 24),
+            child: Icon(Icons.person_add_alt_1_rounded,
+                color: Colors.grey[400], size: 24),
           ),
           const SizedBox(height: 12),
           Text(
@@ -219,7 +229,7 @@ class MentionOverlay extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            locale == 'ar' 
+            locale == 'ar'
                 ? 'أضف زملاء من ملفاتهم الشخصية لتتمكن من الإشارة إليهم'
                 : 'Add colleagues from their profiles to mention them',
             style: TextStyle(fontSize: 12, color: Colors.grey[500]),
@@ -252,9 +262,12 @@ class _MentionTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
-          border: isLast ? null : Border(
-            bottom: BorderSide(color: Colors.grey.withValues(alpha: 0.08)),
-          ),
+          border: isLast
+              ? null
+              : Border(
+                  bottom:
+                      BorderSide(color: Colors.grey.withValues(alpha: 0.08)),
+                ),
         ),
         child: Row(
           children: [
@@ -263,7 +276,10 @@ class _MentionTile extends StatelessWidget {
               padding: const EdgeInsets.all(2),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [AppColors.primary.withValues(alpha: 0.5), AppColors.sudanGold.withValues(alpha: 0.5)],
+                  colors: [
+                    AppColors.primary.withValues(alpha: 0.5),
+                    AppColors.sudanGold.withValues(alpha: 0.5)
+                  ],
                 ),
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -276,14 +292,18 @@ class _MentionTile extends StatelessWidget {
                         height: 36,
                         fit: BoxFit.cover,
                         placeholder: (_, __) => Container(
-                          width: 36, height: 36,
+                          width: 36,
+                          height: 36,
                           color: Colors.grey[200],
-                          child: const Icon(Icons.person, size: 18, color: Colors.grey),
+                          child: const Icon(Icons.person,
+                              size: 18, color: Colors.grey),
                         ),
                         errorWidget: (_, __, ___) => Container(
-                          width: 36, height: 36,
+                          width: 36,
+                          height: 36,
                           color: Colors.grey[200],
-                          child: const Icon(Icons.person, size: 18, color: Colors.grey),
+                          child: const Icon(Icons.person,
+                              size: 18, color: Colors.grey),
                         ),
                       )
                     : Container(
@@ -292,7 +312,9 @@ class _MentionTile extends StatelessWidget {
                         color: AppColors.primary.withValues(alpha: 0.1),
                         child: Center(
                           child: Text(
-                            user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
+                            user.name.isNotEmpty
+                                ? user.name[0].toUpperCase()
+                                : '?',
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               color: AppColors.primary,

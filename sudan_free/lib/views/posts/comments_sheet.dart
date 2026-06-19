@@ -14,13 +14,12 @@ import '../../widgets/comments/comment_tile.dart';
 import '../profile/profile_screen.dart';
 import '../../widgets/mentions/mention_overlay.dart';
 
-
 class CommentsSheet extends StatefulWidget {
   final String postId;
   final String postOwnerId;
 
   const CommentsSheet({
-    super.key, 
+    super.key,
     required this.postId,
     required this.postOwnerId,
   });
@@ -35,15 +34,16 @@ class _CommentsSheetState extends State<CommentsSheet> {
   final ScrollController _scrollController = ScrollController();
   final FirestoreService _firestoreService = FirestoreService();
   late final Stream<List<CommentModel>> _commentsStream;
-  
+
   bool _isSending = false;
-  
+
   // Reply State
   String? _parentId;
   String? _replyingToName;
   String? _parentUserId;
-  final Map<String, int> _visibleRepliesCount = {}; // Track how many replies are visible
-  
+  final Map<String, int> _visibleRepliesCount =
+      {}; // Track how many replies are visible
+
   // Mentions State
   bool _showMentions = false;
   List<UserModel> _allPartners = [];
@@ -86,7 +86,8 @@ class _CommentsSheetState extends State<CommentsSheet> {
     final selection = _commentController.selection;
     if (selection.baseOffset < 0) return;
 
-    final textBeforeCursor = text.isEmpty ? '' : text.substring(0, selection.baseOffset);
+    final textBeforeCursor =
+        text.isEmpty ? '' : text.substring(0, selection.baseOffset);
     final lastAtSymbol = textBeforeCursor.lastIndexOf('@');
 
     if (lastAtSymbol != -1) {
@@ -125,7 +126,7 @@ class _CommentsSheetState extends State<CommentsSheet> {
         selection.baseOffset,
         '@${user.name} ',
       );
-      
+
       _commentController.text = newText;
       _commentController.selection = TextSelection.fromPosition(
         TextPosition(offset: lastAtSymbol + user.name.length + 2),
@@ -151,12 +152,12 @@ class _CommentsSheetState extends State<CommentsSheet> {
         selection.baseOffset,
         '@الجميع ',
       );
-      
+
       _commentController.text = newText;
-       _commentController.selection = TextSelection.fromPosition(
+      _commentController.selection = TextSelection.fromPosition(
         TextPosition(offset: lastAtSymbol + 8), // length of @الجميع + space
       );
-      
+
       // Add all partners to mentioned list
       for (var p in _allPartners) {
         _mentionedUsers['@${p.name}'] = p.id;
@@ -165,7 +166,8 @@ class _CommentsSheetState extends State<CommentsSheet> {
     }
   }
 
-  void _startReply(String parentId, String replyingToName, String parentUserId) {
+  void _startReply(
+      String parentId, String replyingToName, String parentUserId) {
     setState(() {
       _parentId = parentId;
       _replyingToName = replyingToName;
@@ -195,20 +197,21 @@ class _CommentsSheetState extends State<CommentsSheet> {
 
     try {
       // Extract full mentioned names (without @) for storage
-      final mentionedNames = _mentionedUsers.keys.map((k) => k.replaceFirst('@', '')).toList();
+      final mentionedNames =
+          _mentionedUsers.keys.map((k) => k.replaceFirst('@', '')).toList();
 
       await context.read<PostsProvider>().addComment(
-        postId: widget.postId,
-        postOwnerId: widget.postOwnerId,
-        userId: user.id,
-        userName: user.name,
-        userImageUrl: user.profileImageUrl,
-        content: text,
-        parentId: _parentId,
-        parentUserName: _replyingToName,
-        parentUserId: _parentUserId,
-        mentionedNames: mentionedNames,
-      );
+            postId: widget.postId,
+            postOwnerId: widget.postOwnerId,
+            userId: user.id,
+            userName: user.name,
+            userImageUrl: user.profileImageUrl,
+            content: text,
+            parentId: _parentId,
+            parentUserName: _replyingToName,
+            parentUserId: _parentUserId,
+            mentionedNames: mentionedNames,
+          );
 
       // Handle Notifications for Mentions
       String cleanTextForNotification(String raw) {
@@ -216,8 +219,11 @@ class _CommentsSheetState extends State<CommentsSheet> {
           return match.group(0)!.substring(1);
         });
       }
+
       final cleanedText = cleanTextForNotification(text);
-      final truncatedText = cleanedText.length > 30 ? '${cleanedText.substring(0, 30)}...' : cleanedText;
+      final truncatedText = cleanedText.length > 30
+          ? '${cleanedText.substring(0, 30)}...'
+          : cleanedText;
 
       // Check if @الجميع was used — send to ALL partners (capped at 20 to avoid write flood)
       if (text.contains('@الجميع')) {
@@ -241,7 +247,8 @@ class _CommentsSheetState extends State<CommentsSheet> {
       } else {
         // Send individual mention notifications (skip already-notified users this session)
         for (var entry in _mentionedUsers.entries) {
-          if (text.contains(entry.key.trim()) && !_sentMentionNotifs.contains(entry.value)) {
+          if (text.contains(entry.key.trim()) &&
+              !_sentMentionNotifs.contains(entry.value)) {
             _sentMentionNotifs.add(entry.value);
             final notif = NotificationModel(
               id: '',
@@ -270,7 +277,9 @@ class _CommentsSheetState extends State<CommentsSheet> {
         final scaffoldMessenger = ScaffoldMessenger.of(context);
         scaffoldMessenger.showSnackBar(
           SnackBar(
-            content: Text(errorLocale == 'ar' ? 'حدث خطأ أثناء إضافة التعليق' : 'Error adding comment'),
+            content: Text(errorLocale == 'ar'
+                ? 'حدث خطأ أثناء إضافة التعليق'
+                : 'Error adding comment'),
             backgroundColor: AppColors.error,
           ),
         );
@@ -281,8 +290,8 @@ class _CommentsSheetState extends State<CommentsSheet> {
   @override
   Widget build(BuildContext context) {
     final locale = context.watch<LocaleProvider>().locale.languageCode;
-    
-    // Check if it's the current user's comment to hide Action button if needed? 
+
+    // Check if it's the current user's comment to hide Action button if needed?
     // CommentTile uses 'isMe' to hide reply button.
     final currentUser = context.read<AuthProvider>().user;
 
@@ -314,13 +323,22 @@ class _CommentsSheetState extends State<CommentsSheet> {
                     builder: (context, snap) {
                       final count = snap.data?.length ?? 0;
                       return Text(
-                        locale == 'ar' ? 'التعليقات ($count)' : 'Comments ($count)',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                        locale == 'ar'
+                            ? 'التعليقات ($count)'
+                            : 'Comments ($count)',
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
                       );
                     },
                   ),
                   const SizedBox(height: 8),
-                  Divider(height: 1, color: Theme.of(context).dividerColor.withValues(alpha: 0.3)),
+                  Divider(
+                      height: 1,
+                      color: Theme.of(context)
+                          .dividerColor
+                          .withValues(alpha: 0.3)),
                 ],
               ),
 
@@ -333,7 +351,8 @@ class _CommentsSheetState extends State<CommentsSheet> {
                       return ListView.builder(
                         itemCount: 4,
                         padding: const EdgeInsets.all(16),
-                        itemBuilder: (context, index) => _buildCommentSkeleton(context),
+                        itemBuilder: (context, index) =>
+                            _buildCommentSkeleton(context),
                       );
                     }
 
@@ -344,21 +363,32 @@ class _CommentsSheetState extends State<CommentsSheet> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.chat_bubble_outline, size: 56, color: Colors.grey[300]),
+                            Icon(Icons.chat_bubble_outline,
+                                size: 56, color: Colors.grey[300]),
                             const SizedBox(height: 12),
                             Text(
-                              locale == 'ar' ? 'لا توجد تعليقات بعد' : 'No comments yet',
-                              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                color: AppColors.textSecondary,
-                                fontWeight: FontWeight.w600,
-                              ),
+                              locale == 'ar'
+                                  ? 'لا توجد تعليقات بعد'
+                                  : 'No comments yet',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleSmall
+                                  ?.copyWith(
+                                    color: AppColors.textSecondary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              locale == 'ar' ? 'كن أول من يعلق! 💬' : 'Be the first to comment! 💬',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: Colors.grey[400],
-                              ),
+                              locale == 'ar'
+                                  ? 'كن أول من يعلق! 💬'
+                                  : 'Be the first to comment! 💬',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(
+                                    color: Colors.grey[400],
+                                  ),
                             ),
                           ],
                         ),
@@ -373,55 +403,84 @@ class _CommentsSheetState extends State<CommentsSheet> {
                       }
                     }
 
-                    final topComments = allComments.where((c) => c.parentId == null).toList();
+                    final topComments =
+                        allComments.where((c) => c.parentId == null).toList();
 
                     // Depth colors for the connecting line
                     Color depthColor(int d) {
-                      if (d == 1) return AppColors.primary.withValues(alpha: 0.5);
-                      if (d == 2) return AppColors.sudanGold.withValues(alpha: 0.7);
+                      if (d == 1)
+                        return AppColors.primary.withValues(alpha: 0.5);
+                      if (d == 2)
+                        return AppColors.sudanGold.withValues(alpha: 0.7);
                       if (d == 3) return Colors.purple.withValues(alpha: 0.5);
                       if (d >= 4) return Colors.teal.withValues(alpha: 0.5);
                       return Colors.transparent;
                     }
 
                     Widget buildCommentWidget(CommentModel comment, int depth) {
-                      final isLiked = currentUser != null && comment.likedBy.contains(currentUser.id);
+                      final isLiked = currentUser != null &&
+                          comment.likedBy.contains(currentUser.id);
                       return CommentTile(
                         comment: comment,
                         isMe: currentUser?.id == comment.userId,
                         depth: depth,
                         isLiked: isLiked,
-                        onReply: () => _startReply(comment.id, comment.userName, comment.userId),
+                        onReply: () => _startReply(
+                            comment.id, comment.userName, comment.userId),
                         onProfileTap: () {
                           if (context.mounted) Navigator.pop(context);
-                          Navigator.push(context, MaterialPageRoute(builder: (_) => ProfileScreen(userId: comment.userId)));
+                          Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) =>
+                                      ProfileScreen(userId: comment.userId)));
                         },
-                        onLike: currentUser != null ? () {
-                          _firestoreService.toggleCommentLike(widget.postId, comment.id, currentUser.id, !isLiked);
-                        } : null,
-                        onDelete: (currentUser?.id == comment.userId) ? () async {
-                          try {
-                            final postsProvider = context.read<PostsProvider>();
-                            await _firestoreService.deleteComment(widget.postId, comment.id);
-                            if (context.mounted) {
-                              postsProvider.decrementCommentCount(widget.postId);
-                            }
-                          } catch (e) {
-                            if (context.mounted) {
-                              final localeStr = context.read<LocaleProvider>().locale.languageCode;
-                              final scaffoldMessenger = ScaffoldMessenger.of(context);
-                              scaffoldMessenger.showSnackBar(
-                                SnackBar(content: Text(localeStr == 'ar' ? 'حدث خطأ أثناء حذف التعليق' : 'Error deleting comment')),
-                              );
-                            }
-                          }
-                        } : null,
+                        onLike: currentUser != null
+                            ? () {
+                                _firestoreService.toggleCommentLike(
+                                    widget.postId,
+                                    comment.id,
+                                    currentUser.id,
+                                    !isLiked);
+                              }
+                            : null,
+                        onDelete: (currentUser?.id == comment.userId)
+                            ? () async {
+                                try {
+                                  final postsProvider =
+                                      context.read<PostsProvider>();
+                                  await _firestoreService.deleteComment(
+                                      widget.postId, comment.id);
+                                  if (context.mounted) {
+                                    postsProvider
+                                        .decrementCommentCount(widget.postId);
+                                  }
+                                } catch (e) {
+                                  if (context.mounted) {
+                                    final localeStr = context
+                                        .read<LocaleProvider>()
+                                        .locale
+                                        .languageCode;
+                                    final scaffoldMessenger =
+                                        ScaffoldMessenger.of(context);
+                                    scaffoldMessenger.showSnackBar(
+                                      SnackBar(
+                                          content: Text(localeStr == 'ar'
+                                              ? 'حدث خطأ أثناء حذف التعليق'
+                                              : 'Error deleting comment')),
+                                    );
+                                  }
+                                }
+                              }
+                            : null,
                       );
                     }
 
-                    List<Widget> buildCommentTree(CommentModel parent, int currentDepth) {
+                    List<Widget> buildCommentTree(
+                        CommentModel parent, int currentDepth) {
                       final replies = repliesMap[parent.id] ?? [];
-                      replies.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+                      replies
+                          .sort((a, b) => a.createdAt.compareTo(b.createdAt));
 
                       final widgets = <Widget>[
                         Padding(
@@ -429,23 +488,27 @@ class _CommentsSheetState extends State<CommentsSheet> {
                             start: currentDepth * 24.0,
                           ),
                           child: currentDepth > 0
-                            ? IntrinsicHeight(
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                                  children: [
-                                    Container(
-                                      width: 3,
-                                      decoration: BoxDecoration(
-                                        color: depthColor(currentDepth),
-                                        borderRadius: BorderRadius.circular(2),
+                              ? IntrinsicHeight(
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      Container(
+                                        width: 3,
+                                        decoration: BoxDecoration(
+                                          color: depthColor(currentDepth),
+                                          borderRadius:
+                                              BorderRadius.circular(2),
+                                        ),
                                       ),
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Expanded(child: buildCommentWidget(parent, currentDepth)),
-                                  ],
-                                ),
-                              )
-                            : buildCommentWidget(parent, currentDepth),
+                                      const SizedBox(width: 6),
+                                      Expanded(
+                                          child: buildCommentWidget(
+                                              parent, currentDepth)),
+                                    ],
+                                  ),
+                                )
+                              : buildCommentWidget(parent, currentDepth),
                         ),
                       ];
 
@@ -453,8 +516,10 @@ class _CommentsSheetState extends State<CommentsSheet> {
 
                       // Collapsible: show 0 replies initially, then 4 by 4
                       final visibleCount = _visibleRepliesCount[parent.id] ?? 0;
-                      final visibleReplies = replies.take(visibleCount).toList();
-                      final hiddenCount = replies.length - visibleReplies.length;
+                      final visibleReplies =
+                          replies.take(visibleCount).toList();
+                      final hiddenCount =
+                          replies.length - visibleReplies.length;
                       final nextDepth = currentDepth < 3 ? currentDepth + 1 : 3;
 
                       for (var reply in visibleReplies) {
@@ -465,20 +530,29 @@ class _CommentsSheetState extends State<CommentsSheet> {
                       if (hiddenCount > 0) {
                         widgets.add(
                           Padding(
-                            padding: EdgeInsetsDirectional.only(start: nextDepth * 24.0 + 12),
+                            padding: EdgeInsetsDirectional.only(
+                                start: nextDepth * 24.0 + 12),
                             child: GestureDetector(
-                              onTap: () => setState(() => _visibleRepliesCount[parent.id] = visibleCount + 4),
+                              onTap: () => setState(() =>
+                                  _visibleRepliesCount[parent.id] =
+                                      visibleCount + 4),
                               child: Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 6),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 6),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(Icons.subdirectory_arrow_right, size: 14, color: depthColor(nextDepth)),
+                                    Icon(Icons.subdirectory_arrow_right,
+                                        size: 14, color: depthColor(nextDepth)),
                                     const SizedBox(width: 4),
                                     Text(
-                                      locale == 'ar' 
-                                          ? (visibleCount == 0 ? 'عرض الردود ($hiddenCount)' : 'عرض ردود أخرى ($hiddenCount)')
-                                          : (visibleCount == 0 ? 'Show replies ($hiddenCount)' : 'Show more replies ($hiddenCount)'),
+                                      locale == 'ar'
+                                          ? (visibleCount == 0
+                                              ? 'عرض الردود ($hiddenCount)'
+                                              : 'عرض ردود أخرى ($hiddenCount)')
+                                          : (visibleCount == 0
+                                              ? 'Show replies ($hiddenCount)'
+                                              : 'Show more replies ($hiddenCount)'),
                                       style: TextStyle(
                                         color: depthColor(nextDepth),
                                         fontSize: 12,
@@ -524,7 +598,9 @@ class _CommentsSheetState extends State<CommentsSheet> {
                     bottom: MediaQuery.of(context).viewInsets.bottom + 8,
                   ),
                   decoration: BoxDecoration(
-                    border: Border(top: BorderSide(color: AppColors.border.withValues(alpha: 0.3))),
+                    border: Border(
+                        top: BorderSide(
+                            color: AppColors.border.withValues(alpha: 0.3))),
                     color: Theme.of(context).scaffoldBackgroundColor,
                   ),
                   child: Column(
@@ -533,29 +609,42 @@ class _CommentsSheetState extends State<CommentsSheet> {
                       // Reply Indicator
                       if (_replyingToName != null)
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
                           margin: const EdgeInsets.only(bottom: 6),
                           decoration: BoxDecoration(
                             color: AppColors.primary.withValues(alpha: 0.08),
                             borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
+                            border: Border.all(
+                                color:
+                                    AppColors.primary.withValues(alpha: 0.15)),
                           ),
                           child: Row(
                             children: [
-                              Icon(Icons.reply, size: 16, color: AppColors.primary.withValues(alpha: 0.7)),
+                              Icon(Icons.reply,
+                                  size: 16,
+                                  color:
+                                      AppColors.primary.withValues(alpha: 0.7)),
                               const SizedBox(width: 6),
                               Expanded(
                                 child: Text(
-                                  locale == 'ar' 
-                                      ? 'الرد على $_replyingToName' 
+                                  locale == 'ar'
+                                      ? 'الرد على $_replyingToName'
                                       : 'Replying to $_replyingToName',
-                                  style: TextStyle(color: AppColors.primary.withValues(alpha: 0.8), fontSize: 12, fontWeight: FontWeight.w600),
+                                  style: TextStyle(
+                                      color: AppColors.primary
+                                          .withValues(alpha: 0.8),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600),
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                               GestureDetector(
                                 onTap: _cancelReply,
-                                child: Icon(Icons.close, size: 16, color: AppColors.primary.withValues(alpha: 0.5)),
+                                child: Icon(Icons.close,
+                                    size: 16,
+                                    color: AppColors.primary
+                                        .withValues(alpha: 0.5)),
                               ),
                             ],
                           ),
@@ -570,27 +659,38 @@ class _CommentsSheetState extends State<CommentsSheet> {
                               focusNode: _commentFocusNode,
                               onChanged: _onTextChanged,
                               decoration: InputDecoration(
-                                hintText: _parentId == null 
-                                    ? (locale == 'ar' ? 'اكتب تعليقاً... (@لذكر زميل)' : 'Write a comment... (@ to mention)')
-                                    : (locale == 'ar' ? 'اكتب رداً...' : 'Write a reply...'),
+                                hintText: _parentId == null
+                                    ? (locale == 'ar'
+                                        ? 'اكتب تعليقاً... (@لذكر زميل)'
+                                        : 'Write a comment... (@ to mention)')
+                                    : (locale == 'ar'
+                                        ? 'اكتب رداً...'
+                                        : 'Write a reply...'),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(24),
                                   borderSide: BorderSide.none,
                                 ),
                                 filled: true,
-                                fillColor: AppColors.border.withValues(alpha: 0.1),
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                fillColor:
+                                    AppColors.border.withValues(alpha: 0.1),
+                                contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 8),
                               ),
                               minLines: 1,
                               maxLines: 4,
                             ),
                           ),
                           const SizedBox(width: 8),
-                          _isSending 
-                              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                          _isSending
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child:
+                                      CircularProgressIndicator(strokeWidth: 2))
                               : IconButton(
                                   onPressed: _submitComment,
-                                  icon: const Icon(Icons.send, color: AppColors.primary),
+                                  icon: const Icon(Icons.send,
+                                      color: AppColors.primary),
                                 ),
                         ],
                       ),
@@ -604,15 +704,16 @@ class _CommentsSheetState extends State<CommentsSheet> {
           // Mentions Overlay
           if (_showMentions)
             Positioned(
-              bottom: MediaQuery.of(context).viewInsets.bottom > 0 
-                  ? MediaQuery.of(context).viewInsets.bottom + 10 
+              bottom: MediaQuery.of(context).viewInsets.bottom > 0
+                  ? MediaQuery.of(context).viewInsets.bottom + 10
                   : 80,
-              left: 16, 
+              left: 16,
               right: 16,
               child: MentionOverlay(
                 partners: _filteredPartners,
                 locale: locale,
-                onSelectAll: _filteredPartners.length > 1 ? _selectAllPartners : null,
+                onSelectAll:
+                    _filteredPartners.length > 1 ? _selectAllPartners : null,
                 onSelectUser: _selectMention,
               ),
             ),

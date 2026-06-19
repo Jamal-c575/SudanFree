@@ -6,6 +6,8 @@ class RequestModel {
   final String clientName;
   final String? clientImageUrl;
   final String text;
+  final double? price; // New: optional price offered or expected
+  final DateTime expiresAt; // New: 48 hour expiration
   final String? imageUrl; // Legacy single image
   final List<String> imageUrls; // New: up to 3 images
   final String? audioUrl; // Voice record url
@@ -23,6 +25,7 @@ class RequestModel {
     required this.clientName,
     this.clientImageUrl,
     required this.text,
+    this.price,
     this.imageUrl,
     this.imageUrls = const [],
     this.audioUrl,
@@ -31,9 +34,10 @@ class RequestModel {
     this.state,
     this.locality,
     required this.createdAt,
+    DateTime? expiresAt,
     this.offersCount = 0,
     this.isFulfilled = false,
-  });
+  }) : this.expiresAt = expiresAt ?? createdAt.add(const Duration(hours: 48));
 
   /// Get all image URLs (combines legacy imageUrl with new imageUrls)
   List<String> get allImageUrls {
@@ -53,6 +57,7 @@ class RequestModel {
       'clientName': clientName,
       'clientImageUrl': clientImageUrl,
       'text': text,
+      'price': price,
       'imageUrl': imageUrl,
       'imageUrls': imageUrls,
       'audioUrl': audioUrl,
@@ -61,6 +66,7 @@ class RequestModel {
       'state': state,
       'locality': locality,
       'createdAt': Timestamp.fromDate(createdAt),
+      'expiresAt': Timestamp.fromDate(expiresAt),
       'offersCount': offersCount,
       'isFulfilled': isFulfilled,
     };
@@ -73,6 +79,7 @@ class RequestModel {
       clientName: map['clientName'] ?? 'عميل',
       clientImageUrl: map['clientImageUrl'],
       text: map['text'] ?? '',
+      price: map['price'] != null ? (map['price'] as num).toDouble() : null,
       imageUrl: map['imageUrl'],
       imageUrls: List<String>.from(map['imageUrls'] ?? []),
       audioUrl: map['audioUrl'],
@@ -81,6 +88,9 @@ class RequestModel {
       state: map['state'],
       locality: map['locality'],
       createdAt: (map['createdAt'] as Timestamp).toDate(),
+      expiresAt: map['expiresAt'] != null 
+          ? (map['expiresAt'] as Timestamp).toDate() 
+          : (map['createdAt'] as Timestamp).toDate().add(const Duration(hours: 48)),
       offersCount: map['offersCount'] ?? 0,
       isFulfilled: map['isFulfilled'] ?? false,
     );

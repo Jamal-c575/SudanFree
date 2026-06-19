@@ -39,31 +39,37 @@ enum JobCategory {
   tailoring,
   beauty,
   // Private / Specialized Services
-  privateTutoring,       // مدرس خصوصي
-  teachingConsultant,    // مستشار تدريس
-  eventCatering,         // تلبية طلبات مناسبات
-  baker,                 // فران
-  pastryChef,            // بنكجي
-  waiter,                // طاولجي
-  clinicReception,       // استقبال عيادات
-  appointmentBooking,    // حجز مواعيد
-  clinicInquiry,         // استفسار عيادات
-  lawyer,                // محامي
-  chef,                  // طباخ  
-  translator,            // مترجم
+  privateTutoring, // مدرس خصوصي
+  teachingConsultant, // مستشار تدريس
+  eventCatering, // تلبية طلبات مناسبات
+  baker, // فران
+  pastryChef, // بنكجي
+  waiter, // طاولجي
+  clinicReception, // استقبال عيادات
+  appointmentBooking, // حجز مواعيد
+  clinicInquiry, // استفسار عيادات
+  lawyer, // محامي
+  chef, // طباخ
+  translator, // مترجم
   // Transport & Logistics
-  furnitureMoving,               // نقل أثاث
-  goodsTransport,                // نقل بضائع
-  privateRides,                  // مشاوير خاصة / ترحيل
-  vacuumTruck,                   // شفط بالهواء
-  buildingMaterialsTransport,    // نقل مواد بناء
-  dumpTruckDirt,                 // قلابات تراب
-  dumpTruckSand,                 // قلابات رملة
-  dumpTruckConcrete,             // قلابات خرسانة
+  furnitureMoving, // نقل أثاث
+  goodsTransport, // نقل بضائع
+  privateRides, // مشاوير خاصة / ترحيل
+  vacuumTruck, // شفط بالهواء
+  buildingMaterialsTransport, // نقل مواد بناء
+  dumpTruckDirt, // قلابات تراب
+  dumpTruckSand, // قلابات رملة
+  dumpTruckConcrete, // قلابات خرسانة
   // Bartering
-  bartering,                     // مقايضة
+  bartering, // مقايضة
   // Other
   other,
+}
+
+enum MilestoneStatus {
+  pending,
+  paidByClient,
+  confirmedByProvider,
 }
 
 class MilestoneModel {
@@ -85,6 +91,12 @@ class MilestoneModel {
     this.completedAt,
   });
 
+  MilestoneStatus get status {
+    if (isPaid && isConfirmed) return MilestoneStatus.confirmedByProvider;
+    if (isPaid && !isConfirmed) return MilestoneStatus.paidByClient;
+    return MilestoneStatus.pending;
+  }
+
   factory MilestoneModel.fromMap(Map<String, dynamic> map) {
     return MilestoneModel(
       id: map['id'] ?? '',
@@ -105,7 +117,8 @@ class MilestoneModel {
       'isPaid': isPaid,
       'isCompleted': isCompleted,
       'isConfirmed': isConfirmed,
-      'completedAt': completedAt != null ? Timestamp.fromDate(completedAt!) : null,
+      'completedAt':
+          completedAt != null ? Timestamp.fromDate(completedAt!) : null,
     };
   }
 }
@@ -172,15 +185,19 @@ class JobModel {
       clientImageUrl: SafeParse.nullableString(data['clientImageUrl']),
       title: SafeParse.string(data['title']),
       description: SafeParse.string(data['description']),
-      category: SafeParse.enumValue(JobCategory.values, data['category'], JobCategory.other),
+      category: SafeParse.enumValue(
+          JobCategory.values, data['category'], JobCategory.other),
       budgetMin: SafeParse.decimal(data['budgetMin']),
       budgetMax: SafeParse.decimal(data['budgetMax']),
       currency: SafeParse.string(data['currency'], 'SDG'),
       deadline: SafeParse.dateTime(data['deadline']),
       isUrgent: SafeParse.boolean(data['isUrgent']),
-      status: SafeParse.enumValue(JobStatus.values, data['status'], JobStatus.open),
-      assignedFreelancerId: SafeParse.nullableString(data['assignedFreelancerId']),
-      assignedFreelancerName: SafeParse.nullableString(data['assignedFreelancerName']),
+      status:
+          SafeParse.enumValue(JobStatus.values, data['status'], JobStatus.open),
+      assignedFreelancerId:
+          SafeParse.nullableString(data['assignedFreelancerId']),
+      assignedFreelancerName:
+          SafeParse.nullableString(data['assignedFreelancerName']),
       supervisorId: SafeParse.nullableString(data['supervisorId']),
       supervisorName: SafeParse.nullableString(data['supervisorName']),
       proposalsCount: SafeParse.integer(data['proposalsCount']),
@@ -190,11 +207,20 @@ class JobModel {
         try {
           final raw = data['milestones'];
           if (raw is! List) return <MilestoneModel>[];
-          return raw.map((m) {
-            try { return MilestoneModel.fromMap(Map<String, dynamic>.from(m as Map)); }
-            catch (_) { return null; }
-          }).whereType<MilestoneModel>().toList();
-        } catch (_) { return <MilestoneModel>[]; }
+          return raw
+              .map((m) {
+                try {
+                  return MilestoneModel.fromMap(
+                      Map<String, dynamic>.from(m as Map));
+                } catch (_) {
+                  return null;
+                }
+              })
+              .whereType<MilestoneModel>()
+              .toList();
+        } catch (_) {
+          return <MilestoneModel>[];
+        }
       })(),
       contractUrl: SafeParse.nullableString(data['contractUrl']),
       createdAt: SafeParse.dateTime(data['createdAt']),
@@ -270,7 +296,8 @@ class JobModel {
       isUrgent: isUrgent ?? this.isUrgent,
       status: status ?? this.status,
       assignedFreelancerId: assignedFreelancerId ?? this.assignedFreelancerId,
-      assignedFreelancerName: assignedFreelancerName ?? this.assignedFreelancerName,
+      assignedFreelancerName:
+          assignedFreelancerName ?? this.assignedFreelancerName,
       supervisorId: supervisorId ?? this.supervisorId,
       supervisorName: supervisorName ?? this.supervisorName,
       proposalsCount: proposalsCount ?? this.proposalsCount,
@@ -284,7 +311,7 @@ class JobModel {
   }
 
   String get budgetRange => '$budgetMin - $budgetMax $currency';
-  
+
   bool get isOpen => status == JobStatus.open;
   bool get isInProgress => status == JobStatus.inProgress;
   bool get isCompleted => status == JobStatus.completed;

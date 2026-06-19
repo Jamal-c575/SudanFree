@@ -17,12 +17,14 @@ class IdentityVerificationScreen extends StatefulWidget {
   const IdentityVerificationScreen({super.key});
 
   @override
-  State<IdentityVerificationScreen> createState() => _IdentityVerificationScreenState();
+  State<IdentityVerificationScreen> createState() =>
+      _IdentityVerificationScreenState();
 }
 
-class _IdentityVerificationScreenState extends State<IdentityVerificationScreen> {
+class _IdentityVerificationScreenState
+    extends State<IdentityVerificationScreen> {
   int _currentStep = 0;
-  
+
   final _phoneController = TextEditingController();
   final _otpController = TextEditingController();
   bool _codeSent = false;
@@ -32,7 +34,7 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
 
   File? _personalPhoto;
   File? _idCardPhoto;
-  
+
   bool _isSubmitting = false;
 
   @override
@@ -59,16 +61,17 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
 
   Future<void> _sendCode() async {
     if (_phoneController.text.isEmpty) return;
-    
+
     final authProvider = context.read<AuthProvider>();
     final messenger = ScaffoldMessenger.of(context);
 
     setState(() => _isLoading = true);
-    
-    final success = _useWhatsAppOTP 
+
+    final success = _useWhatsAppOTP
         ? await authProvider.sendWhatsAppOTP(_phoneController.text.trim())
-        : await authProvider.sendPhoneVerification(_phoneController.text.trim());
-        
+        : await authProvider
+            .sendPhoneVerification(_phoneController.text.trim());
+
     if (!mounted) return;
     setState(() => _isLoading = false);
 
@@ -81,7 +84,8 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
       setState(() => _codeSent = true);
     } else {
       final error = authProvider.errorMessage ?? 'Failed to send code';
-      messenger.showSnackBar(SnackBar(content: Text(error), backgroundColor: AppColors.error));
+      messenger.showSnackBar(
+          SnackBar(content: Text(error), backgroundColor: AppColors.error));
     }
   }
 
@@ -92,11 +96,12 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
     final messenger = ScaffoldMessenger.of(context);
 
     setState(() => _isLoading = true);
-    
+
     final success = _useWhatsAppOTP
-        ? await authProvider.verifyWhatsAppOTP(_phoneController.text.trim(), _otpController.text.trim())
+        ? await authProvider.verifyWhatsAppOTP(
+            _phoneController.text.trim(), _otpController.text.trim())
         : await authProvider.verifyOTPAndLink(_otpController.text.trim());
-    
+
     if (success) {
       await authProvider.updateUserProfile({'isVerified': true});
       if (mounted) {
@@ -110,14 +115,16 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
       if (mounted) {
         setState(() => _isLoading = false);
         final error = authProvider.errorMessage ?? 'Invalid code';
-        messenger.showSnackBar(SnackBar(content: Text(error), backgroundColor: AppColors.error));
+        messenger.showSnackBar(
+            SnackBar(content: Text(error), backgroundColor: AppColors.error));
       }
     }
   }
 
   Future<void> _pickPersonalPhoto() async {
     final picker = ImagePicker();
-    final picked = await picker.pickImage(source: ImageSource.camera, maxWidth: 800);
+    final picked =
+        await picker.pickImage(source: ImageSource.camera, maxWidth: 800);
     if (picked != null) {
       setState(() => _personalPhoto = File(picked.path));
     }
@@ -125,7 +132,9 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
 
   Future<void> _pickIdCardPhoto() async {
     final picker = ImagePicker();
-    final picked = await picker.pickImage(source: ImageSource.camera, maxWidth: 1200); // Usually need higher res for ID
+    final picked = await picker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 1200); // Usually need higher res for ID
     if (picked != null) {
       setState(() => _idCardPhoto = File(picked.path));
     }
@@ -144,7 +153,8 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
       // 1. Upload personal verification photo
       String? selfieUrl;
       try {
-        selfieUrl = await StorageService().uploadVerificationSelfie(userId, _personalPhoto!);
+        selfieUrl = await StorageService()
+            .uploadVerificationSelfie(userId, _personalPhoto!);
       } catch (e) {
         debugPrint('Personal photo upload error: $e');
         throw Exception('فشل رفع الصورة الشخصية');
@@ -184,7 +194,9 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
         _showSuccessDialog();
       }
     } catch (e, stack) {
-      if (context.mounted) AppErrorHandler.show(context, e, stack, logContext: 'IdentityVerification.submit');
+      if (context.mounted)
+        AppErrorHandler.show(context, e, stack,
+            logContext: 'IdentityVerification.submit');
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
@@ -205,7 +217,7 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
           ],
         ),
         content: Text(
-          isArabic 
+          isArabic
               ? 'تم إرسال طلب التوثيق للمراجعة بنجاح. سنقوم بإعلامك فور الانتهاء من مراجعته.'
               : 'Your verification request has been submitted for review. We will notify you once it is completed.',
           textAlign: TextAlign.center,
@@ -251,7 +263,8 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
             ),
             child: Row(
               children: [
-                const Icon(Icons.construction_rounded, color: Colors.orange, size: 24),
+                const Icon(Icons.construction_rounded,
+                    color: Colors.orange, size: 24),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
@@ -270,7 +283,8 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
           ),
           const SizedBox(height: 8),
           Expanded(
-            child: status == VerificationStatus.verified || status == VerificationStatus.pending
+            child: status == VerificationStatus.verified ||
+                    status == VerificationStatus.pending
                 ? _buildStatusScreen(status, isArabic)
                 : Stepper(
                     type: StepperType.vertical,
@@ -279,21 +293,30 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
                       if (_currentStep == 0 && !_isPhoneVerified) {
                         final scaffoldMessenger = ScaffoldMessenger.of(context);
                         scaffoldMessenger.showSnackBar(
-                          SnackBar(content: Text(isArabic ? 'يرجى تأكيد رقم الهاتف أولاً' : 'Please verify phone first')),
+                          SnackBar(
+                              content: Text(isArabic
+                                  ? 'يرجى تأكيد رقم الهاتف أولاً'
+                                  : 'Please verify phone first')),
                         );
                         return;
                       }
                       if (_currentStep == 1 && _personalPhoto == null) {
                         final scaffoldMessenger = ScaffoldMessenger.of(context);
                         scaffoldMessenger.showSnackBar(
-                          SnackBar(content: Text(isArabic ? 'يرجى التقاط صورة شخصية' : 'Please take a personal photo')),
+                          SnackBar(
+                              content: Text(isArabic
+                                  ? 'يرجى التقاط صورة شخصية'
+                                  : 'Please take a personal photo')),
                         );
                         return;
                       }
                       if (_currentStep == 2 && _idCardPhoto == null) {
                         final scaffoldMessenger = ScaffoldMessenger.of(context);
                         scaffoldMessenger.showSnackBar(
-                          SnackBar(content: Text(isArabic ? 'يرجى رفع صورة الهوية' : 'Please upload ID card photo')),
+                          SnackBar(
+                              content: Text(isArabic
+                                  ? 'يرجى رفع صورة الهوية'
+                                  : 'Please upload ID card photo')),
                         );
                         return;
                       }
@@ -314,7 +337,9 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
                         return Container(
                           margin: const EdgeInsets.only(top: 16),
                           child: PrimaryButton(
-                            text: isArabic ? 'تأكيد وتقديم الطلب' : 'Confirm & Submit',
+                            text: isArabic
+                                ? 'تأكيد وتقديم الطلب'
+                                : 'Confirm & Submit',
                             isLoading: _isSubmitting,
                             onPressed: _submitVerification,
                           ),
@@ -371,17 +396,25 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
             ),
             const SizedBox(height: 24),
             Text(
-              isVerified 
-                  ? (isArabic ? 'حسابك موثق بالكامل' : 'Your account is fully verified')
-                  : (isArabic ? 'طلبك قيد المراجعة' : 'Your request is pending review'),
+              isVerified
+                  ? (isArabic
+                      ? 'حسابك موثق بالكامل'
+                      : 'Your account is fully verified')
+                  : (isArabic
+                      ? 'طلبك قيد المراجعة'
+                      : 'Your request is pending review'),
               style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 12),
             Text(
               isVerified
-                  ? (isArabic ? 'تتمتع الآن بجميع مزايا الحساب الموثق. تظهر أيقونة المصافحة بجانب اسمك في بطاقتك وملفك الشخصي.' : 'You now enjoy all verified account benefits. A handshake icon appears next to your name on your card and profile.')
-                  : (isArabic ? 'نحن نقوم بمراجعة بياناتك وصورة هويتك. سيتم إعلامك قريباً.' : 'We are reviewing your data and ID photo. You will be notified soon.'),
+                  ? (isArabic
+                      ? 'تتمتع الآن بجميع مزايا الحساب الموثق. تظهر أيقونة المصافحة بجانب اسمك في بطاقتك وملفك الشخصي.'
+                      : 'You now enjoy all verified account benefits. A handshake icon appears next to your name on your card and profile.')
+                  : (isArabic
+                      ? 'نحن نقوم بمراجعة بياناتك وصورة هويتك. سيتم إعلامك قريباً.'
+                      : 'We are reviewing your data and ID photo. You will be notified soon.'),
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
                 fontSize: 16,
@@ -405,7 +438,9 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
               children: [
                 const Icon(Icons.check_circle, color: Colors.green),
                 const SizedBox(width: 8),
-                Text(isArabic ? 'تم تأكيد رقم الهاتف' : 'Phone number verified', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+                Text(isArabic ? 'تم تأكيد رقم الهاتف' : 'Phone number verified',
+                    style: const TextStyle(
+                        color: Colors.green, fontWeight: FontWeight.bold)),
               ],
             )
           : Column(
@@ -418,37 +453,48 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
                     decoration: BoxDecoration(
                       color: theme.colorScheme.surface,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: theme.colorScheme.outline.withValues(alpha: 0.3)),
+                      border: Border.all(
+                          color:
+                              theme.colorScheme.outline.withValues(alpha: 0.3)),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           isArabic ? 'طريقة التحقق' : 'Verification Method',
-                          style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                          style: theme.textTheme.titleSmall
+                              ?.copyWith(fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 12),
                         Row(
                           children: [
                             Expanded(
                               child: RadioListTile<bool>(
-                                title: Text(isArabic ? 'رسالة نصية (SMS)' : 'SMS Message'),
-                                subtitle: Text(isArabic ? 'تلقي الرمز عبر SMS' : 'Receive code via SMS'),
+                                title: Text(isArabic
+                                    ? 'رسالة نصية (SMS)'
+                                    : 'SMS Message'),
+                                subtitle: Text(isArabic
+                                    ? 'تلقي الرمز عبر SMS'
+                                    : 'Receive code via SMS'),
                                 value: false,
                                 // ignore: deprecated_member_use
                                 groupValue: _useWhatsAppOTP,
                                 // ignore: deprecated_member_use
-                                onChanged: (value) => setState(() => _useWhatsAppOTP = value ?? false),
+                                onChanged: (value) => setState(
+                                    () => _useWhatsAppOTP = value ?? false),
                                 dense: true,
                               ),
                             ),
                             Expanded(
                               child: RadioListTile<bool>(
                                 title: Text(isArabic ? 'واتساب' : 'WhatsApp'),
-                                subtitle: Text(isArabic ? 'تلقي الرمز عبر واتساب' : 'Receive code via WhatsApp'),
+                                subtitle: Text(isArabic
+                                    ? 'تلقي الرمز عبر واتساب'
+                                    : 'Receive code via WhatsApp'),
                                 value: true,
                                 groupValue: _useWhatsAppOTP,
-                                onChanged: (value) => setState(() => _useWhatsAppOTP = value ?? false),
+                                onChanged: (value) => setState(
+                                    () => _useWhatsAppOTP = value ?? false),
                                 dense: true,
                               ),
                             ),
@@ -490,9 +536,12 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
                       defaultPinTheme: PinTheme(
                         width: 50,
                         height: 56,
-                        textStyle: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                        textStyle: const TextStyle(
+                            fontSize: 20, fontWeight: FontWeight.bold),
                         decoration: BoxDecoration(
-                          border: Border.all(color: theme.colorScheme.outline.withValues(alpha: 0.3)),
+                          border: Border.all(
+                              color: theme.colorScheme.outline
+                                  .withValues(alpha: 0.3)),
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
@@ -506,7 +555,9 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
                   ),
                   TextButton(
                     onPressed: () => setState(() => _codeSent = false),
-                    child: Text(isArabic ? 'تغيير رقم الهاتف؟' : 'Change phone number?'),
+                    child: Text(isArabic
+                        ? 'تغيير رقم الهاتف؟'
+                        : 'Change phone number?'),
                   ),
                 ],
               ],
@@ -523,7 +574,7 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
       content: Column(
         children: [
           Text(
-            isArabic 
+            isArabic
                 ? 'يرجى التقاط صورة شخصية واضحة لملفك الشخصي.'
                 : 'Please take a clear personal photo for your profile.',
             style: theme.textTheme.bodySmall?.copyWith(
@@ -536,9 +587,11 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
             child: CircleAvatar(
               radius: 60,
               backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-              backgroundImage: _personalPhoto != null ? FileImage(_personalPhoto!) : null,
+              backgroundImage:
+                  _personalPhoto != null ? FileImage(_personalPhoto!) : null,
               child: _personalPhoto == null
-                  ? const Icon(Icons.camera_alt, size: 40, color: AppColors.primary)
+                  ? const Icon(Icons.camera_alt,
+                      size: 40, color: AppColors.primary)
                   : null,
             ),
           ),
@@ -546,7 +599,9 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
           TextButton.icon(
             onPressed: _pickPersonalPhoto,
             icon: const Icon(Icons.camera),
-            label: Text(isArabic ? (_personalPhoto == null ? 'التقط صورة' : 'تغيير الصورة') : 'Take Photo'),
+            label: Text(isArabic
+                ? (_personalPhoto == null ? 'التقط صورة' : 'تغيير الصورة')
+                : 'Take Photo'),
           ),
         ],
       ),
@@ -562,7 +617,7 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
       content: Column(
         children: [
           Text(
-            isArabic 
+            isArabic
                 ? 'يرجى التقاط صورة واضحة لبطاقة الهوية الوطنية أو جواز السفر.'
                 : 'Please take a clear photo of your National ID or Passport.',
             style: theme.textTheme.bodySmall?.copyWith(
@@ -573,13 +628,16 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
           if (_idCardPhoto != null)
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
-              child: Image.file(_idCardPhoto!, height: 150, width: double.infinity, fit: BoxFit.cover),
+              child: Image.file(_idCardPhoto!,
+                  height: 150, width: double.infinity, fit: BoxFit.cover),
             ),
           const SizedBox(height: 12),
           ElevatedButton.icon(
             onPressed: _pickIdCardPhoto,
             icon: const Icon(Icons.credit_card),
-            label: Text(isArabic ? (_idCardPhoto == null ? 'التقاط صورة الهوية' : 'تغيير الصورة') : 'Capture ID Photo'),
+            label: Text(isArabic
+                ? (_idCardPhoto == null ? 'التقاط صورة الهوية' : 'تغيير الصورة')
+                : 'Capture ID Photo'),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary.withValues(alpha: 0.1),
               foregroundColor: AppColors.primary,
@@ -611,14 +669,15 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
                 Expanded(
                   child: Text(
                     isArabic ? 'الخصوصية والأمان' : 'Privacy & Security',
-                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, color: Colors.blue),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 12),
             Text(
-              isArabic 
+              isArabic
                   ? 'هذه المعلومات تُستخدم لغرض توثيق حسابك فقط بهدف خلق بيئة آمنة للمستخدمين.\n\nلن يتم مشاركة هذه المعلومات مع أي جهة خارجية، ولن يطلع عليها أي شخص إلا في الحالات القانونية.'
                   : 'This information is used solely for verifying your account to create a safe environment.\n\nIt will not be shared with any third party and will only be accessible in legal cases.',
               style: theme.textTheme.bodySmall?.copyWith(

@@ -20,12 +20,12 @@ class JobProvider extends ChangeNotifier {
   List<ProposalModel> _jobProposals = [];
   List<ProposalModel> _myProposals = [];
   JobModel? _selectedJob;
-  
+
   bool _isLoading = false;
   String? _errorMessage;
-  
+
   JobCategory? _filterCategory;
-  
+
   StreamSubscription? _jobsSubscription;
   StreamSubscription? _clientJobsSubscription;
   StreamSubscription? _freelancerJobsSubscription;
@@ -47,19 +47,21 @@ class JobProvider extends ChangeNotifier {
     notifyListeners();
 
     _jobsSubscription?.cancel();
-    _jobsSubscription = _firestoreService.getJobs(
+    _jobsSubscription = _firestoreService
+        .getJobs(
       category: _filterCategory?.name,
-    ).listen((jobs) {
+    )
+        .listen((jobs) {
       _jobs = jobs;
       _isLoading = false;
       notifyListeners();
-      
+
       // Cache jobs for offline access
       _cacheJobs(jobs);
     }, onError: (e) {
       _isLoading = false;
       _errorMessage = e.toString();
-      
+
       // Try to load from cache
       _loadCachedJobs();
       notifyListeners();
@@ -69,7 +71,8 @@ class JobProvider extends ChangeNotifier {
   // Fetch client's jobs
   void fetchClientJobs(String clientId) {
     _clientJobsSubscription?.cancel();
-    _clientJobsSubscription = _firestoreService.getClientJobs(clientId).listen((jobs) {
+    _clientJobsSubscription =
+        _firestoreService.getClientJobs(clientId).listen((jobs) {
       _clientJobs = jobs;
       notifyListeners();
     }, onError: (error) {
@@ -80,7 +83,8 @@ class JobProvider extends ChangeNotifier {
   // Fetch freelancer's assigned jobs
   void fetchFreelancerJobs(String freelancerId) {
     _freelancerJobsSubscription?.cancel();
-    _freelancerJobsSubscription = _firestoreService.getFreelancerJobs(freelancerId).listen((jobs) {
+    _freelancerJobsSubscription =
+        _firestoreService.getFreelancerJobs(freelancerId).listen((jobs) {
       _freelancerJobs = jobs;
       notifyListeners();
     }, onError: (error) {
@@ -88,21 +92,25 @@ class JobProvider extends ChangeNotifier {
     });
   }
 
-  // Fetch job by ID
-  Future<void> fetchJob(String jobId) async {
+  StreamSubscription? _selectedJobSubscription;
+
+  // Fetch and listen to job by ID
+  void fetchJob(String jobId) {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
-    try {
-      _selectedJob = await _firestoreService.getJob(jobId);
+    _selectedJobSubscription?.cancel();
+    _selectedJobSubscription =
+        _firestoreService.getJobStream(jobId).listen((job) {
+      _selectedJob = job;
       _isLoading = false;
       notifyListeners();
-    } catch (e) {
+    }, onError: (e) {
       _isLoading = false;
       _errorMessage = e.toString();
       notifyListeners();
-    }
+    });
   }
 
   // Start project from request/offer
@@ -136,6 +144,16 @@ class JobProvider extends ChangeNotifier {
         status: JobStatus.inProgress,
         assignedFreelancerId: freelancerId,
         assignedFreelancerName: freelancerName,
+        milestones: [
+          MilestoneModel(
+            id: DateTime.now().millisecondsSinceEpoch.toString(),
+            title: 'الدفعة الأولى (مقدم الاتفاق)',
+            amount: price,
+            isPaid: false,
+            isCompleted: false,
+            isConfirmed: false,
+          )
+        ],
         createdAt: now,
         updatedAt: now,
       );
@@ -197,25 +215,29 @@ class JobProvider extends ChangeNotifier {
           final url = await _storageService.uploadJobAttachment(jobId, file);
           attachmentUrls.add(url);
         }
-        await _firestoreService.updateJob(jobId, {'attachments': attachmentUrls});
+        await _firestoreService
+            .updateJob(jobId, {'attachments': attachmentUrls});
       }
 
       // Find matching freelancers for this category and notify them with a 5-minute delay
       try {
         final freelancersSnap = await FirebaseFirestore.instance
             .collection('users')
-            .where('role', whereIn: ['freelancer', 'techService', 'privateService'])
+            .where('role',
+                whereIn: ['freelancer', 'techService', 'privateService'])
             .where('skills', arrayContains: category.name)
             .get();
 
         if (freelancersSnap.docs.isNotEmpty) {
-          final delayedTime = Timestamp.fromDate(now.add(const Duration(minutes: 5)));
+          final delayedTime =
+              Timestamp.fromDate(now.add(const Duration(minutes: 5)));
           final batch = FirebaseFirestore.instance.batch();
 
           for (var doc in freelancersSnap.docs) {
             if (doc.id == clientId) continue; // Don't notify the creator
-            
-            final notifRef = FirebaseFirestore.instance.collection('notifications').doc();
+
+            final notifRef =
+                FirebaseFirestore.instance.collection('notifications').doc();
             final notif = NotificationModel(
               id: notifRef.id,
               userId: doc.id,
@@ -223,10 +245,11 @@ class JobProvider extends ChangeNotifier {
               title: 'مشروع جديد: $title',
               message: 'تم إضافة مشروع جديد يطابق مهاراتك. قدم عرضك الآن!',
               createdAt: Timestamp.now(),
-              sendAfter: delayedTime, // 5 minute delay for professional services
+              sendAfter:
+                  delayedTime, // 5 minute delay for professional services
               relatedId: jobId,
             );
-            
+
             batch.set(notifRef, notif.toFirestore());
           }
           await batch.commit();
@@ -290,7 +313,8 @@ class JobProvider extends ChangeNotifier {
   // Fetch proposals for a job
   void fetchJobProposals(String jobId) {
     _proposalsSubscription?.cancel();
-    _proposalsSubscription = _firestoreService.getJobProposals(jobId).listen((proposals) {
+    _proposalsSubscription =
+        _firestoreService.getJobProposals(jobId).listen((proposals) {
       _jobProposals = proposals;
       notifyListeners();
     }, onError: (error) {
@@ -309,17 +333,19 @@ class JobProvider extends ChangeNotifier {
   }
 
   // Complete Job
-  Future<void> completeJob({required String jobId, required String freelancerId}) async {
+  Future<void> completeJob(
+      {required String jobId, required String freelancerId}) async {
     await _firestoreService.completeJob(jobId, freelancerId);
     // Refresh current job details
     if (_selectedJob != null && _selectedJob!.id == jobId) {
-      await fetchJob(jobId);
+      fetchJob(jobId);
     }
     notifyListeners();
   }
 
   // Update Milestones
-  Future<void> updateMilestones(String jobId, List<MilestoneModel> milestones) async {
+  Future<void> updateMilestones(
+      String jobId, List<MilestoneModel> milestones) async {
     await _firestoreService.updateMilestones(jobId, milestones);
     if (_selectedJob != null && _selectedJob!.id == jobId) {
       _selectedJob = _selectedJob!.copyWith(milestones: milestones);
@@ -402,7 +428,7 @@ class JobProvider extends ChangeNotifier {
         'supervisorId': masterId,
         'supervisorName': masterName,
       });
-      
+
       // Update local state if needed
       if (_selectedJob != null && _selectedJob!.id == jobId) {
         _selectedJob = _selectedJob!.copyWith(
@@ -412,7 +438,7 @@ class JobProvider extends ChangeNotifier {
           supervisorName: masterName,
         );
       }
-      
+
       // Send Notification to Apprentice
       final apprenticeNotification = NotificationModel(
         id: '',
@@ -431,7 +457,8 @@ class JobProvider extends ChangeNotifier {
         userId: clientId,
         type: NotificationType.assignment,
         title: 'تحديث في المهمة 🔄',
-        message: 'قام المعلم $masterName بتكليف الفني $apprenticeName لتنفيذ مهمتك تحت إشرافه.',
+        message:
+            'قام المعلم $masterName بتكليف الفني $apprenticeName لتنفيذ مهمتك تحت إشرافه.',
         createdAt: Timestamp.now(),
         relatedId: jobId,
       );
@@ -451,7 +478,8 @@ class JobProvider extends ChangeNotifier {
   // Reject proposal
   Future<bool> rejectProposal(String proposalId) async {
     try {
-      await _firestoreService.updateProposalStatus(proposalId, ProposalStatus.rejected.name);
+      await _firestoreService.updateProposalStatus(
+          proposalId, ProposalStatus.rejected.name);
       return true;
     } catch (e) {
       _errorMessage = e.toString();
@@ -480,6 +508,7 @@ class JobProvider extends ChangeNotifier {
   // ==================== CLEANUP ====================
 
   void clearSelectedJob() {
+    _selectedJobSubscription?.cancel();
     _selectedJob = null;
     notifyListeners();
   }
@@ -504,6 +533,7 @@ class JobProvider extends ChangeNotifier {
     _clientJobsSubscription?.cancel();
     _freelancerJobsSubscription?.cancel();
     _proposalsSubscription?.cancel();
+    _selectedJobSubscription?.cancel();
     notifyListeners();
   }
 
@@ -513,6 +543,7 @@ class JobProvider extends ChangeNotifier {
     _clientJobsSubscription?.cancel();
     _freelancerJobsSubscription?.cancel();
     _proposalsSubscription?.cancel();
+    _selectedJobSubscription?.cancel();
     super.dispose();
   }
 }

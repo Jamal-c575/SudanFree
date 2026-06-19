@@ -48,6 +48,8 @@ class AuthProvider extends ChangeNotifier {
   List<UserModel> get partners => _partners; // Added getter
   bool get isManualSignIn => _isManualSignIn; // Added for smooth UI transitions
 
+
+
   @override
   void dispose() {
     _authSubscription?.cancel();
@@ -120,7 +122,7 @@ class AuthProvider extends ChangeNotifier {
 
       final updatedPartners = List<String>.from(_user!.partnerIds);
       updatedPartners.remove(targetId);
-
+      
       final updatedPending = List<String>.from(_user!.pendingPartnerIds);
       updatedPending.remove(targetId);
 
@@ -130,7 +132,7 @@ class AuthProvider extends ChangeNotifier {
       );
 
       _partners.removeWhere((p) => p.id == targetId);
-
+      
       notifyListeners();
     } catch (e) {
       debugPrint('Error removing partner: $e');
@@ -148,10 +150,9 @@ class AuthProvider extends ChangeNotifier {
       } else {
         updatedFavorites.add(targetUserId);
       }
-
+      
       _user = _user!.copyWith(favoriteUserIds: updatedFavorites);
-      await _firestoreService
-          .updateUserProfile(_user!.id, {'favoriteUserIds': updatedFavorites});
+      await _firestoreService.updateUserProfile(_user!.id, {'favoriteUserIds': updatedFavorites});
       notifyListeners();
     } catch (e) {
       debugPrint('Error toggling favorite user: $e');
@@ -169,10 +170,9 @@ class AuthProvider extends ChangeNotifier {
       } else {
         updatedFavorites.add(productId);
       }
-
+      
       _user = _user!.copyWith(favoriteProductIds: updatedFavorites);
-      await _firestoreService.updateUserProfile(
-          _user!.id, {'favoriteProductIds': updatedFavorites});
+      await _firestoreService.updateUserProfile(_user!.id, {'favoriteProductIds': updatedFavorites});
       notifyListeners();
     } catch (e) {
       debugPrint('Error toggling favorite product: $e');
@@ -190,10 +190,9 @@ class AuthProvider extends ChangeNotifier {
       } else {
         updatedFavorites.add(squadId);
       }
-
+      
       _user = _user!.copyWith(favoriteSquadIds: updatedFavorites);
-      await _firestoreService
-          .updateUserProfile(_user!.id, {'favoriteSquadIds': updatedFavorites});
+      await _firestoreService.updateUserProfile(_user!.id, {'favoriteSquadIds': updatedFavorites});
       notifyListeners();
     } catch (e) {
       debugPrint('Error toggling favorite squad: $e');
@@ -236,39 +235,20 @@ class AuthProvider extends ChangeNotifier {
     _status = AuthStatus.loading;
     notifyListeners();
 
-    // ✅ Safety timeout: if splash stays loading for >10s, force unauthenticated
-    Future.delayed(const Duration(seconds: 10), () {
-      if (_status == AuthStatus.loading || _status == AuthStatus.initial) {
-        debugPrint('Auth state timeout — forcing unauthenticated to exit splash');
-        _status = AuthStatus.unauthenticated;
-        notifyListeners();
-      }
-    });
-
     try {
       await _cacheService.initialize();
 
-      _authSubscription = _authService.authStateChanges.listen(
-        (User? user) {
-          _handleAuthStateChange(user);
-        },
-        onError: (error) {
-          debugPrint('Auth provider stream error: $error');
-          // ✅ On stream error, also force exit splash
-          if (_status == AuthStatus.loading || _status == AuthStatus.initial) {
-            _status = AuthStatus.unauthenticated;
-            notifyListeners();
-          }
-        },
-      );
+      _authSubscription = _authService.authStateChanges.listen((User? user) {
+        _handleAuthStateChange(user);
+      }, onError: (error) {
+        debugPrint('Auth provider stream error: $error');
+      });
 
       // Listen to network changes to recover from offline app launch
-      _networkSubscription =
-          NetworkService().onConnectivityChanged.listen((isConnected) {
+      _networkSubscription = NetworkService().onConnectivityChanged.listen((isConnected) {
         if (isConnected && _authService.currentUser != null) {
           // If we had an error loading the profile (e.g. launched offline), retry loading it
-          if (_status == AuthStatus.error ||
-              (_status == AuthStatus.unauthenticated && _user == null)) {
+          if (_status == AuthStatus.error || (_status == AuthStatus.unauthenticated && _user == null)) {
             debugPrint('Network recovered. Retrying to load user profile...');
             _handleAuthStateChange(_authService.currentUser);
           }
@@ -340,8 +320,7 @@ class AuthProvider extends ChangeNotifier {
           await _authService.signOut();
           _user = null;
           _status = AuthStatus.error;
-          _errorMessage =
-              'BANNED:${profile.banReason ?? "مخالفة الشروط والأحكام"}';
+          _errorMessage = 'BANNED:${profile.banReason ?? "مخالفة الشروط والأحكام"}';
           notifyListeners();
           return;
         }
@@ -349,18 +328,15 @@ class AuthProvider extends ChangeNotifier {
         _user = profile;
         _isNewUser = false;
 
-        // OneSignal User Tagging (modern API) - Run in background without await
+        // OneSignal User Tagging (modern API)
         try {
-          OneSignal.login(uid).then((_) {
-            OneSignal.User.addTags({
-              "state": profile.state ?? '',
-              "role": profile.role.name,
-            });
-          }).catchError((e) {
-            debugPrint('OneSignal tagging failed: $e');
+          await OneSignal.login(uid);
+          await OneSignal.User.addTags({
+            "state": profile.state ?? '',
+            "role": profile.role.name,
           });
         } catch (e) {
-          debugPrint('OneSignal sync error: $e');
+          debugPrint('OneSignal tagging failed: $e');
         }
 
         _subscribeToUserStream(uid);
@@ -386,8 +362,7 @@ class AuthProvider extends ChangeNotifier {
             await _authService.signOut();
             _user = null;
             _status = AuthStatus.error;
-            _errorMessage =
-                'BANNED:${profile.banReason ?? "مخالفة الشروط والأحكام"}';
+            _errorMessage = 'BANNED:${profile.banReason ?? "مخالفة الشروط والأحكام"}';
             notifyListeners();
             return;
           }
@@ -447,24 +422,22 @@ class AuthProvider extends ChangeNotifier {
         return false;
       }
 
+      // Load user data directly to ensure immediate state update
       if (credential.user != null) {
-        final uid = credential.user!.uid;
-
-        // ✅ Navigate immediately after Firebase Auth — do NOT block on Firestore
-        // Set authenticated right away so the UI transitions without freezing.
-        // _user stays null momentarily; app.dart Consumer handles this gracefully.
-        _isNewUser = false; // Assume existing user; corrected below in background
-        _status = AuthStatus.authenticated;
-        _isManualSignIn = false;
-        notifyListeners();
-
-        // Run device ban + profile loading in background
-        _loadUserDataInBackground(uid);
-      } else {
-        _status = AuthStatus.unauthenticated;
-        _isManualSignIn = false;
-        notifyListeners();
+        // Check device ban
+        final banReason = await _deviceService.checkDeviceBan();
+        if (banReason != null) {
+          await _authService.signOut();
+          _status = AuthStatus.error;
+          _errorMessage = 'DEVICE_BANNED:$banReason';
+          _isManualSignIn = false;
+          notifyListeners();
+          return false;
+        }
+        await _loadUserData(credential.user!.uid);
+        _syncFCMToken(credential.user!.uid);
       }
+      _isManualSignIn = false;
       return true;
     } catch (e) {
       _status = AuthStatus.error;
@@ -473,44 +446,6 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       return false;
     }
-  }
-
-  /// Runs device ban check + profile loading in the background after
-  /// Firebase Auth succeeds. UI is already showing HomeScreen by this point.
-  void _loadUserDataInBackground(String uid) {
-    Future(() async {
-      // ✅ Step 1: Check device ban — isolated try/catch so a failure
-      // does NOT prevent the profile from loading.
-      try {
-        final banReason = await _deviceService.checkDeviceBan()
-            .timeout(const Duration(seconds: 5), onTimeout: () => null);
-        if (banReason != null) {
-          await _authService.signOut();
-          _user = null;
-          _status = AuthStatus.error;
-          _errorMessage = 'DEVICE_BANNED:$banReason';
-          notifyListeners();
-          return; // Stop here only if truly banned
-        }
-      } catch (e) {
-        // Non-fatal: ban check failed, continue loading user profile
-        debugPrint('AuthProvider: checkDeviceBan failed (non-fatal): $e');
-      }
-
-      // ✅ Step 2: ALWAYS load user profile, regardless of ban check result
-      try {
-        await _loadUserData(uid);
-      } catch (e) {
-        debugPrint('AuthProvider: _loadUserData failed in background: $e');
-        // Fallback: subscribe to real-time stream to get data when possible
-        if (_user == null && _status == AuthStatus.authenticated) {
-          _subscribeToUserStream(uid);
-        }
-      }
-
-      // ✅ Step 3: Sync FCM token in background (non-blocking)
-      _syncFCMToken(uid);
-    });
   }
 
   // Sign in with Facebook
@@ -941,18 +876,17 @@ class AuthProvider extends ChangeNotifier {
   }
 
   // Update user's GPS Location for Map
-  Future<bool> updateLocation(double lat, double lng,
-      {String? state, String? locality}) async {
+  Future<bool> updateLocation(double lat, double lng, {String? state, String? locality}) async {
     if (_user == null) return false;
-
+    
     final updates = <String, dynamic>{
       'latitude': lat,
       'longitude': lng,
     };
-
+    
     if (state != null) updates['state'] = state;
     if (locality != null) updates['locality'] = locality;
-
+    
     return await updateUserProfile(updates);
   }
 

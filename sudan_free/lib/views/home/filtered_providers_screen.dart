@@ -1,26 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/locale_provider.dart';
 import '../../models/user_model.dart';
 import '../../core/constants/app_colors.dart';
-import '../../core/utils/job_titles_utils.dart';
-import '../../services/cloudinary_service.dart';
-import '../profile/profile_screen.dart';
 import '../../widgets/cards/freelancer_card.dart';
 
-enum FilterType { nearYou, topRated, newest, shops, categories, freelancersNearYou, shopsNearYou }
+enum FilterType {
+  nearYou,
+  topRated,
+  newest,
+  shops,
+  categories,
+  freelancersNearYou,
+  shopsNearYou
+}
 
 class FilteredProvidersScreen extends StatefulWidget {
   final FilterType filterType;
   final String title;
 
-  const FilteredProvidersScreen({super.key, required this.filterType, required this.title});
+  const FilteredProvidersScreen(
+      {super.key, required this.filterType, required this.title});
 
   @override
-  State<FilteredProvidersScreen> createState() => _FilteredProvidersScreenState();
+  State<FilteredProvidersScreen> createState() =>
+      _FilteredProvidersScreenState();
 }
 
 class _FilteredProvidersScreenState extends State<FilteredProvidersScreen> {
@@ -45,7 +51,8 @@ class _FilteredProvidersScreenState extends State<FilteredProvidersScreen> {
   }
 
   void _onScroll() {
-    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
       if (!_isLoadingMore && _hasMore) {
         _fetchMoreData();
       }
@@ -55,42 +62,70 @@ class _FilteredProvidersScreenState extends State<FilteredProvidersScreen> {
   Future<void> _fetchInitialData() async {
     final firestore = FirebaseFirestore.instance;
     final currentUser = context.read<AuthProvider>().user;
-    
+
     try {
       Query query;
       switch (widget.filterType) {
         case FilterType.nearYou:
-          query = firestore.collection('users')
+          query = firestore
+              .collection('users')
               .where('state', isEqualTo: currentUser?.state ?? '')
-              .where('role', whereIn: ['freelancer', 'shop', 'privateService', 'techService', 'Freelancer', 'Shop', 'FREELANCER', 'SHOP', 'freelancer ', 'shop '])
-              .limit(20);
+              .where('role', whereIn: [
+            'freelancer',
+            'shop',
+            'privateService',
+            'techService',
+            'Freelancer',
+            'Shop',
+            'FREELANCER',
+            'SHOP',
+            'freelancer ',
+            'shop '
+          ]).limit(20);
           break;
         case FilterType.topRated:
-          query = firestore.collection('users')
+          query = firestore
+              .collection('users')
               .orderBy('rating', descending: true)
               .limit(20);
           break;
         case FilterType.newest:
-          query = firestore.collection('users')
+          query = firestore
+              .collection('users')
               .orderBy('createdAt', descending: true)
               .limit(20);
           break;
         case FilterType.shops:
-          query = firestore.collection('users')
+          query = firestore
+              .collection('users')
               .where('role', isEqualTo: 'shop')
               .limit(20);
           break;
         case FilterType.freelancersNearYou:
-          query = firestore.collection('users')
+          query = firestore
+              .collection('users')
               .where('state', isEqualTo: currentUser?.state ?? '')
-              .where('role', whereIn: ['freelancer', 'privateService', 'techService', 'Freelancer', 'FREELANCER', 'freelancer ', 'Freelancer '])
-              .limit(20);
+              .where('role', whereIn: [
+            'freelancer',
+            'privateService',
+            'techService',
+            'Freelancer',
+            'FREELANCER',
+            'freelancer ',
+            'Freelancer '
+          ]).limit(20);
           break;
         case FilterType.shopsNearYou:
-          query = firestore.collection('users')
+          query = firestore
+              .collection('users')
               .where('state', isEqualTo: currentUser?.state ?? '')
-              .where('role', whereIn: ['shop', 'Shop', 'SHOP', 'shop ', 'Shop '])
-              .limit(20);
+              .where('role', whereIn: [
+            'shop',
+            'Shop',
+            'SHOP',
+            'shop ',
+            'Shop '
+          ]).limit(20);
           break;
         case FilterType.categories:
           query = firestore.collection('users').limit(20);
@@ -101,16 +136,20 @@ class _FilteredProvidersScreenState extends State<FilteredProvidersScreen> {
       if (snapshot.docs.isNotEmpty) {
         _lastDoc = snapshot.docs.last;
         _hasMore = snapshot.docs.length == 20;
-        
-        List<UserModel> results = snapshot.docs.map((d) => UserModel.fromFirestore(d)).toList();
+
+        List<UserModel> results =
+            snapshot.docs.map((d) => UserModel.fromFirestore(d)).toList();
         if (widget.filterType == FilterType.freelancersNearYou) {
-           results = results.where((u) => u.role != UserRole.client && u.role != UserRole.shop).toList();
+          results = results
+              .where(
+                  (u) => u.role != UserRole.client && u.role != UserRole.shop)
+              .toList();
         } else if (widget.filterType == FilterType.shopsNearYou) {
-           results = results.where((u) => u.role == UserRole.shop).toList();
+          results = results.where((u) => u.role == UserRole.shop).toList();
         } else if (widget.filterType != FilterType.shops) {
-           results = results.where((u) => u.role != UserRole.client).toList();
+          results = results.where((u) => u.role != UserRole.client).toList();
         }
-        
+
         if (widget.filterType == FilterType.topRated) {
           results.sort((a, b) {
             final cmp = b.totalStars.compareTo(a.totalStars);
@@ -118,28 +157,36 @@ class _FilteredProvidersScreenState extends State<FilteredProvidersScreen> {
             return b.rating.compareTo(a.rating);
           });
         }
-        
+
         if (widget.filterType == FilterType.shops) {
-           results.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          results.sort((a, b) => b.createdAt.compareTo(a.createdAt));
         }
 
-        if (widget.filterType == FilterType.nearYou || widget.filterType == FilterType.freelancersNearYou || widget.filterType == FilterType.shopsNearYou) {
+        if (widget.filterType == FilterType.nearYou ||
+            widget.filterType == FilterType.freelancersNearYou ||
+            widget.filterType == FilterType.shopsNearYou) {
           int getLocationScore(UserModel u) {
             if (currentUser?.state == null) return 0;
             int score = 0;
             if (u.state == currentUser!.state) score += 1;
-            if (u.locality != null && currentUser.locality != null && u.locality == currentUser.locality) score += 2;
+            if (u.locality != null &&
+                currentUser.locality != null &&
+                u.locality == currentUser.locality) score += 2;
             if (u.neighborhood != null && currentUser.neighborhood != null) {
               final uNeigh = u.neighborhood!.toLowerCase().replaceAll(' ', '');
-              final cNeigh = currentUser.neighborhood!.toLowerCase().replaceAll(' ', '');
+              final cNeigh =
+                  currentUser.neighborhood!.toLowerCase().replaceAll(' ', '');
               if (uNeigh == cNeigh) {
                 score += 5;
-              } else if (uNeigh.isNotEmpty && cNeigh.isNotEmpty && (uNeigh.contains(cNeigh) || cNeigh.contains(uNeigh))) {
-                score += 4; 
+              } else if (uNeigh.isNotEmpty &&
+                  cNeigh.isNotEmpty &&
+                  (uNeigh.contains(cNeigh) || cNeigh.contains(uNeigh))) {
+                score += 4;
               }
             }
             return score;
           }
+
           results.sort((a, b) {
             final aScore = getLocationScore(a);
             final bScore = getLocationScore(b);
@@ -174,56 +221,83 @@ class _FilteredProvidersScreenState extends State<FilteredProvidersScreen> {
 
   Future<void> _fetchMoreData() async {
     if (_lastDoc == null || !_hasMore) return;
-    
+
     setState(() => _isLoadingMore = true);
-    
+
     final firestore = FirebaseFirestore.instance;
     final currentUser = context.read<AuthProvider>().user;
-    
+
     try {
       Query query;
       switch (widget.filterType) {
         case FilterType.nearYou:
-          query = firestore.collection('users')
+          query = firestore
+              .collection('users')
               .where('state', isEqualTo: currentUser?.state ?? '')
-              .where('role', whereIn: ['freelancer', 'shop', 'privateService', 'techService', 'Freelancer', 'Shop', 'FREELANCER', 'SHOP', 'freelancer ', 'shop '])
+              .where('role', whereIn: [
+                'freelancer',
+                'shop',
+                'privateService',
+                'techService',
+                'Freelancer',
+                'Shop',
+                'FREELANCER',
+                'SHOP',
+                'freelancer ',
+                'shop '
+              ])
               .startAfterDocument(_lastDoc!)
               .limit(20);
           break;
         case FilterType.topRated:
-          query = firestore.collection('users')
+          query = firestore
+              .collection('users')
               .orderBy('rating', descending: true)
               .startAfterDocument(_lastDoc!)
               .limit(20);
           break;
         case FilterType.newest:
-          query = firestore.collection('users')
+          query = firestore
+              .collection('users')
               .orderBy('createdAt', descending: true)
               .startAfterDocument(_lastDoc!)
               .limit(20);
           break;
         case FilterType.shops:
-          query = firestore.collection('users')
+          query = firestore
+              .collection('users')
               .where('role', isEqualTo: 'shop')
               .startAfterDocument(_lastDoc!)
               .limit(20);
           break;
         case FilterType.freelancersNearYou:
-          query = firestore.collection('users')
+          query = firestore
+              .collection('users')
               .where('state', isEqualTo: currentUser?.state ?? '')
-              .where('role', whereIn: ['freelancer', 'privateService', 'techService', 'Freelancer', 'FREELANCER', 'freelancer ', 'Freelancer '])
+              .where('role', whereIn: [
+                'freelancer',
+                'privateService',
+                'techService',
+                'Freelancer',
+                'FREELANCER',
+                'freelancer ',
+                'Freelancer '
+              ])
               .startAfterDocument(_lastDoc!)
               .limit(20);
           break;
         case FilterType.shopsNearYou:
-          query = firestore.collection('users')
+          query = firestore
+              .collection('users')
               .where('state', isEqualTo: currentUser?.state ?? '')
-              .where('role', whereIn: ['shop', 'Shop', 'SHOP', 'shop ', 'Shop '])
+              .where('role',
+                  whereIn: ['shop', 'Shop', 'SHOP', 'shop ', 'Shop '])
               .startAfterDocument(_lastDoc!)
               .limit(20);
           break;
         case FilterType.categories:
-          query = firestore.collection('users')
+          query = firestore
+              .collection('users')
               .startAfterDocument(_lastDoc!)
               .limit(20);
           break;
@@ -233,16 +307,20 @@ class _FilteredProvidersScreenState extends State<FilteredProvidersScreen> {
       if (snapshot.docs.isNotEmpty) {
         _lastDoc = snapshot.docs.last;
         _hasMore = snapshot.docs.length == 20;
-        
-        List<UserModel> results = snapshot.docs.map((d) => UserModel.fromFirestore(d)).toList();
+
+        List<UserModel> results =
+            snapshot.docs.map((d) => UserModel.fromFirestore(d)).toList();
         if (widget.filterType == FilterType.freelancersNearYou) {
-           results = results.where((u) => u.role != UserRole.client && u.role != UserRole.shop).toList();
+          results = results
+              .where(
+                  (u) => u.role != UserRole.client && u.role != UserRole.shop)
+              .toList();
         } else if (widget.filterType == FilterType.shopsNearYou) {
-           results = results.where((u) => u.role == UserRole.shop).toList();
+          results = results.where((u) => u.role == UserRole.shop).toList();
         } else if (widget.filterType != FilterType.shops) {
-           results = results.where((u) => u.role != UserRole.client).toList();
+          results = results.where((u) => u.role != UserRole.client).toList();
         }
-        
+
         if (widget.filterType == FilterType.topRated) {
           results.sort((a, b) {
             final cmp = b.totalStars.compareTo(a.totalStars);
@@ -250,31 +328,42 @@ class _FilteredProvidersScreenState extends State<FilteredProvidersScreen> {
             return b.rating.compareTo(a.rating);
           });
         }
-        
+
         if (widget.filterType == FilterType.shops) {
-           results.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          results.sort((a, b) => b.createdAt.compareTo(a.createdAt));
         }
 
         if (mounted) {
           setState(() {
             _displayList.addAll(results);
-            if (widget.filterType == FilterType.nearYou || widget.filterType == FilterType.freelancersNearYou || widget.filterType == FilterType.shopsNearYou) {
+            if (widget.filterType == FilterType.nearYou ||
+                widget.filterType == FilterType.freelancersNearYou ||
+                widget.filterType == FilterType.shopsNearYou) {
               int getLocationScore(UserModel u) {
                 if (currentUser?.state == null) return 0;
                 int score = 0;
                 if (u.state == currentUser!.state) score += 1;
-                if (u.locality != null && currentUser.locality != null && u.locality == currentUser.locality) score += 2;
-                if (u.neighborhood != null && currentUser.neighborhood != null) {
-                  final uNeigh = u.neighborhood!.toLowerCase().replaceAll(' ', '');
-                  final cNeigh = currentUser.neighborhood!.toLowerCase().replaceAll(' ', '');
+                if (u.locality != null &&
+                    currentUser.locality != null &&
+                    u.locality == currentUser.locality) score += 2;
+                if (u.neighborhood != null &&
+                    currentUser.neighborhood != null) {
+                  final uNeigh =
+                      u.neighborhood!.toLowerCase().replaceAll(' ', '');
+                  final cNeigh = currentUser.neighborhood!
+                      .toLowerCase()
+                      .replaceAll(' ', '');
                   if (uNeigh == cNeigh) {
                     score += 5;
-                  } else if (uNeigh.isNotEmpty && cNeigh.isNotEmpty && (uNeigh.contains(cNeigh) || cNeigh.contains(uNeigh))) {
-                    score += 4; 
+                  } else if (uNeigh.isNotEmpty &&
+                      cNeigh.isNotEmpty &&
+                      (uNeigh.contains(cNeigh) || cNeigh.contains(uNeigh))) {
+                    score += 4;
                   }
                 }
                 return score;
               }
+
               _displayList.sort((a, b) {
                 final aScore = getLocationScore(a);
                 final bScore = getLocationScore(b);
@@ -310,7 +399,8 @@ class _FilteredProvidersScreenState extends State<FilteredProvidersScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
+        title: Text(widget.title,
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         elevation: 0,
         centerTitle: true,
@@ -336,8 +426,10 @@ class _FilteredProvidersScreenState extends State<FilteredProvidersScreen> {
                           return FreelancerCard(
                             freelancer: user,
                             locale: locale,
-                            currentUserId: context.read<AuthProvider>().user?.id,
-                            currentUserName: context.read<AuthProvider>().user?.name,
+                            currentUserId:
+                                context.read<AuthProvider>().user?.id,
+                            currentUserName:
+                                context.read<AuthProvider>().user?.name,
                             showContactButton: false,
                           );
                         },

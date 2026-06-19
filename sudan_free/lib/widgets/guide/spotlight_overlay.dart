@@ -24,7 +24,8 @@ class SpotlightOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final renderBox = targetKey.currentContext?.findRenderObject() as RenderBox?;
+    final renderBox =
+        targetKey.currentContext?.findRenderObject() as RenderBox?;
     if (renderBox == null) return const SizedBox.shrink();
 
     final targetPosition = renderBox.localToGlobal(Offset.zero);
@@ -131,7 +132,8 @@ class SpotlightOverlay extends StatelessWidget {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24, vertical: 10),
                   ),
                   child: Text(
                     isLast ? 'تمام ✓' : nextLabel,

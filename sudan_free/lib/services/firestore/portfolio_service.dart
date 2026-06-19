@@ -22,7 +22,8 @@ class PortfolioFirestoreService {
         .collection('portfolio')
         .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((s) => s.docs.map((d) => PortfolioProjectModel.fromFirestore(d)).toList());
+        .map((s) =>
+            s.docs.map((d) => PortfolioProjectModel.fromFirestore(d)).toList());
   }
 
   // Delete project
@@ -36,7 +37,8 @@ class PortfolioFirestoreService {
   }
 
   // Update project
-  Future<void> updateProject(String userId, String projectId, Map<String, dynamic> data) async {
+  Future<void> updateProject(
+      String userId, String projectId, Map<String, dynamic> data) async {
     await _firestore
         .collection('users')
         .doc(userId)

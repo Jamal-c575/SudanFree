@@ -19,7 +19,6 @@ import '../../widgets/inputs/custom_text_field.dart';
 class ReportDialog extends StatefulWidget {
   final UserModel reportedUser;
 
-
   const ReportDialog({super.key, required this.reportedUser});
 
   @override
@@ -34,7 +33,8 @@ class _ReportDialogState extends State<ReportDialog> {
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+    final pickedFile =
+        await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
     if (pickedFile != null) {
       setState(() {
         _imageFile = File(pickedFile.path);
@@ -79,13 +79,14 @@ class _ReportDialogState extends State<ReportDialog> {
       await FirestoreService().submitReport(report);
 
       // Create a notification for the reporter promising a 24h response
-      final notifRef = FirebaseFirestore.instance.collection('notifications').doc();
+      final notifRef =
+          FirebaseFirestore.instance.collection('notifications').doc();
       final notification = NotificationModel(
         id: notifRef.id,
         userId: currentUser.id,
         type: NotificationType.system,
         title: locale == 'ar' ? 'تم استلام بلاغك 🛡️' : 'Report Received 🛡️',
-        message: locale == 'ar' 
+        message: locale == 'ar'
             ? 'شكراً لتعاونك. قمنا باستلام بلاغك ضد "${widget.reportedUser.name}" وسنقوم بالرد وإتخاذ الإجراء اللازم خلال 24 ساعة.'
             : 'Thank you. We received your report against "${widget.reportedUser.name}" and will take action within 24 hours.',
         createdAt: Timestamp.now(),
@@ -98,8 +99,8 @@ class _ReportDialogState extends State<ReportDialog> {
         messenger.showSnackBar(
           SnackBar(
             content: Text(
-              locale == 'ar' 
-                  ? 'تم إرسال البلاغ بنجاح وسقوم الإدارة بمراجعته' 
+              locale == 'ar'
+                  ? 'تم إرسال البلاغ بنجاح وسقوم الإدارة بمراجعته'
                   : 'Report submitted successfully and will be reviewed',
             ),
             backgroundColor: Colors.green,
@@ -144,7 +145,7 @@ class _ReportDialogState extends State<ReportDialog> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                isAr 
+                isAr
                     ? 'أنت على وشك الإبلاغ عن "${widget.reportedUser.name}". يرجى ذكر السبب بوضوح.'
                     : 'You are reporting "${widget.reportedUser.name}". Please state the reason clearly.',
                 style: Theme.of(context).textTheme.bodyMedium,
@@ -152,7 +153,9 @@ class _ReportDialogState extends State<ReportDialog> {
               const SizedBox(height: 16),
               CustomTextField(
                 label: isAr ? 'سبب البلاغ' : 'Reason',
-                hint: isAr ? 'اشرح المشكلة بالتفصيل...' : 'Explain the issue in detail...',
+                hint: isAr
+                    ? 'اشرح المشكلة بالتفصيل...'
+                    : 'Explain the issue in detail...',
                 controller: _reasonController,
                 maxLines: 4,
                 validator: (value) {
@@ -160,7 +163,9 @@ class _ReportDialogState extends State<ReportDialog> {
                     return isAr ? 'هذا الحقل مطلوب' : 'This field is required';
                   }
                   if (value.length < 10) {
-                    return isAr ? 'يرجى كتابة تفاصيل أكثر' : 'Please provide more details';
+                    return isAr
+                        ? 'يرجى كتابة تفاصيل أكثر'
+                        : 'Please provide more details';
                   }
                   return null;
                 },
@@ -186,9 +191,14 @@ class _ReportDialogState extends State<ReportDialog> {
                       ? Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(Icons.add_photo_alternate, color: Colors.grey, size: 30),
+                            const Icon(Icons.add_photo_alternate,
+                                color: Colors.grey, size: 30),
                             const SizedBox(height: 4),
-                            Text(isAr ? 'إضافة صورة (لقطة شاشة) - اختياري' : 'Add screenshot (optional)', style: const TextStyle(color: Colors.grey)),
+                            Text(
+                                isAr
+                                    ? 'إضافة صورة (لقطة شاشة) - اختياري'
+                                    : 'Add screenshot (optional)',
+                                style: const TextStyle(color: Colors.grey)),
                           ],
                         )
                       : Align(
@@ -202,12 +212,12 @@ class _ReportDialogState extends State<ReportDialog> {
               ),
               const SizedBox(height: 8),
               if (widget.reportedUser.phoneNumber != null)
-                 Text(
-                   isAr 
-                       ? 'سيتم إرفاق رقم هاتف المستخدم تلقائياً مع البلاغ.'
-                       : 'User phone number will be automatically attached.',
-                   style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                 ),
+                Text(
+                  isAr
+                      ? 'سيتم إرفاق رقم هاتف المستخدم تلقائياً مع البلاغ.'
+                      : 'User phone number will be automatically attached.',
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                ),
             ],
           ),
         ),
@@ -223,7 +233,10 @@ class _ReportDialogState extends State<ReportDialog> {
             text: isAr ? 'إرسال' : 'Submit',
             onPressed: _submitReport,
             isLoading: _isLoading,
-            gradientColors: [AppColors.error, AppColors.error.withValues(alpha: 0.8)],
+            gradientColors: [
+              AppColors.error,
+              AppColors.error.withValues(alpha: 0.8)
+            ],
           ),
         ),
       ],

@@ -22,52 +22,133 @@ class ShopDashboardScreen extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF8F9FA),
-      appBar: AppBar(
-        title: Text(l10n.localeName == 'ar' ? 'لوحة المعلومات' : 'Dashboard', style: const TextStyle(fontWeight: FontWeight.bold)),
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildShopInfoCard(context, isDark),
-            const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  l10n.localeName == 'ar' ? 'معرض المتجر' : 'Shop Gallery',
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                TextButton.icon(
-                  onPressed: () => _manageGallery(context),
-                  icon: const Icon(Icons.add_photo_alternate_outlined),
-                  label: Text(l10n.localeName == 'ar' ? 'إدارة الصور' : 'Manage Images'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      backgroundColor:
+          isDark ? const Color(0xFF121212) : const Color(0xFFF8F9FA),
+      body: Stack(
+        children: [
+          // Header Background
+          Container(
+            height: 250,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [AppColors.secondary, AppColors.primary],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius:
+                  const BorderRadius.vertical(bottom: Radius.circular(30)),
+            ),
+          ),
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.only(
+                  top: 8, left: 16, right: 16, bottom: 40),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const BackButton(color: Colors.white),
+                      Text(
+                        l10n.localeName == 'ar'
+                            ? 'مرحباً ${shop.name}'
+                            : 'Welcome ${shop.name}',
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            fontSize: 20),
+                      ),
+                    ],
                   ),
-                ),
-              ],
+                  const SizedBox(height: 20),
+                  _buildShopInfoCard(context, isDark),
+                  const SizedBox(height: 24),
+
+                  // "Publish New Offer" Button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 54,
+                    child: ElevatedButton.icon(
+                      onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => const CreateProductScreen())),
+                      icon: const Icon(Icons.add_circle_outline, size: 24),
+                      label: Text(
+                        l10n.localeName == 'ar'
+                            ? '+ نشر عرض جديد'
+                            : '+ Publish New Offer',
+                        style: const TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.purple.shade600,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16)),
+                        elevation: 4,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  Text(
+                    l10n.localeName == 'ar'
+                        ? 'إدارة المتجر'
+                        : 'Store Management',
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildStatsGrid(l10n, isDark),
+                  const SizedBox(height: 24),
+
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        l10n.localeName == 'ar'
+                            ? 'معرض المتجر'
+                            : 'Shop Gallery',
+                        style: const TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      TextButton.icon(
+                        onPressed: () => _manageGallery(context),
+                        icon: const Icon(Icons.add_photo_alternate_outlined),
+                        label: Text(l10n.localeName == 'ar'
+                            ? 'إدارة الصور'
+                            : 'Manage Images'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppColors.primary,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
+                          backgroundColor:
+                              AppColors.primary.withValues(alpha: 0.1),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  _buildGalleryPreview(context),
+                  const SizedBox(height: 24),
+
+                  Text(
+                    l10n.localeName == 'ar'
+                        ? 'إحصائيات المنتجات'
+                        : 'Products Insights',
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildProductsList(l10n, isDark),
+                ],
+              ),
             ),
-            const SizedBox(height: 12),
-            _buildGalleryPreview(context),
-            const SizedBox(height: 24),
-            _buildStatsGrid(l10n, isDark),
-            const SizedBox(height: 24),
-            Text(
-              l10n.localeName == 'ar' ? 'إحصائيات المنتجات' : 'Products Insights',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            _buildProductsList(l10n, isDark),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -79,11 +160,15 @@ class ShopDashboardScreen extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.grey.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey.withValues(alpha: 0.3), style: BorderStyle.solid),
+          border: Border.all(
+              color: Colors.grey.withValues(alpha: 0.3),
+              style: BorderStyle.solid),
         ),
         child: Center(
           child: Text(
-            Localizations.localeOf(context).languageCode == 'ar' ? 'لا توجد صور في المعرض' : 'No gallery images',
+            Localizations.localeOf(context).languageCode == 'ar'
+                ? 'لا توجد صور في المعرض'
+                : 'No gallery images',
             style: const TextStyle(color: Colors.grey),
           ),
         ),
@@ -138,8 +223,12 @@ class ShopDashboardScreen extends StatelessWidget {
           CircleAvatar(
             radius: 40,
             backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-            backgroundImage: shop.profileImageUrl != null ? CachedNetworkImageProvider(shop.profileImageUrl!) : null,
-            child: shop.profileImageUrl == null ? const Icon(Icons.store, size: 30, color: AppColors.primary) : null,
+            backgroundImage: shop.profileImageUrl != null
+                ? CachedNetworkImageProvider(shop.profileImageUrl!)
+                : null,
+            child: shop.profileImageUrl == null
+                ? const Icon(Icons.store, size: 30, color: AppColors.primary)
+                : null,
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -151,29 +240,39 @@ class ShopDashboardScreen extends StatelessWidget {
                     Expanded(
                       child: Text(
                         shop.name,
-                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                            fontSize: 20, fontWeight: FontWeight.bold),
                       ),
                     ),
                     IconButton(
                       icon: Icon(
-                        shop.isPremium ? Icons.workspace_premium : Icons.workspace_premium_outlined,
-                        color: shop.isPremium ? const Color(0xFFD4AF37) : Colors.grey,
+                        shop.isPremium
+                            ? Icons.workspace_premium
+                            : Icons.workspace_premium_outlined,
+                        color: shop.isPremium
+                            ? const Color(0xFFD4AF37)
+                            : Colors.grey,
                         size: 28,
                       ),
                       onPressed: () {
                         if (!shop.isPremium) {
-                          _showPremiumUpgradeBottomSheet(context, AppLocalizations.of(context)!);
+                          _showPremiumUpgradeBottomSheet(
+                              context, AppLocalizations.of(context)!);
                         } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(AppLocalizations.of(context)!.localeName == 'ar' ? 'أنت تستمتع بكافة الميزات الملكية 👑' : 'You are enjoying all royal features 👑'))
-                          );
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                              content: Text(AppLocalizations.of(context)!
+                                          .localeName ==
+                                      'ar'
+                                  ? 'أنت تستمتع بكافة الميزات الملكية 👑'
+                                  : 'You are enjoying all royal features 👑')));
                         }
                       },
                     ),
                   ],
                 ),
                 Text(
-                  shop.getShopCategoryName(AppLocalizations.of(context)!.localeName),
+                  shop.getShopCategoryName(
+                      AppLocalizations.of(context)!.localeName),
                   style: TextStyle(color: Colors.grey[600], fontSize: 14),
                 ),
               ],
@@ -225,7 +324,8 @@ class ShopDashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildPremiumPromotionCard(BuildContext context, AppLocalizations l10n, bool isDark) {
+  Widget _buildPremiumPromotionCard(
+      BuildContext context, AppLocalizations l10n, bool isDark) {
     if (shop.isPremium) {
       return Container(
         padding: const EdgeInsets.all(16),
@@ -246,12 +346,19 @@ class ShopDashboardScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    l10n.localeName == 'ar' ? 'متجرك مميز! 👑' : 'Premium Store! 👑',
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+                    l10n.localeName == 'ar'
+                        ? 'متجرك مميز! 👑'
+                        : 'Premium Store! 👑',
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    l10n.localeName == 'ar' ? 'أنت تستمتع الآن بكافة الميزات الملكية' : 'You are enjoying all royal features',
+                    l10n.localeName == 'ar'
+                        ? 'أنت تستمتع الآن بكافة الميزات الملكية'
+                        : 'You are enjoying all royal features',
                     style: const TextStyle(color: Colors.white70, fontSize: 13),
                   ),
                 ],
@@ -267,28 +374,33 @@ class ShopDashboardScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: isDark ? Colors.grey[850] : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFD4AF37).withValues(alpha: 0.5), width: 1.5),
+        border: Border.all(
+            color: const Color(0xFFD4AF37).withValues(alpha: 0.5), width: 1.5),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.workspace_premium, color: Color(0xFFD4AF37), size: 28),
+              const Icon(Icons.workspace_premium,
+                  color: Color(0xFFD4AF37), size: 28),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  l10n.localeName == 'ar' ? 'قم بترقية متجرك (Premium)' : 'Upgrade to Premium Store',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  l10n.localeName == 'ar'
+                      ? 'قم بترقية متجرك (Premium)'
+                      : 'Upgrade to Premium Store',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 16),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 12),
           Text(
-            l10n.localeName == 'ar' 
-              ? 'احصل على الشارة الذهبية، مظهر ملكي، وظهور دائم في أعلى نتائج البحث!' 
-              : 'Get the gold badge, royal UI, and always rank first in search results!',
+            l10n.localeName == 'ar'
+                ? 'احصل على الشارة الذهبية، مظهر ملكي، وظهور دائم في أعلى نتائج البحث!'
+                : 'Get the gold badge, royal UI, and always rank first in search results!',
             style: const TextStyle(fontSize: 13, color: Colors.grey),
           ),
           const SizedBox(height: 16),
@@ -298,12 +410,14 @@ class ShopDashboardScreen extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFD4AF37),
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
               ),
               onPressed: () {
                 _showPremiumUpgradeBottomSheet(context, l10n);
               },
-              child: Text(l10n.localeName == 'ar' ? 'ترقية الآن' : 'Upgrade Now'),
+              child:
+                  Text(l10n.localeName == 'ar' ? 'ترقية الآن' : 'Upgrade Now'),
             ),
           ),
         ],
@@ -311,11 +425,13 @@ class ShopDashboardScreen extends StatelessWidget {
     );
   }
 
-  void _showPremiumUpgradeBottomSheet(BuildContext context, AppLocalizations l10n) {
+  void _showPremiumUpgradeBottomSheet(
+      BuildContext context, AppLocalizations l10n) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) {
         return Container(
           padding: const EdgeInsets.all(24),
@@ -327,28 +443,50 @@ class ShopDashboardScreen extends StatelessWidget {
                 child: Container(
                   width: 60,
                   height: 6,
-                  decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(10)),
+                  decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(10)),
                 ),
               ),
               const SizedBox(height: 24),
               Row(
                 children: [
-                  const Icon(Icons.workspace_premium, color: Color(0xFFD4AF37), size: 32),
+                  const Icon(Icons.workspace_premium,
+                      color: Color(0xFFD4AF37), size: 32),
                   const SizedBox(width: 12),
                   Text(
-                    l10n.localeName == 'ar' ? 'الترقية للمتجر المميز' : 'Upgrade to Premium',
-                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                    l10n.localeName == 'ar'
+                        ? 'الترقية للمتجر المميز'
+                        : 'Upgrade to Premium',
+                    style: const TextStyle(
+                        fontSize: 22, fontWeight: FontWeight.bold),
                   ),
                 ],
               ),
               const SizedBox(height: 24),
-              _buildFeatureRow(Icons.check_circle, l10n.localeName == 'ar' ? 'شارة التوثيق الذهبية الملكية' : 'Royal Golden Verification Badge'),
+              _buildFeatureRow(
+                  Icons.check_circle,
+                  l10n.localeName == 'ar'
+                      ? 'شارة التوثيق الذهبية الملكية'
+                      : 'Royal Golden Verification Badge'),
               const SizedBox(height: 12),
-              _buildFeatureRow(Icons.check_circle, l10n.localeName == 'ar' ? 'أولوية الظهور في نتائج البحث والتصفية' : 'Priority ranking in search and filters'),
+              _buildFeatureRow(
+                  Icons.check_circle,
+                  l10n.localeName == 'ar'
+                      ? 'أولوية الظهور في نتائج البحث والتصفية'
+                      : 'Priority ranking in search and filters'),
               const SizedBox(height: 12),
-              _buildFeatureRow(Icons.check_circle, l10n.localeName == 'ar' ? 'مظهر متجر مخصص وجذاب للعملاء' : 'Customized and attractive store UI'),
+              _buildFeatureRow(
+                  Icons.check_circle,
+                  l10n.localeName == 'ar'
+                      ? 'مظهر متجر مخصص وجذاب للعملاء'
+                      : 'Customized and attractive store UI'),
               const SizedBox(height: 12),
-              _buildFeatureRow(Icons.check_circle, l10n.localeName == 'ar' ? 'تثبيت منتجاتك المميزة في الأعلى' : 'Pin your best products at the top'),
+              _buildFeatureRow(
+                  Icons.check_circle,
+                  l10n.localeName == 'ar'
+                      ? 'تثبيت منتجاتك المميزة في الأعلى'
+                      : 'Pin your best products at the top'),
               const SizedBox(height: 32),
               SizedBox(
                 width: double.infinity,
@@ -357,17 +495,22 @@ class ShopDashboardScreen extends StatelessWidget {
                     backgroundColor: const Color(0xFFD4AF37),
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16)),
                   ),
                   onPressed: () {
                     Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(l10n.localeName == 'ar' ? 'نحن نعمل على بناء هذه الميزة 🛠️' : 'We are working on building this feature 🛠️'))
-                    );
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                        content: Text(l10n.localeName == 'ar'
+                            ? 'نحن نعمل على بناء هذه الميزة 🛠️'
+                            : 'We are working on building this feature 🛠️')));
                   },
                   child: Text(
-                    l10n.localeName == 'ar' ? 'اشترك الآن بـ 5000 ج.س/شهرياً' : 'Subscribe Now for 5000 SDG/month',
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    l10n.localeName == 'ar'
+                        ? 'اشترك الآن بـ 5000 ج.س/شهرياً'
+                        : 'Subscribe Now for 5000 SDG/month',
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                 ),
               ),
@@ -389,7 +532,12 @@ class ShopDashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStatCard({required IconData icon, required Color color, required String value, required String title, required bool isDark}) {
+  Widget _buildStatCard(
+      {required IconData icon,
+      required Color color,
+      required String value,
+      required String title,
+      required bool isDark}) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
       decoration: BoxDecoration(
@@ -415,9 +563,15 @@ class ShopDashboardScreen extends StatelessWidget {
             child: Icon(icon, color: color, size: 20),
           ),
           const SizedBox(height: 12),
-          Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color)),
+          Text(value,
+              style: TextStyle(
+                  fontSize: 20, fontWeight: FontWeight.bold, color: color)),
           const SizedBox(height: 4),
-          Text(title, style: TextStyle(fontSize: 12, color: Colors.grey[600], fontWeight: FontWeight.w600)),
+          Text(title,
+              style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w600)),
         ],
       ),
     );
@@ -428,7 +582,10 @@ class ShopDashboardScreen extends StatelessWidget {
       stream: FirestoreService().getDashboardUserPosts(shop.id),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: Padding(padding: EdgeInsets.all(20.0), child: CircularProgressIndicator()));
+          return const Center(
+              child: Padding(
+                  padding: EdgeInsets.all(20.0),
+                  child: CircularProgressIndicator()));
         }
 
         // لوحة التحكم تعرض كل المنتجات (المرئية والمخفية معاً)
@@ -437,7 +594,8 @@ class ShopDashboardScreen extends StatelessWidget {
         // Sort by viewsCount descending, then by date
         final sorted = List<PostModel>.from(products);
         sorted.sort((a, b) {
-          if (a.viewsCount != b.viewsCount) return b.viewsCount.compareTo(a.viewsCount);
+          if (a.viewsCount != b.viewsCount)
+            return b.viewsCount.compareTo(a.viewsCount);
           return b.createdAt.compareTo(a.createdAt);
         });
 
@@ -446,7 +604,9 @@ class ShopDashboardScreen extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.all(40.0),
               child: Text(
-                l10n.localeName == 'ar' ? 'لا توجد منتجات بعد' : 'No products yet.',
+                l10n.localeName == 'ar'
+                    ? 'لا توجد منتجات بعد'
+                    : 'No products yet.',
                 style: const TextStyle(color: Colors.grey),
               ),
             ),
@@ -466,10 +626,15 @@ class ShopDashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildProductManagementTile(BuildContext context, PostModel product, bool isDark, AppLocalizations l10n) {
+  Widget _buildProductManagementTile(BuildContext context, PostModel product,
+      bool isDark, AppLocalizations l10n) {
     final isAr = l10n.localeName == 'ar';
-    final imageUrl = product.allImageUrls.isNotEmpty ? product.allImageUrls.first : null;
-    final title = (product.caption ?? (isAr ? 'منتج بدون وصف' : 'No description')).split('\n').first;
+    final imageUrl =
+        product.allImageUrls.isNotEmpty ? product.allImageUrls.first : null;
+    final title =
+        (product.caption ?? (isAr ? 'منتج بدون وصف' : 'No description'))
+            .split('\n')
+            .first;
     final isHidden = !product.showInProfile;
 
     return Opacity(
@@ -480,10 +645,14 @@ class ShopDashboardScreen extends StatelessWidget {
           color: isDark ? Colors.grey[900] : Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: isHidden
-              ? Border.all(color: Colors.orange.withValues(alpha: 0.5), width: 1.5)
+              ? Border.all(
+                  color: Colors.orange.withValues(alpha: 0.5), width: 1.5)
               : null,
           boxShadow: [
-            BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 2)),
+            BoxShadow(
+                color: Colors.black.withValues(alpha: 0.03),
+                blurRadius: 8,
+                offset: const Offset(0, 2)),
           ],
         ),
         child: Column(
@@ -493,21 +662,28 @@ class ShopDashboardScreen extends StatelessWidget {
               children: [
                 // صورة المنتج
                 ClipRRect(
-                  borderRadius: const BorderRadius.horizontal(left: Radius.circular(16)),
+                  borderRadius:
+                      const BorderRadius.horizontal(left: Radius.circular(16)),
                   child: imageUrl != null
                       ? CachedNetworkImage(
                           imageUrl: imageUrl,
                           width: 90,
                           height: 90,
                           fit: BoxFit.cover,
-                          placeholder: (_, __) => Container(color: Colors.grey[200], width: 90, height: 90),
-                          errorWidget: (_, __, ___) => Container(color: Colors.grey[200], width: 90, height: 90, child: const Icon(Icons.broken_image)),
+                          placeholder: (_, __) => Container(
+                              color: Colors.grey[200], width: 90, height: 90),
+                          errorWidget: (_, __, ___) => Container(
+                              color: Colors.grey[200],
+                              width: 90,
+                              height: 90,
+                              child: const Icon(Icons.broken_image)),
                         )
                       : Container(
                           width: 90,
                           height: 90,
                           color: Colors.grey[200],
-                          child: const Center(child: Icon(Icons.image, color: Colors.grey)),
+                          child: const Center(
+                              child: Icon(Icons.image, color: Colors.grey)),
                         ),
                 ),
                 const SizedBox(width: 12),
@@ -520,20 +696,28 @@ class ShopDashboardScreen extends StatelessWidget {
                       if (isHidden)
                         Container(
                           margin: const EdgeInsets.only(bottom: 4),
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
                             color: Colors.orange.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: Colors.orange.withValues(alpha: 0.4)),
+                            border: Border.all(
+                                color: Colors.orange.withValues(alpha: 0.4)),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Icons.visibility_off, size: 12, color: Colors.orange),
+                              const Icon(Icons.visibility_off,
+                                  size: 12, color: Colors.orange),
                               const SizedBox(width: 4),
                               Text(
-                                isAr ? 'مخفي من المتجر والمفضلة' : 'Hidden from store & favorites',
-                                style: const TextStyle(fontSize: 10, color: Colors.orange, fontWeight: FontWeight.w600),
+                                isAr
+                                    ? 'مخفي من المتجر والمفضلة'
+                                    : 'Hidden from store & favorites',
+                                style: const TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.orange,
+                                    fontWeight: FontWeight.w600),
                               ),
                             ],
                           ),
@@ -542,20 +726,25 @@ class ShopDashboardScreen extends StatelessWidget {
                         title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 15),
                       ),
                       const SizedBox(height: 4),
                       if (product.price != null)
                         Text(
                           '${product.price} SDG',
-                          style: const TextStyle(color: AppColors.secondary, fontWeight: FontWeight.w600, fontSize: 13),
+                          style: const TextStyle(
+                              color: AppColors.secondary,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13),
                         ),
                     ],
                   ),
                 ),
                 // شارة المشاهدات
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   margin: const EdgeInsets.symmetric(horizontal: 8),
                   decoration: BoxDecoration(
                     color: Colors.purple.withValues(alpha: 0.1),
@@ -564,11 +753,15 @@ class ShopDashboardScreen extends StatelessWidget {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.remove_red_eye_rounded, color: Colors.purple, size: 18),
+                      const Icon(Icons.remove_red_eye_rounded,
+                          color: Colors.purple, size: 18),
                       const SizedBox(height: 4),
                       Text(
                         '${product.viewsCount}',
-                        style: const TextStyle(color: Colors.purple, fontWeight: FontWeight.bold, fontSize: 14),
+                        style: const TextStyle(
+                            color: Colors.purple,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14),
                       ),
                     ],
                   ),
@@ -579,7 +772,8 @@ class ShopDashboardScreen extends StatelessWidget {
             Container(
               decoration: BoxDecoration(
                 color: (isDark ? Colors.grey[800] : Colors.grey[50]),
-                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
+                borderRadius:
+                    const BorderRadius.vertical(bottom: Radius.circular(16)),
               ),
               child: Row(
                 children: [
@@ -587,14 +781,20 @@ class ShopDashboardScreen extends StatelessWidget {
                   Expanded(
                     child: _DashboardActionButton(
                       icon: isHidden ? Icons.visibility : Icons.visibility_off,
-                      label: isHidden ? (isAr ? 'إظهار' : 'Show') : (isAr ? 'إخفاء' : 'Hide'),
+                      label: isHidden
+                          ? (isAr ? 'إظهار' : 'Show')
+                          : (isAr ? 'إخفاء' : 'Hide'),
                       color: isHidden ? AppColors.success : Colors.orange,
                       onTap: () async {
-                        await FirestoreService().updatePost(product.id, {'showInProfile': !product.showInProfile});
+                        await FirestoreService().updatePost(product.id,
+                            {'showInProfile': !product.showInProfile});
                       },
                     ),
                   ),
-                  Container(width: 1, height: 36, color: Colors.grey.withValues(alpha: 0.2)),
+                  Container(
+                      width: 1,
+                      height: 36,
+                      color: Colors.grey.withValues(alpha: 0.2)),
                   // زر التعديل
                   Expanded(
                     child: _DashboardActionButton(
@@ -603,11 +803,16 @@ class ShopDashboardScreen extends StatelessWidget {
                       color: AppColors.primary,
                       onTap: () => Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => CreateProductScreen(product: product)),
+                        MaterialPageRoute(
+                            builder: (_) =>
+                                CreateProductScreen(product: product)),
                       ),
                     ),
                   ),
-                  Container(width: 1, height: 36, color: Colors.grey.withValues(alpha: 0.2)),
+                  Container(
+                      width: 1,
+                      height: 36,
+                      color: Colors.grey.withValues(alpha: 0.2)),
                   // زر الحذف
                   Expanded(
                     child: _DashboardActionButton(
@@ -619,10 +824,18 @@ class ShopDashboardScreen extends StatelessWidget {
                           context: context,
                           builder: (ctx) => AlertDialog(
                             title: Text(isAr ? 'حذف المنتج' : 'Delete Product'),
-                            content: Text(isAr ? 'هل أنت متأكد من حذف هذا المنتج؟' : 'Are you sure?'),
+                            content: Text(isAr
+                                ? 'هل أنت متأكد من حذف هذا المنتج؟'
+                                : 'Are you sure?'),
                             actions: [
-                              TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(isAr ? 'تراجع' : 'Cancel')),
-                              TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(isAr ? 'حذف' : 'Delete', style: const TextStyle(color: Colors.red))),
+                              TextButton(
+                                  onPressed: () => Navigator.pop(ctx, false),
+                                  child: Text(isAr ? 'تراجع' : 'Cancel')),
+                              TextButton(
+                                  onPressed: () => Navigator.pop(ctx, true),
+                                  child: Text(isAr ? 'حذف' : 'Delete',
+                                      style:
+                                          const TextStyle(color: Colors.red))),
                             ],
                           ),
                         );
@@ -671,7 +884,8 @@ class _DashboardActionButton extends StatelessWidget {
             const SizedBox(height: 2),
             Text(
               label,
-              style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                  fontSize: 11, color: color, fontWeight: FontWeight.w600),
             ),
           ],
         ),
@@ -685,7 +899,8 @@ class _ManageShopGalleryScreen extends StatefulWidget {
   const _ManageShopGalleryScreen({required this.shop});
 
   @override
-  State<_ManageShopGalleryScreen> createState() => _ManageShopGalleryScreenState();
+  State<_ManageShopGalleryScreen> createState() =>
+      _ManageShopGalleryScreenState();
 }
 
 class _ManageShopGalleryScreenState extends State<_ManageShopGalleryScreen> {
@@ -693,27 +908,36 @@ class _ManageShopGalleryScreenState extends State<_ManageShopGalleryScreen> {
   bool _isLoading = false;
 
   Future<void> _uploadImage() async {
-    final XFile? image = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+    final XFile? image =
+        await _picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
     if (image == null) return;
 
     setState(() => _isLoading = true);
     try {
-      final url = await CloudinaryService().uploadImage(File(image.path), folder: 'shop_galleries');
+      final url = await CloudinaryService()
+          .uploadImage(File(image.path), folder: 'shop_galleries');
       if (url != null) {
         final newImages = List<String>.from(widget.shop.shopImages)..add(url);
-        await FirebaseFirestore.instance.collection('users').doc(widget.shop.id).update({
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(widget.shop.id)
+            .update({
           'shopImages': newImages,
         });
         setState(() {
           widget.shop.shopImages.add(url);
         });
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Image uploaded successfully'), backgroundColor: Colors.green));
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+              content: Text('Image uploaded successfully'),
+              backgroundColor: Colors.green));
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to upload image'), backgroundColor: Colors.red));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Failed to upload image'),
+            backgroundColor: Colors.red));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -723,19 +947,27 @@ class _ManageShopGalleryScreenState extends State<_ManageShopGalleryScreen> {
   Future<void> _deleteImage(String url, int index) async {
     setState(() => _isLoading = true);
     try {
-      final newImages = List<String>.from(widget.shop.shopImages)..removeAt(index);
-      await FirebaseFirestore.instance.collection('users').doc(widget.shop.id).update({
+      final newImages = List<String>.from(widget.shop.shopImages)
+        ..removeAt(index);
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.shop.id)
+          .update({
         'shopImages': newImages,
       });
       setState(() {
         widget.shop.shopImages.removeAt(index);
       });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Image deleted successfully'), backgroundColor: Colors.orange));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Image deleted successfully'),
+            backgroundColor: Colors.orange));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to delete image'), backgroundColor: Colors.red));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Failed to delete image'),
+            backgroundColor: Colors.red));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -746,7 +978,7 @@ class _ManageShopGalleryScreenState extends State<_ManageShopGalleryScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final isAr = l10n.localeName == 'ar';
-    
+
     return Scaffold(
       appBar: AppBar(
         title: Text(isAr ? 'إدارة معرض المتجر' : 'Manage Shop Gallery'),
@@ -756,7 +988,9 @@ class _ManageShopGalleryScreenState extends State<_ManageShopGalleryScreen> {
           if (widget.shop.shopImages.isEmpty)
             Center(
               child: Text(
-                isAr ? 'المعرض فارغ. أضف بعض الصور.' : 'Gallery is empty. Add some images.',
+                isAr
+                    ? 'المعرض فارغ. أضف بعض الصور.'
+                    : 'Gallery is empty. Add some images.',
                 style: const TextStyle(color: Colors.grey, fontSize: 16),
               ),
             )
@@ -792,7 +1026,8 @@ class _ManageShopGalleryScreenState extends State<_ManageShopGalleryScreen> {
                             color: Colors.red,
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(Icons.delete, color: Colors.white, size: 20),
+                          child: const Icon(Icons.delete,
+                              color: Colors.white, size: 20),
                         ),
                       ),
                     ),

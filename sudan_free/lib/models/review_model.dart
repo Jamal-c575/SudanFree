@@ -12,7 +12,7 @@ class ReviewModel {
   final bool isNegative; // Fraud/Scam report
   final String? comment;
   final DateTime createdAt;
-  
+
   // === نظام الضمان الاجتماعي (Trust System) ===
   // سؤال مهم للسوق السوداني: "هل ستتعامل معه مرة أخرى؟"
   final bool? wouldWorkAgain;

@@ -31,8 +31,8 @@ class LoadingIndicator extends StatelessWidget {
             Text(
               message!,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: AppColors.textSecondary,
-              ),
+                    color: AppColors.textSecondary,
+                  ),
             ),
           ],
         ],
@@ -181,8 +181,8 @@ class EmptyState extends StatelessWidget {
             Text(
               title,
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                color: AppColors.textSecondary,
-              ),
+                    color: AppColors.textSecondary,
+                  ),
               textAlign: TextAlign.center,
             ),
             if (subtitle != null) ...[
@@ -190,8 +190,8 @@ class EmptyState extends StatelessWidget {
               Text(
                 subtitle!,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppColors.textLight,
-                ),
+                      color: AppColors.textLight,
+                    ),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -236,8 +236,8 @@ class ErrorState extends StatelessWidget {
             Text(
               message,
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: AppColors.textSecondary,
-              ),
+                    color: AppColors.textSecondary,
+                  ),
               textAlign: TextAlign.center,
             ),
             if (onRetry != null) ...[
@@ -245,7 +245,9 @@ class ErrorState extends StatelessWidget {
               ElevatedButton.icon(
                 onPressed: onRetry,
                 icon: const Icon(Icons.refresh),
-                label: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'إعادة المحاولة' : 'Retry'),
+                label: Text(Localizations.localeOf(context).languageCode == 'ar'
+                    ? 'إعادة المحاولة'
+                    : 'Retry'),
               ),
             ],
           ],
@@ -277,8 +279,10 @@ class AvatarWidget extends StatelessWidget {
       onTap: onTap,
       child: CircleAvatar(
         radius: radius,
-        backgroundColor: backgroundColor ?? AppColors.primary.withValues(alpha: 0.1),
-        backgroundImage: imageUrl != null ? CachedNetworkImageProvider(imageUrl!) : null,
+        backgroundColor:
+            backgroundColor ?? AppColors.primary.withValues(alpha: 0.1),
+        backgroundImage:
+            imageUrl != null ? CachedNetworkImageProvider(imageUrl!) : null,
         child: imageUrl == null
             ? Text(
                 name?.isNotEmpty == true ? name![0].toUpperCase() : '?',
