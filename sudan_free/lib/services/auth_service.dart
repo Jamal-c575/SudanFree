@@ -24,7 +24,7 @@ class AuthService {
 
       // Obtain the auth details from the request
       final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
+          await googleUser.authentication.timeout(const Duration(seconds: 10));
 
       // Create a new credential
       final credential = GoogleAuthProvider.credential(
@@ -33,7 +33,7 @@ class AuthService {
       );
 
       // Sign in to Firebase with the Google credential
-      return await _auth.signInWithCredential(credential);
+      return await _auth.signInWithCredential(credential).timeout(const Duration(seconds: 15));
     } catch (e) {
       // Handle errors
       debugPrint('Google Sign-In Error: $e');

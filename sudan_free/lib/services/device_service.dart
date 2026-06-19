@@ -23,10 +23,10 @@ class DeviceService {
 
     try {
       if (Platform.isAndroid) {
-        final androidInfo = await _deviceInfo.androidInfo;
+        final androidInfo = await _deviceInfo.androidInfo.timeout(const Duration(seconds: 3));
         _cachedDeviceId = androidInfo.id; // Android hardware ID
       } else if (Platform.isIOS) {
-        final iosInfo = await _deviceInfo.iosInfo;
+        final iosInfo = await _deviceInfo.iosInfo.timeout(const Duration(seconds: 3));
         _cachedDeviceId = iosInfo.identifierForVendor ?? 'unknown_ios';
       } else {
         _cachedDeviceId = 'unknown_platform';

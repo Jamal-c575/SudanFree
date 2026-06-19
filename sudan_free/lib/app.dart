@@ -35,13 +35,15 @@ import 'services/firestore_service.dart';
 class SudanFreeApp extends StatefulWidget {
   const SudanFreeApp({super.key});
 
-  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+  static final GlobalKey<NavigatorState> navigatorKey =
+      GlobalKey<NavigatorState>();
 
   @override
   State<SudanFreeApp> createState() => _SudanFreeAppState();
 }
 
-class _SudanFreeAppState extends State<SudanFreeApp> with WidgetsBindingObserver {
+class _SudanFreeAppState extends State<SudanFreeApp>
+    with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
@@ -65,7 +67,9 @@ class _SudanFreeAppState extends State<SudanFreeApp> with WidgetsBindingObserver
 
   void _updateLastActive() {
     Future.microtask(() {
-      final auth = Provider.of<AuthProvider>(SudanFreeApp.navigatorKey.currentContext ?? context, listen: false);
+      final auth = Provider.of<AuthProvider>(
+          SudanFreeApp.navigatorKey.currentContext ?? context,
+          listen: false);
       if (auth.status == AuthStatus.authenticated && auth.user != null) {
         FirestoreService().updateLastActive(auth.user!.id);
       }
@@ -76,7 +80,7 @@ class _SudanFreeAppState extends State<SudanFreeApp> with WidgetsBindingObserver
 
   void _initDeepLinks() {
     _appLinks = AppLinks();
-    
+
     // Handle link when app is in warm state (already running)
     _appLinks.uriLinkStream.listen((uri) {
       _handleDeepLink(uri);
@@ -108,7 +112,7 @@ class _SudanFreeAppState extends State<SudanFreeApp> with WidgetsBindingObserver
     final postId = uri.queryParameters['postId'];
     final productId = uri.queryParameters['productId'];
     final context = SudanFreeApp.navigatorKey.currentContext;
-    
+
     if (context != null && context.mounted) {
       if (profileId != null && profileId.isNotEmpty) {
         Navigator.push(
@@ -151,7 +155,8 @@ class _SudanFreeAppState extends State<SudanFreeApp> with WidgetsBindingObserver
         ChangeNotifierProvider(create: (_) => ThemeProvider()..initialize()),
         ChangeNotifierProvider(create: (_) => AuthProvider()..initialize()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
-        ChangeNotifierProvider(create: (_) => LocationProvider()..loadLocations()),
+        ChangeNotifierProvider(
+            create: (_) => LocationProvider()..loadLocations()),
         ChangeNotifierProvider(create: (_) => PostsProvider()..fetchPosts()),
         ChangeNotifierProvider(create: (_) => JobProvider()..fetchJobs()),
         ChangeNotifierProvider(create: (_) => ChatProvider()),
@@ -185,30 +190,30 @@ class _SudanFreeAppState extends State<SudanFreeApp> with WidgetsBindingObserver
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 UpdateService.checkForUpdate(context);
               });
-              
+
               return ConnectivityWrapper(
                 child: Stack(
                   children: [
                     if (child != null) child,
-                  if (localeProvider.isLoading)
-                    Container(
-                      color: Theme.of(context).scaffoldBackgroundColor,
-                      width: double.infinity,
-                      height: double.infinity,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const LoadingIndicator(size: 60),
-                          const SizedBox(height: 24),
-                          Text(
-                            localeProvider.isArabic 
-                                ? 'جاري تغيير اللغة...' 
-                                : 'Changing Language...',
-                            style: Theme.of(context).textTheme.headlineSmall,
-                          ),
-                        ],
+                    if (localeProvider.isLoading)
+                      Container(
+                        color: Theme.of(context).scaffoldBackgroundColor,
+                        width: double.infinity,
+                        height: double.infinity,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const LoadingIndicator(size: 60),
+                            const SizedBox(height: 24),
+                            Text(
+                              localeProvider.isArabic
+                                  ? 'جاري تغيير اللغة...'
+                                  : 'Changing Language...',
+                              style: Theme.of(context).textTheme.headlineSmall,
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
                   ],
                 ),
               );
@@ -221,12 +226,13 @@ class _SudanFreeAppState extends State<SudanFreeApp> with WidgetsBindingObserver
                   }
                   return const HomeScreen();
                 }
-                
-                if (authProvider.status == AuthStatus.initial || 
-                    (authProvider.status == AuthStatus.loading && !authProvider.isManualSignIn)) {
+
+                if (authProvider.status == AuthStatus.initial ||
+                    (authProvider.status == AuthStatus.loading &&
+                        !authProvider.isManualSignIn)) {
                   return const SplashScreen();
                 }
-                
+
                 // For AuthStatus.unauthenticated, AuthStatus.error, or loading during manual sign in
                 return const OnboardingCheck();
               },
@@ -255,11 +261,20 @@ class _OnboardingCheckState extends State<OnboardingCheck> {
   }
 
   Future<void> _checkStatus() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (!mounted) return;
-    setState(() {
-      _showOnboarding = !prefs.containsKey('has_seen_onboarding');
-    });
+    try {
+      final prefs = await SharedPreferences.getInstance()
+          .timeout(const Duration(seconds: 3));
+      if (!mounted) return;
+      setState(() {
+        _showOnboarding = !prefs.containsKey('has_seen_onboarding');
+      });
+    } catch (e) {
+      debugPrint('SharedPreferences timeout/error: $e');
+      if (!mounted) return;
+      setState(() {
+        _showOnboarding = false; // Fallback
+      });
+    }
   }
 
   @override
@@ -267,7 +282,7 @@ class _OnboardingCheckState extends State<OnboardingCheck> {
     if (_showOnboarding == null) {
       return const SplashScreen();
     }
-    
+
     if (_showOnboarding!) {
       return OnboardingScreen(
         onCompleted: () {
@@ -277,7 +292,7 @@ class _OnboardingCheckState extends State<OnboardingCheck> {
         },
       );
     }
-    
+
     return const LoginScreen();
   }
 }
