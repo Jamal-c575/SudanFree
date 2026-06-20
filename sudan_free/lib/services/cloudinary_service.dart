@@ -152,7 +152,7 @@ class CloudinaryService {
     return null;
   }
 
-  /// تحسين رابط الصورة لتقليل حجم البيانات
+  /// تحسين رابط الصورة لتقليل حجم البيانات وتجنب أخطاء فك التشفير
   static String getOptimizedUrl(
     String url, {
     int? width,
@@ -161,20 +161,32 @@ class CloudinaryService {
     List<String>? extraTransformations,
   }) {
     if (url.isEmpty || !url.contains('cloudinary.com')) return url;
-    if (url.contains('/q_$quality,f_auto')) return url;
+    
+    // عدم تطبيق تحسينات الصور على الفيديوهات
+    if (url.contains('/video/')) return url;
 
+    // 1. استبدال أي إعدادات قديمة تسبب تجمداً بصيغة WebP المدعومة كلياً
+    String optimized = url.replaceAll('f_auto', 'f_webp').replaceAll('f_avif', 'f_webp');
+
+    // إذا كان الرابط يحتوي مسبقاً على تحسينات (مثل q_auto أو f_webp)، نكتفي بذلك
+    // لكي لا تتكرر معاملات التحويل في الرابط وتسبب خطأ
+    if (optimized.contains('q_') || optimized.contains('f_webp')) {
+      return optimized;
+    }
+
+    // 2. إذا لم يكن يحتوي على تحسينات، نقوم بإدراجها بالطريقة الصحيحة
     try {
-      final uri = Uri.parse(url);
+      final uri = Uri.parse(optimized);
       final pathSegments = List<String>.from(uri.pathSegments);
       final uploadIndex = pathSegments.indexOf('upload');
-      if (uploadIndex == -1) return url;
+      if (uploadIndex == -1) return optimized;
 
       final transformations = <String>[];
       if (width != null) transformations.add('w_$width');
       if (height != null) transformations.add('h_$height');
       if (width != null || height != null) transformations.add('c_limit');
       transformations.add('q_$quality');
-      transformations.add('f_auto');
+      transformations.add('f_webp'); 
       if (extraTransformations != null) {
         transformations.addAll(extraTransformations);
       }
@@ -182,7 +194,7 @@ class CloudinaryService {
       pathSegments.insert(uploadIndex + 1, transformations.join(','));
       return uri.replace(pathSegments: pathSegments).toString();
     } catch (_) {
-      return url;
+      return optimized;
     }
   }
 }
