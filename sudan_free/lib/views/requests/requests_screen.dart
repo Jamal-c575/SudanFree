@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
@@ -24,8 +25,7 @@ class RequestsScreen extends StatefulWidget {
 
 // ✅ FIX #2: Use SingleTickerProviderStateMixin for a SHARED clock
 // instead of one Timer.periodic per card (which caused CPU overload)
-class _RequestsScreenState extends State<RequestsScreen>
-    with SingleTickerProviderStateMixin {
+class _RequestsScreenState extends State<RequestsScreen> {
   // ✅ FIX #3: Category uses English key for consistent filtering across languages
   String _selectedCategoryKey = 'All';
   final List<Map<String, String>> _categories = [
@@ -40,8 +40,8 @@ class _RequestsScreenState extends State<RequestsScreen>
     {'ar': 'تجميل',        'en': 'Beauty'},
   ];
 
-  // ✅ FIX #2: Single shared Ticker — replaces N timers
-  late Ticker _ticker;
+  // ✅ FIX: Use a 1-second Timer instead of a 60FPS Ticker to prevent CPU overload
+  Timer? _timer;
   DateTime _now = DateTime.now();
 
   // ✅ FIX #3: Search controller
@@ -51,10 +51,12 @@ class _RequestsScreenState extends State<RequestsScreen>
   @override
   void initState() {
     super.initState();
-    // One ticker for the whole screen — all cards read _now
-    _ticker = createTicker((_) {
-      if (mounted) setState(() => _now = DateTime.now());
-    })..start();
+    // One timer for the whole screen — updates every second
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) {
+        setState(() => _now = DateTime.now());
+      }
+    });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       SmartGuideService.showMicroTip(
@@ -69,7 +71,7 @@ class _RequestsScreenState extends State<RequestsScreen>
 
   @override
   void dispose() {
-    _ticker.dispose();
+    _timer?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -92,6 +94,7 @@ class _RequestsScreenState extends State<RequestsScreen>
         elevation: 0,
         flexibleSpace: ClipRect(
           child: GlassContainer(
+            enableBlur: true, // Enable real blur for the static AppBar
             blur: 15,
             opacity: isDark ? 0.4 : 0.8,
             color: Theme.of(context).scaffoldBackgroundColor.withValues(alpha: isDark ? 0.3 : 0.7),
@@ -99,109 +102,112 @@ class _RequestsScreenState extends State<RequestsScreen>
           ),
         ),
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: isDark 
-              ? [const Color(0xFF0F172A), const Color(0xFF1E293B)] 
-              : [const Color(0xFFF8FAFC), const Color(0xFFE2E8F0)],
-          ),
-        ),
-        child: SafeArea(
-          bottom: false,
-          child: Column(
-            children: [
-              // Search & Filter Section
-              _buildTopSection(isDark, locale),
+      body: Stack(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: isDark 
+                  ? [const Color(0xFF0F172A), const Color(0xFF1E293B)] 
+                  : [const Color(0xFFF8FAFC), const Color(0xFFE2E8F0)],
+              ),
+            ),
+            child: SafeArea(
+              bottom: false,
+              child: Column(
+                children: [
+                  // Search & Filter Section
+                  _buildTopSection(isDark, locale),
+                  
+                  // Feed Section
+                  Expanded(
+                    child: StreamBuilder<List<RequestModel>>(
+                      stream: FirestoreService().getRequests(),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return _buildShimmerGrid(isDark);
+                        }
 
-              
-              // ✅ Feed Section — properly wrapped in Expanded + StreamBuilder
-              Expanded(
-                child: StreamBuilder<List<RequestModel>>(
-                  stream: FirestoreService().getRequests(),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return _buildShimmerGrid(isDark);
-                    }
+                        var posts = snapshot.data ?? [];
 
-                    var posts = snapshot.data ?? [];
+                        if (_selectedCategoryKey != 'All') {
+                          posts = posts.where((p) => p.category == _selectedCategoryKey).toList();
+                        }
 
-                    // ✅ FIX #3: Filter by English key (works in any language)
-                    if (_selectedCategoryKey != 'All') {
-                      posts = posts.where((p) => p.category == _selectedCategoryKey).toList();
-                    }
+                        if (_searchQuery.isNotEmpty) {
+                          final q = _searchQuery.toLowerCase();
+                          posts = posts.where((p) =>
+                            p.text.toLowerCase().contains(q) ||
+                            (p.category?.toLowerCase().contains(q) ?? false) ||
+                            (p.clientName.toLowerCase().contains(q))
+                          ).toList();
+                        }
 
-                    // ✅ FIX #3: Search filter
-                    if (_searchQuery.isNotEmpty) {
-                      final q = _searchQuery.toLowerCase();
-                      posts = posts.where((p) =>
-                        p.text.toLowerCase().contains(q) ||
-                        (p.category?.toLowerCase().contains(q) ?? false) ||
-                        (p.clientName.toLowerCase().contains(q))
-                      ).toList();
-                    }
-
-                    if (posts.isEmpty) {
-                      return Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.storefront_outlined, size: 80, color: Colors.grey[300]),
-                            const SizedBox(height: 16),
-                            Text(
-                              locale == 'ar' ? 'لا توجد عروض حالياً' : 'No active offers right now',
-                              style: TextStyle(color: Colors.grey[500], fontSize: 18, fontWeight: FontWeight.bold),
+                        if (posts.isEmpty) {
+                          return Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.storefront_outlined, size: 80, color: Colors.grey[300]),
+                                const SizedBox(height: 16),
+                                Text(
+                                  locale == 'ar' ? 'لا توجد عروض حالياً' : 'No active offers right now',
+                                  style: TextStyle(color: Colors.grey[500], fontSize: 18, fontWeight: FontWeight.bold),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  locale == 'ar' ? 'كن أول من ينشر عرضاً!' : 'Be the first to post an offer!',
+                                  style: TextStyle(color: Colors.grey[400], fontSize: 14),
+                                ),
+                              ],
                             ),
-                            const SizedBox(height: 8),
-                            Text(
-                              locale == 'ar' ? 'كن أول من ينشر عرضاً!' : 'Be the first to post an offer!',
-                              style: TextStyle(color: Colors.grey[400], fontSize: 14),
-                            ),
-                          ],
-                        ),
-                      );
-                    }
+                          );
+                        }
 
-                    return ListView.builder(
-                      padding: EdgeInsets.fromLTRB(16, 8, 16, navBarTop + 20),
-                      itemCount: posts.length,
-                      itemBuilder: (context, index) {
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 16),
-                          // ✅ FIX #2: Pass shared _now instead of per-card Timer
-                          child: MarketplaceItemCard(
-                            post: posts[index],
-                            locale: locale,
-                            currentUserId: currentUser?.id,
-                            now: _now,
-                          ),
+                        return ListView.builder(
+                          padding: EdgeInsets.fromLTRB(16, 8, 16, navBarTop + 20),
+                          itemCount: posts.length,
+                          itemBuilder: (context, index) {
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 16),
+                              child: MarketplaceItemCard(
+                                post: posts[index],
+                                locale: locale,
+                                currentUserId: currentUser?.id,
+                                now: _now,
+                              ),
+                            );
+                          },
                         );
                       },
-                    );
-                  },
-                ),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
+          
+          // Custom Floating Draggable Fab
+          if (currentUser != null)
+            SmartDraggableFab(
+              heroTag: 'add_market_post',
+              icon: Icons.add_circle_outline,
+              label: locale == 'ar' ? 'نشر عرض +' : 'Post Offer +',
+              locale: locale,
+              initialBottom: MediaQuery.of(context).padding.bottom + 82.0,
+              onPressed: () {
+                 showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (_) => AddRequestBottomSheet(user: currentUser),
+                  );
+              },
+            ),
+        ],
       ),
-      floatingActionButton: currentUser != null ? SmartDraggableFab(
-        heroTag: 'add_market_post',
-        icon: Icons.add_circle_outline,
-        label: locale == 'ar' ? 'نشر عرض +' : 'Post Offer +',
-        locale: locale,
-        initialBottom: MediaQuery.of(context).padding.bottom + 82.0,
-        onPressed: () {
-           showModalBottomSheet(
-              context: context,
-              isScrollControlled: true,
-              backgroundColor: Colors.transparent,
-              builder: (_) => AddRequestBottomSheet(user: currentUser),
-            );
-        },
-      ) : null,
     );
   }
 
