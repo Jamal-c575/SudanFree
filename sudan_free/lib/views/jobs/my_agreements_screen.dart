@@ -8,6 +8,7 @@ import '../../core/constants/app_colors.dart';
 import 'active_job_tracking_screen.dart';
 import '../../services/smart_guide_service.dart';
 import 'package:shimmer/shimmer.dart';
+import '../../widgets/common/glass_card.dart';
 
 class MyAgreementsScreen extends StatefulWidget {
   const MyAgreementsScreen({super.key});
@@ -58,13 +59,25 @@ class _MyAgreementsScreenState extends State<MyAgreementsScreen>
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor:
-          isDark ? const Color(0xFF121212) : const Color(0xFFF8F9FA),
+      backgroundColor: Colors.transparent,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: Text(l10n.localeName == 'ar' ? 'اتفاقاتي' : 'My Agreements',
             style: const TextStyle(fontWeight: FontWeight.bold)),
         elevation: 0,
-        backgroundColor: AppColors.primary,
+        backgroundColor: Colors.transparent,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                AppColors.primary.withValues(alpha: 0.9),
+                AppColors.primary.withValues(alpha: 0.7),
+              ],
+            ),
+          ),
+        ),
         foregroundColor: Colors.white,
         bottom: TabBar(
           controller: _tabController,
@@ -78,8 +91,27 @@ class _MyAgreementsScreenState extends State<MyAgreementsScreen>
           ],
         ),
       ),
-      body: Consumer<JobProvider>(
-        builder: (context, jobProvider, child) {
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: isDark
+                ? [
+                    const Color(0xFF0F172A),
+                    const Color(0xFF1E293B),
+                    AppColors.primary.withValues(alpha: 0.15)
+                  ]
+                : [
+                    const Color(0xFFF8FAFC),
+                    const Color(0xFFE2E8F0),
+                    AppColors.primary.withValues(alpha: 0.1)
+                  ],
+          ),
+        ),
+        child: SafeArea(
+          child: Consumer<JobProvider>(
+            builder: (context, jobProvider, child) {
           if (jobProvider.isLoading &&
               jobProvider.clientJobs.isEmpty &&
               jobProvider.freelancerJobs.isEmpty) {
@@ -118,6 +150,8 @@ class _MyAgreementsScreenState extends State<MyAgreementsScreen>
           );
         },
       ),
+    ),
+    ),
     );
   }
 
@@ -125,18 +159,22 @@ class _MyAgreementsScreenState extends State<MyAgreementsScreen>
       List<JobModel> jobs, AppLocalizations l10n, bool isDark) {
     if (jobs.isEmpty) {
       return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.assignment_outlined, size: 60, color: Colors.grey[400]),
-            const SizedBox(height: 16),
-            Text(
-              l10n.localeName == 'ar'
-                  ? 'لا توجد اتفاقات حالياً'
-                  : 'No agreements found',
-              style: TextStyle(color: Colors.grey[600], fontSize: 16),
-            ),
-          ],
+        child: GlassCard(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.assignment_outlined, size: 60, color: Colors.grey[400]),
+              const SizedBox(height: 16),
+              Text(
+                l10n.localeName == 'ar'
+                    ? 'لا توجد اتفاقات حالياً'
+                    : 'No agreements found',
+                style: TextStyle(color: Colors.grey[600], fontSize: 16),
+              ),
+            ],
+          ),
         ),
       );
     }
@@ -148,12 +186,9 @@ class _MyAgreementsScreenState extends State<MyAgreementsScreen>
         final job = jobs[index];
         final isClient = job.clientId == context.read<AuthProvider>().user?.id;
 
-        return Card(
+        return GlassCard(
           margin: const EdgeInsets.only(bottom: 12),
-          elevation: 2,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          color: isDark ? Colors.grey[900] : Colors.white,
+          borderRadius: 16.0,
           child: InkWell(
             borderRadius: BorderRadius.circular(16),
             onTap: () {
@@ -265,12 +300,9 @@ class _MyAgreementsScreenState extends State<MyAgreementsScreen>
       padding: const EdgeInsets.all(16),
       itemCount: 5,
       itemBuilder: (context, index) {
-        return Card(
+        return GlassCard(
           margin: const EdgeInsets.only(bottom: 12),
-          elevation: 2,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          color: isDark ? Colors.grey[900] : Colors.white,
+          borderRadius: 16.0,
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Shimmer.fromColors(

@@ -43,6 +43,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
   // ✅ FIX: Use a 1-second Timer instead of a 60FPS Ticker to prevent CPU overload
   Timer? _timer;
   DateTime _now = DateTime.now();
+  late Stream<List<RequestModel>> _requestsStream;
 
   // ✅ FIX #3: Search controller
   final TextEditingController _searchController = TextEditingController();
@@ -51,6 +52,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
   @override
   void initState() {
     super.initState();
+    _requestsStream = FirestoreService().getRequests();
     // One timer for the whole screen — updates every second
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) {
@@ -124,7 +126,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
                   // Feed Section
                   Expanded(
                     child: StreamBuilder<List<RequestModel>>(
-                      stream: FirestoreService().getRequests(),
+                      stream: _requestsStream,
                       builder: (context, snapshot) {
                         if (snapshot.connectionState == ConnectionState.waiting) {
                           return _buildShimmerGrid(isDark);
@@ -133,14 +135,14 @@ class _RequestsScreenState extends State<RequestsScreen> {
                         var posts = snapshot.data ?? [];
 
                         if (_selectedCategoryKey != 'All') {
-                          posts = posts.where((p) => p.category == _selectedCategoryKey).toList();
+                          posts = posts.where((p) => (p.category ?? 'Services') == _selectedCategoryKey).toList();
                         }
 
                         if (_searchQuery.isNotEmpty) {
                           final q = _searchQuery.toLowerCase();
                           posts = posts.where((p) =>
                             p.text.toLowerCase().contains(q) ||
-                            (p.category?.toLowerCase().contains(q) ?? false) ||
+                            ((p.category ?? 'Services').toLowerCase().contains(q)) ||
                             (p.clientName.toLowerCase().contains(q))
                           ).toList();
                         }
@@ -438,12 +440,17 @@ class MarketplaceItemCard extends StatelessWidget {
                           ],
                         ),
                       ),
-                      if (post.category != null)
-                        Text(post.category!,
-                            style: const TextStyle(
-                                color: AppColors.secondary,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12)),
+                      Builder(
+                        builder: (context) {
+                          final catKey = post.category ?? 'Services';
+                          final displayCat = locale == 'ar' && catKey == 'Services' ? 'خدمات' : catKey; // Simple fallback
+                          return Text(displayCat,
+                              style: const TextStyle(
+                                  color: AppColors.secondary,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12));
+                        }
+                      ),
                     ],
                   ),
                   const SizedBox(height: 12),

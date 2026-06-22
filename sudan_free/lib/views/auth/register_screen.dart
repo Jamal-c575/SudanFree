@@ -75,14 +75,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 password: _passwordController.text,
               );
 
-              if (mounted) if (context.mounted)
-                Navigator.pop(context); // Close loading overlay
+              if (mounted) {
+                if (context.mounted) {
+                  Navigator.pop(context); // Close loading overlay
+                }
+              }
 
               if (success && mounted) {
-                // Registration successful → let app.dart handle it
-                if (Navigator.canPop(context)) {
-                  Navigator.popUntil(context, (route) => route.isFirst);
-                }
+                // مسح كل الـ stack - app.dart سيعرض ProfileSetupScreen تلقائياً
+                Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
               } else if (!success && mounted) {
                 final scaffoldMessenger = ScaffoldMessenger.of(context);
                 scaffoldMessenger.showSnackBar(

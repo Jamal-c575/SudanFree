@@ -484,11 +484,47 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
 
     return Scaffold(
+      backgroundColor: Colors.transparent,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: Text(l10n.settings),
         centerTitle: true,
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                AppColors.primary.withValues(alpha: 0.9),
+                AppColors.primary.withValues(alpha: 0.7),
+              ],
+            ),
+          ),
+        ),
+        foregroundColor: Colors.white,
       ),
-      body: finalContent,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: Theme.of(context).brightness == Brightness.dark
+                ? [
+                    const Color(0xFF0F172A),
+                    const Color(0xFF1E293B),
+                    AppColors.primary.withValues(alpha: 0.15)
+                  ]
+                : [
+                    const Color(0xFFF8FAFC),
+                    const Color(0xFFE2E8F0),
+                    AppColors.primary.withValues(alpha: 0.1)
+                  ],
+          ),
+        ),
+        child: SafeArea(child: finalContent),
+      ),
     );
   }
 
@@ -778,16 +814,14 @@ class _SettingsTileState extends State<_SettingsTile> {
         scale: _scale,
         duration: const Duration(milliseconds: 100),
         curve: Curves.easeInOut,
-        child: Container(
-          decoration: BoxDecoration(
-            color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.white,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.06)
-                  : Colors.grey.shade200,
-              width: 0.5,
-            ),
+        child: GlassContainer(
+          borderRadius: BorderRadius.circular(14),
+          color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.white.withValues(alpha: 0.4),
+          border: Border.all(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.06)
+                : Colors.grey.shade200.withValues(alpha: 0.5),
+            width: 0.5,
           ),
           child: ListTile(
             contentPadding:
@@ -1037,12 +1071,10 @@ class _InterestsBottomSheetState extends State<_InterestsBottomSheet> {
       constraints: BoxConstraints(
         maxHeight: MediaQuery.of(context).size.height * 0.85,
       ),
-      decoration: BoxDecoration(
-        color: Theme.of(context).scaffoldBackgroundColor,
+      child: GlassContainer(
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
         children: [
           // Handle
           Container(
@@ -1207,6 +1239,7 @@ class _InterestsBottomSheetState extends State<_InterestsBottomSheet> {
             ),
           ),
         ],
+      ),
       ),
     );
   }

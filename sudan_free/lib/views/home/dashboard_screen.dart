@@ -319,26 +319,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               horizontal: 16, vertical: 8),
                           borderRadius: 16,
                           padding: EdgeInsets.zero,
-                          child: Stack(
-                            fit: StackFit.expand,
-                            children: [
-                              OptimizedNetworkImage(
-                                imageUrl: ad.mediaUrl,
-                                quality: ImageQuality.medium,
-                                fit: BoxFit.cover,
-                              ),
-                              Container(
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      Colors.black.withValues(alpha: 0.7),
-                                      Colors.transparent
-                                    ],
-                                    begin: Alignment.bottomCenter,
-                                    end: Alignment.topCenter,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                OptimizedNetworkImage(
+                                  imageUrl: ad.mediaUrl,
+                                  quality: ImageQuality.medium,
+                                  fit: BoxFit.cover,
+                                ),
+                                Container(
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        Colors.black.withValues(alpha: 0.7),
+                                        Colors.transparent
+                                      ],
+                                      begin: Alignment.bottomCenter,
+                                      end: Alignment.topCenter,
+                                    ),
                                   ),
                                 ),
-                              ),
                               Positioned(
                                 bottom: 12,
                                 left: 12,
@@ -376,7 +378,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ],
                           ),
                         ),
-                      );
+                      ),
+                    );
                     },
                   ),
                 ),
@@ -385,76 +388,84 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
             // ✅ Improved Quick Access Buttons (Horizontal scroll, small cards)
             SliverToBoxAdapter(
-              child: SizedBox(
-                height: 90,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  children: [
-                    _buildCompactActionCard(
-                        context,
-                        locale == 'ar' ? 'خدمات' : 'Services',
-                        Icons.handyman,
-                        () => Navigator.push(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: SizedBox(
+                  height: 74,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _buildCompactActionCard(
                             context,
-                            MaterialPageRoute(
-                                builder: (_) => FilteredProvidersScreen(
-                                    filterType: FilterType.freelancersNearYou,
-                                    title: locale == 'ar'
-                                        ? 'خدمات'
-                                        : 'Services')))),
-                    const SizedBox(width: 12),
-                    _buildCompactActionCard(
-                        context,
-                        locale == 'ar' ? 'متاجر' : 'Shops',
-                        Icons.storefront,
-                        () => Navigator.push(
+                            locale == 'ar' ? 'خدمات' : 'Services',
+                            Icons.handyman,
+                            () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) => FilteredProvidersScreen(
+                                        filterType: FilterType.freelancersNearYou,
+                                        title: locale == 'ar'
+                                            ? 'خدمات'
+                                            : 'Services')))),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _buildCompactActionCard(
                             context,
-                            MaterialPageRoute(
-                                builder: (_) => FilteredProvidersScreen(
-                                    filterType: FilterType.shops,
-                                    title:
-                                        locale == 'ar' ? 'متاجر' : 'Shops')))),
-                    const SizedBox(width: 12),
-                    _buildCompactActionCard(
-                        context,
-                        locale == 'ar' ? 'الجديد' : 'New',
-                        Icons.fiber_new,
-                        () => Navigator.push(
+                            locale == 'ar' ? 'متاجر' : 'Shops',
+                            Icons.storefront,
+                            () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) => FilteredProvidersScreen(
+                                        filterType: FilterType.shops,
+                                        title: locale == 'ar' ? 'متاجر' : 'Shops')))),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _buildCompactActionCard(
                             context,
-                            MaterialPageRoute(
-                                builder: (_) => FilteredProvidersScreen(
-                                    filterType: FilterType.newest,
-                                    title:
-                                        locale == 'ar' ? 'الجديد' : 'New')))),
-                    const SizedBox(width: 12),
-                    _buildCompactActionCard(
-                        context,
-                        locale == 'ar' ? 'الأعلى' : 'Top',
-                        Icons.star,
-                        () => Navigator.push(
+                            locale == 'ar' ? 'الجديد' : 'New',
+                            Icons.fiber_new,
+                            () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) => FilteredProvidersScreen(
+                                        filterType: FilterType.newest,
+                                        title: locale == 'ar' ? 'الجديد' : 'New')))),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _buildCompactActionCard(
                             context,
-                            MaterialPageRoute(
-                                builder: (_) => FilteredProvidersScreen(
-                                    filterType: FilterType.topRated,
-                                    title: locale == 'ar'
-                                        ? 'الأعلى تقييماً'
-                                        : 'Top Rated')))),
-                    const SizedBox(width: 12),
-                    _buildCompactActionCard(
-                        context,
-                        locale == 'ar' ? 'الأقرب' : 'Nearest',
-                        Icons.location_on,
-                        () => Navigator.push(
+                            locale == 'ar' ? 'الأعلى' : 'Top',
+                            Icons.star,
+                            () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) => FilteredProvidersScreen(
+                                        filterType: FilterType.topRated,
+                                        title: locale == 'ar'
+                                            ? 'الأعلى تقييماً'
+                                            : 'Top Rated')))),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _buildCompactActionCard(
                             context,
-                            MaterialPageRoute(
-                                builder: (_) => FilteredProvidersScreen(
-                                    filterType: FilterType.nearYou,
-                                    title: locale == 'ar'
-                                        ? 'الأقرب'
-                                        : 'Nearest')))),
-                  ],
+                            locale == 'ar' ? 'الأقرب' : 'Nearest',
+                            Icons.location_on,
+                            () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) => FilteredProvidersScreen(
+                                        filterType: FilterType.nearYou,
+                                        title: locale == 'ar'
+                                            ? 'الأقرب'
+                                            : 'Nearest')))),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -494,7 +505,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             if (_stripAds.isNotEmpty)
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.only(left: 16, right: 16, top: 24, bottom: 16),
                   child: GestureDetector(
                     onTap: () {
                       _adService.recordClick(_stripAds[0].id);
@@ -508,7 +519,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         borderRadius: BorderRadius.circular(16),
                         child: CachedNetworkImage(
                           imageUrl: _stripAds[0].mediaUrl,
-                          height: 70,
+                          height: 100,
                           width: double.infinity,
                           fit: BoxFit.cover,
                           placeholder: (context, url) => Container(color: Colors.grey[300]),
@@ -533,7 +544,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return GestureDetector(
       onTap: onTap,
       child: GlassContainer(
-        width: 70,
         height: 70,
         borderRadius: BorderRadius.circular(16),
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
@@ -745,8 +755,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                         style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
                                   ],
                                 ),
-                                if (u.isShop)
-                                  const Icon(Icons.verified, size: 12, color: Colors.blue)
                               ],
                             ),
                           ],

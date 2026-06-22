@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../providers/locale_provider.dart';
-import '../auth/login_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../widgets/common/glass_container.dart';
 import '../../widgets/common/glass_card.dart';
@@ -52,13 +51,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
     if (!mounted) return;
 
+    // استدعاء callback من OnboardingCheck دائماً
+    // (لا تدفع LoginScreen كـ route منفصلة — app.dart يتحكم بالتوجيه)
     if (widget.onCompleted != null) {
       widget.onCompleted!();
-    } else {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
-      );
     }
+    // لا يوجد else — لا نستخدم Navigator هنا أبداً
   }
 
   @override

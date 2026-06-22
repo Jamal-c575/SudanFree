@@ -14,6 +14,7 @@ import '../../services/smart_search_service.dart';
 import '../freelancers/browse_freelancers_screen.dart';
 import '../shops/browse_shops_screen.dart';
 import '../../widgets/common/glass_container.dart';
+import '../../providers/theme_provider.dart';
 
 class SmartSearchDelegate extends SearchDelegate<UserModel?> {
   final String? initialQuery;
@@ -197,6 +198,7 @@ class SmartSearchDelegate extends SearchDelegate<UserModel?> {
   Widget _buildFilters(BuildContext context) {
     final locale = context.read<LocaleProvider>().locale.languageCode;
     final isAr = locale == 'ar';
+    final isGlassEnabled = context.watch<ThemeProvider>().isGlassmorphismEnabled;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
@@ -204,7 +206,7 @@ class SmartSearchDelegate extends SearchDelegate<UserModel?> {
           Expanded(
             child: GlassContainer(
               borderRadius: BorderRadius.circular(12),
-              color: AppColors.primary,
+              color: isGlassEnabled ? AppColors.primary : AppColors.primary.withValues(alpha: 0.15),
               opacity: 0.15,
               blur: 15,
               child: Material(
@@ -238,7 +240,7 @@ class SmartSearchDelegate extends SearchDelegate<UserModel?> {
           Expanded(
             child: GlassContainer(
               borderRadius: BorderRadius.circular(12),
-              color: AppColors.secondary,
+              color: isGlassEnabled ? AppColors.secondary : AppColors.secondary.withValues(alpha: 0.15),
               opacity: 0.15,
               blur: 15,
               child: Material(

@@ -14,9 +14,10 @@ import '../../core/utils/job_titles_utils.dart';
 class CreatePortfolioProjectScreen extends StatefulWidget {
   final String? squadId;
   final List<String>? defaultCollaboratorIds;
+  final PortfolioProjectModel? existingProject;
 
   const CreatePortfolioProjectScreen(
-      {super.key, this.squadId, this.defaultCollaboratorIds});
+      {super.key, this.squadId, this.defaultCollaboratorIds, this.existingProject});
 
   @override
   State<CreatePortfolioProjectScreen> createState() =>
@@ -34,6 +35,7 @@ class _CreatePortfolioProjectScreenState
   String? _selectedStatus;
   String? _selectedType;
   final List<File> _selectedImages = [];
+  List<String> _existingImageUrls = [];
   bool _isLoading = false;
   String _loadingStatus = '';
   final List<Map<String, dynamic>> _selectedCollaborators = [];
@@ -111,6 +113,20 @@ class _CreatePortfolioProjectScreenState
   void initState() {
     super.initState();
     _loadDefaultCollaborators();
+    if (widget.existingProject != null) {
+      final ep = widget.existingProject!;
+      _titleController.text = ep.title;
+      _descriptionController.text = ep.description;
+      _purposeController.text = ep.purpose ?? '';
+      _linkController.text = ep.externalLink ?? '';
+      _selectedCategory = ep.category;
+      _selectedStatus = ep.status;
+      _selectedType = ep.projectType;
+      _existingImageUrls = List.from(ep.imageUrls);
+      if (ep.collaborators != null) {
+        _selectedCollaborators.addAll(List<Map<String, dynamic>>.from(ep.collaborators!));
+      }
+    }
   }
 
   Future<void> _loadDefaultCollaborators() async {
@@ -146,8 +162,14 @@ class _CreatePortfolioProjectScreenState
   bool _isAr(BuildContext ctx) => ctx.read<LocaleProvider>().isArabic;
 
   Future<void> _pickImages() async {
-    final remaining = _maxImages - _selectedImages.length;
-    if (remaining <= 0) return;
+    final remaining = _maxImages - (_selectedImages.length + _existingImageUrls.length);
+    if (remaining <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(_isAr(context) ? 'لقد وصلت للحد الأقصى للصور' : 'Maximum images reached'),
+        backgroundColor: Colors.orange,
+      ));
+      return;
+    }
 
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
@@ -214,7 +236,7 @@ class _CreatePortfolioProjectScreenState
 
   Future<void> _submitProject() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_selectedImages.isEmpty) {
+    if (_selectedImages.isEmpty && _existingImageUrls.isEmpty) {
       final scaffoldMessenger = ScaffoldMessenger.of(context);
       scaffoldMessenger.showSnackBar(SnackBar(
         content: Text(_isAr(context)
@@ -235,7 +257,7 @@ class _CreatePortfolioProjectScreenState
     });
 
     try {
-      final List<String> uploadedUrls = [];
+      final List<String> uploadedUrls = List.from(_existingImageUrls);
       for (int i = 0; i < _selectedImages.length; i++) {
         setState(() => _loadingStatus = _isAr(context)
             ? 'رفع صورة ${i + 1} من ${_selectedImages.length}...'
@@ -251,8 +273,8 @@ class _CreatePortfolioProjectScreenState
           _isAr(context) ? 'جاري حفظ المشروع...' : 'Saving project...');
 
       final project = PortfolioProjectModel(
-        id: '',
-        userId: widget.squadId ?? user.id,
+        id: widget.existingProject?.id ?? '',
+        userId: widget.existingProject?.userId ?? widget.squadId ?? user.id,
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim(),
         category: _selectedCategory,
@@ -267,10 +289,15 @@ class _CreatePortfolioProjectScreenState
         collaborators:
             _selectedCollaborators.isNotEmpty ? _selectedCollaborators : null,
         imageUrls: uploadedUrls,
-        createdAt: DateTime.now(),
+        createdAt: widget.existingProject?.createdAt ?? DateTime.now(),
       );
 
-      await FirestoreService().addPortfolioProject(project);
+      if (widget.existingProject != null) {
+        await FirestoreService().updatePortfolioProject(
+            project.userId, project.id, project.toFirestore());
+      } else {
+        await FirestoreService().addPortfolioProject(project);
+      }
 
       if (mounted) {
         final scaffoldMessenger = ScaffoldMessenger.of(context);
@@ -748,26 +775,26 @@ class _CreatePortfolioProjectScreenState
                             isArabic ? 'صور المشروع' : 'Project Images',
                             Icons.photo_library),
                         const Spacer(),
-                        Text('${_selectedImages.length}/$_maxImages',
+                        Text('${_existingImageUrls.length + _selectedImages.length}/$_maxImages',
                             style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.bold,
-                                color: _selectedImages.length >= _maxImages
+                                color: (_existingImageUrls.length + _selectedImages.length) >= _maxImages
                                     ? Colors.orange
                                     : AppColors.primary)),
                       ],
                     ),
                     const SizedBox(height: 10),
 
-                    if (_selectedImages.isNotEmpty)
+                    if (_existingImageUrls.isNotEmpty || _selectedImages.isNotEmpty)
                       SizedBox(
                         height: 110,
                         child: ListView.builder(
                           scrollDirection: Axis.horizontal,
-                          itemCount: _selectedImages.length +
-                              (_selectedImages.length < _maxImages ? 1 : 0),
+                          itemCount: _existingImageUrls.length + _selectedImages.length +
+                              ((_existingImageUrls.length + _selectedImages.length) < _maxImages ? 1 : 0),
                           itemBuilder: (ctx, i) {
-                            if (i == _selectedImages.length) {
+                            if (i == _existingImageUrls.length + _selectedImages.length) {
                               return GestureDetector(
                                 onTap: _pickImages,
                                 child: Container(
@@ -798,6 +825,11 @@ class _CreatePortfolioProjectScreenState
                                 ),
                               );
                             }
+                            
+                            final isExisting = i < _existingImageUrls.length;
+                            final imageUrl = isExisting ? _existingImageUrls[i] : null;
+                            final localFile = isExisting ? null : _selectedImages[i - _existingImageUrls.length];
+
                             return Stack(children: [
                               Container(
                                 width: 110,
@@ -805,16 +837,24 @@ class _CreatePortfolioProjectScreenState
                                 margin: const EdgeInsets.only(left: 8),
                                 child: ClipRRect(
                                   borderRadius: BorderRadius.circular(14),
-                                  child: Image.file(_selectedImages[i],
-                                      fit: BoxFit.cover),
+                                  child: isExisting
+                                    ? CachedNetworkImage(imageUrl: imageUrl!, fit: BoxFit.cover)
+                                    : Image.file(localFile!, fit: BoxFit.cover),
                                 ),
                               ),
                               Positioned(
                                 top: 4,
                                 right: 4,
                                 child: GestureDetector(
-                                  onTap: () => setState(
-                                      () => _selectedImages.removeAt(i)),
+                                  onTap: () {
+                                    setState(() {
+                                      if (isExisting) {
+                                        _existingImageUrls.removeAt(i);
+                                      } else {
+                                        _selectedImages.removeAt(i - _existingImageUrls.length);
+                                      }
+                                    });
+                                  },
                                   child: Container(
                                     padding: const EdgeInsets.all(4),
                                     decoration: BoxDecoration(

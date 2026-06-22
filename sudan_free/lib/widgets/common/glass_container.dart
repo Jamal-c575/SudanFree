@@ -16,6 +16,7 @@ class GlassContainer extends StatelessWidget {
   final BoxShape shape;
   final double? width;
   final double? height;
+  final bool enableBlur; // Add performance flag
 
   const GlassContainer({
     super.key,
@@ -30,6 +31,7 @@ class GlassContainer extends StatelessWidget {
     this.shape = BoxShape.rectangle,
     this.width,
     this.height,
+    this.enableBlur = false, // Default to faux-glass (high performance)
   });
 
   @override
@@ -104,7 +106,7 @@ class GlassContainer extends StatelessWidget {
 
     return Padding(
       padding: margin ?? EdgeInsets.zero,
-      child: isGlassEnabled
+      child: (isGlassEnabled && enableBlur)
           ? RepaintBoundary(
               child: ClipRRect(
                 borderRadius: resolvedBorderRadius ?? BorderRadius.zero,

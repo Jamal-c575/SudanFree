@@ -11,6 +11,8 @@ import 'profile_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/squad_model.dart';
 import 'squad_profile_screen.dart';
+import '../../providers/auth_provider.dart';
+import 'create_portfolio_project_screen.dart';
 
 class PortfolioProjectDetailScreen extends StatefulWidget {
   final PortfolioProjectModel project;
@@ -108,10 +110,30 @@ class _PortfolioProjectDetailScreenState
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
+    final authUser = context.watch<AuthProvider>().user;
+    final isOwner = authUser?.id == widget.project.userId;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(isAr ? 'تفاصيل المشروع' : 'Project Details'),
         centerTitle: true,
+        actions: [
+          if (isOwner)
+            IconButton(
+              icon: const Icon(Icons.edit_outlined),
+              tooltip: isAr ? 'تعديل المشروع' : 'Edit Project',
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => CreatePortfolioProjectScreen(
+                      existingProject: widget.project,
+                    ),
+                  ),
+                );
+              },
+            ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.only(bottom: 40),

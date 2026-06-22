@@ -623,7 +623,7 @@ class _SquadsTab extends StatefulWidget {
 
 class _SquadsTabState extends State<_SquadsTab>
     with AutomaticKeepAliveClientMixin {
-  late Future<QuerySnapshot> _squadsFuture;
+  late Future<List<DocumentSnapshot>> _squadsFuture;
 
   @override
   bool get wantKeepAlive => true;
@@ -635,13 +635,48 @@ class _SquadsTabState extends State<_SquadsTab>
   }
 
   void _fetchSquads() {
-    _squadsFuture = FirebaseFirestore.instance
+    _squadsFuture = _getCombinedSquads();
+  }
+
+  Future<List<DocumentSnapshot>> _getCombinedSquads() async {
+    final futures = <Future<QuerySnapshot>>[];
+
+    // 1. Favorited Squads
+    if (widget.favoriteSquadIds.isNotEmpty) {
+      // Split into chunks of 10 for whereIn limit
+      for (var i = 0; i < widget.favoriteSquadIds.length; i += 10) {
+        final end = (i + 10 < widget.favoriteSquadIds.length) ? i + 10 : widget.favoriteSquadIds.length;
+        final chunk = widget.favoriteSquadIds.sublist(i, end);
+        futures.add(FirebaseFirestore.instance
+            .collection('squads')
+            .where(FieldPath.documentId, whereIn: chunk)
+            .get());
+      }
+    }
+
+    // 2. Leader Squads
+    futures.add(FirebaseFirestore.instance
         .collection('squads')
-        .where(FieldPath.documentId,
-            whereIn: widget.favoriteSquadIds.isNotEmpty
-                ? widget.favoriteSquadIds
-                : ['dummy'])
-        .get();
+        .where('leaderId', isEqualTo: widget.user.id)
+        .get());
+
+    // 3. Member Squads
+    futures.add(FirebaseFirestore.instance
+        .collection('squads')
+        .where('memberIds', arrayContains: widget.user.id)
+        .get());
+
+    final results = await Future.wait(futures);
+    
+    // Combine and deduplicate
+    final Map<String, DocumentSnapshot> uniqueDocs = {};
+    for (var snapshot in results) {
+      for (var doc in snapshot.docs) {
+        uniqueDocs[doc.id] = doc;
+      }
+    }
+    
+    return uniqueDocs.values.toList();
   }
 
   @override
@@ -675,24 +710,7 @@ class _SquadsTabState extends State<_SquadsTab>
     super.build(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    if (widget.favoriteSquadIds.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.groups, size: 60, color: Colors.grey),
-            const SizedBox(height: 16),
-            Text(
-                widget.locale == 'ar'
-                    ? 'لا توجد مجموعات مفضلة بعد'
-                    : 'No favorite squads yet',
-                style: TextStyle(color: Colors.grey[600])),
-          ],
-        ),
-      );
-    }
-
-    return FutureBuilder<QuerySnapshot>(
+    return FutureBuilder<List<DocumentSnapshot>>(
       future: _squadsFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting)
@@ -702,8 +720,24 @@ class _SquadsTabState extends State<_SquadsTab>
               child: Text(
                   widget.locale == 'ar' ? 'حدث خطأ' : 'An error occurred'));
 
-        final docs = snapshot.data?.docs ?? [];
-        if (docs.isEmpty) return const SizedBox.shrink();
+        final docs = snapshot.data ?? [];
+        
+        if (docs.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.groups, size: 60, color: Colors.grey),
+                const SizedBox(height: 16),
+                Text(
+                    widget.locale == 'ar'
+                        ? 'لا توجد مجموعات مفضلة بعد'
+                        : 'No favorite squads yet',
+                    style: TextStyle(color: Colors.grey[600])),
+              ],
+            ),
+          );
+        }
 
         return ListView.separated(
           padding: const EdgeInsets.all(16),
@@ -737,7 +771,14 @@ class _SquadsTabState extends State<_SquadsTab>
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis),
                 trailing: IconButton(
-                  icon: const Icon(Icons.favorite, color: Colors.red),
+                  icon: Icon(
+                    widget.favoriteSquadIds.contains(doc.id)
+                        ? Icons.favorite
+                        : Icons.favorite_border,
+                    color: widget.favoriteSquadIds.contains(doc.id)
+                        ? Colors.red
+                        : Colors.grey,
+                  ),
                   onPressed: () =>
                       context.read<AuthProvider>().toggleFavoriteSquad(doc.id),
                 ),

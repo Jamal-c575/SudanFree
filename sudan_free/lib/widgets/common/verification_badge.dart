@@ -94,9 +94,9 @@ class SmartVerificationBadge extends StatelessWidget {
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 3.0),
           child: Icon(
-            Icons.verified,
-            color: const Color(0xFF1DA1F2), // أزرق تويتر
-            size: size,
+            Icons.handshake_rounded,
+            color: const Color(0xFF007AFF), // لون أزرق جذاب وواضح (iOS Blue)
+            size: size * 1.1, // تكبير خفيف لأن أيقونة المصافحة تبدو أصغر
           ),
         );
       case _BadgeLevel.phoneVerified:

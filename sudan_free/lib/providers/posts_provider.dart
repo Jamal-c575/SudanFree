@@ -183,8 +183,8 @@ class PostsProvider extends ChangeNotifier {
     }
   }
 
-  Future<String?> uploadPostImage(File imageFile) async {
-    return await StorageService().uploadImage(imageFile, folder: 'posts');
+  Future<String?> uploadPostImage(File imageFile, String userId) async {
+    return await StorageService().uploadImage(imageFile, folder: 'posts/$userId');
   }
 
   Future<void> createPostInBackground({
@@ -249,7 +249,7 @@ class PostsProvider extends ChangeNotifier {
 
         List<String> imageUrls = [];
         if (imageFiles != null && imageFiles.isNotEmpty) {
-          final futures = imageFiles.map((f) => uploadPostImage(f));
+          final futures = imageFiles.map((f) => uploadPostImage(f, userId));
           final results = await Future.wait(futures);
           for (final url in results) {
             if (url == null) throw Exception("Upload failed");
@@ -323,7 +323,7 @@ class PostsProvider extends ChangeNotifier {
           throw Exception("لا يوجد اتصال بالإنترنت، لا يمكن رفع الصورة الآن");
         }
         // Upload all images in parallel
-        final futures = filesToUpload.map((f) => uploadPostImage(f));
+        final futures = filesToUpload.map((f) => uploadPostImage(f, userId));
         final results = await Future.wait(futures);
         for (final url in results) {
           if (url == null) {
@@ -715,7 +715,11 @@ class PostsProvider extends ChangeNotifier {
       }
 
       if (filesToUpload.isNotEmpty) {
-        final futures = filesToUpload.map((f) => uploadPostImage(f));
+        final index = _posts.indexWhere((p) => p.id == postId);
+        if (index == -1) throw Exception("Could not determine post owner for image upload");
+        final postUserId = _posts[index].userId;
+
+        final futures = filesToUpload.map((f) => uploadPostImage(f, postUserId));
         final results = await Future.wait(futures);
         final uploadedUrls = <String>[];
         for (final url in results) {

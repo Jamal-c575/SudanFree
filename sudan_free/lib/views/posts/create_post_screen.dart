@@ -341,6 +341,19 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       }
     }
 
+    if (widget.linkedProduct != null && _selectedImages.isEmpty) {
+      final scaffoldMessenger = ScaffoldMessenger.of(context);
+      scaffoldMessenger.showSnackBar(
+        SnackBar(
+          content: Text(locale == 'ar'
+              ? 'يرجى إضافة الصور الإعلانية للمنتج، لأنه عند نشر نص فقط لا يتم عرض التفاصيل بشكل جيد'
+              : 'Please add promotional images for the product, as text-only posts do not display details well'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
     if (_captionController.text.trim().isEmpty &&
         _selectedImages.isEmpty &&
         widget.post?.imageUrl == null &&
@@ -819,8 +832,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                             setState(() => _showInProfile = v ?? false),
                         title: Text(
                           context.read<LocaleProvider>().isArabic
-                              ? 'إضافة إلى معرض أعمالي (الملف الشخصي)'
-                              : 'Add to my portfolio (Profile)',
+                              ? 'إضافة إلى منشوراتي'
+                              : 'Add to my posts',
                           style: const TextStyle(
                               fontWeight: FontWeight.bold, fontSize: 14),
                         ),

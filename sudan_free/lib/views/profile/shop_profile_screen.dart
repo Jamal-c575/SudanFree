@@ -38,14 +38,15 @@ import '../../providers/chat_provider.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../providers/locale_provider.dart';
 import '../../models/review_model.dart';
-import '../../widgets/reviews/review_widgets.dart';
 import '../../core/utils/app_error_handler.dart';
 import 'package:share_plus/share_plus.dart';
 import 'dart:io';
 import 'favorites_screen.dart';
 import '../../services/smart_guide_service.dart';
 import '../../widgets/common/glass_container.dart';
-
+import 'shop_components/shop_products_tab.dart';
+import 'shop_components/shop_gallery_tab.dart';
+import 'shop_components/shop_reviews_tab.dart';
 class ShopProfileScreen extends StatefulWidget {
   final UserModel user;
   final bool isMe;
@@ -84,7 +85,9 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
 
     if (widget.showReviewDialog && !widget.isMe) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _showAddReviewDialog();
+        if (mounted) {
+          ShopReviewsTab.showAddReviewDialog(context, widget.user);
+        }
       });
     }
 
@@ -368,8 +371,18 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
                             },
                           ),
                           IconButton(
-                            icon: const Icon(Icons.badge, color: Colors.white, size: 24),
-                            tooltip: l10n.localeName == 'ar' ? 'بطاقة التواصل' : 'Contact Card',
+                            icon: const Icon(Icons.qr_code_scanner, color: Colors.white, size: 24),
+                            tooltip: l10n.localeName == 'ar' ? 'الهوية الرقمية' : 'Digital ID',
+                            onPressed: () {
+                              Navigator.push(
+                                  context,
+                                  PremiumPageRoute(
+                                      page: DigitalIdCardScreen(user: user)));
+                            },
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.contact_phone, color: Colors.white, size: 24),
+                            tooltip: l10n.localeName == 'ar' ? 'تواصل معنا' : 'Contact Shop',
                             onPressed: () => _showContactMenu(context, user),
                           ),
                           // OWNER ACTIONS: Edit & Settings
@@ -794,9 +807,9 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
                   body: TabBarView(
                     controller: _tabController,
                     children: [
-                      KeepAliveTabView(child: _buildProductsGrid()),
-                      KeepAliveTabView(child: _buildShopGallery()),
-                      KeepAliveTabView(child: _buildReviewsSection()),
+                      KeepAliveTabView(child: ShopProductsTab(postsStream: _postsStream, isMe: widget.isMe)),
+                      KeepAliveTabView(child: ShopGalleryTab(user: user, isMe: widget.isMe)),
+                      KeepAliveTabView(child: ShopReviewsTab(user: user, isMe: widget.isMe, reviewsStream: _reviewsStream)),
                     ],
                   ),
                 );
@@ -1076,379 +1089,6 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildProductsGrid() {
-    final l10n = AppLocalizations.of(context)!;
-    return StreamBuilder<List<PostModel>>(
-      stream: _postsStream,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        // المالك يرى كل المنتجات (المرئية والمخفية) — المخفية تحمل شارة "مخفي"
-        // المشاهد يرى فقط المنتجات المنشورة (showInProfile == true)
-        final products = (snapshot.data ?? [])
-            .where((p) => widget.isMe ? true : p.showInProfile)
-            .toList();
-
-        // Sort: Pinned first, then by date (descending)
-        products.sort((a, b) {
-          if (a.isPinned && !b.isPinned) return -1;
-          if (!a.isPinned && b.isPinned) return 1;
-          return b.createdAt.compareTo(a.createdAt);
-        });
-
-        if (products.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.storefront, size: 64, color: Colors.grey[300]),
-                const SizedBox(height: 16),
-                Text(
-                  widget.isMe ? l10n.emptyStoreOwner : l10n.emptyStoreVisitor,
-                  style: TextStyle(color: Colors.grey[600]),
-                ),
-              ],
-            ),
-          );
-        }
-
-        return GridView.builder(
-          padding: const EdgeInsets.all(8),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            childAspectRatio: 0.65,
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 10,
-          ),
-          itemCount: products.length,
-          itemBuilder: (context, index) {
-            final product = products[index];
-            final imageUrl = product.allImageUrls.isNotEmpty
-                ? product.allImageUrls.first
-                : null;
-
-            return GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (_) => ProductDetailScreen(product: product)),
-                );
-              },
-              child: Card(
-                clipBehavior: Clip.antiAlias,
-                elevation: 2,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      flex: 4,
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          imageUrl != null
-                              ? Hero(
-                                  tag: 'product_image_${product.id}',
-                                  child: CachedNetworkImage(
-                                    imageUrl: CloudinaryService.getOptimizedUrl(
-                                        imageUrl,
-                                        width: 400,
-                                        quality: 'auto'),
-                                    fit: BoxFit.cover,
-                                    memCacheWidth: 400,
-                                    placeholder: (_, __) =>
-                                        Container(color: Colors.grey[200]),
-                                    errorWidget: (_, __, ___) =>
-                                        const Icon(Icons.broken_image),
-                                  ),
-                                )
-                              : Container(
-                                  color: Colors.grey[200],
-                                  child: const Center(
-                                      child: Icon(Icons.image,
-                                          color: Colors.grey)),
-                                ),
-                          // ── للمالك: أظهر شارة "مخفي" فقط إذا كان المنتج مخفياً ──
-                          // أزرار التحكم انتقلت بالكامل إلى لوحة التحكم (ShopDashboard)
-                          if (widget.isMe && !product.showInProfile)
-                            Positioned(
-                              top: 8,
-                              left: 8,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withValues(alpha: 0.7),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(Icons.visibility_off,
-                                        size: 12, color: Colors.white54),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      Localizations.localeOf(context)
-                                                  .languageCode ==
-                                              'ar'
-                                          ? 'مخفي'
-                                          : 'Hidden',
-                                      style: const TextStyle(
-                                          color: Colors.white54,
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.bold),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                    Expanded(
-                      flex: 2,
-                      child: Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            LinkableText(
-                              text: product.caption ?? l10n.noData,
-                              maxLines: 2,
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.bold, fontSize: 13),
-                            ),
-                            if (product.price != null)
-                              Text(
-                                '${product.price} SDG',
-                                style: const TextStyle(
-                                  color: AppColors.secondary,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildShopGallery() {
-    final images = widget.user.shopImages;
-    if (images.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.photo_library, size: 64, color: Colors.grey[300]),
-            const SizedBox(height: 16),
-            Text(
-              Localizations.localeOf(context).languageCode == 'ar'
-                  ? (widget.isMe
-                      ? 'لا توجد صور في المعرض. يمكنك إضافتها من إعدادات الملف.'
-                      : 'لا توجد صور في المعرض حالياً')
-                  : (widget.isMe
-                      ? 'No images in gallery. Add from profile settings.'
-                      : 'No images in gallery'),
-              style: TextStyle(color: Colors.grey[600]),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      );
-    }
-    return GridView.builder(
-      padding: const EdgeInsets.all(8),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        childAspectRatio: 1.0,
-        crossAxisSpacing: 4,
-        mainAxisSpacing: 4,
-      ),
-      itemCount: images.length,
-      itemBuilder: (context, index) {
-        return GestureDetector(
-          onTap: () {
-            Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (_) => FullScreenImageViewer(
-                        imageUrls: images, initialIndex: index)));
-          },
-          child: Hero(
-            tag: 'shop_gallery_${images[index]}',
-            child: CachedNetworkImage(
-              imageUrl: CloudinaryService.getOptimizedUrl(images[index],
-                  width: 300, quality: 'auto'),
-              fit: BoxFit.cover,
-              memCacheWidth: 300,
-              placeholder: (_, __) => Container(color: Colors.grey[200]),
-              errorWidget: (_, __, ___) => const Icon(Icons.broken_image),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildReviewsSection() {
-    final l10n = AppLocalizations.of(context)!;
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(l10n.reviews,
-                style:
-                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            if (!widget.isMe)
-              TextButton.icon(
-                onPressed: _showAddReviewDialog,
-                icon: const Icon(Icons.rate_review, size: 18),
-                label: Text(l10n.addReview),
-              ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        _buildReviewsList(),
-      ],
-    );
-  }
-
-  Widget _buildReviewsList() {
-    return StreamBuilder<List<ReviewModel>>(
-      stream: _reviewsStream, // Reusing freelancer reviews method for shops
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return Center(
-              child: Text(AppLocalizations.of(context)!.noReviews,
-                  style: const TextStyle(color: Colors.grey)));
-        }
-
-        return Column(
-          children: [
-            ReviewStatsWidget(
-              reviews: snapshot.data!,
-              locale: context.read<LocaleProvider>().locale.languageCode,
-            ),
-            ...snapshot.data!.map((review) => ReviewCard(
-                review: review,
-                locale: context.read<LocaleProvider>().locale.languageCode)),
-          ],
-        );
-      },
-    );
-  }
-
-  void _showAddReviewDialog() async {
-    final l10n = AppLocalizations.of(context)!;
-    final currentUser = context.read<AuthProvider>().user;
-    if (currentUser == null) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(l10n.loginToReview)));
-      return;
-    }
-
-    // التحقق من وجود اتفاق مكتمل قبل السماح بالتقييم
-    final hasCompletedJob = await FirestoreService().hasCompletedJob(
-      currentUser.id,
-      widget.user.id,
-    );
-
-    if (!hasCompletedJob) {
-      if (!mounted) return;
-      final isArabic = context.read<LocaleProvider>().isArabic;
-      showDialog(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: Row(
-            children: [
-              const Icon(Icons.info_outline, color: Colors.orange),
-              const SizedBox(width: 8),
-              Expanded(
-                  child: Text(isArabic
-                      ? 'يجب إكمال اتفاق أولاً'
-                      : 'Complete an Agreement First')),
-            ],
-          ),
-          content: Text(
-            isArabic
-                ? 'يجب أن يكون هناك اتفاق مكتمل بينك وبين المتجر قبل إضافة تقييم. هذا يضمن مصداقية التقييمات.'
-                : 'You must have a completed agreement with this shop before leaving a review. This ensures review credibility.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: Text(isArabic ? 'حسناً' : 'OK'),
-            ),
-          ],
-        ),
-      );
-      return;
-    }
-
-    if (!mounted) return;
-    showDialog(
-      context: context,
-      builder: (context) => AddReviewDialog(
-        freelancerId: widget.user.id,
-        targetName: widget.user.name,
-        targetImageUrl: widget.user.profileImageUrl,
-        isShop: true,
-        onSubmit: (rating, comment, isNegative, isJobCompleted,
-            wouldWorkAgain) async {
-          final messenger = ScaffoldMessenger.of(this.context);
-
-          final review = ReviewModel(
-            id: '',
-            freelancerId: widget.user.id,
-            reviewerId: currentUser.id,
-            reviewerName: currentUser.name,
-            reviewerImageUrl: currentUser.profileImageUrl,
-            rating: rating,
-            comment: comment,
-            isNegative: isNegative,
-            wouldWorkAgain: wouldWorkAgain,
-            createdAt: DateTime.now(),
-          );
-
-          try {
-            await FirestoreService()
-                .createReview(review, isJobCompleted: false);
-
-            // Log review successfully added
-            debugPrint('Review added successfully for job completion check');
-
-            messenger.showSnackBar(SnackBar(
-                content: Text(l10n.reviewAddedSuccessfully),
-                backgroundColor: AppColors.success));
-          } catch (e, stack) {
-            if (context.mounted)
-              AppErrorHandler.show(context, e, stack,
-                  logContext: 'ShopProfile.addReview');
-          }
-        },
       ),
     );
   }

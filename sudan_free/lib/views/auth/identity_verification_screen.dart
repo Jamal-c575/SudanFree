@@ -12,6 +12,7 @@ import '../../services/storage_service.dart';
 import '../../widgets/buttons/primary_button.dart';
 import '../../widgets/inputs/custom_text_field.dart';
 import '../../core/utils/app_error_handler.dart';
+import '../../widgets/common/glass_container.dart';
 
 class IdentityVerificationScreen extends StatefulWidget {
   const IdentityVerificationScreen({super.key});
@@ -245,22 +246,55 @@ class _IdentityVerificationScreenState
     final status = user?.verificationStatus ?? VerificationStatus.none;
 
     return Scaffold(
+      backgroundColor: Colors.transparent,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: Text(isArabic ? 'توثيق الحساب' : 'Identity Verification'),
         elevation: 0,
+        backgroundColor: Colors.transparent,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                AppColors.primary.withValues(alpha: 0.9),
+                AppColors.primary.withValues(alpha: 0.7),
+              ],
+            ),
+          ),
+        ),
+        foregroundColor: Colors.white,
       ),
-      body: Column(
-        children: [
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: theme.brightness == Brightness.dark
+                ? [
+                    const Color(0xFF0F172A),
+                    const Color(0xFF1E293B),
+                    AppColors.primary.withValues(alpha: 0.15)
+                  ]
+                : [
+                    const Color(0xFFF8FAFC),
+                    const Color(0xFFE2E8F0),
+                    AppColors.primary.withValues(alpha: 0.1)
+                  ],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
           // Coming soon notice
-          Container(
+          GlassContainer(
             width: double.infinity,
             margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
             padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: Colors.orange.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.orange.withValues(alpha: 0.4)),
-            ),
+            borderRadius: BorderRadius.circular(12),
+            color: Colors.orange.withValues(alpha: 0.1),
+            border: Border.all(color: Colors.orange.withValues(alpha: 0.4)),
             child: Row(
               children: [
                 const Icon(Icons.construction_rounded,
@@ -377,6 +411,8 @@ class _IdentityVerificationScreenState
           ),
         ],
       ),
+        ),
+      ),
     );
   }
 
@@ -448,15 +484,13 @@ class _IdentityVerificationScreenState
               children: [
                 if (!_codeSent) ...[
                   // OTP Method Selection
-                  Container(
+                  GlassContainer(
                     padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                          color:
-                              theme.colorScheme.outline.withValues(alpha: 0.3)),
-                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    color: theme.colorScheme.surface,
+                    border: Border.all(
+                        color:
+                            theme.colorScheme.outline.withValues(alpha: 0.3)),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -652,13 +686,11 @@ class _IdentityVerificationScreenState
     return Step(
       title: Text(isArabic ? 'تأكيد وتقديم الطلب' : 'Confirm & Submit Request'),
       isActive: _currentStep >= 3,
-      content: Container(
+      content: GlassContainer(
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.blue.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.blue.withValues(alpha: 0.2)),
-        ),
+        borderRadius: BorderRadius.circular(12),
+        color: Colors.blue.withValues(alpha: 0.05),
+        border: Border.all(color: Colors.blue.withValues(alpha: 0.2)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

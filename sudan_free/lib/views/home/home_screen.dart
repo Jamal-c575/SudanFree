@@ -285,6 +285,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 child: GlassContainer(
                   height: 64,
                   borderRadius: BorderRadius.circular(32),
+                  opacity: Theme.of(context).brightness == Brightness.dark ? 0.25 : 0.45,
+                  blur: 20,
+                  enableBlur: true,
+                  color: Theme.of(context).scaffoldBackgroundColor,
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [

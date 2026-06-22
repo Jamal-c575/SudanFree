@@ -44,9 +44,9 @@ class _LoginScreenState extends State<LoginScreen> {
     );
 
     if (success && mounted) {
-      if (Navigator.canPop(context)) {
-        Navigator.popUntil(context, (route) => route.isFirst);
-      }
+      // مسح كل الـ navigation stack بالكامل لإتاحة
+      // Consumer في app.dart يعيد توجيه المستخدم تلقائياً
+      Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
     } else if (!success && mounted) {
       final error = authProvider.errorMessage ?? 'Login failed';
       if (error.startsWith('DEVICE_BANNED:')) {
@@ -418,9 +418,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     final success = await authProvider.signInWithGoogle();
 
                     if (success && context.mounted) {
-                      if (Navigator.canPop(context)) {
-                        Navigator.popUntil(context, (route) => route.isFirst);
-                      }
+                      // مسح كل الـ navigation stack بالكامل
+                      Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
                     } else if (authProvider.errorMessage != null &&
                         context.mounted) {
                       final error = authProvider.errorMessage!;

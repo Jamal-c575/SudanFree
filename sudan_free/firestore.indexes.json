@@ -465,20 +465,6 @@
       ]
     },
     {
-      "collectionGroup": "contact_logs",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "contacterId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "freelancerId",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
       "collectionGroup": "contactLogs",
       "queryScope": "COLLECTION",
       "fields": [
