@@ -37,7 +37,7 @@ service cloud.firestore {
       allow update: if isAuthenticated() && (
         // المالك يعدل بياناته — لا يمكنه تغيير الحقول المحمية
         (isOwner(userId) && (
-          (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['isVerified', 'rating', 'reviewsCount', 'completedJobs', 'negativeReports', 'walletBalance', 'ratingCounts', 'profileViews']))
+          (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['isVerified', 'verificationStatus', 'verifiedAt', 'rating', 'reviewsCount', 'completedJobs', 'negativeReports', 'walletBalance', 'ratingCounts', 'profileViews']))
           && (!('role' in request.resource.data) || request.resource.data.role != 'admin')
           ||
           // السماح بالتحقق الذاتي عبر رقم الهاتف
