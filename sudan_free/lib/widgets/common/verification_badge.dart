@@ -91,14 +91,7 @@ class SmartVerificationBadge extends StatelessWidget {
       case _BadgeLevel.topPro:
         return _TopProBadge(size: size);
       case _BadgeLevel.identityVerified:
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 3.0),
-          child: Icon(
-            Icons.handshake_rounded,
-            color: const Color(0xFF007AFF), // لون أزرق جذاب وواضح (iOS Blue)
-            size: size * 1.1, // تكبير خفيف لأن أيقونة المصافحة تبدو أصغر
-          ),
-        );
+        return _IdentityBadge(size: size);
       case _BadgeLevel.phoneVerified:
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 3.0),
@@ -223,6 +216,68 @@ class _PremiumBadge extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// شارة توثيق الهوية - تصميم زجاجي لامع وفريد
+class _IdentityBadge extends StatelessWidget {
+  final double size;
+  const _IdentityBadge({required this.size});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 3.0),
+      child: Container(
+        width: size * 1.4,
+        height: size * 1.4,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF4AC29A), // Mint Green
+              Color(0xFFBDFFF3), // Soft Cyan
+              Color(0xFF007AFF), // iOS Blue
+            ],
+            stops: [0.0, 0.4, 1.0],
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF007AFF).withValues(alpha: 0.4),
+              blurRadius: size * 0.5,
+              spreadRadius: 1,
+              offset: const Offset(0, 2),
+            ),
+            BoxShadow(
+              color: Colors.white.withValues(alpha: 0.6),
+              blurRadius: 2,
+              spreadRadius: -1,
+              offset: const Offset(-1, -1),
+            ),
+          ],
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.8),
+            width: 1.2,
+          ),
+        ),
+        child: Center(
+          child: Icon(
+            Icons.handshake_rounded,
+            color: Colors.white,
+            size: size * 0.85,
+            shadows: [
+              Shadow(
+                color: Colors.black.withValues(alpha: 0.3),
+                blurRadius: 2,
+                offset: const Offset(0, 1),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
