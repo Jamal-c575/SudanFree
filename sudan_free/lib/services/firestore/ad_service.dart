@@ -218,6 +218,20 @@ class AdService {
     }
   }
 
+  /// Fetch a specific ad by ID
+  Future<AdModel?> getAd(String adId) async {
+    try {
+      final doc = await _firestore.collection('ads').doc(adId).get();
+      if (doc.exists) {
+        return AdModel.fromFirestore(doc);
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error fetching ad: $e');
+      return null;
+    }
+  }
+
   /// Check if cache is still valid
   bool _isCacheValid(String cacheKey) {
     final timestamp = _cacheTimestamps[cacheKey];

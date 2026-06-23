@@ -25,6 +25,8 @@ import '../../providers/chat_provider.dart';
 import '../../core/routes/premium_page_route.dart';
 import '../../services/smart_guide_service.dart';
 import '../../widgets/common/glass_container.dart';
+import '../../services/firestore/ad_service.dart';
+import '../home/ad_details_screen.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -531,7 +533,7 @@ class _SimpleNotificationTileState extends State<_SimpleNotificationTile> {
           }
           break;
         case NotificationType.system:
-          // Try user first, if not found, try job
+          // Try user first, if not found, try job, then try Ad
           if (notification.relatedId != null) {
             final user = await firestore.getUser(notification.relatedId!);
             if (user != null) {
@@ -543,6 +545,18 @@ class _SimpleNotificationTileState extends State<_SimpleNotificationTile> {
                     context,
                     PremiumPageRoute(
                         page: ActiveJobTrackingScreen(jobId: job.id)));
+              } else {
+                final ad = await AdService().getAd(notification.relatedId!);
+                if (mounted) {
+                  if (ad != null && ad.isValid) {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => AdDetailsScreen(ad: ad)));
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(locale == 'ar' ? 'عذراً، لقد انتهت مدة الإعلان أو تم حذفه' : 'Sorry, the ad has expired or been deleted')),
+                    );
+                    await firestore.deleteNotification(notification.id);
+                  }
+                }
               }
             }
           }
