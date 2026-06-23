@@ -357,10 +357,10 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
                         ),
                         actions: [
                           IconButton(
-                            icon: const Icon(Icons.share, color: Colors.white, size: 24),
+                            icon: const Icon(Icons.share, color: Colors.white),
                             tooltip: l10n.localeName == 'ar'
-                                ? 'مشاركة الملف الشخصي'
-                                : 'Share Profile',
+                                ? 'مشاركة المتجر'
+                                : 'Share Store',
                             onPressed: () {
                               final url =
                                   'https://sudanfree.com/sudan-free.html?profileId=${user.id}';
@@ -371,7 +371,7 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
                             },
                           ),
                           IconButton(
-                            icon: const Icon(Icons.qr_code_scanner, color: Colors.white, size: 24),
+                            icon: const Icon(Icons.badge, color: Colors.white),
                             tooltip: l10n.localeName == 'ar' ? 'الهوية الرقمية' : 'Digital ID',
                             onPressed: () {
                               Navigator.push(
@@ -380,20 +380,14 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
                                       page: DigitalIdCardScreen(user: user)));
                             },
                           ),
-                          IconButton(
-                            icon: const Icon(Icons.contact_phone, color: Colors.white, size: 24),
-                            tooltip: l10n.localeName == 'ar' ? 'تواصل معنا' : 'Contact Shop',
-                            onPressed: () => _showContactMenu(context, user),
-                          ),
-                          // OWNER ACTIONS: Edit & Settings
                           if (widget.isMe) ...[
                             IconButton(
-                              icon: const Icon(Icons.favorite, color: Colors.white, size: 24),
+                              icon: const Icon(Icons.favorite, color: Colors.white),
                               tooltip: l10n.localeName == 'ar' ? 'مفضلاتي' : 'Favorites',
                               onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FavoritesScreen())),
                             ),
                             IconButton(
-                              icon: const Icon(Icons.edit, color: Colors.white, size: 24),
+                              icon: const Icon(Icons.edit, color: Colors.white),
                               tooltip: l10n.editStore,
                               onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProfileSetupScreen(existingUser: user))),
                             ),
