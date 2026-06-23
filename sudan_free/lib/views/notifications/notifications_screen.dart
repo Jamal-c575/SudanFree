@@ -505,24 +505,21 @@ class _SimpleNotificationTileState extends State<_SimpleNotificationTile> {
           }
           break;
         case NotificationType.partnerRequest:
-          if (notification.relatedId != null) {
-            await _navigateToProfile(context, notification.relatedId!);
-          } else {
-            if (!context.mounted) return;
-            showModalBottomSheet(
-              context: context,
-              isScrollControlled: true,
-              backgroundColor: Colors.transparent,
-              builder: (_) => _PendingRequestsSheet(locale: locale),
-            );
-          }
+          if (!context.mounted) return;
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (_) => _PendingRequestsSheet(locale: locale),
+          );
           break;
         case NotificationType.message:
           if (notification.relatedId != null) {
             final chat = await firestore.getChatById(notification.relatedId!);
             if (chat != null && mounted) {
+              final isContract = notification.title.contains('عقد') || notification.title.toLowerCase().contains('contract');
               Navigator.push(
-                  context, PremiumPageRoute(page: ChatScreen(chat: chat)));
+                  context, PremiumPageRoute(page: ChatScreen(chat: chat, autoOpenContractDialog: isContract)));
             }
           }
           break;
