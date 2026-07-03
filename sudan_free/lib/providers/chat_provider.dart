@@ -115,6 +115,41 @@ class ChatProvider extends ChangeNotifier {
     });
   }
 
+  // Anti-spam configuration
+  final List<DateTime> _messageTimestamps = [];
+  bool _isSpamBlocked = false;
+  DateTime? _spamBlockUntil;
+
+  bool _checkSpamLimit() {
+    final now = DateTime.now();
+
+    // Remove timestamps older than 1 minute
+    _messageTimestamps.removeWhere((t) => now.difference(t).inSeconds > 60);
+
+    if (_isSpamBlocked) {
+      if (_spamBlockUntil != null && now.isAfter(_spamBlockUntil!)) {
+        _isSpamBlocked = false;
+        _spamBlockUntil = null;
+        _messageTimestamps.clear(); // Reset after unblock
+      } else {
+        _errorMessage = "أنت ترسل الرسائل بسرعة كبيرة، يرجى الانتظار دقيقة.";
+        notifyListeners();
+        return false;
+      }
+    }
+
+    if (_messageTimestamps.length >= 15) {
+      _isSpamBlocked = true;
+      _spamBlockUntil = now.add(const Duration(seconds: 60));
+      _errorMessage = "أنت ترسل الرسائل بسرعة كبيرة، يرجى الانتظار دقيقة.";
+      notifyListeners();
+      return false;
+    }
+
+    _messageTimestamps.add(now);
+    return true;
+  }
+
   // Send text message
   Future<bool> sendMessage({
     required String senderId,
@@ -123,6 +158,7 @@ class ChatProvider extends ChangeNotifier {
     required String content,
   }) async {
     if (_currentChat == null) return false;
+    if (!_checkSpamLimit()) return false;
 
     _isSending = true;
     // لا نستدعي notifyListeners هنا لتجنب إعادة الرسم المتكرر
@@ -164,6 +200,7 @@ class ChatProvider extends ChangeNotifier {
     required File imageFile,
   }) async {
     if (_currentChat == null) return false;
+    if (!_checkSpamLimit()) return false;
 
     // ── 1. ظهور فوري (Optimistic) ──
     final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
@@ -225,6 +262,7 @@ class ChatProvider extends ChangeNotifier {
     required String fileName,
   }) async {
     if (_currentChat == null) return false;
+    if (!_checkSpamLimit()) return false;
 
     // ── 1. ظهور فوري (Optimistic) ──
     final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
@@ -288,6 +326,7 @@ class ChatProvider extends ChangeNotifier {
     required int duration,
   }) async {
     if (_currentChat == null) return false;
+    if (!_checkSpamLimit()) return false;
 
     // ── 1. ظهور فوري (Optimistic) ──
     final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
@@ -351,6 +390,7 @@ class ChatProvider extends ChangeNotifier {
     required double contractPrice,
   }) async {
     if (_currentChat == null) return false;
+    if (!_checkSpamLimit()) return false;
 
     _isSending = true;
     notifyListeners();
@@ -396,6 +436,22 @@ class ChatProvider extends ChangeNotifier {
       _isSending = false;
       _errorMessage = e.toString();
       notifyListeners();
+      return false;
+    }
+  }
+
+  // Check if users are banned from creating contracts with each other
+  Future<bool> checkIfBannedFromContracts(String currentUserId, String otherUserId) async {
+    try {
+      final uids = [currentUserId, otherUserId]..sort();
+      final relationId = '${uids[0]}_${uids[1]}';
+      final doc = await FirebaseFirestore.instance.collection('contract_relations').doc(relationId).get();
+      if (doc.exists && doc.data() != null) {
+        return doc.data()!['isBanned'] == true;
+      }
+      return false;
+    } catch (e) {
+      debugPrint('Error checking contract ban: $e');
       return false;
     }
   }

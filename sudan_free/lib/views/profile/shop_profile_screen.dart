@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../providers/theme_provider.dart';
-import 'product_detail_screen.dart';
 import '../../widgets/common/linkable_text.dart';
 
 // ignore: unused_import
@@ -12,10 +11,8 @@ import '../../models/contact_log_model.dart';
 import '../../providers/user_provider.dart';
 import '../../models/post_model.dart';
 import '../../services/firestore_service.dart';
-import '../../services/cloudinary_service.dart';
 import '../../widgets/common/adaptive_fab_padding.dart';
 import '../../widgets/buttons/smart_draggable_fab.dart';
-import '../../widgets/common/full_screen_image_viewer.dart';
 import '../../core/routes/premium_page_route.dart';
 import 'digital_id_card_screen.dart';
 import '../map/map_explorer_screen.dart';
@@ -291,22 +288,7 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
                                                     ),
                                                   ),
                                                 ),
-                                                // Verified Badge / Online indicator
-                                                Positioned.directional(
-                                                  textDirection: Directionality.of(context),
-                                                  bottom: 12,
-                                                  end: 6,
-                                                  child: Container(
-                                                    padding: const EdgeInsets.all(4),
-                                                    decoration: BoxDecoration(
-                                                      color: Colors.green,
-                                                      shape: BoxShape.circle,
-                                                      border: Border.all(
-                                                          color: Theme.of(context).scaffoldBackgroundColor, width: 3),
-                                                    ),
-                                                    child: const Icon(Icons.check, color: Colors.white, size: 16),
-                                                  ),
-                                                ),
+                                                // Verified Badge / Online indicator removed as requested
                                               ],
                                             ),
                                           ),
@@ -314,35 +296,33 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
                                           Expanded(
                                             child: Padding(
                                               padding: const EdgeInsets.only(top: 60), // Push down to overlap cover edge
-                                              child: Row(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                children: [
-                                                  Flexible(
-                                                    child: Text(
-                                                      user.name,
-                                                      maxLines: 2,
-                                                      overflow: TextOverflow.ellipsis,
-                                                      style: TextStyle(
-                                                        fontWeight: FontWeight.bold,
-                                                        fontSize: 24,
-                                                        color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black87,
-                                                        height: 1.2,
-                                                        shadows: [
-                                                          Shadow(
-                                                            color: Theme.of(context).scaffoldBackgroundColor,
-                                                            blurRadius: 12,
+                                              child: Align(
+                                                alignment: AlignmentDirectional.centerStart,
+                                                child: GlassContainer(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                                  borderRadius: BorderRadius.circular(16),
+                                                  child: Row(
+                                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                                    mainAxisSize: MainAxisSize.min,
+                                                    children: [
+                                                      Flexible(
+                                                        child: Text(
+                                                          user.name,
+                                                          maxLines: 2,
+                                                          overflow: TextOverflow.ellipsis,
+                                                          style: TextStyle(
+                                                            fontWeight: FontWeight.bold,
+                                                            fontSize: 22,
+                                                            color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black87,
+                                                            height: 1.2,
                                                           ),
-                                                          Shadow(
-                                                            color: Theme.of(context).scaffoldBackgroundColor,
-                                                            blurRadius: 24,
-                                                          ),
-                                                        ],
+                                                        ),
                                                       ),
-                                                    ),
+                                                      const SizedBox(width: 6),
+                                                      SmartVerificationBadge(user: user, size: 22),
+                                                    ],
                                                   ),
-                                                  const SizedBox(width: 4),
-                                                  SmartVerificationBadge(user: user, size: 24),
-                                                ],
+                                                ),
                                               ),
                                             ),
                                           ),
@@ -814,10 +794,7 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
               icon: Icons.shopping_bag_outlined,
               locale: Localizations.localeOf(context).languageCode,
               initialBottom: MediaQuery.of(context).padding.bottom + 82.0,
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const CreateProductScreen()),
-              ),
+              openBuilder: (context, openContainer) => const CreateProductScreen(),
             ),
         ],
       ),
@@ -1061,9 +1038,7 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
                       );
                     } else {
                       final errorMsg = chatProvider.errorMessage ??
-                          (locale == 'ar'
-                              ? 'حدث خطأ أثناء إنشاء المحادثة'
-                              : 'Error creating chat');
+                          (AppLocalizations.of(context)!.errorCreatingChat);
                       scaffoldMessenger.showSnackBar(
                         SnackBar(
                             content: Text(errorMsg),
@@ -1073,9 +1048,10 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
                   } catch (e, stack) {
                     navigator.pop();
                     if (ctx.mounted) Navigator.pop(ctx);
-                    if (context.mounted)
+                    if (context.mounted) {
                       AppErrorHandler.show(context, e, stack,
                           logContext: 'ShopProfile.createChat');
+                    }
                   }
                 },
               ),
@@ -1259,7 +1235,7 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
               style: TextStyle(
                 fontSize: 15,
                 height: 1.5,
-                color: Colors.grey[800],
+                color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[300] : Colors.grey[800],
                 fontWeight: FontWeight.w500,
               ),
             ),

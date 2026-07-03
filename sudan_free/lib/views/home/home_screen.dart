@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
@@ -6,6 +7,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/locale_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../providers/chat_provider.dart';
+import '../../providers/recommendations_provider.dart';
 
 import '../../providers/posts_provider.dart';
 import '../../providers/job_provider.dart';
@@ -18,7 +20,10 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../services/firestore_service.dart';
 import '../../widgets/common/glass_container.dart';
 import '../profile/profile_screen.dart';
+import '../ai/ai_assistant_screen.dart';
 import 'dashboard_screen.dart';
+import '../../core/utils/navigation_utils.dart';
+import '../../services/smart_welcome_service.dart';
 
 class BottomBarVisibilityProvider extends ChangeNotifier {
   bool _isVisible = true;
@@ -58,6 +63,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _initializeData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      NavigationUtils.onHomeScreenReady(context);
+      SmartWelcomeService.checkAndShow(context);
+    });
   }
 
   @override
@@ -75,22 +84,22 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final userProvider = context.read<UserProvider>();
     userProvider.setUserState(user.state); // Region-priority: 75% local
     
-    // ✅ FIX #9: Sequential loading instead of parallel to improve cold start
-    // Load most important data first (Posts & Chats)
-    await context.read<PostsProvider>().fetchPosts();
-    if (!mounted) return;
-    
-    await context.read<ChatProvider>().fetchChats(user.id);
-    if (!mounted) return;
-    
-    // Load secondary data
-    await userProvider.fetchFreelancers();
-    if (!mounted) return;
-    
-    await userProvider.fetchShops();
-    if (!mounted) return;
-    
-    context.read<JobProvider>().fetchJobs();
+    // Load data concurrently for better cold start but prioritize UI rendering
+    Future.microtask(() {
+      if (!mounted) return;
+      context.read<PostsProvider>().fetchPosts();
+      context.read<ChatProvider>().fetchChats(user.id);
+      userProvider.fetchFreelancers();
+      userProvider.fetchShops();
+      context.read<JobProvider>().fetchJobs();
+
+      // Preload AI recommendations in background (cache-first, no UI block)
+      context.read<RecommendationsProvider>().fetchRecommendations(
+        userId: user.id,
+        lat: user.latitude ?? 15.5,
+        lng: user.longitude ?? 32.5,
+      );
+    });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkForUpdates();
@@ -221,7 +230,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     return PopScope(
       canPop: _currentIndex == 0 && _history.length <= 1,
-      onPopInvokedWithResult: (didPop, result) {
+      onPopInvoked: (didPop) {
         if (didPop) return;
 
         if (_history.length > 1) {
@@ -238,40 +247,58 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         }
       },
       child: Scaffold(
-        body: NotificationListener<ScrollUpdateNotification>(
+        body: NotificationListener<UserScrollNotification>(
           onNotification: (notification) {
-            if (notification.scrollDelta != null) {
-              if (notification.scrollDelta! > 5 &&
-                  _visibilityProvider.isVisible) {
+            if (notification.direction == ScrollDirection.reverse) {
+              if (_visibilityProvider.isVisible) {
                 _visibilityProvider.setVisible(false);
-              } else if (notification.scrollDelta! < -5 &&
-                  !_visibilityProvider.isVisible) {
+              }
+            } else if (notification.direction == ScrollDirection.forward) {
+              if (!_visibilityProvider.isVisible) {
                 _visibilityProvider.setVisible(true);
               }
             }
             return false;
           },
-          child: IndexedStack(
-            index: _currentIndex,
-            children: [
-              screens[0],
-              screens[1],
-              screens[2],
-              screens[3],
-              // Late binding for ProfileScreen to pass user.id
-              _initializedTabs.length > 4 && _initializedTabs[4]
-                  ? _buildProfileScreen(user.id)
-                  : const SizedBox(),
-            ],
+          child: ChangeNotifierProvider<BottomBarVisibilityProvider>.value(
+            value: _visibilityProvider,
+            child: IndexedStack(
+              index: _currentIndex,
+              children: [
+                screens[0],
+                screens[1],
+                screens[2],
+                screens[3],
+                // Late binding for ProfileScreen to pass user.id
+                _initializedTabs.length > 4 && _initializedTabs[4]
+                    ? _buildProfileScreen(user.id)
+                    : const SizedBox(),
+              ],
+            ),
           ),
         ),
-        // Add Request FAB removed by user request
+        floatingActionButton: AnimatedOpacity(
+          opacity: _visibilityProvider.isVisible ? 1.0 : 0.0,
+          duration: const Duration(milliseconds: 300),
+          child: _visibilityProvider.isVisible
+              ? FloatingActionButton(
+                  onPressed: () {
+                    NavigationUtils.navigateSafely(
+                        context, const AiAssistantScreen());
+                  },
+                  backgroundColor: Colors.amber,
+                  child: const Icon(Icons.handshake, color: Colors.white),
+                )
+              : const SizedBox(),
+        ),
+        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
         extendBody: true, // Crucial for floating nav bar
         bottomNavigationBar: AnimatedBuilder(
           animation: _visibilityProvider,
           builder: (context, child) {
             return AnimatedSlide(
-              duration: const Duration(milliseconds: 300),
+              duration: const Duration(milliseconds: 800),
+              curve: Curves.easeInOut,
               offset: _visibilityProvider.isVisible
                   ? Offset.zero
                   : const Offset(0, 2.0),
@@ -293,19 +320,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
                       _buildNavItem(0, Icons.home_outlined, Icons.home,
-                          locale == 'ar' ? 'الرئيسية' : 'Home'),
+                          AppLocalizations.of(context)!.home),
                       _buildNavItem(
                           1, Icons.forum_outlined, Icons.forum, l10n.community,
                           hasBadge: context.watch<PostsProvider>().hasNewPosts),
                       _buildNavItem(2, Icons.groups_outlined, Icons.groups,
-                          locale == 'ar' ? 'المجموعات' : 'Squads'),
+                          AppLocalizations.of(context)!.squads),
                       _buildNavItem(
                           3,
                           Icons.assignment_outlined,
                           Icons.assignment,
-                          locale == 'ar' ? 'الطلبات' : 'Requests'),
+                          AppLocalizations.of(context)!.requests),
                       _buildNavItem(4, Icons.person_outline, Icons.person,
-                          locale == 'ar' ? 'ملفي' : 'Profile'),
+                          AppLocalizations.of(context)!.profile),
                     ],
                   ),
                 ),
@@ -339,8 +366,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           // Double tap refresh
           setState(() {
             if (index == 0) _dashboardKey = UniqueKey();
-            if (index == 1)
+            if (index == 1) {
               context.read<PostsProvider>().fetchPosts(forceRefresh: true);
+            }
             if (index == 2) _squadsKey = UniqueKey();
             if (index == 3) _requestsKey = UniqueKey();
           });

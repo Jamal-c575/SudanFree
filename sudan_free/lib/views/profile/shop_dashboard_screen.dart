@@ -594,8 +594,9 @@ class ShopDashboardScreen extends StatelessWidget {
         // Sort by viewsCount descending, then by date
         final sorted = List<PostModel>.from(products);
         sorted.sort((a, b) {
-          if (a.viewsCount != b.viewsCount)
+          if (a.viewsCount != b.viewsCount) {
             return b.viewsCount.compareTo(a.viewsCount);
+          }
           return b.createdAt.compareTo(a.createdAt);
         });
 
@@ -632,7 +633,7 @@ class ShopDashboardScreen extends StatelessWidget {
     final imageUrl =
         product.allImageUrls.isNotEmpty ? product.allImageUrls.first : null;
     final title =
-        (product.caption ?? (isAr ? 'منتج بدون وصف' : 'No description'))
+        (product.caption ?? (AppLocalizations.of(context)!.noDescription))
             .split('\n')
             .first;
     final isHidden = !product.showInProfile;
@@ -711,9 +712,7 @@ class ShopDashboardScreen extends StatelessWidget {
                                   size: 12, color: Colors.orange),
                               const SizedBox(width: 4),
                               Text(
-                                isAr
-                                    ? 'مخفي من المتجر والمفضلة'
-                                    : 'Hidden from store & favorites',
+                                AppLocalizations.of(context)!.hiddenFromStoreFavorites,
                                 style: const TextStyle(
                                     fontSize: 10,
                                     color: Colors.orange,
@@ -782,8 +781,8 @@ class ShopDashboardScreen extends StatelessWidget {
                     child: _DashboardActionButton(
                       icon: isHidden ? Icons.visibility : Icons.visibility_off,
                       label: isHidden
-                          ? (isAr ? 'إظهار' : 'Show')
-                          : (isAr ? 'إخفاء' : 'Hide'),
+                          ? (AppLocalizations.of(context)!.show1)
+                          : (AppLocalizations.of(context)!.strHide),
                       color: isHidden ? AppColors.success : Colors.orange,
                       onTap: () async {
                         await FirestoreService().updatePost(product.id,
@@ -799,7 +798,7 @@ class ShopDashboardScreen extends StatelessWidget {
                   Expanded(
                     child: _DashboardActionButton(
                       icon: Icons.edit_outlined,
-                      label: isAr ? 'تعديل' : 'Edit',
+                      label: AppLocalizations.of(context)!.edit,
                       color: AppColors.primary,
                       onTap: () => Navigator.push(
                         context,
@@ -817,23 +816,21 @@ class ShopDashboardScreen extends StatelessWidget {
                   Expanded(
                     child: _DashboardActionButton(
                       icon: Icons.delete_outline,
-                      label: isAr ? 'حذف' : 'Delete',
+                      label: AppLocalizations.of(context)!.delete,
                       color: Colors.redAccent,
                       onTap: () async {
                         final confirm = await showDialog<bool>(
                           context: context,
                           builder: (ctx) => AlertDialog(
-                            title: Text(isAr ? 'حذف المنتج' : 'Delete Product'),
-                            content: Text(isAr
-                                ? 'هل أنت متأكد من حذف هذا المنتج؟'
-                                : 'Are you sure?'),
+                            title: Text(AppLocalizations.of(context)!.deleteProduct),
+                            content: Text(AppLocalizations.of(context)!.areYouSure),
                             actions: [
                               TextButton(
                                   onPressed: () => Navigator.pop(ctx, false),
-                                  child: Text(isAr ? 'تراجع' : 'Cancel')),
+                                  child: Text(AppLocalizations.of(context)!.cancel)),
                               TextButton(
                                   onPressed: () => Navigator.pop(ctx, true),
-                                  child: Text(isAr ? 'حذف' : 'Delete',
+                                  child: Text(AppLocalizations.of(context)!.delete,
                                       style:
                                           const TextStyle(color: Colors.red))),
                             ],
@@ -981,16 +978,14 @@ class _ManageShopGalleryScreenState extends State<_ManageShopGalleryScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isAr ? 'إدارة معرض المتجر' : 'Manage Shop Gallery'),
+        title: Text(AppLocalizations.of(context)!.manageShopGallery),
       ),
       body: Stack(
         children: [
           if (widget.shop.shopImages.isEmpty)
             Center(
               child: Text(
-                isAr
-                    ? 'المعرض فارغ. أضف بعض الصور.'
-                    : 'Gallery is empty. Add some images.',
+                AppLocalizations.of(context)!.galleryIsEmptyAddSomeImages,
                 style: const TextStyle(color: Colors.grey, fontSize: 16),
               ),
             )
@@ -1053,7 +1048,7 @@ class _ManageShopGalleryScreenState extends State<_ManageShopGalleryScreen> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _isLoading ? null : _uploadImage,
         icon: const Icon(Icons.add_photo_alternate),
-        label: Text(isAr ? 'إضافة صورة' : 'Add Image'),
+        label: Text(AppLocalizations.of(context)!.addImage),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
       ),

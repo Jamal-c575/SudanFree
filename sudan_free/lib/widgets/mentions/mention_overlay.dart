@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/constants/app_colors.dart';
 import '../../models/user_model.dart';
+import 'package:sudan_free/l10n/generated/app_localizations.dart';
 
 /// Premium mention overlay widget — يظهر عند كتابة @ لعرض قائمة الزملاء
 class MentionOverlay extends StatelessWidget {
@@ -21,7 +22,7 @@ class MentionOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (partners.isEmpty) {
-      return _buildEmptyState();
+      return _buildEmptyState(context);
     }
 
     return Container(
@@ -75,7 +76,7 @@ class MentionOverlay extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    locale == 'ar' ? 'إشارة لزميل' : 'Mention a colleague',
+                    AppLocalizations.of(context)!.mentionAColleague,
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -141,7 +142,7 @@ class MentionOverlay extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              locale == 'ar' ? '@الجميع' : '@Everyone',
+                              AppLocalizations.of(context)!.everyone,
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 14,
@@ -190,7 +191,7 @@ class MentionOverlay extends StatelessWidget {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -220,7 +221,7 @@ class MentionOverlay extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            locale == 'ar' ? 'لا يوجد زملاء' : 'No colleagues yet',
+            AppLocalizations.of(context)!.noColleaguesYet,
             style: TextStyle(
               fontWeight: FontWeight.w600,
               color: Colors.grey[700],
@@ -229,9 +230,7 @@ class MentionOverlay extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            locale == 'ar'
-                ? 'أضف زملاء من ملفاتهم الشخصية لتتمكن من الإشارة إليهم'
-                : 'Add colleagues from their profiles to mention them',
+            AppLocalizations.of(context)!.addColleaguesFromTheirProfilesTo,
             style: TextStyle(fontSize: 12, color: Colors.grey[500]),
             textAlign: TextAlign.center,
           ),

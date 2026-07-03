@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 /// Global in-memory cache layer for expensive Firestore operations
@@ -10,10 +11,39 @@ class GlobalDataCache with ChangeNotifier {
     return _instance;
   }
 
-  GlobalDataCache._internal();
+  GlobalDataCache._internal() {
+    // Garbage collection timer: cleans up expired entries every 5 minutes
+    _startGarbageCollection();
+  }
 
   /// In-memory cache entries with timestamps
   final Map<String, _CacheEntry> _cache = {};
+  Timer? _gcTimer;
+
+  void _startGarbageCollection() {
+    _gcTimer?.cancel();
+    _gcTimer = Timer.periodic(const Duration(minutes: 5), (timer) {
+      _runGarbageCollection();
+    });
+  }
+
+  void _runGarbageCollection() {
+    if (_cache.isEmpty) return;
+
+    int removedCount = 0;
+    final now = DateTime.now();
+    
+    _cache.removeWhere((key, entry) {
+      final isExpired = now.difference(entry.timestamp).inSeconds > entry.ttlSeconds;
+      if (isExpired) removedCount++;
+      return isExpired;
+    });
+
+    if (removedCount > 0) {
+      debugPrint('GlobalDataCache: Garbage collected $removedCount expired entries to free RAM.');
+      notifyListeners();
+    }
+  }
 
   /// Get or fetch cache entry
   dynamic getCacheEntry(String key) {
@@ -80,6 +110,12 @@ class GlobalDataCache with ChangeNotifier {
       'expired': expiredEntries,
       'keys': _cache.keys.toList(),
     };
+  }
+
+  @override
+  void dispose() {
+    _gcTimer?.cancel();
+    super.dispose();
   }
 }
 

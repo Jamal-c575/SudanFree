@@ -349,8 +349,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 .limit(100) // Limit to 100 for performance
                 .snapshots(),
             builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting)
+              if (snapshot.connectionState == ConnectionState.waiting) {
                 return const LoadingIndicator();
+              }
 
               var users = snapshot.data?.docs
                       .map((d) => UserModel.fromFirestore(d))
@@ -368,9 +369,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 return matchRole && matchSearch;
               }).toList();
 
-              if (users.isEmpty)
+              if (users.isEmpty) {
                 return _buildEmptyState(
                     Icons.people_outline, 'لا يوجد مستخدمين');
+              }
 
               return ListView.builder(
                 padding: const EdgeInsets.all(12),
@@ -696,12 +698,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 .orderBy('createdAt', descending: true)
                 .snapshots(),
             builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting)
+              if (snapshot.connectionState == ConnectionState.waiting) {
                 return const LoadingIndicator();
+              }
               final logs = snapshot.data?.docs ?? [];
 
-              if (logs.isEmpty)
+              if (logs.isEmpty) {
                 return _buildEmptyState(Icons.history, 'لا يوجد سجل للتنبيهات');
+              }
 
               return ListView.builder(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -816,13 +820,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             .orderBy('createdAt', descending: true)
             .snapshots(),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting)
+          if (snapshot.connectionState == ConnectionState.waiting) {
             return const LoadingIndicator();
+          }
           final ads = snapshot.data?.docs ?? [];
 
-          if (ads.isEmpty)
+          if (ads.isEmpty) {
             return _buildEmptyState(
                 Icons.campaign_outlined, 'لا توجد إعلانات حالياً');
+          }
 
           return ListView.builder(
             padding: const EdgeInsets.all(12),
@@ -952,7 +958,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         labelText: 'الوصف', border: OutlineInputBorder())),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<AdPlacement>(
-                  initialValue: selectedPlacement,
+                  value: selectedPlacement,
                   decoration: const InputDecoration(
                       labelText: 'موقع عرض الإعلان',
                       border: OutlineInputBorder()),
@@ -1101,32 +1107,47 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                               finalMediaUrl =
                                   await snapshot.ref.getDownloadURL();
                             } catch (e) {
-                              if (mounted)
+                              if (mounted) {
                                 setState(() => isUploadingVideo = false);
+                              }
                               return;
                             }
                           }
 
-                          await FirebaseFirestore.instance
-                              .collection('ads')
-                              .add({
+                          final baseAdData = {
                             'title': titleCtrl.text,
                             'description': descCtrl.text,
                             'mediaUrl': finalMediaUrl,
                             'mediaType': selectedMediaType.name,
-                            'placement': selectedPlacement.name,
                             'targetRole': targetRole,
                             'targetState': targetState,
                             'targetLocality': targetLocality,
-                            'targetRegion':
-                                targetState, // For backward compatibility
-                            'targetProfession':
-                                targetRole, // For backward compatibility
-                            'expiryDate': Timestamp.fromDate(
-                                DateTime.now().add(const Duration(days: 7))),
+                            'targetRegion': targetState, // For backward compatibility
+                            'targetProfession': targetRole, // For backward compatibility
+                            'expiryDate': Timestamp.fromDate(DateTime.now().add(const Duration(days: 7))),
                             'createdAt': FieldValue.serverTimestamp(),
                             'isActive': true,
-                          });
+                          };
+
+                          if (selectedPlacement == AdPlacement.homeAndCommunity) {
+                            // 1. Create Home Banner (with notification)
+                            await FirebaseFirestore.instance.collection('ads').add({
+                              ...baseAdData,
+                              'placement': AdPlacement.homeBanner.name,
+                            });
+                            // 2. Create Community Feed (silent, no notification)
+                            await FirebaseFirestore.instance.collection('ads').add({
+                              ...baseAdData,
+                              'placement': AdPlacement.communityFeed.name,
+                              'silentNotification': true,
+                            });
+                          } else {
+                            // Standard single creation
+                            await FirebaseFirestore.instance.collection('ads').add({
+                              ...baseAdData,
+                              'placement': selectedPlacement.name,
+                            });
+                          }
                           if (mounted) nav.pop();
                         },
                   child: isUploadingVideo
@@ -1153,12 +1174,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           .snapshots()
           .map((s) => s.docs.map((d) => UserModel.fromFirestore(d)).toList()),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting)
+        if (snapshot.connectionState == ConnectionState.waiting) {
           return const LoadingIndicator();
+        }
         final users = snapshot.data ?? [];
-        if (users.isEmpty)
+        if (users.isEmpty) {
           return _buildEmptyState(
               Icons.verified_user_outlined, 'لا توجد طلبات توثيق معلقة');
+        }
 
         return ListView.builder(
           padding: const EdgeInsets.all(12),
@@ -1247,12 +1270,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           .orderBy('createdAt', descending: true)
           .snapshots(),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting)
+        if (snapshot.connectionState == ConnectionState.waiting) {
           return const LoadingIndicator();
+        }
         final contracts = snapshot.data?.docs ?? [];
-        if (contracts.isEmpty)
+        if (contracts.isEmpty) {
           return _buildEmptyState(
               Icons.handshake_outlined, 'لا توجد عقود مسجلة');
+        }
 
         return ListView.builder(
           padding: const EdgeInsets.all(12),
@@ -1294,12 +1319,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           .where('status', isEqualTo: 'pending')
           .snapshots(),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting)
+        if (snapshot.connectionState == ConnectionState.waiting) {
           return const LoadingIndicator();
+        }
         final requests = snapshot.data?.docs ?? [];
-        if (requests.isEmpty)
+        if (requests.isEmpty) {
           return _buildEmptyState(
               Icons.person_remove_outlined, 'لا توجد طلبات حذف');
+        }
 
         return ListView.builder(
           padding: const EdgeInsets.all(12),
@@ -1459,8 +1486,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           .doc('app_settings')
           .snapshots(),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting)
+        if (snapshot.connectionState == ConnectionState.waiting) {
           return const LoadingIndicator();
+        }
 
         final data = snapshot.data?.data() as Map<String, dynamic>? ?? {};
         final whatsappCtrl = TextEditingController(
@@ -1471,13 +1499,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         final telegramCtrl = TextEditingController(
             text: data['telegram'] ?? 'https://t.me/JamalJhome');
         final websiteCtrl = TextEditingController(
-            text: data['website'] ?? 'https://sudanfree.com/sudan-free.html/');
+            text: data['website'] ?? 'https://sudanfree.com/sudan-free.html');
         final shareTextArCtrl = TextEditingController(
             text: data['share_text_ar'] ??
                 'جرب تطبيق سودان فري للعثور على فرص عمل ومستقلين موثوقين! حمل التطبيق الآن: https://sudanfree.com/sudan-free.html');
         final shareTextEnCtrl = TextEditingController(
             text: data['share_text_en'] ??
                 'Try SudanFree to find jobs and trusted freelancers! Download now: https://sudanfree.com/sudan-free.html');
+        final aiWelcomePromptCtrl = TextEditingController(
+            text: data['ai_welcome_prompt'] ??
+                'قم بالتركيز على الترويج للحرفيين الجدد في منطقتك وعرض أحدث المنتجات.');
 
         bool isSaving = false;
 
@@ -1550,6 +1581,19 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           border: OutlineInputBorder()),
                     ),
                     const SizedBox(height: 24),
+                    const Text('توجيهات الشاشة الترحيبية للذكاء الاصطناعي',
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: aiWelcomePromptCtrl,
+                      maxLines: 3,
+                      decoration: const InputDecoration(
+                          labelText: 'أدخل توجيهاتك لمحتوى الشاشة الترحيبية...',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.smart_toy, color: Colors.teal)),
+                    ),
+                    const SizedBox(height: 24),
                     SizedBox(
                       width: double.infinity,
                       height: 50,
@@ -1582,6 +1626,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                     'website': websiteCtrl.text,
                                     'share_text_ar': shareTextArCtrl.text,
                                     'share_text_en': shareTextEnCtrl.text,
+                                    'ai_welcome_prompt': aiWelcomePromptCtrl.text,
                                     'updatedAt': FieldValue.serverTimestamp(),
                                   }, SetOptions(merge: true));
 
@@ -1599,8 +1644,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                             backgroundColor: Colors.red));
                                   }
                                 } finally {
-                                  if (context.mounted)
+                                  if (context.mounted) {
                                     setSettingsState(() => isSaving = false);
+                                  }
                                 }
                               },
                       ),

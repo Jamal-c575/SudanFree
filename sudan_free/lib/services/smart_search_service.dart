@@ -430,25 +430,29 @@ class SmartSearchService {
 
       // البحث في نوع العمل
       if (jobTitle != null &&
-          _containsMatch(_normalizeArabic(jobTitle.toLowerCase()), q))
+          _containsMatch(_normalizeArabic(jobTitle.toLowerCase()), q)) {
         return true;
+      }
 
       // البحث في المهارات (نصاً مباشراً أو عبر خريطة الـ Enum → عربي)
       for (final skill in skills) {
         // مطابقة مباشرة (للمهارات المخصصة المكتوبة بالعربي)
-        if (_containsMatch(_normalizeArabic(skill.toLowerCase()), q))
+        if (_containsMatch(_normalizeArabic(skill.toLowerCase()), q)) {
           return true;
+        }
         // *** الإصلاح الجذري: تحويل اسم الـ Enum الإنجليزي → كلمات عربية ثم مطابقة ***
         final arabicKeywords = _skillCategoryKeywords[skill] ?? [];
         for (final keyword in arabicKeywords) {
-          if (_containsMatch(_normalizeArabic(keyword.toLowerCase()), q))
+          if (_containsMatch(_normalizeArabic(keyword.toLowerCase()), q)) {
             return true;
+          }
         }
       }
 
       // البحث في النبذة
-      if (bio != null && _containsMatch(_normalizeArabic(bio.toLowerCase()), q))
+      if (bio != null && _containsMatch(_normalizeArabic(bio.toLowerCase()), q)) {
         return true;
+      }
     }
 
     return false;
@@ -542,17 +546,20 @@ class SmartSearchService {
     for (final q in expandedQueries) {
       if (_containsMatch(_normalizeArabic(name.toLowerCase()), q)) return true;
       if (jobTitle != null &&
-          _containsMatch(_normalizeArabic(jobTitle.toLowerCase()), q))
+          _containsMatch(_normalizeArabic(jobTitle.toLowerCase()), q)) {
         return true;
+      }
       for (final skill in skills) {
         // مطابقة مباشرة (للمهارات المخصصة المكتوبة بالعربي)
-        if (_containsMatch(_normalizeArabic(skill.toLowerCase()), q))
+        if (_containsMatch(_normalizeArabic(skill.toLowerCase()), q)) {
           return true;
+        }
         // *** الإصلاح الجذري: تحويل اسم الـ Enum → عربي ***
         final arabicKeywords = _skillCategoryKeywords[skill] ?? [];
         for (final keyword in arabicKeywords) {
-          if (_containsMatch(_normalizeArabic(keyword.toLowerCase()), q))
+          if (_containsMatch(_normalizeArabic(keyword.toLowerCase()), q)) {
             return true;
+          }
         }
       }
     }
@@ -570,12 +577,14 @@ class SmartSearchService {
 
     // مطابقة مباشرة مع الولاية والمحلية
     if (state != null &&
-        _containsMatch(_normalizeArabic(state.toLowerCase()), normalizedQuery))
+        _containsMatch(_normalizeArabic(state.toLowerCase()), normalizedQuery)) {
       return true;
+    }
     if (locality != null &&
         _containsMatch(
-            _normalizeArabic(locality.toLowerCase()), normalizedQuery))
+            _normalizeArabic(locality.toLowerCase()), normalizedQuery)) {
       return true;
+    }
 
     // مطابقة مع النبذة (هنا يكتب المستخدم حيه)
     if (bio != null) {
@@ -621,7 +630,9 @@ class SmartSearchService {
     final targetNoSpaces = target.replaceAll(' ', '');
     if (textNoSpaces == targetNoSpaces) return true;
     if (textNoSpaces.contains(targetNoSpaces) ||
-        targetNoSpaces.contains(textNoSpaces)) return true;
+        targetNoSpaces.contains(textNoSpaces)) {
+      return true;
+    }
 
     // Levenshtein-like: إذا كان الفرق <= 2 حرف (للكلمات الطويلة)
     if (text.length >= 3 && target.length >= 3) {
@@ -741,9 +752,13 @@ class SmartSearchService {
         cleanQuery.isNotEmpty &&
         cleanQuery.length >= 3) {
       if (cleanWord.contains(cleanQuery) &&
-          cleanWord.length - cleanQuery.length <= 2) return true;
+          cleanWord.length - cleanQuery.length <= 2) {
+        return true;
+      }
       if (cleanQuery.contains(cleanWord) &&
-          cleanQuery.length - cleanWord.length <= 2) return true;
+          cleanQuery.length - cleanWord.length <= 2) {
+        return true;
+      }
     }
 
     return false;
@@ -777,11 +792,13 @@ class SmartSearchService {
     final normalizedQuery = _normalizeArabic(query.toLowerCase());
 
     // Exact matches get highest score
-    if (_normalizeArabic(name.toLowerCase()).contains(normalizedQuery))
+    if (_normalizeArabic(name.toLowerCase()).contains(normalizedQuery)) {
       score += 100;
+    }
     if (jobTitle != null &&
-        _normalizeArabic(jobTitle.toLowerCase()).contains(normalizedQuery))
+        _normalizeArabic(jobTitle.toLowerCase()).contains(normalizedQuery)) {
       score += 90;
+    }
 
     // Skill matches
     for (final skill in skills) {
@@ -793,17 +810,20 @@ class SmartSearchService {
 
     // Bio matches
     if (bio != null &&
-        _normalizeArabic(bio.toLowerCase()).contains(normalizedQuery))
+        _normalizeArabic(bio.toLowerCase()).contains(normalizedQuery)) {
       score += 50;
+    }
 
     // Fuzzy matches get lower score
     if (score == 0) {
-      if (_isFuzzyMatch(normalizedQuery, _normalizeArabic(name.toLowerCase())))
+      if (_isFuzzyMatch(normalizedQuery, _normalizeArabic(name.toLowerCase()))) {
         score += 30;
+      }
       if (jobTitle != null &&
           _isFuzzyMatch(
-              normalizedQuery, _normalizeArabic(jobTitle.toLowerCase())))
+              normalizedQuery, _normalizeArabic(jobTitle.toLowerCase()))) {
         score += 25;
+      }
       for (final skill in skills) {
         if (_isFuzzyMatch(
             normalizedQuery, _normalizeArabic(skill.toLowerCase()))) {

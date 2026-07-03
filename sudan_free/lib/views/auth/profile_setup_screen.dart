@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:provider/provider.dart';
+import '../../widgets/common/premium_glass_card.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
 import '../../core/constants/sudan_locations.dart';
@@ -13,12 +14,16 @@ import '../../providers/auth_provider.dart';
 import '../../services/region_detection_service.dart';
 import '../../core/utils/app_error_handler.dart';
 import '../../providers/locale_provider.dart';
-import '../../widgets/buttons/primary_button.dart';
+import '../../widgets/common/premium_button.dart';
 import '../../widgets/inputs/custom_text_field.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter/services.dart';
+import '../../utils/animation_utils.dart';
 
 import '../settings/privacy_policy_screen.dart';
 
 import 'identity_verification_screen.dart';
+import 'package:sudan_free/l10n/generated/app_localizations.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
   final UserModel? existingUser;
@@ -63,9 +68,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         final scaffoldMessenger = ScaffoldMessenger.of(context);
         scaffoldMessenger.showSnackBar(
           SnackBar(
-            content: Text(locale == 'ar'
-                ? 'لا يمكنك تحويل الحساب لمهنة جديدة للحفاظ على تقييماتك السابقة. يمكنك البقاء كعميل أو كمهنتك الأصلية فقط.'
-                : 'You cannot switch to a new provider type to protect your reviews. You can only be a Client or your original profession.'),
+            content: Text(AppLocalizations.of(context)!.youCannotSwitchToANew),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 4),
           ),
@@ -150,15 +153,17 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         for (final s in user.shopInterests) {
           try {
             final cat = ShopCategory.values.firstWhere((e) => e.name == s);
-            if (!_selectedShopInterests.contains(cat))
+            if (!_selectedShopInterests.contains(cat)) {
               _selectedShopInterests.add(cat);
+            }
           } catch (_) {}
         }
         for (final s in user.serviceInterests) {
           try {
             final cat = JobCategory.values.firstWhere((e) => e.name == s);
-            if (!_selectedServiceInterests.contains(cat))
+            if (!_selectedServiceInterests.contains(cat)) {
               _selectedServiceInterests.add(cat);
+            }
           } catch (_) {}
         }
       }
@@ -288,9 +293,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                 child: CircularProgressIndicator(
                     color: Colors.white, strokeWidth: 2)),
             const SizedBox(width: 12),
-            Text(locale == 'ar'
-                ? 'جاري التحقق من الموقع عبر GPS...'
-                : 'Verifying location via GPS...'),
+            Text(AppLocalizations.of(context)!.verifyingLocationViaGps),
           ],
         ),
         duration: const Duration(seconds: 10),
@@ -308,9 +311,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         // GPS unavailable (permissions denied or service off)
         final scaffoldMessenger = ScaffoldMessenger.of(context);
         scaffoldMessenger.showSnackBar(SnackBar(
-          content: Text(locale == 'ar'
-              ? 'لم نتمكن من الوصول لخدمات الموقع. تأكد من تفعيل GPS والأذونات.'
-              : 'Could not access location services. Make sure GPS and permissions are enabled.'),
+          content: Text(AppLocalizations.of(context)!.couldNotAccessLocationServicesMake),
           backgroundColor: AppColors.warning,
         ));
         return;
@@ -325,17 +326,13 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       if (gpsResult.isInSudan) {
         final scaffoldMessenger = ScaffoldMessenger.of(context);
         scaffoldMessenger.showSnackBar(SnackBar(
-          content: Text(locale == 'ar'
-              ? '✅ تم التحقق بنجاح! أنت داخل السودان.'
-              : '✅ Verified successfully! You are in Sudan.'),
+          content: Text(AppLocalizations.of(context)!.verifiedSuccessfullyYouAreInSudan),
           backgroundColor: AppColors.success,
         ));
       } else {
         final scaffoldMessenger = ScaffoldMessenger.of(context);
         scaffoldMessenger.showSnackBar(SnackBar(
-          content: Text(locale == 'ar'
-              ? 'يبدو أنك خارج السودان حالياً. يمكنك التسجيل كعميل.'
-              : 'It appears you are outside Sudan. You can register as a client.'),
+          content: Text(AppLocalizations.of(context)!.itAppearsYouAreOutsideSudan),
           backgroundColor: AppColors.warning,
         ));
       }
@@ -344,17 +341,16 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         final scaffoldMessenger = ScaffoldMessenger.of(context);
         scaffoldMessenger.showSnackBar(SnackBar(
-          content: Text(locale == 'ar'
-              ? 'حدث خطأ أثناء التحقق من الموقع'
-              : 'Error verifying location'),
+          content: Text(AppLocalizations.of(context)!.errorVerifyingLocation),
           backgroundColor: AppColors.error,
         ));
       }
     } finally {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _isVerifyingGPS = false;
         });
+      }
     }
   }
 
@@ -369,21 +365,26 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     if (area.contains('kassala')) return 'كسلا';
     if (area.contains('gedaref') ||
         area.contains('qadaref') ||
-        area.contains('qadarif')) return 'القضارف';
+        area.contains('qadarif')) {
+      return 'القضارف';
+    }
     if (area.contains('red sea')) return 'البحر الأحمر';
     if (area.contains('sennar')) return 'سنار';
     if (area.contains('blue nile')) return 'النيل الأزرق';
     if (area.contains('white nile')) return 'النيل الأبيض';
-    if (area.contains('north') && area.contains('kordofan'))
+    if (area.contains('north') && area.contains('kordofan')) {
       return 'شمال كردفان';
-    if (area.contains('south') && area.contains('kordofan'))
+    }
+    if (area.contains('south') && area.contains('kordofan')) {
       return 'جنوب كردفان';
+    }
     if (area.contains('west') && area.contains('kordofan')) return 'غرب كردفان';
     if (area.contains('north') && area.contains('darfur')) return 'شمال دارفور';
     if (area.contains('south') && area.contains('darfur')) return 'جنوب دارفور';
     if (area.contains('west') && area.contains('darfur')) return 'غرب دارفور';
-    if (area.contains('central') && area.contains('darfur'))
+    if (area.contains('central') && area.contains('darfur')) {
       return 'وسط دارفور';
+    }
     if (area.contains('east') && area.contains('darfur')) return 'شرق دارفور';
 
     for (var s in SudanLocations.states) {
@@ -397,24 +398,29 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     final area = localityArea.toLowerCase();
     final localities = SudanLocations.getLocalities(state);
 
-    if (area.contains('khartoum north') || area.contains('bahri'))
+    if (area.contains('khartoum north') || area.contains('bahri')) {
       return 'بحري';
+    }
     if (area.contains('khartoum')) return 'الخرطوم';
     if (area.contains('omdurman')) return 'أم درمان';
     if (area.contains('karari')) return 'كرري';
     if (area.contains('umbadda') || area.contains('ombadda')) return 'أم بدة';
     if (area.contains('jebel aulia')) return 'جبل أولياء';
-    if (area.contains('sharq an nil') || area.contains('east nile'))
+    if (area.contains('sharq an nil') || area.contains('east nile')) {
       return 'شرق النيل';
-    if (area.contains('wad madani') || area.contains('wad medani'))
+    }
+    if (area.contains('wad madani') || area.contains('wad medani')) {
       return 'ود مدني';
+    }
     if (area.contains('port sudan')) return 'بورتسودان';
     if (area.contains('kassala')) return 'كسلا';
     if (area.contains('nyala')) return 'نيالا';
-    if (area.contains('el fasher') || area.contains('al fashir'))
+    if (area.contains('el fasher') || area.contains('al fashir')) {
       return 'الفاشر';
-    if (area.contains('al ubayyid') || area.contains('el obeid'))
+    }
+    if (area.contains('al ubayyid') || area.contains('el obeid')) {
       return 'الأبيض';
+    }
 
     for (var l in localities) {
       if (localityArea.contains(l) || l.contains(localityArea)) return l;
@@ -431,9 +437,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         final scaffoldMessenger = ScaffoldMessenger.of(context);
         scaffoldMessenger.showSnackBar(
           SnackBar(
-            content: Text(locale == 'ar'
-                ? 'عذراً، يمكنك اختيار مسميين وظيفيين كحد أقصى'
-                : 'Sorry, you can select up to 2 categories'),
+            content: Text(AppLocalizations.of(context)!.sorryYouCanSelectUpTo),
             backgroundColor: Colors.orange,
           ),
         );
@@ -444,9 +448,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         final scaffoldMessenger = ScaffoldMessenger.of(context);
         scaffoldMessenger.showSnackBar(
           SnackBar(
-            content: Text(locale == 'ar'
-                ? 'عذراً، يمكنك إضافة نوع متجر مخصص واحد فقط'
-                : 'Sorry, you can only add one custom shop type'),
+            content: Text(AppLocalizations.of(context)!.sorryYouCanOnlyAddOne),
             backgroundColor: Colors.orange,
           ),
         );
@@ -469,8 +471,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
               const SizedBox(width: 8),
               Text(
                 isShop
-                    ? (locale == 'ar' ? 'نوع متجر مخصص' : 'Custom Shop Type')
-                    : (locale == 'ar' ? 'مسمى وظيفي مخصص' : 'Custom Job Title'),
+                    ? (AppLocalizations.of(context)!.customShopType)
+                    : (AppLocalizations.of(context)!.customJobTitle),
                 style:
                     const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
@@ -482,12 +484,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             children: [
               Text(
                 isShop
-                    ? (locale == 'ar'
-                        ? 'اكتب نوع متجرك إذا لم تجده في القائمة'
-                        : 'Type your shop category if not listed')
-                    : (locale == 'ar'
-                        ? 'اكتب اسم مهنتك إذا لم تجدها في القائمة'
-                        : 'Type your profession if not listed'),
+                    ? (AppLocalizations.of(context)!.typeYourShopCategoryIfNot)
+                    : (AppLocalizations.of(context)!.typeYourProfessionIfNotListed),
                 style: TextStyle(fontSize: 13, color: Colors.grey[600]),
               ),
               const SizedBox(height: 12),
@@ -497,12 +495,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                 textInputAction: TextInputAction.done,
                 decoration: InputDecoration(
                   hintText: isShop
-                      ? (locale == 'ar'
-                          ? 'مثال: محل هدايا، عطور...'
-                          : 'e.g. Gift Shop, Perfumes...')
-                      : (locale == 'ar'
-                          ? 'مثال: نجار، حداد، ميكانيكي...'
-                          : 'e.g. Carpenter, Blacksmith...'),
+                      ? (AppLocalizations.of(context)!.egGiftShopPerfumes)
+                      : (AppLocalizations.of(context)!.egCarpenterBlacksmith),
                   hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
                   prefixIcon: const Icon(Icons.edit,
                       color: AppColors.primary, size: 20),
@@ -528,7 +522,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: Text(locale == 'ar' ? 'إلغاء' : 'Cancel'),
+              child: Text(AppLocalizations.of(context)!.cancel),
             ),
             ElevatedButton.icon(
               onPressed: () {
@@ -536,7 +530,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                 Navigator.pop(ctx);
               },
               icon: const Icon(Icons.add, size: 18),
-              label: Text(locale == 'ar' ? 'إضافة' : 'Add'),
+              label: Text(AppLocalizations.of(context)!.add),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
@@ -557,7 +551,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       scaffoldMessenger.showSnackBar(
         SnackBar(
           content: Text(
-              locale == 'ar' ? 'الرجاء الكتابة أولاً' : 'Please type first'),
+              AppLocalizations.of(context)!.pleaseTypeFirst),
           backgroundColor: Colors.orange,
         ),
       );
@@ -567,9 +561,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       final scaffoldMessenger = ScaffoldMessenger.of(context);
       scaffoldMessenger.showSnackBar(
         SnackBar(
-          content: Text(locale == 'ar'
-              ? 'هذا المسمى مضاف بالفعل'
-              : 'This title is already added'),
+          content: Text(AppLocalizations.of(context)!.thisTitleIsAlreadyAdded),
           backgroundColor: Colors.orange,
         ),
       );
@@ -860,9 +852,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       scaffoldMessenger.showSnackBar(
         SnackBar(
           content: Text(errorMsg ??
-              (locale == 'ar'
-                  ? 'فشل في حفظ البيانات. يرجى المحاولة مرة أخرى.'
-                  : 'Failed to save profile. Please try again.')),
+              (AppLocalizations.of(context)!.failedToSaveProfilePleaseTry)),
           backgroundColor: AppColors.error,
         ),
       );
@@ -882,8 +872,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: Text(isEditing
-            ? (locale == 'ar' ? 'تعديل الملف الشخصي' : 'Edit Profile')
-            : (locale == 'ar' ? 'إكمال الملف الشخصي' : 'Complete Profile')),
+            ? (AppLocalizations.of(context)!.editProfile)
+            : (AppLocalizations.of(context)!.completeProfile)),
         automaticallyImplyLeading: isEditing,
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -927,10 +917,12 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   final nameRegExp = RegExp(r'[a-zA-Z\u0600-\u06FF]');
                   final phoneText = _phoneController.text.trim();
                   final phoneRegExp = RegExp(r'^\+?[0-9]{9,15}$');
-                  if (nameText.length < 2 || !nameRegExp.hasMatch(nameText))
+                  if (nameText.length < 2 || !nameRegExp.hasMatch(nameText)) {
                     return;
-                  if (phoneText.isEmpty || !phoneRegExp.hasMatch(phoneText))
+                  }
+                  if (phoneText.isEmpty || !phoneRegExp.hasMatch(phoneText)) {
                     return;
+                  }
                 }
               }
               setState(() => _currentStep = step);
@@ -941,9 +933,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   final scaffoldMessenger = ScaffoldMessenger.of(context);
                   scaffoldMessenger.showSnackBar(
                     SnackBar(
-                      content: Text(locale == 'ar'
-                          ? 'يرجى الانتظار حتى يكتمل التحقق من الموقع'
-                          : 'Please wait for location verification to complete'),
+                      content: Text(AppLocalizations.of(context)!.pleaseWaitForLocationVerificationTo),
                       backgroundColor: AppColors.warning,
                     ),
                   );
@@ -953,9 +943,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   final scaffoldMessenger = ScaffoldMessenger.of(context);
                   scaffoldMessenger.showSnackBar(
                     SnackBar(
-                      content: Text(locale == 'ar'
-                          ? 'اختر نوع الحساب'
-                          : 'Select an account type'),
+                      content: Text(AppLocalizations.of(context)!.selectAnAccountType),
                       backgroundColor: AppColors.warning,
                     ),
                   );
@@ -970,9 +958,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   final scaffoldMessenger = ScaffoldMessenger.of(context);
                   scaffoldMessenger.showSnackBar(
                     SnackBar(
-                      content: Text(locale == 'ar'
-                          ? 'يرجى كتابة اسم حقيقي (أحرف فقط)'
-                          : 'Please enter a valid real name (letters only)'),
+                      content: Text(AppLocalizations.of(context)!.pleaseEnterAValidRealName),
                       backgroundColor: AppColors.warning,
                     ),
                   );
@@ -986,9 +972,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   final scaffoldMessenger = ScaffoldMessenger.of(context);
                   scaffoldMessenger.showSnackBar(
                     SnackBar(
-                      content: Text(locale == 'ar'
-                          ? 'رقم الهاتف إجباري ويجب أن يكون صحيحاً'
-                          : 'A valid phone number is required'),
+                      content: Text(AppLocalizations.of(context)!.aValidPhoneNumberIsRequired),
                       backgroundColor: AppColors.warning,
                     ),
                   );
@@ -1002,9 +986,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                     final scaffoldMessenger = ScaffoldMessenger.of(context);
                     scaffoldMessenger.showSnackBar(
                       SnackBar(
-                        content: Text(locale == 'ar'
-                            ? 'السعر بالساعة إجباري لتقديم الخدمات'
-                            : 'Hourly rate is required for service providers'),
+                        content: Text(AppLocalizations.of(context)!.hourlyRateIsRequiredForService),
                         backgroundColor: AppColors.warning,
                       ),
                     );
@@ -1021,9 +1003,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   final scaffoldMessenger = ScaffoldMessenger.of(context);
                   scaffoldMessenger.showSnackBar(
                     SnackBar(
-                      content: Text(locale == 'ar'
-                          ? 'يجب تحديد الولاية لمقدمي الخدمات العامة والمتاجر'
-                          : 'State must be selected for general services and shops'),
+                      content: Text(AppLocalizations.of(context)!.stateMustBeSelectedForGeneral),
                       backgroundColor: AppColors.warning,
                     ),
                   );
@@ -1034,9 +1014,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   final scaffoldMessenger = ScaffoldMessenger.of(context);
                   scaffoldMessenger.showSnackBar(
                     SnackBar(
-                      content: Text(locale == 'ar'
-                          ? 'يجب تحديد المحلية'
-                          : 'Locality must be selected'),
+                      content: Text(AppLocalizations.of(context)!.localityMustBeSelected),
                       backgroundColor: AppColors.warning,
                     ),
                   );
@@ -1066,27 +1044,20 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                 child: Row(
                   children: [
                     Expanded(
-                      child: GradientButton(
-                        text: isLastStep
+                      child: PremiumButton(
+                        label: isLastStep
                             ? (widget.existingUser != null
-                                ? (locale == 'ar'
-                                    ? 'حفظ التغييرات'
-                                    : 'Save Changes')
-                                : (locale == 'ar'
-                                    ? 'إنشاء الحساب'
-                                    : 'Create Account'))
-                            : (locale == 'ar' ? 'التالي' : 'Next'),
+                                ? (AppLocalizations.of(context)!.saveChanges)
+                                : (AppLocalizations.of(context)!.createAccount))
+                            : (AppLocalizations.of(context)!.next),
                         isLoading: isLastStep && isLoading,
-                        enabled: !isCheckingLocation,
                         onPressed: isCheckingLocation
                             ? () {
                                 final scaffoldMessenger =
                                     ScaffoldMessenger.of(context);
                                 scaffoldMessenger.showSnackBar(
                                   SnackBar(
-                                    content: Text(locale == 'ar'
-                                        ? 'يرجى الانتظار قليلاً حتى يكتمل تحديد الموقع'
-                                        : 'Please wait while location is being detected'),
+                                    content: Text(AppLocalizations.of(context)!.pleaseWaitWhileLocationIsBeing),
                                     backgroundColor: AppColors.warning,
                                     duration: const Duration(seconds: 2),
                                   ),
@@ -1098,10 +1069,13 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                     if (_currentStep > 0) ...[
                       const SizedBox(width: 12),
                       Expanded(
-                        child: PrimaryButton(
-                          text: locale == 'ar' ? 'السابق' : 'Previous',
-                          isOutlined: true,
-                          onPressed: details.onStepCancel,
+                        child: PremiumButton(
+                          label: AppLocalizations.of(context)!.previous,
+                          isPrimary: false,
+                          onPressed: () {
+                            HapticFeedback.lightImpact();
+                            details.onStepCancel?.call();
+                          },
                         ),
                       ),
                     ],
@@ -1176,12 +1150,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                               Expanded(
                                 child: Text(
                                   _detectionFailed
-                                      ? (locale == 'ar'
-                                          ? 'لم نتمكن من تحديد موقعك تلقائياً. يرجى التحقق عبر GPS لفتح جميع أنواع الحسابات.'
-                                          : 'Could not detect your location automatically. Please verify via GPS to unlock all account types.')
-                                      : (locale == 'ar'
-                                          ? 'يظهر اتصالك أنك خارج السودان. يمكنك التسجيل كـ "عميل" فقط.\nإذا كنت داخل السودان، يمكنك التحقق عبر GPS.'
-                                          : 'Your connection shows you are outside Sudan. You can only register as "Client".\nIf you are in Sudan, verify via GPS.'),
+                                      ? (AppLocalizations.of(context)!.couldNotDetectYourLocationAutomatically)
+                                      : (AppLocalizations.of(context)!.yourConnectionShowsYouAreOutside),
                                   style: TextStyle(
                                     color: _detectionFailed
                                         ? Colors.orange.shade800
@@ -1207,12 +1177,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                   : const Icon(Icons.my_location, size: 20),
                               label: Text(
                                 _isVerifyingGPS
-                                    ? (locale == 'ar'
-                                        ? 'جاري التحقق...'
-                                        : 'Verifying...')
-                                    : (locale == 'ar'
-                                        ? 'تحقق من موقعي عبر GPS'
-                                        : 'Verify my location via GPS'),
+                                    ? (AppLocalizations.of(context)!.verifying)
+                                    : (AppLocalizations.of(context)!.verifyMyLocationViaGps),
                                 style: const TextStyle(
                                     fontWeight: FontWeight.bold),
                               ),
@@ -1238,9 +1204,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                               child: OutlinedButton.icon(
                                 icon: const Icon(Icons.refresh, size: 18),
                                 label: Text(
-                                  locale == 'ar'
-                                      ? 'إعادة المحاولة'
-                                      : 'Retry Detection',
+                                  AppLocalizations.of(context)!.retryDetection,
                                   style: const TextStyle(
                                       fontWeight: FontWeight.bold),
                                 ),
@@ -1273,12 +1237,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                       context,
                       role: UserRole.freelancer,
                       icon: Icons.handyman_outlined,
-                      title: locale == 'ar'
-                          ? 'مقدم خدمات فنية'
-                          : 'Craft Service Provider',
-                      description: locale == 'ar'
-                          ? 'كهربائي، سباك، نجار، وغيرها من الخدمات الميدانية'
-                          : 'Electrician, Plumber, Carpenter, etc.',
+                      title: AppLocalizations.of(context)!.craftServiceProvider,
+                      description: AppLocalizations.of(context)!.electricianPlumberCarpenterEtc,
                       isSelected: _selectedRole == UserRole.freelancer,
                       onTap: () => _switchRole(UserRole.freelancer),
                     ),
@@ -1287,12 +1247,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                       context,
                       role: UserRole.techService,
                       icon: Icons.computer_outlined,
-                      title: locale == 'ar'
-                          ? 'مقدم خدمات تقنية'
-                          : 'Tech Service Provider',
-                      description: locale == 'ar'
-                          ? 'مبرمج، مصمم، مونتاج، أو العمل عن بعد'
-                          : 'Programmer, Designer, Video Editor, or Remote Worker',
+                      title: AppLocalizations.of(context)!.techServiceProvider,
+                      description: AppLocalizations.of(context)!.programmerDesignerVideoEditorOrRemote,
                       isSelected: _selectedRole == UserRole.techService,
                       onTap: () => _switchRole(UserRole.techService),
                     ),
@@ -1301,12 +1257,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                       context,
                       role: UserRole.privateService,
                       icon: Icons.school_outlined,
-                      title: locale == 'ar'
-                          ? 'مقدم خدمات خاصة'
-                          : 'Private Service Provider',
-                      description: locale == 'ar'
-                          ? 'مدرس خصوصي، محامي، طباخ، مترجم، مرشد سياحي، وغيرها'
-                          : 'Private Tutor, Lawyer, Chef, Translator, Tour Guide, etc.',
+                      title: AppLocalizations.of(context)!.privateServiceProvider,
+                      description: AppLocalizations.of(context)!.privateTutorLawyerChefTranslatorTour,
                       isSelected: _selectedRole == UserRole.privateService,
                       onTap: () => _switchRole(UserRole.privateService),
                     ),
@@ -1315,12 +1267,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                       context,
                       role: UserRole.shop,
                       icon: Icons.store_outlined,
-                      title: locale == 'ar'
-                          ? 'صاحب معرض / متجر'
-                          : 'Shop / Gallery Owner',
-                      description: locale == 'ar'
-                          ? 'أملك متجرًا أو معرضًا وأعرض منتجاتي'
-                          : 'I own a store/gallery and display my products',
+                      title: AppLocalizations.of(context)!.shopGalleryOwner,
+                      description: AppLocalizations.of(context)!.iOwnAStoregalleryAndDisplay,
                       isSelected: _selectedRole == UserRole.shop,
                       onTap: () => _switchRole(UserRole.shop),
                     ),
@@ -1331,10 +1279,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                     context,
                     role: UserRole.client,
                     icon: Icons.person_search_outlined,
-                    title: locale == 'ar' ? 'عميل' : 'Client',
-                    description: locale == 'ar'
-                        ? 'أبحث عن عمال ومستقلين ومنتجات (للتصفح والتفاعل)'
-                        : 'I am looking for workers, freelancers, and products (Browse and Interact)',
+                    title: AppLocalizations.of(context)!.client,
+                    description: AppLocalizations.of(context)!.iAmLookingForWorkersFreelancers,
                     isSelected: _selectedRole == UserRole.client,
                     onTap: () => _switchRole(UserRole.client),
                   ),
@@ -1345,7 +1291,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       // Step 2: Basic Info
       Step(
         title:
-            Text(locale == 'ar' ? 'المعلومات الأساسية' : 'Basic Information'),
+            Text(AppLocalizations.of(context)!.basicInformation),
         isActive: _currentStep >= 1,
         state: _currentStep > 1 ? StepState.complete : StepState.indexed,
         content: Form(
@@ -1355,13 +1301,11 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
               const SizedBox(height: 16),
               CustomTextField(
                 label: _selectedRole == UserRole.shop
-                    ? (locale == 'ar' ? 'اسم المتجر' : 'Shop Name')
+                    ? (AppLocalizations.of(context)!.shopName)
                     : AppStrings.get(AppStrings.name, locale),
                 hint: _selectedRole == UserRole.shop
-                    ? (locale == 'ar' ? 'أدخل اسم المتجر' : 'Enter shop name')
-                    : (locale == 'ar'
-                        ? 'أدخل اسمك الكامل'
-                        : 'Enter your full name'),
+                    ? (AppLocalizations.of(context)!.enterShopName)
+                    : (AppLocalizations.of(context)!.enterYourFullName),
                 controller: _nameController,
                 isRequired: true,
                 prefixIcon: _selectedRole == UserRole.shop
@@ -1371,7 +1315,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
               const SizedBox(height: 16),
               CustomTextField(
                 label:
-                    locale == 'ar' ? 'رقم واتساب / الهاتف' : 'WhatsApp / Phone',
+                    AppLocalizations.of(context)!.whatsappPhone,
                 hint: '+249123456789',
                 controller: _phoneController,
                 isRequired: true,
@@ -1381,27 +1325,19 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
               const SizedBox(height: 16),
               CustomTextField(
                 label: _selectedRole == UserRole.shop
-                    ? (locale == 'ar' ? 'وصف المتجر' : 'Shop Description')
+                    ? (AppLocalizations.of(context)!.shopDescription)
                     : AppStrings.get(AppStrings.bio, locale),
                 hint: _selectedRole == UserRole.shop
-                    ? (locale == 'ar'
-                        ? 'اكتب وصفًا للمتجر ومنتجاته...'
-                        : 'Write a description for your shop...')
-                    : (locale == 'ar'
-                        ? 'اكتب نبذة مختصرة عنك...'
-                        : 'Write a short bio about yourself...'),
+                    ? (AppLocalizations.of(context)!.writeADescriptionForYourShop)
+                    : (AppLocalizations.of(context)!.writeAShortBioAboutYourself),
                 controller: _bioController,
                 maxLines: 3,
                 prefixIcon: Icons.description_outlined,
               ),
               const SizedBox(height: 16),
               CustomTextField(
-                label: locale == 'ar'
-                    ? 'اسم المنطقة / الحي'
-                    : 'Neighborhood / Street',
-                hint: locale == 'ar'
-                    ? 'أدخل اسم الحي لتسهيل البحث عنك...'
-                    : 'Enter your neighborhood name...',
+                label: AppLocalizations.of(context)!.neighborhoodStreet,
+                hint: AppLocalizations.of(context)!.enterYourNeighborhoodName,
                 controller: _neighborhoodController,
                 prefixIcon: Icons.location_city_outlined,
               ),
@@ -1417,9 +1353,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                       padding:
                           const EdgeInsets.only(bottom: 8, right: 4, left: 4),
                       child: Text(
-                        locale == 'ar'
-                            ? 'ما هو المبلغ الذي يرضيك للعمل المتواصل\nلمدة ساعة (بدون تكاليف خارجية)؟'
-                            : 'What amount satisfies you for\none hour of continuous work?',
+                        AppLocalizations.of(context)!.whatAmountSatisfiesYouFornoneHour,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                               fontWeight: FontWeight.w600,
                               height: 1.5,
@@ -1428,7 +1362,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                     ),
                     // ── حقل الإدخال بتسمية مختصرة ──
                     CustomTextField(
-                      label: locale == 'ar' ? 'السعر بالساعة' : 'Hourly Rate',
+                      label: AppLocalizations.of(context)!.hourlyRate,
                       hint: '100',
                       controller: _hourlyRateController,
                       keyboardType: TextInputType.number,
@@ -1436,7 +1370,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                       suffixIcon: Padding(
                         padding: const EdgeInsets.all(12),
                         child: Text(
-                          locale == 'ar' ? 'SDG/ساعة' : 'SDG/hr',
+                          AppLocalizations.of(context)!.sdghr,
                           style: Theme.of(context).textTheme.bodyMedium,
                         ),
                       ),
@@ -1450,7 +1384,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   children: [
                     Expanded(
                       child: _buildTimePickerField(
-                        label: locale == 'ar' ? 'وقت الفتح' : 'Opening Time',
+                        label: AppLocalizations.of(context)!.openingTime,
                         controller: _openingHoursController,
                         icon: Icons.access_time,
                       ),
@@ -1458,7 +1392,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: _buildTimePickerField(
-                        label: locale == 'ar' ? 'وقت الإغلاق' : 'Closing Time',
+                        label: AppLocalizations.of(context)!.closingTime,
                         controller: _closingHoursController,
                         icon: Icons.access_time_filled,
                       ),
@@ -1473,7 +1407,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
       // Step 3: Location
       Step(
-        title: Text(locale == 'ar' ? 'الموقع' : 'Location'),
+        title: Text(AppLocalizations.of(context)!.location),
         isActive: _currentStep >= 2,
         state: _currentStep > 2 ? StepState.complete : StepState.indexed,
         content: Column(
@@ -1495,9 +1429,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        locale == 'ar'
-                            ? 'تحديد الموقع اختياري لحسابك، يمكنك تجاوزه إذا أردت.'
-                            : 'Setting location is optional for your account, you can skip it if you want.',
+                        AppLocalizations.of(context)!.settingLocationIsOptionalForYour,
                         style: TextStyle(
                             color: Colors.blue.shade700,
                             fontWeight: FontWeight.bold),
@@ -1518,10 +1450,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                         child: CircularProgressIndicator(strokeWidth: 2))
                     : const Icon(Icons.my_location),
                 label: Text(_isDetectingLocation
-                    ? (locale == 'ar' ? 'جاري تحديد الموقع...' : 'Detecting...')
-                    : (locale == 'ar'
-                        ? 'تحديد موقعي التلقائي'
-                        : 'Auto Detect My Location')),
+                    ? (AppLocalizations.of(context)!.detecting)
+                    : (AppLocalizations.of(context)!.autoDetectMyLocation)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary.withValues(alpha: 0.1),
                   foregroundColor: AppColors.primary,
@@ -1538,16 +1468,17 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
               ),
             const SizedBox(height: 24),
             Text(
-              locale == 'ar' ? 'الولاية' : 'State',
+              AppLocalizations.of(context)!.state,
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
               initialValue: _selectedState,
               decoration: InputDecoration(
-                hintText: locale == 'ar' ? 'اختر الولاية' : 'Select state',
+                hintText: AppLocalizations.of(context)!.selectState,
                 prefixIcon: const Icon(Icons.location_city),
               ),
+              dropdownColor: Theme.of(context).cardColor,
               items: SudanLocations.states
                   .map((s) => DropdownMenuItem(
                       value: s,
@@ -1563,16 +1494,17 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             const SizedBox(height: 16),
             if (_selectedState != null) ...[
               Text(
-                locale == 'ar' ? 'المحلية' : 'Locality',
+                AppLocalizations.of(context)!.locality,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
                 initialValue: _selectedLocality,
                 decoration: InputDecoration(
-                  hintText: locale == 'ar' ? 'اختر المحلية' : 'Select locality',
+                  hintText: AppLocalizations.of(context)!.selectLocality,
                   prefixIcon: const Icon(Icons.location_on),
                 ),
+                dropdownColor: Theme.of(context).cardColor,
                 items: SudanLocations.getLocalities(_selectedState!)
                     .map((l) => DropdownMenuItem(
                         value: l,
@@ -1592,14 +1524,14 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         _selectedRole == UserRole.privateService) {
       steps.add(
         Step(
-          title: Text(locale == 'ar' ? 'مجالات العمل' : 'Work Fields'),
+          title: Text(AppLocalizations.of(context)!.workFields),
           isActive: _currentStep >= 3,
           content: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 16),
               Text(
-                locale == 'ar' ? 'اختر مجالات عملك' : 'Choose your work fields',
+                AppLocalizations.of(context)!.chooseYourWorkFields,
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
               const SizedBox(height: 16),
@@ -1697,9 +1629,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                               ScaffoldMessenger.of(context);
                           scaffoldMessenger.showSnackBar(
                             SnackBar(
-                              content: Text(locale == 'ar'
-                                  ? 'عذراً، يمكنك اختيار مسميين وظيفيين كحد أقصى'
-                                  : 'Sorry, you can select up to 2 categories'),
+                              content: Text(AppLocalizations.of(context)!.sorryYouCanSelectUpTo),
                               backgroundColor: Colors.orange,
                             ),
                           );
@@ -1729,7 +1659,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
               if (_customJobTitles.isNotEmpty) ...[
                 const SizedBox(height: 16),
                 Text(
-                  locale == 'ar' ? 'المسميات المخصصة:' : 'Custom titles:',
+                  AppLocalizations.of(context)!.customTitles,
                   style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 13,
@@ -1774,9 +1704,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   onPressed: () => _showAddCustomJobTitleDialog(locale),
                   icon: const Icon(Icons.add_circle_outline, size: 20),
                   label: Text(
-                    locale == 'ar'
-                        ? 'أضف مسمى وظيفي مخصص'
-                        : 'Add custom job title',
+                    AppLocalizations.of(context)!.addCustomJobTitle,
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   style: OutlinedButton.styleFrom(
@@ -1797,16 +1725,14 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     } else if (_selectedRole == UserRole.shop) {
       steps.add(
         Step(
-          title: Text(locale == 'ar' ? 'تصنيف المتجر' : 'Shop Category'),
+          title: Text(AppLocalizations.of(context)!.shopCategory1),
           isActive: _currentStep >= 3,
           content: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 16),
               Text(
-                locale == 'ar'
-                    ? 'اختر تصنيف متجرك'
-                    : 'Choose your shop category',
+                AppLocalizations.of(context)!.chooseYourShopCategory,
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
               const SizedBox(height: 16),
@@ -1834,7 +1760,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   _selectedRole == UserRole.shop) ...[
                 const SizedBox(height: 16),
                 Text(
-                  locale == 'ar' ? 'النوع المخصص:' : 'Custom type:',
+                  AppLocalizations.of(context)!.customType,
                   style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 13,
@@ -1879,9 +1805,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   onPressed: () => _showAddCustomJobTitleDialog(locale),
                   icon: const Icon(Icons.add_circle_outline, size: 20),
                   label: Text(
-                    locale == 'ar'
-                        ? 'أضف نوع متجر مخصص'
-                        : 'Add custom shop type',
+                    AppLocalizations.of(context)!.addCustomShopType,
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   style: OutlinedButton.styleFrom(
@@ -1903,7 +1827,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       // Client Step 4: Interests
       steps.add(
         Step(
-          title: Text(locale == 'ar' ? 'اهتماماتك' : 'Your Interests'),
+          title: Text(AppLocalizations.of(context)!.yourInterests),
           isActive: _currentStep >= 3,
           state: _currentStep > 3 ? StepState.complete : StepState.indexed,
           content: Column(
@@ -1926,9 +1850,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        locale == 'ar'
-                            ? 'تأكد من إضافة موقعك في الخطوة السابقة لنوصلك بأقرب مقدمي الخدمات في منطقتك!'
-                            : 'Make sure to add your location in the previous step so we can connect you with the nearest service providers in your area!',
+                        AppLocalizations.of(context)!.makeSureToAddYourLocation,
                         style: TextStyle(
                             color: Colors.teal.shade700,
                             fontSize: 13,
@@ -1941,17 +1863,13 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
               // Shop interests
               Text(
-                locale == 'ar'
-                    ? '🏪 أنواع المتاجر التي تهمك'
-                    : '🏪 Shop types you are interested in',
+                AppLocalizations.of(context)!.shopTypesYouAreInterestedIn,
                 style:
                     const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
               ),
               const SizedBox(height: 4),
               Text(
-                locale == 'ar'
-                    ? 'سنعرض لك هذه الأنواع أولاً في قائمة المتاجر'
-                    : 'We will show these types first in the shops list',
+                AppLocalizations.of(context)!.weWillShowTheseTypesFirst,
                 style: TextStyle(fontSize: 12, color: Colors.grey[500]),
               ),
               const SizedBox(height: 12),
@@ -1978,17 +1896,13 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
               // Service interests
               Text(
-                locale == 'ar'
-                    ? '🔧 الخدمات التي تحتاجها'
-                    : '🔧 Services you need',
+                AppLocalizations.of(context)!.servicesYouNeed,
                 style:
                     const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
               ),
               const SizedBox(height: 4),
               Text(
-                locale == 'ar'
-                    ? 'سنُظهر لك مقدمي هذه الخدمات في الواجهة الرئيسية'
-                    : 'We will highlight providers of these services on the main screen',
+                AppLocalizations.of(context)!.weWillHighlightProvidersOfThese,
                 style: TextStyle(fontSize: 12, color: Colors.grey[500]),
               ),
               const SizedBox(height: 12),
@@ -2049,9 +1963,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       // Client Step 5: Awareness
       steps.add(
         Step(
-          title: Text(locale == 'ar'
-              ? 'معاً نبني المستقبل'
-              : 'Together we build the future'),
+          title: Text(AppLocalizations.of(context)!.togetherWeBuildTheFuture),
           isActive: _currentStep >= 4,
           content: Container(
             padding: const EdgeInsets.all(16),
@@ -2079,9 +1991,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  locale == 'ar'
-                      ? 'شكراً لدعمك!'
-                      : 'Thank you for your support!',
+                  AppLocalizations.of(context)!.thankYouForYourSupport,
                   style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -2089,9 +1999,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  locale == 'ar'
-                      ? 'نحن نقدر دعمك لهذا الجيل من المبدعين والحرفيين.\n\nمن أجل مجتمع آمن، نرجو منك الإبلاغ فوراً عن أي صفحات أو عروض مشبوهة.'
-                      : 'We appreciate your support for this generation of creators and craftsmen.\n\nFor a safe community, please report any suspicious pages or offers immediately.',
+                  AppLocalizations.of(context)!.weAppreciateYourSupportForThis,
                   textAlign: TextAlign.center,
                   style: TextStyle(height: 1.5, color: Colors.grey[800]),
                 ),
@@ -2108,7 +2016,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       steps.add(
         Step(
           title: Text(
-              locale == 'ar' ? 'التوثيق (اختياري)' : 'Verification (Optional)'),
+              AppLocalizations.of(context)!.verificationOptional),
           isActive: _currentStep >= 4,
           content: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -2129,18 +2037,14 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                         size: 48, color: AppColors.primary),
                     const SizedBox(height: 12),
                     Text(
-                      locale == 'ar'
-                          ? 'وثّق حسابك لزيادة الثقة'
-                          : 'Verify your account to increase trust',
+                      AppLocalizations.of(context)!.verifyYourAccountToIncreaseTrust,
                       style: const TextStyle(
                           fontWeight: FontWeight.bold, fontSize: 16),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      locale == 'ar'
-                          ? 'يمكنك رفع صورتك الشخصية وتوثيق هويتك من الإعدادات بعد إكمال إنشاء الحساب للحصول على شعار التصافح 🤝 بجانب اسمك.'
-                          : 'You can upload your profile photo and verify your identity from Settings after creating your account to get the handshake verification symbol 🤝 next to your name.',
+                      AppLocalizations.of(context)!.youCanUploadYourProfilePhoto,
                       style: TextStyle(
                           color: Colors.grey[600], fontSize: 13, height: 1.5),
                       textAlign: TextAlign.center,
@@ -2161,9 +2065,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                       );
                     },
                     icon: const Icon(Icons.verified_user),
-                    label: Text(locale == 'ar'
-                        ? 'الانتقال لصفحة التوثيق'
-                        : 'Go to Verification Page'),
+                    label: Text(AppLocalizations.of(context)!.goToVerificationPage),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
@@ -2293,8 +2195,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       final parts = time.split(':');
       final hour = int.parse(parts[0]);
       final minute = parts[1];
-      final am = locale == 'ar' ? 'ص' : 'AM';
-      final pm = locale == 'ar' ? 'م' : 'PM';
+      final am = AppLocalizations.of(context)!.am;
+      final pm = AppLocalizations.of(context)!.pm;
       final period = hour >= 12 ? pm : am;
       final displayHour = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
       return '$displayHour:$minute $period';
@@ -2354,16 +2256,11 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       borderRadius: BorderRadius.circular(AppRadius.md),
       child: Opacity(
         opacity: comingSoon ? 0.55 : 1.0,
-        child: Container(
+        child: PremiumGlassCard(
           padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: isSelected ? color.withValues(alpha: 0.1) : null,
-            borderRadius: BorderRadius.circular(AppRadius.md),
-            border: Border.all(
-              color: isSelected ? color : AppColors.border,
-              width: isSelected ? 2 : 1,
-            ),
-          ),
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          color: isSelected ? color.withValues(alpha: 0.1) : null,
+          border: true,
           child: Row(
             children: [
               Container(

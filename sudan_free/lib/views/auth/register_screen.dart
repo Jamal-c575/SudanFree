@@ -2,9 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
+import '../../widgets/common/premium_glass_card.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/locale_provider.dart';
-import '../../widgets/buttons/primary_button.dart';
+import '../../widgets/common/premium_button.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter/services.dart';
+import '../../utils/animation_utils.dart';
+import '../../widgets/common/loading_widget.dart';
 import '../../widgets/inputs/custom_text_field.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../settings/privacy_policy_screen.dart';
@@ -40,14 +45,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(
-          locale == 'ar'
-              ? 'شروط الاستخدام والخصوصية'
-              : 'Terms of Use and Privacy',
+          AppLocalizations.of(context)!.termsOfUseAndPrivacy,
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
-        content: Text(locale == 'ar'
-            ? 'بالضغط على "موافق"، أنت تؤكد اطلاعك وموافقتك على شروط الاستخدام وسياسة الخصوصية الخاصة بنا.'
-            : 'By clicking "Agree", you confirm that you have read and agreed to our Terms of Use and Privacy Policy.'),
+        content: Text(AppLocalizations.of(context)!.byClickingAgreeYouConfirmThat),
         actions: [
           TextButton(
             onPressed: () {
@@ -56,7 +57,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 MaterialPageRoute(builder: (_) => const PrivacyPolicyScreen()),
               );
             },
-            child: Text(locale == 'ar' ? 'قراءة الشروط' : 'Read Terms'),
+            child: Text(AppLocalizations.of(context)!.readTerms),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -66,8 +67,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
               showDialog(
                 context: context,
                 barrierDismissible: false,
-                builder: (context) =>
-                    const Center(child: CircularProgressIndicator()),
+                builder: (context) => Center(
+                  child: ShimmerLoading(
+                    child: Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                    ),
+                  ),
+                ),
               );
 
               final success = await authProvider.signUpWithEmail(
@@ -99,7 +110,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
             ),
-            child: Text(locale == 'ar' ? 'موافق' : 'Agree'),
+            child: Text(AppLocalizations.of(context)!.agree),
           ),
         ],
       ),
@@ -114,14 +125,40 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final isLoading = authProvider.status == AuthStatus.loading;
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: Text(l10n.signup),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Form(
-            key: _formKey,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: Theme.of(context).brightness == Brightness.dark
+                ? [
+                    const Color(0xFF0F172A),
+                    const Color(0xFF1E293B),
+                    AppColors.primary.withValues(alpha: 0.2)
+                  ]
+                : [
+                    const Color(0xFFF8FAFC),
+                    const Color(0xFFE2E8F0),
+                    AppColors.primary.withValues(alpha: 0.1)
+                  ],
+          ),
+        ),
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: PremiumGlassCard(
+                blur: 30,
+                borderRadius: BorderRadius.circular(24),
+                padding: const EdgeInsets.all(24),
+                child: Form(
+                  key: _formKey,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -129,16 +166,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                 // Welcome Text
                 Text(
-                  locale == 'ar'
-                      ? 'مرحباً بك في سودان فري!'
-                      : 'Welcome to SudanFree!',
+                  AppLocalizations.of(context)!.welcomeToSudanfree,
                   style: Theme.of(context).textTheme.headlineMedium,
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  locale == 'ar'
-                      ? 'أنشئ حسابك للبدء في رحلة العمل الحر'
-                      : 'Create your account to start your freelance journey',
+                  AppLocalizations.of(context)!.createYourAccountToStartYour,
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                         color: AppColors.textSecondary,
                       ),
@@ -155,15 +188,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   prefixIcon: Icons.email_outlined,
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return locale == 'ar'
-                          ? 'البريد الإلكتروني مطلوب'
-                          : 'Email is required';
+                      return AppLocalizations.of(context)!.emailIsRequired;
                     }
                     if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
                         .hasMatch(value)) {
-                      return locale == 'ar'
-                          ? 'بريد إلكتروني غير صالح'
-                          : 'Invalid email';
+                      return AppLocalizations.of(context)!.invalidEmail;
                     }
                     return null;
                   },
@@ -174,20 +203,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 // Password Field
                 PasswordTextField(
                   label: AppStrings.get(AppStrings.password, locale),
-                  hint: locale == 'ar'
-                      ? 'أدخل كلمة المرور'
-                      : 'Enter your password',
+                  hint: AppLocalizations.of(context)!.enterYourPassword,
                   controller: _passwordController,
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return locale == 'ar'
-                          ? 'كلمة المرور مطلوبة'
-                          : 'Password is required';
+                      return AppLocalizations.of(context)!.passwordIsRequired;
                     }
                     if (value.length < 6) {
-                      return locale == 'ar'
-                          ? 'كلمة المرور يجب أن تكون 6 أحرف على الأقل'
-                          : 'Password must be at least 6 characters';
+                      return AppLocalizations.of(context)!.passwordMustBeAtLeast6;
                     }
                     return null;
                   },
@@ -198,21 +221,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 // Confirm Password Field
                 PasswordTextField(
                   label:
-                      locale == 'ar' ? 'تأكيد كلمة المرور' : 'Confirm Password',
-                  hint: locale == 'ar'
-                      ? 'أعد إدخال كلمة المرور'
-                      : 'Re-enter password',
+                      AppLocalizations.of(context)!.confirmPassword,
+                  hint: AppLocalizations.of(context)!.reenterPassword,
                   controller: _confirmPasswordController,
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return locale == 'ar'
-                          ? 'تأكيد كلمة المرور مطلوب'
-                          : 'Confirm password is required';
+                      return AppLocalizations.of(context)!.confirmPasswordIsRequired;
                     }
                     if (value != _passwordController.text) {
-                      return locale == 'ar'
-                          ? 'كلمات المرور غير متطابقة'
-                          : 'Passwords do not match';
+                      return AppLocalizations.of(context)!.passwordsDoNotMatch;
                     }
                     return null;
                   },
@@ -221,10 +238,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 const SizedBox(height: 32),
 
                 // Register Button
-                GradientButton(
-                  text: AppStrings.get(AppStrings.signup, locale),
+                PremiumButton(
+                  label: AppStrings.get(AppStrings.signup, locale),
                   isLoading: isLoading,
-                  onPressed: _handleRegister,
+                  onPressed: () {
+                    HapticFeedback.lightImpact();
+                    _handleRegister();
+                  },
                 ),
 
                 const SizedBox(height: 24),
@@ -232,16 +252,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 // Terms and Conditions
                 GestureDetector(
                   onTap: () {
+                    HapticFeedback.lightImpact();
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                          builder: (_) => const PrivacyPolicyScreen()),
+                      AnimationUtils.createPremiumRoute(const PrivacyPolicyScreen()),
                     );
                   },
                   child: Text(
-                    locale == 'ar'
-                        ? 'بالتسجيل، أنت توافق على شروط الاستخدام وسياسة الخصوصية'
-                        : 'By registering, you agree to the Terms of Use and Privacy Policy',
+                    AppLocalizations.of(context)!.byRegisteringYouAgreeToThe,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: AppColors.primary,
                           decoration: TextDecoration.underline,
@@ -261,16 +279,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                     TextButton(
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: () {
+                        HapticFeedback.lightImpact();
+                        Navigator.pop(context);
+                      },
                       child: Text(AppStrings.get(AppStrings.login, locale)),
                     ),
                   ],
                 ),
               ],
-            ),
+            ).animate().fade(duration: const Duration(milliseconds: 600)).slideY(begin: 0.1, curve: AnimationUtils.smoothCurve),
           ),
         ),
       ),
-    );
+    ),
+  ),
+),
+);
   }
 }

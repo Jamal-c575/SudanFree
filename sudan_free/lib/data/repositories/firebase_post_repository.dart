@@ -10,6 +10,7 @@ class FirebasePostRepository implements PostRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   // Create post
+  @override
   Future<String> createPost(PostModel post) async {
     final docRef = _firestore.collection('posts').doc();
     final data = post.toFirestore();
@@ -19,6 +20,7 @@ class FirebasePostRepository implements PostRepository {
   }
 
   // Get paginated posts
+  @override
   Future<Map<String, dynamic>> getFeedPostsPaginated({
     DocumentSnapshot? startAfterDoc,
     int limit = 15,
@@ -76,6 +78,7 @@ class FirebasePostRepository implements PostRepository {
   }
 
   // Get user posts
+  @override
   Stream<List<PostModel>> getUserPosts(String userId) {
     return _firestore
         .collection('posts')
@@ -101,6 +104,7 @@ class FirebasePostRepository implements PostRepository {
   }
 
   // Get user posts including hidden ones (for dashboard)
+  @override
   Stream<List<PostModel>> getDashboardUserPosts(String userId) {
     return _firestore
         .collection('posts')
@@ -124,6 +128,7 @@ class FirebasePostRepository implements PostRepository {
     });
   }
 
+  @override
   Future<PostModel?> getPost(String postId) async {
     final doc = await _firestore.collection('posts').doc(postId).get();
     if (!doc.exists) return null;
@@ -131,6 +136,7 @@ class FirebasePostRepository implements PostRepository {
   }
 
   // React to post
+  @override
   Future<void> reactToPost(
       String postId, String userId, String reactionType) async {
     await _firestore.collection('posts').doc(postId).update({
@@ -139,6 +145,7 @@ class FirebasePostRepository implements PostRepository {
   }
 
   // Remove reaction
+  @override
   Future<void> removeReaction(String postId, String userId) async {
     await _firestore.collection('posts').doc(postId).update({
       'reactions.$userId': FieldValue.delete(),
@@ -146,11 +153,13 @@ class FirebasePostRepository implements PostRepository {
   }
 
   // Delete post
+  @override
   Future<void> deletePost(String postId) async {
     await _firestore.collection('posts').doc(postId).delete();
   }
 
   // Toggle Pin
+  @override
   Future<void> togglePin(String postId, bool isPinned) async {
     await _firestore.collection('posts').doc(postId).update({
       'isPinned': isPinned,
@@ -158,6 +167,7 @@ class FirebasePostRepository implements PostRepository {
   }
 
   // Increment Shares
+  @override
   Future<void> incrementPostShares(String postId) async {
     await _firestore.collection('posts').doc(postId).update({
       'sharesCount': FieldValue.increment(1),
@@ -165,6 +175,7 @@ class FirebasePostRepository implements PostRepository {
   }
 
   // Increment Post Views with rate limiting
+  @override
   Future<void> incrementPostViews(String postId, [String? viewerId]) async {
     if (viewerId == null) return;
 
@@ -200,6 +211,7 @@ class FirebasePostRepository implements PostRepository {
   // ==================== COMMENTS ====================
 
   // Add Comment
+  @override
   Future<void> addComment(CommentModel comment,
       {String? postOwnerId, String? parentUserId}) async {
     final batch = _firestore.batch();
@@ -268,6 +280,7 @@ class FirebasePostRepository implements PostRepository {
   }
 
   // Get Comments Stream
+  @override
   Stream<List<CommentModel>> getComments(String postId) {
     return _firestore
         .collection('posts')
@@ -282,6 +295,7 @@ class FirebasePostRepository implements PostRepository {
   }
 
   // Toggle Comment Like
+  @override
   Future<void> toggleCommentLike(
       String postId, String commentId, String userId, bool isLiked) async {
     final commentRef = _firestore
@@ -297,6 +311,7 @@ class FirebasePostRepository implements PostRepository {
   }
 
   // Delete Comment
+  @override
   Future<void> deleteComment(String postId, String commentId) async {
     final batch = _firestore.batch();
     final commentRef = _firestore

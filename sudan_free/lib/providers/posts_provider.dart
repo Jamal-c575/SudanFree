@@ -205,6 +205,7 @@ class PostsProvider extends ChangeNotifier {
     String? linkedProductImage,
     double? linkedProductPrice,
     PollModel? poll,
+    bool isUserVerified = false,
   }) async {
     final pendingId = 'pending_${DateTime.now().millisecondsSinceEpoch}';
 
@@ -233,6 +234,7 @@ class PostsProvider extends ChangeNotifier {
       linkedProductImage: linkedProductImage,
       linkedProductPrice: linkedProductPrice,
       poll: poll,
+      isUserVerified: isUserVerified,
     );
 
     _posts.insert(0, pendingPost);
@@ -301,6 +303,7 @@ class PostsProvider extends ChangeNotifier {
     String? linkedProductImage,
     double? linkedProductPrice,
     PollModel? poll,
+    bool isUserVerified = false,
   }) async {
     try {
       _isCreating = true;
@@ -362,6 +365,7 @@ class PostsProvider extends ChangeNotifier {
         linkedProductPrice: linkedProductPrice,
         poll: poll,
         createdAt: DateTime.now(),
+        isUserVerified: isUserVerified,
       );
 
       final newPostId = await _firestoreService.createPost(post);
@@ -433,6 +437,7 @@ class PostsProvider extends ChangeNotifier {
     String? parentUserName,
     String? parentUserId,
     List<String> mentionedNames = const [],
+    bool isUserVerified = false,
   }) async {
     final comment = CommentModel(
       id: '',
@@ -446,6 +451,7 @@ class PostsProvider extends ChangeNotifier {
       parentUserName: parentUserName,
       isReply: parentId != null,
       mentionedNames: mentionedNames,
+      isUserVerified: isUserVerified,
     );
 
     // Optimistic Update Locally
@@ -473,40 +479,52 @@ class PostsProvider extends ChangeNotifier {
 
   Future<void> reactToPost(String postId, String userId, String userName,
       String postOwnerId, String reactionType) async {
-    // Optimistic Update Locally
+    // 1. Snapshot old state for rollback
     final index = _posts.indexWhere((p) => p.id == postId);
+    Map<String, String>? oldReactions;
     if (index != -1) {
-      final post = _posts[index];
+      oldReactions = Map<String, String>.from(_posts[index].reactions);
+      // Optimistic Update
       if (reactionType == 'unlike') {
-        post.reactions.remove(userId);
+        _posts[index].reactions.remove(userId);
       } else {
-        post.reactions[userId] = reactionType;
+        _posts[index].reactions[userId] = reactionType;
       }
-      // notifyListeners removed to prevent full list rebuild.
-      // UI is already optimistically updated via local state in PostCard.
     }
 
-    if (reactionType == 'unlike') {
-      await _firestoreService.removeReaction(postId, userId);
-    } else {
-      await _firestoreService.reactToPost(postId, userId, reactionType);
-    }
+    try {
+      // 2. Persist to Firestore
+      if (reactionType == 'unlike') {
+        await _firestoreService.removeReaction(postId, userId);
+      } else {
+        await _firestoreService.reactToPost(postId, userId, reactionType);
+      }
 
-    // Send notification to post owner (only on like, not unlike) with rate limiting
-    if (reactionType != 'unlike' && userId != postOwnerId) {
-      final rateLimitKey = '${postId}_like_$userId';
-      if (_canSendNotif(rateLimitKey)) {
-        _markNotifSent(rateLimitKey);
-        final notification = NotificationModel(
-          id: '',
-          userId: postOwnerId,
-          type: NotificationType.like,
-          title: 'تفاعل جديد',
-          message: 'أعجب $userName بمنشورك',
-          createdAt: Timestamp.now(),
-          relatedId: postId,
-        );
-        await _firestoreService.sendNotification(notification);
+      // 3. Fire-and-forget notification (never blocks the reaction)
+      if (reactionType != 'unlike' && userId != postOwnerId) {
+        final rateLimitKey = '${postId}_like_$userId';
+        if (_canSendNotif(rateLimitKey)) {
+          _markNotifSent(rateLimitKey);
+          final notification = NotificationModel(
+            id: '',
+            userId: postOwnerId,
+            type: NotificationType.like,
+            title: 'تفاعل جديد',
+            message: 'أعجب $userName بمنشورك',
+            createdAt: Timestamp.now(),
+            relatedId: postId,
+          );
+          _firestoreService.sendNotification(notification, limitKey: rateLimitKey);
+        }
+      }
+    } catch (e) {
+      // 4. Rollback on failure
+      debugPrint('reactToPost: failed to persist reaction: $e');
+      if (index != -1 && oldReactions != null) {
+        _posts[index].reactions.clear();
+        _posts[index].reactions.addAll(oldReactions);
+        _errorMessage = 'Failed to update reaction: $e';
+        notifyListeners();
       }
     }
   }
@@ -556,7 +574,7 @@ class PostsProvider extends ChangeNotifier {
               createdAt: Timestamp.now(),
               relatedId: postId,
             );
-            _firestoreService.sendNotification(notification); // fire-and-forget
+            _firestoreService.sendNotification(notification, limitKey: rateLimitKey); // fire-and-forget
           }
         }
       }
@@ -699,8 +717,9 @@ class PostsProvider extends ChangeNotifier {
       if (showInProfile != null) updates['showInProfile'] = showInProfile;
       if (price != null) updates['price'] = price;
       if (productSizes != null) updates['productSizes'] = productSizes;
-      if (productCondition != null)
+      if (productCondition != null) {
         updates['productCondition'] = productCondition;
+      }
       if (productAgeGroup != null) updates['productAgeGroup'] = productAgeGroup;
       if (productColors != null) updates['productColors'] = productColors;
       if (quantity != null) updates['quantity'] = quantity;

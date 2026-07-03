@@ -15,6 +15,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../widgets/buttons/primary_button.dart';
 import '../../widgets/inputs/custom_text_field.dart';
+import 'package:sudan_free/l10n/generated/app_localizations.dart';
 
 class ReportDialog extends StatefulWidget {
   final UserModel reportedUser;
@@ -85,7 +86,7 @@ class _ReportDialogState extends State<ReportDialog> {
         id: notifRef.id,
         userId: currentUser.id,
         type: NotificationType.system,
-        title: locale == 'ar' ? 'تم استلام بلاغك 🛡️' : 'Report Received 🛡️',
+        title: AppLocalizations.of(context)!.reportReceived,
         message: locale == 'ar'
             ? 'شكراً لتعاونك. قمنا باستلام بلاغك ضد "${widget.reportedUser.name}" وسنقوم بالرد وإتخاذ الإجراء اللازم خلال 24 ساعة.'
             : 'Thank you. We received your report against "${widget.reportedUser.name}" and will take action within 24 hours.',
@@ -99,9 +100,7 @@ class _ReportDialogState extends State<ReportDialog> {
         messenger.showSnackBar(
           SnackBar(
             content: Text(
-              locale == 'ar'
-                  ? 'تم إرسال البلاغ بنجاح وسقوم الإدارة بمراجعته'
-                  : 'Report submitted successfully and will be reviewed',
+              AppLocalizations.of(context)!.reportSubmittedSuccessfullyAndWillBe,
             ),
             backgroundColor: Colors.green,
           ),
@@ -114,9 +113,7 @@ class _ReportDialogState extends State<ReportDialog> {
           e,
           stack,
           logContext: 'ReportDialog._submitReport',
-          customMessage: locale == 'ar'
-              ? 'فشل إرسال البلاغ. يرجى المحاولة مرة أخرى.'
-              : 'Failed to submit report. Please try again.',
+          customMessage: AppLocalizations.of(context)!.failedToSubmitReportPleaseTry,
         );
       }
     } finally {
@@ -134,7 +131,7 @@ class _ReportDialogState extends State<ReportDialog> {
         children: [
           Icon(Icons.report_problem, color: AppColors.error),
           const SizedBox(width: 8),
-          Text(isAr ? 'إبلاغ عن مستخدم' : 'Report User'),
+          Text(AppLocalizations.of(context)!.reportUser),
         ],
       ),
       content: SingleChildScrollView(
@@ -152,20 +149,16 @@ class _ReportDialogState extends State<ReportDialog> {
               ),
               const SizedBox(height: 16),
               CustomTextField(
-                label: isAr ? 'سبب البلاغ' : 'Reason',
-                hint: isAr
-                    ? 'اشرح المشكلة بالتفصيل...'
-                    : 'Explain the issue in detail...',
+                label: AppLocalizations.of(context)!.reason,
+                hint: AppLocalizations.of(context)!.explainTheIssueInDetail,
                 controller: _reasonController,
                 maxLines: 4,
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return isAr ? 'هذا الحقل مطلوب' : 'This field is required';
+                    return AppLocalizations.of(context)!.thisFieldIsRequired;
                   }
                   if (value.length < 10) {
-                    return isAr
-                        ? 'يرجى كتابة تفاصيل أكثر'
-                        : 'Please provide more details';
+                    return AppLocalizations.of(context)!.pleaseProvideMoreDetails;
                   }
                   return null;
                 },
@@ -195,9 +188,7 @@ class _ReportDialogState extends State<ReportDialog> {
                                 color: Colors.grey, size: 30),
                             const SizedBox(height: 4),
                             Text(
-                                isAr
-                                    ? 'إضافة صورة (لقطة شاشة) - اختياري'
-                                    : 'Add screenshot (optional)',
+                                AppLocalizations.of(context)!.addScreenshotOptional,
                                 style: const TextStyle(color: Colors.grey)),
                           ],
                         )
@@ -213,9 +204,7 @@ class _ReportDialogState extends State<ReportDialog> {
               const SizedBox(height: 8),
               if (widget.reportedUser.phoneNumber != null)
                 Text(
-                  isAr
-                      ? 'سيتم إرفاق رقم هاتف المستخدم تلقائياً مع البلاغ.'
-                      : 'User phone number will be automatically attached.',
+                  AppLocalizations.of(context)!.userPhoneNumberWillBeAutomatically,
                   style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                 ),
             ],
@@ -225,12 +214,12 @@ class _ReportDialogState extends State<ReportDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: Text(isAr ? 'إلغاء' : 'Cancel'),
+          child: Text(AppLocalizations.of(context)!.cancel),
         ),
         SizedBox(
           width: 100,
           child: GradientButton(
-            text: isAr ? 'إرسال' : 'Submit',
+            text: AppLocalizations.of(context)!.submit,
             onPressed: _submitReport,
             isLoading: _isLoading,
             gradientColors: [

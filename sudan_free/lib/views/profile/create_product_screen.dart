@@ -11,6 +11,7 @@ import '../../models/post_model.dart';
 import '../../services/cloudinary_service.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../services/smart_guide_service.dart';
+import 'package:sudan_free/l10n/generated/app_localizations.dart';
 
 class CreateProductScreen extends StatefulWidget {
   final PostModel? product; // for editing
@@ -109,7 +110,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
       final scaffoldMessenger = ScaffoldMessenger.of(context);
       scaffoldMessenger.showSnackBar(SnackBar(
         content: Text(
-            isAr ? 'يرجى كتابة اسم المنتج' : 'Please enter a product name'),
+            AppLocalizations.of(context)!.pleaseEnterAProductName),
         backgroundColor: Colors.orange,
       ));
       return;
@@ -119,7 +120,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
       final scaffoldMessenger = ScaffoldMessenger.of(context);
       scaffoldMessenger.showSnackBar(SnackBar(
         content: Text(
-            isAr ? 'يرجى إضافة صورة للمنتج' : 'Please add a product image'),
+            AppLocalizations.of(context)!.pleaseAddAProductImage),
         backgroundColor: Colors.orange,
       ));
       return;
@@ -156,7 +157,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
           userId: user.id,
           userName: user.name,
           userRole: user.role.name,
-          userJobTitle: user.getShopCategoryName(isAr ? 'ar' : 'en'),
+          userJobTitle: user.getShopCategoryName(AppLocalizations.of(context)!.en),
           userImageUrl: user.profileImageUrl,
           imageFiles: _selectedImages.isNotEmpty ? _selectedImages : null,
           caption: caption,
@@ -177,9 +178,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
       if (success) {
         final scaffoldMessenger = ScaffoldMessenger.of(context);
         scaffoldMessenger.showSnackBar(SnackBar(
-          content: Text(isAr
-              ? 'تم نشر المنتج بنجاح ✅'
-              : 'Product published successfully ✅'),
+          content: Text(AppLocalizations.of(context)!.productPublishedSuccessfully),
           backgroundColor: Colors.green,
         ));
         if (context.mounted) Navigator.pop(context);
@@ -230,7 +229,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // ── Images ──────────────────────────────────────────────
-            _sectionTitle(isAr ? 'صور المنتج *' : 'Product Images *',
+            _sectionTitle(AppLocalizations.of(context)!.productImages,
                 Icons.photo_library_outlined),
             const SizedBox(height: 8),
             SizedBox(
@@ -319,12 +318,12 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
 
             // ── Product Name ─────────────────────────────────────────
             _sectionTitle(
-                isAr ? 'اسم المنتج *' : 'Product Name *', Icons.label_outline),
+                AppLocalizations.of(context)!.productName, Icons.label_outline),
             const SizedBox(height: 8),
             TextField(
               controller: _nameController,
               decoration: _inputDeco(
-                  isAr ? 'مثال: حذاء رياضي نايك' : 'e.g. Nike Sports Shoe',
+                  AppLocalizations.of(context)!.egNikeSportsShoe,
                   Icons.label_outline),
             ),
 
@@ -332,15 +331,13 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
 
             // ── Description ──────────────────────────────────────────
             _sectionTitle(
-                isAr ? 'الوصف' : 'Description', Icons.description_outlined),
+                AppLocalizations.of(context)!.description, Icons.description_outlined),
             const SizedBox(height: 8),
             TextField(
               controller: _descController,
               maxLines: 3,
               decoration: _inputDeco(
-                  isAr
-                      ? 'اكتب وصفاً تفصيلياً للمنتج...'
-                      : 'Write a detailed description...',
+                  AppLocalizations.of(context)!.writeADetailedDescription,
                   Icons.description_outlined),
             ),
 
@@ -353,7 +350,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                     child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _sectionTitle(isAr ? 'السعر (SDG)' : 'Price (SDG)',
+                    _sectionTitle(AppLocalizations.of(context)!.priceSdg,
                         Icons.sell_outlined),
                     const SizedBox(height: 8),
                     TextField(
@@ -361,7 +358,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                       keyboardType:
                           const TextInputType.numberWithOptions(decimal: true),
                       decoration: _inputDeco(
-                          isAr ? '0.00' : '0.00', Icons.sell_outlined),
+                          AppLocalizations.of(context)!.str000, Icons.sell_outlined),
                     ),
                   ],
                 )),
@@ -370,13 +367,13 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                     child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _sectionTitle(isAr ? 'الكمية المتاحة' : 'Quantity',
+                    _sectionTitle(AppLocalizations.of(context)!.quantity,
                         Icons.inventory_2_outlined),
                     const SizedBox(height: 8),
                     TextField(
                       controller: _quantityController,
                       keyboardType: TextInputType.number,
-                      decoration: _inputDeco(isAr ? 'مثال: 10' : 'e.g. 10',
+                      decoration: _inputDeco(AppLocalizations.of(context)!.eg10,
                           Icons.inventory_2_outlined),
                     ),
                   ],
@@ -388,14 +385,14 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
 
             // ── Condition ────────────────────────────────────────────
             _sectionTitle(
-                isAr ? 'حالة المنتج' : 'Product Condition', Icons.star_outline),
+                AppLocalizations.of(context)!.productCondition, Icons.star_outline),
             const SizedBox(height: 8),
             Row(
               children: [
-                _conditionChip(isAr ? 'جديد' : 'New', 'new',
+                _conditionChip(AppLocalizations.of(context)!.strNew, 'new',
                     Icons.fiber_new_rounded, Colors.green),
                 const SizedBox(width: 12),
-                _conditionChip(isAr ? 'مستعمل' : 'Used', 'used',
+                _conditionChip(AppLocalizations.of(context)!.used, 'used',
                     Icons.recycling_rounded, Colors.orange),
               ],
             ),
@@ -403,32 +400,30 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
             const SizedBox(height: 20),
 
             // ── Age Group ────────────────────────────────────────────
-            _sectionTitle(isAr ? 'الفئة العمرية المستهدفة' : 'Target Age Group',
+            _sectionTitle(AppLocalizations.of(context)!.targetAgeGroup,
                 Icons.people_outline),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: [
-                _ageChip('baby', isAr ? '👶 رضيع' : '👶 Baby'),
-                _ageChip('child', isAr ? '🧒 طفل' : '🧒 Child'),
-                _ageChip('youth', isAr ? '👦 شباب' : '👦 Youth'),
-                _ageChip('adult', isAr ? '👨 بالغ' : '👨 Adult'),
-                _ageChip('elderly', isAr ? '👴 كبار' : '👴 Elderly'),
-                _ageChip('all', isAr ? '👨‍👩‍👧 الكل' : '👨‍👩‍👧 All'),
+                _ageChip('baby', AppLocalizations.of(context)!.baby),
+                _ageChip('child', AppLocalizations.of(context)!.child),
+                _ageChip('youth', AppLocalizations.of(context)!.youth),
+                _ageChip('adult', AppLocalizations.of(context)!.adult),
+                _ageChip('elderly', AppLocalizations.of(context)!.elderly),
+                _ageChip('all', AppLocalizations.of(context)!.all1),
               ],
             ),
 
             const SizedBox(height: 20),
 
             // ── Sizes ────────────────────────────────────────────────
-            _sectionTitle(isAr ? 'المقاسات المتوفرة' : 'Available Sizes',
+            _sectionTitle(AppLocalizations.of(context)!.availableSizes,
                 Icons.straighten_outlined),
             const SizedBox(height: 4),
             Text(
-                isAr
-                    ? 'اختر من القائمة أو أضف مقاساً مخصصاً'
-                    : 'Select from list or add custom size',
+                AppLocalizations.of(context)!.selectFromListOrAddCustom,
                 style: TextStyle(fontSize: 12, color: Colors.grey[500])),
             const SizedBox(height: 8),
             Wrap(
@@ -454,7 +449,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                   child: TextField(
                 controller: _customSizeController,
                 decoration: _inputDeco(
-                    isAr ? 'مقاس مخصص...' : 'Custom size...', Icons.add),
+                    AppLocalizations.of(context)!.customSize, Icons.add),
               )),
               const SizedBox(width: 8),
               ElevatedButton(
@@ -472,7 +467,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12))),
-                child: Text(isAr ? 'إضافة' : 'Add'),
+                child: Text(AppLocalizations.of(context)!.add),
               ),
             ]),
             if (_selectedSizes.any((s) => !_predefinedSizes.contains(s))) ...[
@@ -495,9 +490,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
 
             // ── Colors ───────────────────────────────────────────────
             _sectionTitle(
-                isAr
-                    ? 'الألوان / التنوعات المتوفرة'
-                    : 'Available Colors / Variants',
+                AppLocalizations.of(context)!.availableColorsVariants,
                 Icons.palette_outlined),
             const SizedBox(height: 8),
             Wrap(
@@ -521,7 +514,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                   child: TextField(
                 controller: _customColorController,
                 decoration: _inputDeco(
-                    isAr ? 'لون أو نوع مخصص...' : 'Custom color/variant...',
+                    AppLocalizations.of(context)!.customColorvariant,
                     Icons.add),
               )),
               const SizedBox(width: 8),
@@ -540,7 +533,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12))),
-                child: Text(isAr ? 'إضافة' : 'Add'),
+                child: Text(AppLocalizations.of(context)!.add),
               ),
             ]),
 
@@ -561,12 +554,10 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
               child: SwitchListTile(
                 value: _hasShipping,
                 onChanged: (v) => setState(() => _hasShipping = v),
-                title: Text(isAr ? '🚚 يوجد توصيل' : '🚚 Shipping Available',
+                title: Text(AppLocalizations.of(context)!.shippingAvailable,
                     style: const TextStyle(fontWeight: FontWeight.bold)),
                 subtitle: Text(
-                    isAr
-                        ? 'تفعيل إذا كنت تقدم خدمة التوصيل'
-                        : 'Enable if you offer delivery service',
+                    AppLocalizations.of(context)!.enableIfYouOfferDeliveryService,
                     style: const TextStyle(fontSize: 12)),
                 activeThumbColor: Colors.teal,
               ),

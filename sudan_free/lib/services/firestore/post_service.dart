@@ -201,6 +201,7 @@ class PostsFirestoreService {
   // Add Comment
   Future<void> addComment(CommentModel comment,
       {String? postOwnerId, String? parentUserId}) async {
+    // ── Core batch: only comment + counter (isolated from notifications) ──
     final batch = _firestore.batch();
     final commentRef = _firestore
         .collection('posts')
@@ -227,43 +228,61 @@ class PostsFirestoreService {
       'commentsCount': FieldValue.increment(1),
     });
 
+    // Commit the core batch first — comment is saved regardless of notifications
+    await batch.commit();
+
+    // ── Notifications: sent separately so failures don't roll back the comment ──
+    // Helper: build a safe message that never exceeds 450 chars (well under 500 limit)
+    String safeMsg(String msg) =>
+        msg.length > 450 ? '${msg.substring(0, 447)}...' : msg;
+
     // Notify post owner about a new top-level comment
     if (!comment.isReply &&
         postOwnerId != null &&
         postOwnerId != comment.userId) {
-      final notifRef = _firestore.collection('notifications').doc();
-      final notification = NotificationModel(
-        id: notifRef.id,
-        userId: postOwnerId,
-        type: NotificationType.comment,
-        title: 'تعليق جديد',
-        message:
-            'علق ${comment.userName} على منشورك: "${comment.content.length > 40 ? '${comment.content.substring(0, 40)}...' : comment.content}"',
-        createdAt: Timestamp.now(),
-        relatedId: comment.postId,
-      );
-      batch.set(notifRef, notification.toFirestore());
+      try {
+        final notifRef = _firestore.collection('notifications').doc();
+        final preview = comment.content.length > 40
+            ? '${comment.content.substring(0, 40)}...'
+            : comment.content;
+        final notification = NotificationModel(
+          id: notifRef.id,
+          userId: postOwnerId,
+          type: NotificationType.comment,
+          title: 'تعليق جديد',
+          message: safeMsg('علق ${comment.userName} على منشورك: "$preview"'),
+          createdAt: Timestamp.now(),
+          relatedId: comment.postId,
+        );
+        await notifRef.set(notification.toFirestore());
+      } catch (e) {
+        debugPrint('addComment: failed to send owner notification: $e');
+      }
     }
 
     // Notify the user being replied to
     if (comment.isReply &&
         parentUserId != null &&
         parentUserId != comment.userId) {
-      final notifRef = _firestore.collection('notifications').doc();
-      final notification = NotificationModel(
-        id: notifRef.id,
-        userId: parentUserId,
-        type: NotificationType.comment, // Can be comment type for replies
-        title: 'رد جديد',
-        message:
-            'رد ${comment.userName} على تعليقك: "${comment.content.length > 40 ? '${comment.content.substring(0, 40)}...' : comment.content}"',
-        createdAt: Timestamp.now(),
-        relatedId: comment.postId,
-      );
-      batch.set(notifRef, notification.toFirestore());
+      try {
+        final notifRef = _firestore.collection('notifications').doc();
+        final preview = comment.content.length > 40
+            ? '${comment.content.substring(0, 40)}...'
+            : comment.content;
+        final notification = NotificationModel(
+          id: notifRef.id,
+          userId: parentUserId,
+          type: NotificationType.comment,
+          title: 'رد جديد',
+          message: safeMsg('رد ${comment.userName} على تعليقك: "$preview"'),
+          createdAt: Timestamp.now(),
+          relatedId: comment.postId,
+        );
+        await notifRef.set(notification.toFirestore());
+      } catch (e) {
+        debugPrint('addComment: failed to send reply notification: $e');
+      }
     }
-
-    await batch.commit();
   }
 
   // Get Comments Stream

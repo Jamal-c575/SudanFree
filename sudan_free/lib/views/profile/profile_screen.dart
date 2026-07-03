@@ -17,11 +17,13 @@ import 'freelancer_profile_screen.dart';
 import '../auth/profile_setup_screen.dart';
 import '../../widgets/common/verification_badge.dart';
 import 'favorites_screen.dart';
+import 'package:sudan_free/l10n/generated/app_localizations.dart';
 
 class ProfileScreen extends StatefulWidget {
   final String? userId;
+  final String? heroTag;
 
-  const ProfileScreen({super.key, this.userId});
+  const ProfileScreen({super.key, this.userId, this.heroTag});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -129,8 +131,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (_user != null) _user = authUser;
     }
 
-    if (_isLoading)
+    if (_isLoading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
     if (_user == null) {
       final errorLocale = Localizations.localeOf(context).languageCode;
       return Scaffold(
@@ -206,7 +209,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       case UserRole.freelancer:
       case UserRole.techService:
       case UserRole.privateService:
-        return FreelancerProfileScreen(user: _user!, isMe: isMe);
+        return FreelancerProfileScreen(user: _user!, isMe: isMe, heroTag: widget.heroTag);
 
       default:
         // Simple profile view for clients (who don't have public profiles usually)
@@ -220,7 +223,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(locale == 'ar' ? 'الملف الشخصي' : 'Profile'),
+        title: Text(AppLocalizations.of(context)!.profile),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -234,25 +237,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 GestureDetector(
                   onTap:
                       isMe && !_isUploadingImage ? _pickAndUploadImage : null,
-                  child: CircleAvatar(
-                    radius: 65,
-                    backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                    backgroundImage: user.profileImageUrl != null
-                        ? CachedNetworkImageProvider(user.profileImageUrl!)
-                        : null,
-                    child: _isUploadingImage
-                        ? const CircularProgressIndicator()
-                        : user.profileImageUrl == null
-                            ? Text(
-                                user.name.isNotEmpty
-                                    ? user.name[0].toUpperCase()
-                                    : '?',
-                                style: const TextStyle(
-                                    fontSize: 36,
+                  child: Hero(
+                    tag: '${user.id}_profile',
+                    child: CircleAvatar(
+                      radius: 65,
+                      backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                      backgroundImage: user.profileImageUrl != null
+                          ? CachedNetworkImageProvider(user.profileImageUrl!)
+                          : null,
+                      child: _isUploadingImage
+                          ? const CircularProgressIndicator()
+                          : user.profileImageUrl == null
+                              ? Text(
+                                  user.name.isNotEmpty
+                                      ? user.name[0].toUpperCase()
+                                      : '?',
+                                  style: const TextStyle(
+                                    fontSize: 40,
                                     fontWeight: FontWeight.bold,
-                                    color: AppColors.primary),
-                              )
-                            : null,
+                                  ),
+                                )
+                              : null,
+                    ),
                   ),
                 ),
                 if (isMe)
@@ -307,7 +313,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   },
                   icon: const Icon(Icons.map, size: 18),
                   label:
-                      Text(locale == 'ar' ? 'عرض على الخريطة' : 'Open on Map'),
+                      Text(AppLocalizations.of(context)!.openOnMap),
                 ),
               ],
             ),
@@ -327,7 +333,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       size: 16, color: isDark ? Colors.white60 : Colors.grey),
                   const SizedBox(width: 6),
                   Text(
-                    locale == 'ar' ? 'حساب عميل' : 'Client Account',
+                    AppLocalizations.of(context)!.clientAccount,
                     style: TextStyle(
                         color: isDark ? Colors.white60 : Colors.grey.shade600,
                         fontSize: 13),
@@ -392,7 +398,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       MaterialPageRoute(
                           builder: (_) => const FavoritesScreen())),
                   icon: const Icon(Icons.favorite, color: Colors.white),
-                  label: Text(locale == 'ar' ? 'مفضلاتي' : 'My Favorites',
+                  label: Text(AppLocalizations.of(context)!.myFavorites,
                       style: const TextStyle(color: Colors.white)),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
@@ -413,9 +419,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           builder: (_) =>
                               ProfileSetupScreen(existingUser: user))),
                   icon: const Icon(Icons.edit),
-                  label: Text(locale == 'ar'
-                      ? 'تعديل الملف / ترقية الحساب'
-                      : 'Edit Profile / Upgrade Account'),
+                  label: Text(AppLocalizations.of(context)!.editProfileUpgradeAccount),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(

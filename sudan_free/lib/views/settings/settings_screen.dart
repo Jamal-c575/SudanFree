@@ -21,6 +21,8 @@ import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import '../../core/constants/sudan_locations.dart';
 import '../../services/smart_guide_service.dart';
+import '../subscription/pro_account_screen.dart';
+import '../profile/identity_verification_screen.dart' as id_verify;
 
 class SettingsScreen extends StatefulWidget {
   final bool asBottomSheet;
@@ -69,10 +71,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ? const EdgeInsets.fromLTRB(16, 0, 16, 24)
           : const EdgeInsets.all(16),
       children: [
+        _SectionHeader(title: AppLocalizations.of(context)!.appearance),
+        const SizedBox(height: 8),
+
         // Dark Mode Toggle
         _SettingsTile(
           icon: isDark ? Icons.dark_mode : Icons.light_mode,
-          title: locale == 'ar' ? 'الوضع الداكن' : 'Dark Mode',
+          title: AppLocalizations.of(context)!.darkMode,
           trailing: Switch(
             value: isDark,
             onChanged: (value) => themeProvider.toggleTheme(),
@@ -89,18 +94,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
             if (role != UserRole.freelancer &&
                 role != UserRole.techService &&
                 role != UserRole.privateService &&
-                role != UserRole.shop) return const SizedBox.shrink();
+                role != UserRole.shop) {
+              return const SizedBox.shrink();
+            }
             final isAvailable = auth.user?.isAvailable ?? true;
             return Column(
               children: [
+                _SectionHeader(title: AppLocalizations.of(context)!.account),
+                const SizedBox(height: 8),
                 _SettingsTile(
                   icon: Icons.access_time,
                   iconColor: isAvailable ? AppColors.success : AppColors.error,
-                  title: locale == 'ar'
-                      ? (isAvailable ? 'متوفر للعمل' : 'غير متوفر حالياً')
-                      : (isAvailable
-                          ? 'Available for Work'
-                          : 'Currently Unavailable'),
+                  title: isAvailable
+                      ? AppLocalizations.of(context)!.availableForWork
+                      : AppLocalizations.of(context)!.currentlyUnavailable,
                   trailing: Switch(
                     value: isAvailable,
                     onChanged: (value) => auth.toggleAvailability(),
@@ -115,14 +122,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   iconColor: (auth.user?.showOnMap ?? true)
                       ? AppColors.primary
                       : Colors.grey,
-                  title: locale == 'ar' ? 'الظهور على الخريطة' : 'Show on Map',
-                  subtitle: locale == 'ar'
-                      ? ((auth.user?.showOnMap ?? true)
-                          ? 'مرئي للجميع'
-                          : 'مخفي من الخريطة')
-                      : ((auth.user?.showOnMap ?? true)
-                          ? 'Visible to all'
-                          : 'Hidden from map'),
+                  title: AppLocalizations.of(context)!.showOnMap,
+                  subtitle: (auth.user?.showOnMap ?? true)
+                      ? AppLocalizations.of(context)!.visibleToAll
+                      : AppLocalizations.of(context)!.hiddenFromMap,
                   trailing: Switch(
                     value: auth.user?.showOnMap ?? true,
                     onChanged: (value) => auth.toggleShowOnMap(),
@@ -145,16 +148,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           iconColor: themeProvider.isGlassmorphismEnabled
               ? AppColors.primary
               : Colors.grey,
-          title: locale == 'ar'
-              ? 'الواجهة الزجاجية (توفير الأداء)'
-              : 'Glassmorphism (Performance)',
+          title: AppLocalizations.of(context)!.glassmorphismPerformance,
           subtitle: themeProvider.isGlassmorphismEnabled
-              ? (locale == 'ar'
-                  ? 'مفعلة (سيتم إغلاق التطبيق لتطبيق التغيير)'
-                  : 'Enabled (App will close to apply changes)')
-              : (locale == 'ar'
-                  ? 'متوقفة (سيتم إغلاق التطبيق لتطبيق التغيير)'
-                  : 'Disabled (App will close to apply changes)'),
+              ? (AppLocalizations.of(context)!.enabledAppWillCloseToApply)
+              : (AppLocalizations.of(context)!.disabledAppWillCloseToApply),
           trailing: Switch(
             value: themeProvider.isGlassmorphismEnabled,
             onChanged: (value) {
@@ -172,7 +169,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _SettingsTile(
           icon: Icons.language,
           title: l10n.language,
-          subtitle: locale == 'ar' ? 'العربية' : 'English',
+          subtitle: AppLocalizations.of(context)!.english,
           onTap: () => context.read<LocaleProvider>().toggleLocale(),
           trailing:
               const Icon(Icons.sync_alt, size: 20, color: AppColors.primary),
@@ -187,23 +184,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
             return _SettingsTile(
               icon: Icons.handshake,
               iconColor: isVerified ? AppColors.primary : Colors.orange,
-              title: locale == 'ar' ? 'توثيق الحساب' : 'Account Verification',
+              title: AppLocalizations.of(context)!.accountVerification,
               subtitle: isVerified
-                  ? (locale == 'ar'
-                      ? 'حسابك موثق — تظهر أيقونة المصافحة بجانب اسمك'
-                      : 'Verified — Handshake icon shows beside your name')
-                  : (locale == 'ar'
-                      ? 'سيتم تفعيله قريباً — أيقونة مصافحة بجانب اسمك'
-                      : 'Coming soon — Handshake icon beside your name'),
+                  ? (AppLocalizations.of(context)!.verifiedHandshakeIconShowsBesideYour)
+                  : (AppLocalizations.of(context)!.comingSoonHandshakeIconBesideYour),
               trailing: isVerified
                   ? const Icon(Icons.handshake,
                       color: AppColors.primary, size: 22)
                   : null,
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (_) => const IdentityVerificationScreen()),
-              ),
+              openScreen: const IdentityVerificationScreen(),
             );
           },
         ),
@@ -211,8 +200,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         // Admin Dashboard - NEW
         Consumer<AuthProvider>(
           builder: (context, auth, _) {
-            if (auth.user?.role != UserRole.admin)
+            if (auth.user?.role != UserRole.admin) {
               return const SizedBox.shrink();
+            }
             return Column(
               children: [
                 const SizedBox(height: 8),
@@ -220,15 +210,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   icon: Icons.admin_panel_settings,
                   iconColor: Colors.deepPurple,
                   title:
-                      locale == 'ar' ? 'لوحة تحكم المشرف' : 'Admin Dashboard',
-                  subtitle: locale == 'ar'
-                      ? 'إدارة التوثيقات والإحصائيات'
-                      : 'Manage verifications & stats',
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => const AdminDashboardScreen()),
-                  ),
+                      AppLocalizations.of(context)!.adminDashboard,
+                  subtitle: AppLocalizations.of(context)!.manageVerificationsStats,
+                  openScreen: const AdminDashboardScreen(),
                 ),
               ],
             );
@@ -241,35 +225,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _SettingsTile(
           icon: Icons.assignment,
           iconColor: Colors.blue,
-          title: locale == 'ar' ? 'اتفاقاتي / عقودي' : 'My Agreements',
-          subtitle: locale == 'ar'
-              ? 'إدارة العقود ومتابعة التنفيذ'
-              : 'Manage contracts and track progress',
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const MyAgreementsScreen()),
-            );
-          },
+          title: AppLocalizations.of(context)!.myAgreements,
+          subtitle: AppLocalizations.of(context)!.manageContractsAndTrackProgress,
+          openScreen: const MyAgreementsScreen(),
         ),
 
         const SizedBox(height: 20),
         _SectionHeader(
-            title: locale == 'ar' ? 'الأمان والحماية' : 'Safety & Security'),
+            title: AppLocalizations.of(context)!.safetySecurity),
         const SizedBox(height: 8),
 
         // Safety Tips - NEW
         _SettingsTile(
           icon: Icons.security,
           iconColor: Colors.green,
-          title: locale == 'ar' ? '🛡️ نصائح السلامة' : '🛡️ Safety Tips',
-          subtitle: locale == 'ar'
-              ? 'احمِ نفسك من الاحتيال'
-              : 'Protect yourself from fraud',
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const SafetyTipsScreen()),
-          ),
+          title: AppLocalizations.of(context)!.safetyTips,
+          subtitle: AppLocalizations.of(context)!.protectYourselfFromFraud,
+          openScreen: const SafetyTipsScreen(),
         ),
 
         const SizedBox(height: 8),
@@ -284,10 +256,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ? Icons.notifications_active
                   : Icons.notifications_off,
               iconColor: isPushEnabled ? AppColors.primary : Colors.grey,
-              title: locale == 'ar' ? 'الإشعارات' : 'Notifications',
-              subtitle: locale == 'ar'
-                  ? (isPushEnabled ? 'مفعلة' : 'متوقفة')
-                  : (isPushEnabled ? 'Enabled' : 'Disabled'),
+              title: AppLocalizations.of(context)!.notifications,
+              subtitle: isPushEnabled
+                  ? AppLocalizations.of(context)!.enabled
+                  : AppLocalizations.of(context)!.disabled,
               trailing: Switch(
                 value: isPushEnabled,
                 onChanged: (value) => auth.togglePushNotifications(value),
@@ -311,14 +283,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _SettingsTile(
                   icon: Icons.interests_rounded,
                   iconColor: AppColors.desertOrange,
-                  title: locale == 'ar' ? 'اهتماماتي' : 'My Interests',
+                  title: AppLocalizations.of(context)!.myInterests,
                   subtitle: totalInterests > 0
-                      ? (locale == 'ar'
-                          ? '$totalInterests اهتمام محدد'
-                          : '$totalInterests interests selected')
-                      : (locale == 'ar'
-                          ? 'حدد اهتماماتك لتخصيص المحتوى'
-                          : 'Set interests to personalize content'),
+                      ? AppLocalizations.of(context)!.interestsSelected(totalInterests)
+                      : AppLocalizations.of(context)!.setInterestsToPersonalizeContent,
                   onTap: () => _showInterestsSheet(context, locale),
                 ),
                 const SizedBox(height: 8),
@@ -331,15 +299,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _SettingsTile(
           icon: Icons.privacy_tip_outlined,
           title: l10n.privacyPolicy,
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const PrivacyPolicyScreen()),
-          ),
+          openScreen: const PrivacyPolicyScreen(),
         ),
 
         const SizedBox(height: 20),
         _SectionHeader(
-            title: locale == 'ar' ? 'تواصل معنا' : 'Connect with Us'),
+            title: AppLocalizations.of(context)!.connectWithUs),
         const SizedBox(height: 8),
 
         // Connect with Us section loaded from Firestore
@@ -355,7 +320,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 'https://www.facebook.com/share/18J8UXiEDe/';
             final telegram = data['telegram'] ?? 'https://t.me/JamalJhome';
             final website =
-                data['website'] ?? 'https://sudanfree.com/sudan-free.html/';
+                data['website'] ?? 'https://sudanfree.com/sudan-free.html';
             final shareTextAr = data['share_text_ar'] ??
                 'جرب تطبيق سودان فري للعثور على فرص عمل ومستقلين موثوقين! حمل التطبيق الآن: https://sudanfree.com/sudan-free.html';
             final shareTextEn = data['share_text_en'] ??
@@ -366,38 +331,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _SettingsTile(
                   icon: Icons.chat_bubble_outline,
                   iconColor: Colors.green,
-                  title: locale == 'ar' ? 'واتساب' : 'WhatsApp',
-                  subtitle: locale == 'ar'
-                      ? 'تواصل مع الدعم الفني'
-                      : 'Contact Support',
+                  title: AppLocalizations.of(context)!.whatsapp,
+                  subtitle: AppLocalizations.of(context)!.contactSupport,
                   onTap: () => _launchURL(whatsapp),
                 ),
                 const SizedBox(height: 8),
                 _SettingsTile(
                   icon: Icons.facebook,
                   iconColor: Colors.blue[800],
-                  title: locale == 'ar' ? 'فيسبوك' : 'Facebook',
+                  title: AppLocalizations.of(context)!.facebook,
                   onTap: () => _launchURL(facebook),
                 ),
                 const SizedBox(height: 8),
                 _SettingsTile(
                   icon: Icons.send,
                   iconColor: Colors.blue[400],
-                  title: locale == 'ar' ? 'تلجرام' : 'Telegram',
+                  title: AppLocalizations.of(context)!.telegram,
                   onTap: () => _launchURL(telegram),
                 ),
                 const SizedBox(height: 8),
                 _SettingsTile(
                   icon: Icons.language,
                   iconColor: Colors.purple,
-                  title: locale == 'ar' ? 'الموقع الإلكتروني' : 'Website',
+                  title: AppLocalizations.of(context)!.website,
                   onTap: () => _launchURL(website),
                 ),
                 const SizedBox(height: 8),
                 _SettingsTile(
                   icon: Icons.share,
                   iconColor: Colors.orange,
-                  title: locale == 'ar' ? 'شارك التطبيق' : 'Share App',
+                  title: AppLocalizations.of(context)!.shareApp,
                   onTap: () async {
                     final text = locale == 'ar' ? shareTextAr : shareTextEn;
                     // ignore: deprecated_member_use
@@ -411,25 +374,62 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
         const SizedBox(height: 20),
 
+        // Pro Account
+        _SettingsTile(
+          icon: Icons.workspace_premium,
+          iconColor: const Color(0xFFFFB300),
+          title: locale == 'ar' ? 'ترقية الحساب (Pro)' : 'Upgrade Account (Pro)',
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const ProAccountScreen()),
+          ),
+        ),
+
+        const SizedBox(height: 8),
+
+        // Identity Verification
+        _SettingsTile(
+          icon: Icons.verified_user,
+          iconColor: Colors.green,
+          title: locale == 'ar' ? 'تحقق الهوية' : 'Identity Verification',
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const id_verify.IdentityVerificationScreen()),
+          ),
+        ),
+
+        const SizedBox(height: 20),
+
         // About
         _SettingsTile(
           icon: Icons.info_outline,
           iconColor: AppColors.primary,
-          title: locale == 'ar' ? '📱 عن التطبيق' : '📱 About App',
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const AboutAppScreen()),
-          ),
+          title: AppLocalizations.of(context)!.aboutApp,
+          openScreen: const AboutAppScreen(),
         ),
 
-        const SizedBox(height: 24),
+        const SizedBox(height: 12),
 
         // Logout Button
-        _SettingsTile(
-          icon: Icons.logout,
-          iconColor: AppColors.error,
-          title: l10n.logout,
-          onTap: () => _showLogoutDialog(context, locale),
+        Container(
+          width: double.infinity,
+          margin: const EdgeInsets.symmetric(horizontal: 4),
+          child: ElevatedButton.icon(
+            onPressed: () => _showLogoutDialog(context, locale),
+            icon: const Icon(Icons.logout, color: Colors.white),
+            label: Text(
+              l10n.logout,
+              style: const TextStyle(
+                  color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+          ),
         ),
       ],
     );
@@ -553,15 +553,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const Icon(Icons.logout, size: 48, color: AppColors.error),
               const SizedBox(height: 16),
               Text(
-                locale == 'ar' ? 'ماذا تريد أن تفعل؟' : 'What do you want to do?',
+                AppLocalizations.of(context)!.whatDoYouWantToDo,
                 style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 12),
               Text(
-                locale == 'ar'
-                    ? 'يمكنك تسجيل الخروج والعودة لاحقاً، أو حذف حسابك وبياناتك نهائياً من التطبيق.'
-                    : 'You can logout and return later, or permanently delete your account and data from the app.',
+                AppLocalizations.of(context)!.youCanLogoutAndReturnLater,
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
@@ -574,7 +572,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   },
                   icon: const Icon(Icons.logout, color: Colors.white),
                   label: Text(
-                    locale == 'ar' ? 'تسجيل الخروج' : 'Logout',
+                    AppLocalizations.of(context)!.logout,
                     style: const TextStyle(color: Colors.white),
                   ),
                   style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
@@ -590,7 +588,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   },
                   icon: const Icon(Icons.delete_forever, color: Colors.red),
                   label: Text(
-                    locale == 'ar' ? 'حذف الحساب نهائياً' : 'Delete Account Permanently',
+                    AppLocalizations.of(context)!.deleteAccountPermanently,
                     style: const TextStyle(color: Colors.red),
                   ),
                   style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.red)),
@@ -599,7 +597,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 8),
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: Text(locale == 'ar' ? 'إلغاء' : 'Cancel'),
+                child: Text(AppLocalizations.of(context)!.cancel),
               ),
             ],
           ),
@@ -645,15 +643,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const Icon(Icons.warning_amber_rounded, size: 48, color: Colors.red),
                 const SizedBox(height: 16),
                 Text(
-                  locale == 'ar' ? 'طلب حذف الحساب' : 'Delete Account Request',
+                  AppLocalizations.of(context)!.deleteAccountRequest,
                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: Colors.red),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  locale == 'ar'
-                      ? 'لأسباب أمنية ولحماية حقوق جميع المستخدمين، يتم مراجعة طلبات الحذف من قبل الإدارة. يرجى ذكر سبب رغبتك في حذف الحساب وسنقوم بتسجيل خروجك مؤقتاً حتى إتمام الحذف.'
-                      : 'For security reasons and to protect all users, deletion requests are reviewed by admin. Please state your reason. You will be logged out until the deletion is complete.',
+                  AppLocalizations.of(context)!.forSecurityReasonsAndToProtect,
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16),
@@ -661,9 +657,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   controller: reasonController,
                   maxLines: 3,
                   decoration: InputDecoration(
-                    hintText: locale == 'ar'
-                        ? 'السبب (اختياري ولكن يسرع العملية)'
-                        : 'Reason (optional but speeds up the process)',
+                    hintText: AppLocalizations.of(context)!.reasonOptionalButSpeedsUpThe,
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     filled: true,
                     fillColor: Theme.of(context).brightness == Brightness.dark ? Colors.black26 : Colors.white54,
@@ -684,7 +678,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             if (success && context.mounted) {
                               Navigator.pop(ctx);
                               ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                content: Text(locale == 'ar' ? 'تم إرسال طلب الحذف بنجاح' : 'Deletion request sent successfully'),
+                                content: Text(AppLocalizations.of(context)!.deletionRequestSentSuccessfully),
                                 backgroundColor: Colors.green,
                               ));
                               _performLogout(context);
@@ -692,7 +686,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               setState(() => isLoading = false);
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                  content: Text(locale == 'ar' ? 'حدث خطأ، حاول مرة أخرى' : 'Error occurred, try again'),
+                                  content: Text(AppLocalizations.of(context)!.errorOccurredTryAgain),
                                   backgroundColor: Colors.red,
                                 ));
                               }
@@ -700,13 +694,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           },
                     child: isLoading
                         ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                        : Text(locale == 'ar' ? 'تأكيد الطلب' : 'Confirm Request', style: const TextStyle(color: Colors.white)),
+                        : Text(AppLocalizations.of(context)!.confirmRequest, style: const TextStyle(color: Colors.white)),
                   ),
                 ),
                 const SizedBox(height: 8),
                 TextButton(
                   onPressed: isLoading ? null : () => Navigator.pop(ctx),
-                  child: Text(locale == 'ar' ? 'إلغاء' : 'Cancel'),
+                  child: Text(AppLocalizations.of(context)!.cancel),
                 ),
               ],
             ),
@@ -768,6 +762,7 @@ class _SettingsTile extends StatefulWidget {
   final String? subtitle;
   final Widget? trailing;
   final VoidCallback? onTap;
+  final Widget? openScreen;
 
   const _SettingsTile({
     required this.icon,
@@ -776,6 +771,7 @@ class _SettingsTile extends StatefulWidget {
     this.subtitle,
     this.trailing,
     this.onTap,
+    this.openScreen,
   });
 
   @override
@@ -786,15 +782,14 @@ class _SettingsTileState extends State<_SettingsTile> {
   double _scale = 1.0;
 
   void _onTapDown(TapDownDetails details) {
-    if (widget.onTap != null) {
+    if (widget.onTap != null || widget.openScreen != null) {
       setState(() => _scale = 0.97);
     }
   }
 
   void _onTapUp(TapUpDetails details) {
-    if (widget.onTap != null) {
+    if (widget.onTap != null || widget.openScreen != null) {
       setState(() => _scale = 1.0);
-      widget.onTap?.call();
     }
   }
 
@@ -806,10 +801,21 @@ class _SettingsTileState extends State<_SettingsTile> {
   Widget build(BuildContext context) {
     final color = widget.iconColor ?? AppColors.primary;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return GestureDetector(
-      onTapDown: _onTapDown,
-      onTapUp: _onTapUp,
-      onTapCancel: _onTapCancel,
+      onTapDown: widget.onTap != null || widget.openScreen != null ? _onTapDown : null,
+      onTapUp: widget.onTap != null || widget.openScreen != null ? _onTapUp : null,
+      onTapCancel: widget.onTap != null || widget.openScreen != null ? _onTapCancel : null,
+      onTap: () {
+        if (widget.onTap != null) {
+          widget.onTap!();
+        } else if (widget.openScreen != null) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => widget.openScreen!),
+          );
+        }
+      },
       child: AnimatedScale(
         scale: _scale,
         duration: const Duration(milliseconds: 100),
@@ -844,7 +850,7 @@ class _SettingsTileState extends State<_SettingsTile> {
                         color: isDark ? Colors.grey[500] : Colors.grey[600]))
                 : null,
             trailing: widget.trailing ??
-                (widget.onTap != null
+                ((widget.onTap != null || widget.openScreen != null)
                     ? Icon(Icons.chevron_right,
                         size: 20, color: Colors.grey[400])
                     : null),
@@ -1055,7 +1061,7 @@ class _InterestsBottomSheetState extends State<_InterestsBottomSheet> {
       final scaffoldMessenger = ScaffoldMessenger.of(context);
       scaffoldMessenger.showSnackBar(SnackBar(
         content: Text(
-            widget.locale == 'ar' ? 'تم حفظ اهتماماتك ✅' : 'Interests saved ✅'),
+            AppLocalizations.of(context)!.interestsSaved),
         backgroundColor: Colors.green,
         behavior: SnackBarBehavior.floating,
       ));
@@ -1106,14 +1112,12 @@ class _InterestsBottomSheetState extends State<_InterestsBottomSheet> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        isAr ? 'اهتماماتي' : 'My Interests',
+                        AppLocalizations.of(context)!.myInterests,
                         style: const TextStyle(
                             fontSize: 18, fontWeight: FontWeight.bold),
                       ),
                       Text(
-                        isAr
-                            ? 'اختر ما يهمك لتخصيص المحتوى'
-                            : 'Choose to personalize your feed',
+                        AppLocalizations.of(context)!.chooseToPersonalizeYourFeed,
                         style: TextStyle(fontSize: 12, color: Colors.grey[500]),
                       ),
                     ],
@@ -1138,7 +1142,7 @@ class _InterestsBottomSheetState extends State<_InterestsBottomSheet> {
                 // ── Services Section ──
                 _sectionTitle(
                   icon: Icons.build_circle,
-                  title: isAr ? 'الخدمات' : 'Services',
+                  title: AppLocalizations.of(context)!.services,
                   color: AppColors.primary,
                 ),
                 const SizedBox(height: 10),
@@ -1170,7 +1174,7 @@ class _InterestsBottomSheetState extends State<_InterestsBottomSheet> {
                 // ── Shops Section ──
                 _sectionTitle(
                   icon: Icons.storefront,
-                  title: isAr ? 'أنواع المتاجر' : 'Shop Types',
+                  title: AppLocalizations.of(context)!.shopTypes,
                   color: AppColors.desertOrange,
                 ),
                 const SizedBox(height: 10),
@@ -1224,7 +1228,7 @@ class _InterestsBottomSheetState extends State<_InterestsBottomSheet> {
                                   color: Colors.white, size: 20),
                               const SizedBox(width: 8),
                               Text(
-                                isAr ? 'حفظ الاهتمامات' : 'Save Interests',
+                                AppLocalizations.of(context)!.saveInterests,
                                 style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 16,
@@ -1336,21 +1340,26 @@ class _UpdateLocationTileState extends State<_UpdateLocationTile> {
     if (area.contains('kassala')) return 'كسلا';
     if (area.contains('gedaref') ||
         area.contains('qadaref') ||
-        area.contains('qadarif')) return 'القضارف';
+        area.contains('qadarif')) {
+      return 'القضارف';
+    }
     if (area.contains('red sea')) return 'البحر الأحمر';
     if (area.contains('sennar')) return 'سنار';
     if (area.contains('blue nile')) return 'النيل الأزرق';
     if (area.contains('white nile')) return 'النيل الأبيض';
-    if (area.contains('north') && area.contains('kordofan'))
+    if (area.contains('north') && area.contains('kordofan')) {
       return 'شمال كردفان';
-    if (area.contains('south') && area.contains('kordofan'))
+    }
+    if (area.contains('south') && area.contains('kordofan')) {
       return 'جنوب كردفان';
+    }
     if (area.contains('west') && area.contains('kordofan')) return 'غرب كردفان';
     if (area.contains('north') && area.contains('darfur')) return 'شمال دارفور';
     if (area.contains('south') && area.contains('darfur')) return 'جنوب دارفور';
     if (area.contains('west') && area.contains('darfur')) return 'غرب دارفور';
-    if (area.contains('central') && area.contains('darfur'))
+    if (area.contains('central') && area.contains('darfur')) {
       return 'وسط دارفور';
+    }
     if (area.contains('east') && area.contains('darfur')) return 'شرق دارفور';
 
     for (var s in SudanLocations.states) {
@@ -1364,24 +1373,29 @@ class _UpdateLocationTileState extends State<_UpdateLocationTile> {
     final area = localityArea.toLowerCase();
     final localities = SudanLocations.getLocalities(state);
 
-    if (area.contains('khartoum north') || area.contains('bahri'))
+    if (area.contains('khartoum north') || area.contains('bahri')) {
       return 'بحري';
+    }
     if (area.contains('khartoum')) return 'الخرطوم';
     if (area.contains('omdurman')) return 'أم درمان';
     if (area.contains('karari')) return 'كرري';
     if (area.contains('umbadda') || area.contains('ombadda')) return 'أم بدة';
     if (area.contains('jebel aulia')) return 'جبل أولياء';
-    if (area.contains('sharq an nil') || area.contains('east nile'))
+    if (area.contains('sharq an nil') || area.contains('east nile')) {
       return 'شرق النيل';
-    if (area.contains('wad madani') || area.contains('wad medani'))
+    }
+    if (area.contains('wad madani') || area.contains('wad medani')) {
       return 'ود مدني';
+    }
     if (area.contains('port sudan')) return 'بورتسودان';
     if (area.contains('kassala')) return 'كسلا';
     if (area.contains('nyala')) return 'نيالا';
-    if (area.contains('el fasher') || area.contains('al fashir'))
+    if (area.contains('el fasher') || area.contains('al fashir')) {
       return 'الفاشر';
-    if (area.contains('al ubayyid') || area.contains('el obeid'))
+    }
+    if (area.contains('al ubayyid') || area.contains('el obeid')) {
       return 'الأبيض';
+    }
 
     for (var l in localities) {
       if (localityArea.contains(l) || l.contains(localityArea)) return l;
@@ -1395,12 +1409,10 @@ class _UpdateLocationTileState extends State<_UpdateLocationTile> {
       icon: Icons.my_location,
       iconColor: AppColors.primary,
       title:
-          widget.locale == 'ar' ? 'تحديث موقعي الجغرافي' : 'Update My Location',
+          AppLocalizations.of(context)!.updateMyLocation,
       subtitle: _isLoading
-          ? (widget.locale == 'ar' ? 'جاري التحديث الآن...' : 'Updating now...')
-          : (widget.locale == 'ar'
-              ? 'التقاط موقعك الحالي للخريطة'
-              : 'Capture your current location for the map'),
+          ? (AppLocalizations.of(context)!.updatingNow)
+          : (AppLocalizations.of(context)!.captureYourCurrentLocationForThe),
       trailing: _isLoading
           ? const SizedBox(
               width: 16,
@@ -1419,9 +1431,7 @@ class _UpdateLocationTileState extends State<_UpdateLocationTile> {
                   final scaffoldMessenger = ScaffoldMessenger.of(context);
                   scaffoldMessenger.showSnackBar(
                     SnackBar(
-                        content: Text(widget.locale == 'ar'
-                            ? 'يرجى تفعيل خدمة تحديد الموقع (GPS)'
-                            : 'Please enable Location services')),
+                        content: Text(AppLocalizations.of(context)!.pleaseEnableLocationServices)),
                   );
                 }
                 return;
@@ -1440,9 +1450,7 @@ class _UpdateLocationTileState extends State<_UpdateLocationTile> {
                   final scaffoldMessenger = ScaffoldMessenger.of(context);
                   scaffoldMessenger.showSnackBar(
                     SnackBar(
-                        content: Text(widget.locale == 'ar'
-                            ? 'صلاحيات الموقع معطلة دائماً'
-                            : 'Location permissions are permanently denied')),
+                        content: Text(AppLocalizations.of(context)!.locationPermissionsArePermanentlyDenied)),
                   );
                 }
                 return;
@@ -1490,12 +1498,8 @@ class _UpdateLocationTileState extends State<_UpdateLocationTile> {
                   scaffoldMessenger.showSnackBar(
                     SnackBar(
                         content: Text(success
-                            ? (widget.locale == 'ar'
-                                ? 'تم تحديث موقعك بنجاح!'
-                                : 'Location updated successfully!')
-                            : (widget.locale == 'ar'
-                                ? 'حدث خطأ أثناء التحديث'
-                                : 'Error updating location'))),
+                            ? (AppLocalizations.of(context)!.locationUpdatedSuccessfully)
+                            : (AppLocalizations.of(context)!.errorUpdatingLocation))),
                   );
                 }
               } catch (e) {
@@ -1503,9 +1507,7 @@ class _UpdateLocationTileState extends State<_UpdateLocationTile> {
                   final scaffoldMessenger = ScaffoldMessenger.of(context);
                   scaffoldMessenger.showSnackBar(
                     SnackBar(
-                        content: Text(widget.locale == 'ar'
-                            ? 'فشل التقاط الموقع'
-                            : 'Failed to capture location')),
+                        content: Text(AppLocalizations.of(context)!.failedToCaptureLocation)),
                   );
                 }
               } finally {

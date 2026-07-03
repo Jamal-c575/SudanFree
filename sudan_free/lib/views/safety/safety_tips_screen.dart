@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../services/smart_guide_service.dart';
-import '../../widgets/common/glass_container.dart';
 import '../../widgets/common/glass_card.dart';
 
 /// شاشة نصائح السلامة - Safety Tips Screen

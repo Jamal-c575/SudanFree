@@ -13,6 +13,7 @@ import '../../core/constants/sudan_locations.dart';
 import '../../providers/locale_provider.dart';
 import '../../widgets/common/custom_text_field.dart';
 import '../../widgets/common/custom_dropdown.dart';
+import 'package:sudan_free/l10n/generated/app_localizations.dart';
 
 class AddRequestBottomSheet extends StatefulWidget {
   final UserModel user;
@@ -78,13 +79,13 @@ class _AddRequestBottomSheetState extends State<AddRequestBottomSheet> {
               ListTile(
                 leading: const Icon(Icons.photo_library_outlined,
                     color: AppColors.primary),
-                title: Text(locale == 'ar' ? 'المعرض' : 'Gallery'),
+                title: Text(AppLocalizations.of(context)!.gallery),
                 onTap: () => Navigator.pop(ctx, ImageSource.gallery),
               ),
               ListTile(
                 leading: const Icon(Icons.camera_alt_outlined,
                     color: AppColors.primary),
-                title: Text(locale == 'ar' ? 'الكاميرا' : 'Camera'),
+                title: Text(AppLocalizations.of(context)!.camera),
                 onTap: () => Navigator.pop(ctx, ImageSource.camera),
               ),
             ],
@@ -177,9 +178,7 @@ class _AddRequestBottomSheetState extends State<AddRequestBottomSheet> {
     if (_textController.text.trim().isEmpty) {
       messenger.showSnackBar(
         SnackBar(
-            content: Text(locale == 'ar'
-                ? 'الرجاء كتابة تفاصيل الطلب'
-                : 'Please write request details'),
+            content: Text(AppLocalizations.of(context)!.pleaseWriteRequestDetails),
             backgroundColor: AppColors.warning),
       );
       return;
@@ -188,9 +187,7 @@ class _AddRequestBottomSheetState extends State<AddRequestBottomSheet> {
     if (_selectedCategory == null) {
       messenger.showSnackBar(
         SnackBar(
-            content: Text(locale == 'ar'
-                ? 'الرجاء تحديد نوع العمل المطلوب'
-                : 'Please select the work type'),
+            content: Text(AppLocalizations.of(context)!.pleaseSelectTheWorkType),
             backgroundColor: AppColors.warning),
       );
       return;
@@ -198,7 +195,7 @@ class _AddRequestBottomSheetState extends State<AddRequestBottomSheet> {
 
     setState(() {
       _isLoading = true;
-      _loadingStatus = locale == 'ar' ? 'جاري الإعداد...' : 'Preparing...';
+      _loadingStatus = AppLocalizations.of(context)!.preparing;
     });
 
     try {
@@ -226,9 +223,7 @@ class _AddRequestBottomSheetState extends State<AddRequestBottomSheet> {
       // 1.5 Upload audio if any
       String? uploadedAudioUrl;
       if (_recordedAudioPath != null) {
-        setState(() => _loadingStatus = locale == 'ar'
-            ? 'جاري رفع التسجيل الصوتي...'
-            : 'Uploading audio...');
+        setState(() => _loadingStatus = AppLocalizations.of(context)!.uploadingAudio);
         uploadedAudioUrl = await StorageService().uploadImage(
           File(_recordedAudioPath!),
           folder: 'requests/${widget.user.id}/audio',
@@ -237,7 +232,7 @@ class _AddRequestBottomSheetState extends State<AddRequestBottomSheet> {
 
       // 2. Create request
       setState(() => _loadingStatus =
-          locale == 'ar' ? 'جاري نشر الطلب...' : 'Publishing request...');
+          AppLocalizations.of(context)!.publishingRequest);
 
       final request = RequestModel(
         id: '',
@@ -260,9 +255,7 @@ class _AddRequestBottomSheetState extends State<AddRequestBottomSheet> {
         navigator.pop();
         messenger.showSnackBar(
           SnackBar(
-            content: Text(locale == 'ar'
-                ? 'تم نشر طلبك بنجاح وسيبدأ مقدمو الخدمات بالتواصل معك!'
-                : 'Your request has been published successfully!'),
+            content: Text(AppLocalizations.of(context)!.yourRequestHasBeenPublishedSuccessfully),
             backgroundColor: AppColors.success,
           ),
         );
@@ -288,49 +281,49 @@ class _AddRequestBottomSheetState extends State<AddRequestBottomSheet> {
     return [
       {
         'key': 'Cars',
-        'label': locale == 'ar' ? 'سيارات' : 'Cars',
+        'label': AppLocalizations.of(context)!.cars,
         'icon': Icons.directions_car_outlined,
         'color': Colors.red,
       },
       {
         'key': 'Real Estate',
-        'label': locale == 'ar' ? 'عقارات' : 'Real Estate',
+        'label': AppLocalizations.of(context)!.realEstate,
         'icon': Icons.home_work_outlined,
         'color': Colors.blue,
       },
       {
         'key': 'Electronics',
-        'label': locale == 'ar' ? 'إلكترونيات' : 'Electronics',
+        'label': AppLocalizations.of(context)!.electronics,
         'icon': Icons.devices_outlined,
         'color': Colors.indigo,
       },
       {
         'key': 'Clothes',
-        'label': locale == 'ar' ? 'ملابس' : 'Clothes',
+        'label': AppLocalizations.of(context)!.clothes,
         'icon': Icons.checkroom_outlined,
         'color': Colors.pink,
       },
       {
         'key': 'Services',
-        'label': locale == 'ar' ? 'خدمات' : 'Services',
+        'label': AppLocalizations.of(context)!.services,
         'icon': Icons.home_repair_service_outlined,
         'color': Colors.orange,
       },
       {
         'key': 'Food',
-        'label': locale == 'ar' ? 'أطعمة' : 'Food',
+        'label': AppLocalizations.of(context)!.food,
         'icon': Icons.restaurant_outlined,
         'color': Colors.green,
       },
       {
         'key': 'Construction',
-        'label': locale == 'ar' ? 'بناء ومقاولات' : 'Construction',
+        'label': AppLocalizations.of(context)!.construction,
         'icon': Icons.construction_outlined,
         'color': Colors.brown,
       },
       {
         'key': 'Beauty',
-        'label': locale == 'ar' ? 'تجميل' : 'Beauty',
+        'label': AppLocalizations.of(context)!.beauty,
         'icon': Icons.face_retouching_natural,
         'color': Colors.purple,
       },
@@ -369,7 +362,7 @@ class _AddRequestBottomSheetState extends State<AddRequestBottomSheet> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  locale == 'ar' ? 'أضف طلب جديد' : 'Add New Request',
+                  AppLocalizations.of(context)!.addNewRequest,
                   style: Theme.of(context)
                       .textTheme
                       .titleLarge
@@ -405,9 +398,7 @@ class _AddRequestBottomSheetState extends State<AddRequestBottomSheet> {
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
-                            locale == 'ar'
-                                ? 'اشرح طلبك بوضوح وأرفق صوراً إن أمكن ليصلك أفضل العروض.'
-                                : 'Describe your request clearly and attach images if possible for better offers.',
+                            AppLocalizations.of(context)!.describeYourRequestClearlyAndAttach,
                             style: TextStyle(
                                 color: Colors.blue.shade700,
                                 height: 1.5,
@@ -435,9 +426,7 @@ class _AddRequestBottomSheetState extends State<AddRequestBottomSheet> {
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
-                            locale == 'ar'
-                                ? 'تنبيه: جميع الطلبات تمثل "عروض مؤقتة" وسيتم حذفها تلقائياً من السوق بعد مرور 48 ساعة.'
-                                : 'Notice: All requests are "Temporary Offers" and will be automatically deleted after 48 hours.',
+                            AppLocalizations.of(context)!.noticeAllRequestsAreTemporaryOffers,
                             style: TextStyle(
                                 color: Colors.orange.shade800,
                                 height: 1.5,
@@ -452,7 +441,7 @@ class _AddRequestBottomSheetState extends State<AddRequestBottomSheet> {
 
                   // ═══ 1. Work Type Selection (Chips with icons) ═══
                   Text(
-                    locale == 'ar' ? 'نوع العمل المطلوب *' : 'Work Type *',
+                    AppLocalizations.of(context)!.workType,
                     style: const TextStyle(
                         fontWeight: FontWeight.bold, fontSize: 16),
                   ),
@@ -522,10 +511,8 @@ class _AddRequestBottomSheetState extends State<AddRequestBottomSheet> {
                   CustomTextField(
                     controller: _textController,
                     label:
-                        locale == 'ar' ? 'تفاصيل الطلب *' : 'Request Details *',
-                    hint: locale == 'ar'
-                        ? 'مثال: أحتاج سباك لإصلاح تسريب في الحمام، العمل مستعجل ويفضل الحضور اليوم...'
-                        : 'Example: I need a plumber to fix a bathroom leak, urgent work preferred today...',
+                        AppLocalizations.of(context)!.requestDetails,
+                    hint: AppLocalizations.of(context)!.exampleINeedAPlumberTo,
                     maxLines: 5,
                     prefixIcon: Icons.description_outlined,
                   ),
@@ -534,9 +521,7 @@ class _AddRequestBottomSheetState extends State<AddRequestBottomSheet> {
 
                   // ═══ 3. Image Attachments ═══
                   Text(
-                    locale == 'ar'
-                        ? 'صور توضيحية (اختياري)'
-                        : 'Attached Images (optional)',
+                    AppLocalizations.of(context)!.attachedImagesOptional,
                     style: const TextStyle(
                         fontWeight: FontWeight.bold, fontSize: 16),
                   ),
@@ -618,7 +603,7 @@ class _AddRequestBottomSheetState extends State<AddRequestBottomSheet> {
                                           .withValues(alpha: 0.7)),
                                   const SizedBox(height: 4),
                                   Text(
-                                    locale == 'ar' ? 'إضافة صورة' : 'Add Photo',
+                                    AppLocalizations.of(context)!.addPhoto,
                                     style: TextStyle(
                                         fontSize: 11,
                                         color: AppColors.primary
@@ -642,17 +627,13 @@ class _AddRequestBottomSheetState extends State<AddRequestBottomSheet> {
 
                   // ═══ 4. Voice Recording ═══
                   Text(
-                    locale == 'ar'
-                        ? 'تسجيل صوتي (اختياري)'
-                        : 'Voice Record (optional)',
+                    AppLocalizations.of(context)!.voiceRecordOptional,
                     style: const TextStyle(
                         fontWeight: FontWeight.bold, fontSize: 16),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    locale == 'ar'
-                        ? 'يمكنك تسجيل شرح صوتي لطلبك بوضوح'
-                        : 'You can record a voice explanation for your request',
+                    AppLocalizations.of(context)!.youCanRecordAVoiceExplanation,
                     style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                   ),
                   const SizedBox(height: 12),
@@ -755,9 +736,7 @@ class _AddRequestBottomSheetState extends State<AddRequestBottomSheet> {
                                 color: AppColors.primary),
                             const SizedBox(width: 8),
                             Text(
-                              locale == 'ar'
-                                  ? 'اضغط للبدء في تسجيل الصوت'
-                                  : 'Tap to start recording',
+                              AppLocalizations.of(context)!.tapToStartRecording,
                               style: const TextStyle(
                                   color: AppColors.primary,
                                   fontWeight: FontWeight.bold),
@@ -771,22 +750,18 @@ class _AddRequestBottomSheetState extends State<AddRequestBottomSheet> {
 
                   // ═══ 5. Location Selection ═══
                   Text(
-                    locale == 'ar'
-                        ? 'موقع العمل (اختياري)'
-                        : 'Work Location (optional)',
+                    AppLocalizations.of(context)!.workLocationOptional,
                     style: const TextStyle(
                         fontWeight: FontWeight.bold, fontSize: 16),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    locale == 'ar'
-                        ? 'حدد الموقع إذا كان العمل يتطلب الحضور'
-                        : 'Specify location if the work requires attendance',
+                    AppLocalizations.of(context)!.specifyLocationIfTheWorkRequires,
                     style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                   ),
                   const SizedBox(height: 12),
                   CustomDropdown(
-                    label: locale == 'ar' ? 'الولاية' : 'State',
+                    label: AppLocalizations.of(context)!.state,
                     value: _selectedState,
                     items: SudanLocations.states,
                     onChanged: (val) {
@@ -795,7 +770,7 @@ class _AddRequestBottomSheetState extends State<AddRequestBottomSheet> {
                         _selectedLocality = null;
                       });
                     },
-                    hint: locale == 'ar' ? 'اختر الولاية' : 'Select state',
+                    hint: AppLocalizations.of(context)!.selectState,
                     prefixIcon: Icons.map_outlined,
                     itemLabelBuilder: (item) =>
                         SudanLocations.getStateName(item, locale),
@@ -803,16 +778,14 @@ class _AddRequestBottomSheetState extends State<AddRequestBottomSheet> {
                   if (_selectedState != null) ...[
                     const SizedBox(height: 16),
                     CustomDropdown(
-                      label: locale == 'ar'
-                          ? 'المحلية / المدينة'
-                          : 'Locality / City',
+                      label: AppLocalizations.of(context)!.localityCity,
                       value: _selectedLocality,
                       items: SudanLocations
                               .statesWithLocalities[_selectedState!] ??
                           [],
                       onChanged: (val) =>
                           setState(() => _selectedLocality = val),
-                      hint: locale == 'ar' ? 'اختر المحلية' : 'Select locality',
+                      hint: AppLocalizations.of(context)!.selectLocality,
                       prefixIcon: Icons.location_city_outlined,
                       itemLabelBuilder: (item) =>
                           SudanLocations.getLocalityName(item, locale),
@@ -854,7 +827,7 @@ class _AddRequestBottomSheetState extends State<AddRequestBottomSheet> {
                                 const Icon(Icons.send_rounded, size: 20),
                                 const SizedBox(width: 8),
                                 Text(
-                                  locale == 'ar' ? 'نشر الطلب' : 'Post Request',
+                                  AppLocalizations.of(context)!.postRequest,
                                   style: const TextStyle(
                                       fontSize: 18,
                                       fontWeight: FontWeight.bold),

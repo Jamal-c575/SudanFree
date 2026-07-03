@@ -8,7 +8,10 @@ import '../../core/constants/app_colors.dart';
 import 'active_job_tracking_screen.dart';
 import '../../services/smart_guide_service.dart';
 import 'package:shimmer/shimmer.dart';
-import '../../widgets/common/glass_card.dart';
+import '../../widgets/common/premium_glass_card.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import '../../utils/animation_utils.dart';
 
 class MyAgreementsScreen extends StatefulWidget {
   const MyAgreementsScreen({super.key});
@@ -159,8 +162,9 @@ class _MyAgreementsScreenState extends State<MyAgreementsScreen>
       List<JobModel> jobs, AppLocalizations l10n, bool isDark) {
     if (jobs.isEmpty) {
       return Center(
-        child: GlassCard(
+        child: PremiumGlassCard(
           padding: const EdgeInsets.all(24),
+          border: true,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
@@ -175,7 +179,7 @@ class _MyAgreementsScreenState extends State<MyAgreementsScreen>
               ),
             ],
           ),
-        ),
+        ).animate().scale().fade(),
       );
     }
 
@@ -186,74 +190,72 @@ class _MyAgreementsScreenState extends State<MyAgreementsScreen>
         final job = jobs[index];
         final isClient = job.clientId == context.read<AuthProvider>().user?.id;
 
-        return GlassCard(
-          margin: const EdgeInsets.only(bottom: 12),
-          borderRadius: 16.0,
-          child: InkWell(
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: PremiumGlassCard(
             borderRadius: BorderRadius.circular(16),
+            border: true,
+            padding: const EdgeInsets.all(16),
             onTap: () {
+              HapticFeedback.lightImpact();
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                    builder: (_) => ActiveJobTrackingScreen(jobId: job.id)),
+                AnimationUtils.createPremiumRoute(page: ActiveJobTrackingScreen(jobId: job.id)),
               );
             },
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          job.title,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 16),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      _buildStatusBadge(job.status, l10n),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    job.description,
-                    style: TextStyle(color: Colors.grey[600], fontSize: 13),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 12),
-                  const Divider(),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Icon(isClient ? Icons.person_outline : Icons.work_outline,
-                          size: 16, color: Colors.grey),
-                      const SizedBox(width: 6),
-                      Text(
-                        isClient
-                            ? (job.assignedFreelancerName ?? 'متعاقد')
-                            : job.clientName,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        job.title,
                         style: const TextStyle(
-                            fontSize: 13, fontWeight: FontWeight.w600),
+                            fontWeight: FontWeight.bold, fontSize: 16),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      const Spacer(),
-                      Text(
-                        '${job.budgetMax} SDG',
-                        style: const TextStyle(
-                            color: AppColors.secondary,
-                            fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+                    ),
+                    _buildStatusBadge(job.status, l10n),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  job.description,
+                  style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 12),
+                const Divider(),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(isClient ? Icons.person_outline : Icons.work_outline,
+                        size: 16, color: Colors.grey),
+                    const SizedBox(width: 6),
+                    Text(
+                      isClient
+                          ? (job.assignedFreelancerName ?? 'متعاقد')
+                          : job.clientName,
+                      style: const TextStyle(
+                          fontSize: 13, fontWeight: FontWeight.w600),
+                    ),
+                    const Spacer(),
+                    Text(
+                      '${job.budgetMax} SDG',
+                      style: const TextStyle(
+                          color: AppColors.secondary,
+                          fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
-        );
+        ).animate().slideY(begin: 0.1, delay: Duration(milliseconds: 50 * index)).fade();
       },
     );
   }
@@ -300,10 +302,11 @@ class _MyAgreementsScreenState extends State<MyAgreementsScreen>
       padding: const EdgeInsets.all(16),
       itemCount: 5,
       itemBuilder: (context, index) {
-        return GlassCard(
-          margin: const EdgeInsets.only(bottom: 12),
-          borderRadius: 16.0,
-          child: Padding(
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: PremiumGlassCard(
+            borderRadius: BorderRadius.circular(16),
+            border: true,
             padding: const EdgeInsets.all(16),
             child: Shimmer.fromColors(
               baseColor: isDark ? Colors.grey[800]! : Colors.grey[300]!,

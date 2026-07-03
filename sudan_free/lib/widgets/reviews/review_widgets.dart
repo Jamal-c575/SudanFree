@@ -6,6 +6,7 @@ import '../../models/review_model.dart';
 import '../../providers/locale_provider.dart';
 import '../../views/profile/profile_screen.dart';
 import '../common/glass_container.dart';
+import 'package:sudan_free/l10n/generated/app_localizations.dart';
 
 class AddReviewDialog extends StatefulWidget {
   final String freelancerId;
@@ -134,9 +135,7 @@ class _AddReviewDialogState extends State<AddReviewDialog> {
               controller: _commentController,
               maxLines: 3,
               decoration: InputDecoration(
-                hintText: locale == 'ar'
-                    ? 'اكتب تعليقك (اختياري)'
-                    : 'Write a comment (optional)',
+                hintText: AppLocalizations.of(context)!.writeACommentOptional,
                 border:
                     OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               ),
@@ -155,12 +154,8 @@ class _AddReviewDialogState extends State<AddReviewDialog> {
                 onChanged: (v) => setState(() => _isJobCompleted = v ?? false),
                 title: Text(
                   widget.isShop
-                      ? (locale == 'ar'
-                          ? 'هل تمت عملية الشراء بنجاح؟'
-                          : 'Was the purchase completed successfully?')
-                      : (locale == 'ar'
-                          ? 'هل أكمل الحرفي العمل بنجاح؟'
-                          : 'Did the freelancer complete the work?'),
+                      ? (AppLocalizations.of(context)!.wasThePurchaseCompletedSuccessfully)
+                      : (AppLocalizations.of(context)!.didTheFreelancerCompleteTheWork),
                   style: const TextStyle(
                       fontSize: 13, fontWeight: FontWeight.w500),
                 ),
@@ -188,12 +183,8 @@ class _AddReviewDialogState extends State<AddReviewDialog> {
                 children: [
                   Text(
                     widget.isShop
-                        ? (locale == 'ar'
-                            ? 'هل تنصح بالشراء منه؟'
-                            : 'Would you recommend them?')
-                        : (locale == 'ar'
-                            ? 'هل ستتعامل معه مرة أخرى؟'
-                            : 'Would you work with them again?'),
+                        ? (AppLocalizations.of(context)!.wouldYouRecommendThem)
+                        : (AppLocalizations.of(context)!.wouldYouWorkWithThemAgain),
                     style: const TextStyle(
                         fontWeight: FontWeight.bold, fontSize: 13),
                   ),
@@ -215,7 +206,7 @@ class _AddReviewDialogState extends State<AddReviewDialog> {
                             padding: EdgeInsets.zero,
                           ),
                           child: Text(
-                            locale == 'ar' ? 'نعم' : 'Yes',
+                            AppLocalizations.of(context)!.yes,
                             style: TextStyle(
                                 color: _wouldWorkAgain == true
                                     ? Colors.green
@@ -240,7 +231,7 @@ class _AddReviewDialogState extends State<AddReviewDialog> {
                             padding: EdgeInsets.zero,
                           ),
                           child: Text(
-                            locale == 'ar' ? 'لا' : 'No',
+                            AppLocalizations.of(context)!.no,
                             style: TextStyle(
                                 color: _wouldWorkAgain == false
                                     ? Colors.red
@@ -260,7 +251,7 @@ class _AddReviewDialogState extends State<AddReviewDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: Text(locale == 'ar' ? 'إلغاء' : 'Cancel'),
+          child: Text(AppLocalizations.of(context)!.cancel),
         ),
         ElevatedButton(
           onPressed: (_rating > 0 && !_isSubmitting)
@@ -301,19 +292,19 @@ class _AddReviewDialogState extends State<AddReviewDialog> {
                     valueColor: const AlwaysStoppedAnimation(Colors.white),
                   ),
                 )
-              : Text(locale == 'ar' ? 'إرسال' : 'Submit'),
+              : Text(AppLocalizations.of(context)!.submit),
         ),
       ],
     );
   }
 
   String _getRatingText(double rating, String locale) {
-    if (rating == 0) return locale == 'ar' ? 'اضغط لتقييم' : 'Tap to rate';
-    if (rating <= 1) return locale == 'ar' ? 'سيء' : 'Poor';
-    if (rating <= 2) return locale == 'ar' ? 'مقبول' : 'Fair';
-    if (rating <= 3) return locale == 'ar' ? 'جيد' : 'Good';
-    if (rating <= 4) return locale == 'ar' ? 'جيد جداً' : 'Very Good';
-    return locale == 'ar' ? 'ممتاز' : 'Excellent';
+    if (rating == 0) return AppLocalizations.of(context)!.tapToRate;
+    if (rating <= 1) return AppLocalizations.of(context)!.poor;
+    if (rating <= 2) return AppLocalizations.of(context)!.fair;
+    if (rating <= 3) return AppLocalizations.of(context)!.good;
+    if (rating <= 4) return AppLocalizations.of(context)!.veryGood;
+    return AppLocalizations.of(context)!.excellent;
   }
 
   Color _getStarColor(double rating) {
@@ -412,7 +403,7 @@ class ReviewCard extends StatelessWidget {
           if (review.jobTitle != null && review.jobTitle!.isNotEmpty) ...[
             const SizedBox(height: 8),
             Text(
-              '${locale == 'ar' ? 'المشروع' : 'Project'}: ${review.jobTitle}',
+              '${AppLocalizations.of(context)!.project}: ${review.jobTitle}',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: AppColors.textSecondary,
                   ),
@@ -446,12 +437,8 @@ class ReviewCard extends StatelessWidget {
                   const SizedBox(width: 6),
                   Text(
                     review.wouldWorkAgain!
-                        ? (locale == 'ar'
-                            ? 'سأتعامل معه مرة أخرى'
-                            : 'Would work again')
-                        : (locale == 'ar'
-                            ? 'لا أنصح بالتعامل'
-                            : 'Would not recommend'),
+                        ? (AppLocalizations.of(context)!.wouldWorkAgain)
+                        : (AppLocalizations.of(context)!.wouldNotRecommend),
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
@@ -538,7 +525,7 @@ class ReviewStatsWidget extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                '$totalReviews ${locale == 'ar' ? 'تقييم' : 'Reviews'}',
+                '$totalReviews ${AppLocalizations.of(context)!.reviews}',
                 style: const TextStyle(color: Colors.grey, fontSize: 12),
               ),
             ],

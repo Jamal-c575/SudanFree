@@ -18,6 +18,8 @@ import '../common/verification_badge.dart';
 import '../../../../l10n/generated/app_localizations.dart';
 import '../common/glass_container.dart';
 import '../common/premium_animations.dart';
+import '../../services/trust_service.dart';
+import '../common/trust_badge_widget.dart';
 
 /// Modern Freelancer Card with rectangular design
 class FreelancerCard extends StatelessWidget {
@@ -51,7 +53,7 @@ class FreelancerCard extends StatelessWidget {
 
     // Trusted users (4.5+ with reviews) - no warning needed
     if (rating >= 4.5 && reviewsCount >= 3) {
-      _launchWhatsApp();
+      _launchWhatsApp(context);
       return;
     }
 
@@ -112,11 +114,11 @@ class FreelancerCard extends StatelessWidget {
     );
 
     if (shouldProceed == true) {
-      _launchWhatsApp();
+      _launchWhatsApp(context);
     }
   }
 
-  Future<void> _launchWhatsApp() async {
+  Future<void> _launchWhatsApp(BuildContext context) async {
     if (freelancer.phoneNumber == null) return;
 
     // تسجيل contactLog قبل فتح واتساب
@@ -146,8 +148,7 @@ class FreelancerCard extends StatelessWidget {
       cleaned = '249$cleaned';
     }
 
-    final message =
-        Uri.encodeComponent('مرحباً، أتواصل معك من خلال منصة سودان فري.');
+    final message = Uri.encodeComponent(AppLocalizations.of(context)!.contactMeViaWhatsapp);
     final url = 'https://wa.me/$cleaned?text=$message';
     try {
       await launchUrl(Uri.parse(url),
@@ -178,9 +179,7 @@ class FreelancerCard extends StatelessWidget {
                 leading: const CircleAvatar(
                     backgroundColor: Colors.green,
                     child: Icon(Icons.chat, color: Colors.white)),
-                title: Text(Localizations.localeOf(context).languageCode == 'ar'
-                    ? 'واتساب'
-                    : 'WhatsApp'),
+                title: Text('WhatsApp'),
                 onTap: () {
                   Navigator.pop(ctx);
                   if (onWhatsApp != null) {
@@ -194,9 +193,7 @@ class FreelancerCard extends StatelessWidget {
                 leading: CircleAvatar(
                     backgroundColor: AppColors.primary,
                     child: const Icon(Icons.call, color: Colors.white)),
-                title: Text(Localizations.localeOf(context).languageCode == 'ar'
-                    ? 'اتصال مباشر'
-                    : 'Direct Call'),
+                title: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'اتصال مباشر' : 'Direct Call'),
                 onTap: () async {
                   Navigator.pop(ctx);
                   final phone =
@@ -214,9 +211,7 @@ class FreelancerCard extends StatelessWidget {
                 leading: CircleAvatar(
                     backgroundColor: Colors.blue,
                     child: const Icon(Icons.handshake, color: Colors.white)),
-                title: Text(Localizations.localeOf(context).languageCode == 'ar'
-                    ? 'إنشاء اتفاق (دردشة)'
-                    : 'Create Agreement (Chat)'),
+                title: Text(Localizations.localeOf(context).languageCode == 'ar' ? 'إنشاء اتفاق (دردشة)' : 'Create Agreement (Chat)'),
                 onTap: () async {
                   if (currentUserId == null) return;
 
@@ -257,9 +252,7 @@ class FreelancerCard extends StatelessWidget {
                       );
                     } else {
                       final errorMsg = chatProvider.errorMessage ??
-                          (locale == 'ar'
-                              ? 'حدث خطأ أثناء إنشاء المحادثة'
-                              : 'Error creating chat');
+                          (AppLocalizations.of(context)!.errorCreatingChat);
                       scaffoldMessenger.showSnackBar(
                         SnackBar(
                             content: Text(errorMsg),
@@ -287,9 +280,11 @@ class FreelancerCard extends StatelessWidget {
     final totalStars = RankUtils.calculateTotalStars(
         freelancer.rating, freelancer.reviewsCount);
     final locale = Localizations.localeOf(context).languageCode;
-    final rankInfo = RankUtils.getRankInfo(totalStars, locale);
+    final rankInfo = RankUtils.getRankInfo(context, totalStars, locale);
     final bool isRanked = rankInfo != null;
     final rankColor = rankInfo?.color ?? AppColors.sudanGold;
+    
+    final trustBadge = TrustService.getPrimaryBadge(freelancer);
 
     return PressableCard(
         onTap: onTap ??
@@ -418,6 +413,14 @@ class FreelancerCard extends StatelessWidget {
                                     color: AppColors.sudanGold, size: 20),
                               ),
                             SmartVerificationBadge(user: freelancer, size: 16),
+                            if (trustBadge != null) ...[
+                              const SizedBox(width: 4),
+                              TrustBadgeWidget(
+                                badge: trustBadge,
+                                isAr: locale == 'ar',
+                                compact: true,
+                              ),
+                            ],
                           ],
                         ),
 
@@ -546,6 +549,25 @@ class FreelancerCard extends StatelessWidget {
                                 ),
                               ),
                             ],
+                          ),
+
+                        if (freelancer.hourlyRate != null && freelancer.hourlyRate! > 0)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4.0),
+                            child: Row(
+                              children: [
+                                Icon(Icons.attach_money, size: 12, color: Colors.green[700]),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${freelancer.hourlyRate} / hr',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.green[700],
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                       ],
                     ),
@@ -705,7 +727,7 @@ class FreelancerGridCard extends StatelessWidget {
                       children: [
                         const Spacer(),
                         Text(
-                          '${freelancer.completedJobs} ${locale == 'ar' ? 'عمل' : 'jobs'}',
+                          '${freelancer.completedJobs} ${AppLocalizations.of(context)!.jobs1}',
                           style:
                               Theme.of(context).textTheme.bodySmall?.copyWith(
                                     color: Theme.of(context)

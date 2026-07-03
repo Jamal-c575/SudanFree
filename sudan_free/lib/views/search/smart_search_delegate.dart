@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../core/utils/price_utils.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../models/user_model.dart';
@@ -13,8 +14,15 @@ import '../../core/constants/app_colors.dart';
 import '../../services/smart_search_service.dart';
 import '../freelancers/browse_freelancers_screen.dart';
 import '../shops/browse_shops_screen.dart';
+import '../../widgets/common/premium_glass_card.dart';
 import '../../widgets/common/glass_container.dart';
+import '../../widgets/common/filter_bottom_sheet.dart';
 import '../../providers/theme_provider.dart';
+import 'package:sudan_free/l10n/generated/app_localizations.dart';
+import '../../widgets/home/ai_recommendations_widget.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import '../../utils/animation_utils.dart';
 
 class SmartSearchDelegate extends SearchDelegate<UserModel?> {
   final String? initialQuery;
@@ -49,7 +57,57 @@ class SmartSearchDelegate extends SearchDelegate<UserModel?> {
 
   @override
   List<Widget>? buildActions(BuildContext context) {
+    final searchProvider = context.read<SearchProvider>();
+    final locale = context.read<LocaleProvider>().locale.languageCode;
+    final isAr = locale == 'ar';
+
     return [
+      // ── Filter icon with active-state badge ────────────────────────────
+      Consumer<SearchProvider>(
+        builder: (ctx, sp, _) {
+          final isFilterActive = sp.currentFilter.isActive;
+          return Stack(
+            alignment: Alignment.center,
+            children: [
+              IconButton(
+                tooltip: isAr ? 'تصفية' : 'Filter',
+                icon: Icon(
+                  Icons.tune_rounded,
+                  color: isFilterActive ? AppColors.primary : null,
+                ),
+                onPressed: () async {
+                  final newFilter = await FilterBottomSheet.show(
+                    context,
+                    current: sp.currentFilter,
+                    isAr: isAr,
+                  );
+                  if (newFilter != null) {
+                    searchProvider.applyFilter(newFilter);
+                    // Invalidate the cache so results re-display.
+                    _cachedResults = null;
+                    showResults(context);
+                  }
+                },
+              ),
+              // Active dot indicator
+              if (isFilterActive)
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Container(
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(
+                      color: AppColors.accent,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+            ],
+          );
+        },
+      ),
+      // ── Clear query button ─────────────────────────────────────────────
       if (query.isNotEmpty)
         IconButton(
           icon: const Icon(Icons.clear),
@@ -159,9 +217,7 @@ class SmartSearchDelegate extends SearchDelegate<UserModel?> {
             ),
             const SizedBox(height: 8),
             Text(
-              isAr
-                  ? 'جرّب كلمات أخرى أو تحقق من الإملاء'
-                  : 'Try different keywords or check spelling',
+              AppLocalizations.of(context)!.tryDifferentKeywordsOrCheckSpelling,
               style: TextStyle(color: Colors.grey[400], fontSize: 13),
             ),
           ],
@@ -204,18 +260,22 @@ class SmartSearchDelegate extends SearchDelegate<UserModel?> {
       child: Row(
         children: [
           Expanded(
-            child: GlassContainer(
+            child: PremiumGlassCard(
               borderRadius: BorderRadius.circular(12),
               color: isGlassEnabled ? AppColors.primary : AppColors.primary.withValues(alpha: 0.15),
               opacity: 0.15,
               blur: 15,
+              border: true,
               child: Material(
                 color: Colors.transparent,
                 child: InkWell(
-                  onTap: () => Navigator.push(
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    Navigator.push(
                       context,
-                      MaterialPageRoute(
-                          builder: (_) => const BrowseFreelancersScreen())),
+                      AnimationUtils.createPremiumRoute(page: const BrowseFreelancersScreen())
+                    );
+                  },
                   borderRadius: BorderRadius.circular(12),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 12),
@@ -225,7 +285,7 @@ class SmartSearchDelegate extends SearchDelegate<UserModel?> {
                         const Icon(Icons.handyman,
                             size: 18, color: AppColors.primary),
                         const SizedBox(width: 8),
-                        Text(isAr ? 'الحرفيين' : 'Freelancers',
+                        Text(AppLocalizations.of(context)!.freelancers1,
                             style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                                 color: AppColors.primary)),
@@ -234,22 +294,26 @@ class SmartSearchDelegate extends SearchDelegate<UserModel?> {
                   ),
                 ),
               ),
-            ),
+            ).animate().slideX(begin: -0.2).fade(),
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: GlassContainer(
+            child: PremiumGlassCard(
               borderRadius: BorderRadius.circular(12),
               color: isGlassEnabled ? AppColors.secondary : AppColors.secondary.withValues(alpha: 0.15),
               opacity: 0.15,
               blur: 15,
+              border: true,
               child: Material(
                 color: Colors.transparent,
                 child: InkWell(
-                  onTap: () => Navigator.push(
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    Navigator.push(
                       context,
-                      MaterialPageRoute(
-                          builder: (_) => const BrowseShopsScreen())),
+                      AnimationUtils.createPremiumRoute(page: const BrowseShopsScreen())
+                    );
+                  },
                   borderRadius: BorderRadius.circular(12),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 12),
@@ -259,7 +323,7 @@ class SmartSearchDelegate extends SearchDelegate<UserModel?> {
                         const Icon(Icons.storefront,
                             size: 18, color: AppColors.secondary),
                         const SizedBox(width: 8),
-                        Text(isAr ? 'المتاجر' : 'Shops',
+                        Text(AppLocalizations.of(context)!.shops,
                             style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                                 color: AppColors.secondary)),
@@ -268,7 +332,7 @@ class SmartSearchDelegate extends SearchDelegate<UserModel?> {
                   ),
                 ),
               ),
-            ),
+            ).animate().slideX(begin: 0.2).fade(),
           ),
         ],
       ),
@@ -313,19 +377,19 @@ class SmartSearchDelegate extends SearchDelegate<UserModel?> {
 
   Widget _buildEmptyState(BuildContext context, bool isAr) {
     final quickSearches = [
-      {'label': isAr ? 'سباك' : 'Plumber', 'icon': Icons.plumbing},
+      {'label': AppLocalizations.of(context)!.plumber, 'icon': Icons.plumbing},
       {
-        'label': isAr ? 'كهربائي' : 'Electrician',
+        'label': AppLocalizations.of(context)!.electrician,
         'icon': Icons.electrical_services
       },
-      {'label': isAr ? 'نجار' : 'Carpenter', 'icon': Icons.carpenter},
-      {'label': isAr ? 'دهان' : 'Painter', 'icon': Icons.format_paint},
-      {'label': isAr ? 'ميكانيكي' : 'Mechanic', 'icon': Icons.build},
-      {'label': isAr ? 'مصمم' : 'Designer', 'icon': Icons.design_services},
-      {'label': isAr ? 'مبرمج' : 'Developer', 'icon': Icons.code},
-      {'label': isAr ? 'مطعم' : 'Restaurant', 'icon': Icons.restaurant},
-      {'label': isAr ? 'صيدلية' : 'Pharmacy', 'icon': Icons.local_pharmacy},
-      {'label': isAr ? 'ملابس' : 'Clothing', 'icon': Icons.checkroom},
+      {'label': AppLocalizations.of(context)!.carpenter, 'icon': Icons.carpenter},
+      {'label': AppLocalizations.of(context)!.painter, 'icon': Icons.format_paint},
+      {'label': AppLocalizations.of(context)!.mechanic, 'icon': Icons.build},
+      {'label': AppLocalizations.of(context)!.designer, 'icon': Icons.design_services},
+      {'label': AppLocalizations.of(context)!.developer, 'icon': Icons.code},
+      {'label': AppLocalizations.of(context)!.restaurant, 'icon': Icons.restaurant},
+      {'label': AppLocalizations.of(context)!.pharmacy, 'icon': Icons.local_pharmacy},
+      {'label': AppLocalizations.of(context)!.clothing, 'icon': Icons.checkroom},
     ];
 
     return SingleChildScrollView(
@@ -339,9 +403,7 @@ class SmartSearchDelegate extends SearchDelegate<UserModel?> {
                 Icon(Icons.search, size: 56, color: Colors.grey[300]),
                 const SizedBox(height: 12),
                 Text(
-                  isAr
-                      ? 'ابحث عن أفضل الحرفيين والخدمات'
-                      : 'Find the best professionals & services',
+                  AppLocalizations.of(context)!.findTheBestProfessionalsServices,
                   style: TextStyle(color: Colors.grey[600], fontSize: 15),
                   textAlign: TextAlign.center,
                 ),
@@ -349,8 +411,10 @@ class SmartSearchDelegate extends SearchDelegate<UserModel?> {
             ),
           ),
           const SizedBox(height: 32),
+          const AIRecommendationsWidget(title: 'مقترح خصيصاً لك 🎯'),
+          const SizedBox(height: 24),
           Text(
-            isAr ? '🔥 بحث سريع' : '🔥 Quick Search',
+            AppLocalizations.of(context)!.quickSearch,
             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
           ),
           const SizedBox(height: 12),
@@ -394,7 +458,7 @@ class SmartSearchDelegate extends SearchDelegate<UserModel?> {
                         color: AppColors.primary, size: 20),
                     const SizedBox(width: 8),
                     Text(
-                      isAr ? 'نصائح البحث' : 'Search Tips',
+                      AppLocalizations.of(context)!.searchTips,
                       style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
@@ -404,9 +468,7 @@ class SmartSearchDelegate extends SearchDelegate<UserModel?> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  isAr
-                      ? '• ابحث بالاسم أو المهنة أو الموقع\n• جرّب "سباك في أم درمان" للبحث المركب\n• يمكنك كتابة اسم الحي أو الولاية'
-                      : '• Search by name, profession, or location\n• Try "plumber in Omdurman" for combined search\n• You can type a neighborhood or state name',
+                  AppLocalizations.of(context)!.searchByNameProfessionOrLocationn,
                   style: TextStyle(
                       color: Colors.grey[600], fontSize: 13, height: 1.6),
                 ),
@@ -446,7 +508,7 @@ class _MarketPriceCard extends StatelessWidget {
     if (withRate.isEmpty) return const SizedBox.shrink();
 
     final rates = withRate.map((u) => u.hourlyRate!).toList()..sort();
-    final avg = rates.reduce((a, b) => a + b) / rates.length;
+    final avg = PriceUtils.calculateFairAverage(rates) ?? 0.0;
     final min = rates.first;
     final max = rates.last;
 
@@ -464,16 +526,13 @@ class _MarketPriceCard extends StatelessWidget {
           .key;
     }
 
-    return GlassContainer(
-      margin: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+    return PremiumGlassCard(
       padding: const EdgeInsets.all(14),
       borderRadius: BorderRadius.circular(16),
       blur: 15,
       opacity: isDark ? 0.25 : 0.08,
       color: AppColors.primary,
-      border: Border.all(
-        color: AppColors.primary.withValues(alpha: isDark ? 0.4 : 0.2),
-      ),
+      border: true,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -537,26 +596,26 @@ class _MarketPriceCard extends StatelessWidget {
           Row(
             children: [
               _StatChip(
-                label: isAr ? 'الأدنى' : 'Min',
+                label: AppLocalizations.of(context)!.min,
                 value: '${NumberFormat('#,##0').format(min)} SDG',
                 color: Colors.blue,
               ),
               const SizedBox(width: 8),
               _StatChip(
-                label: isAr ? 'المتوسط' : 'Avg',
+                label: AppLocalizations.of(context)!.avg,
                 value: '${NumberFormat('#,##0').format(avg)} SDG',
                 color: AppColors.success,
                 highlight: true,
               ),
               const SizedBox(width: 8),
               _StatChip(
-                label: isAr ? 'الأعلى' : 'Max',
+                label: AppLocalizations.of(context)!.max,
                 value: '${NumberFormat('#,##0').format(max)} SDG',
                 color: Colors.orange,
               ),
               const Spacer(),
               Text(
-                isAr ? 'لكل ساعة' : 'per hour',
+                AppLocalizations.of(context)!.perHour,
                 style: TextStyle(
                     fontSize: 11,
                     color: Colors.grey[500],
@@ -686,13 +745,15 @@ class _DelayedSuggestionsWidgetState extends State<_DelayedSuggestionsWidget> {
   IconData _icon(String s) {
     final l = s.toLowerCase();
     if (l.contains('سباك') || l.contains('plumb')) return Icons.plumbing;
-    if (l.contains('كهرب') || l.contains('electr'))
+    if (l.contains('كهرب') || l.contains('electr')) {
       return Icons.electrical_services;
+    }
     if (l.contains('نجار') || l.contains('carpen')) return Icons.carpenter;
     if (l.contains('دهان') || l.contains('paint')) return Icons.format_paint;
     if (l.contains('ميكانيك') || l.contains('mechan')) return Icons.build;
-    if (l.contains('مصمم') || l.contains('design'))
+    if (l.contains('مصمم') || l.contains('design')) {
       return Icons.design_services;
+    }
     if (l.contains('مبرمج') || l.contains('develop')) return Icons.code;
     if (l.contains('مطعم') || l.contains('restau')) return Icons.restaurant;
     if (l.contains('متجر') || l.contains('shop')) return Icons.store;
@@ -709,9 +770,7 @@ class _DelayedSuggestionsWidgetState extends State<_DelayedSuggestionsWidget> {
             Icon(Icons.search, size: 48, color: Colors.grey[300]),
             const SizedBox(height: 12),
             Text(
-              widget.isAr
-                  ? 'اضغط بحث للعرض الكامل'
-                  : 'Press search for full results',
+              AppLocalizations.of(context)!.pressSearchForFullResults,
               style: TextStyle(color: Colors.grey[500], fontSize: 14),
             ),
           ],

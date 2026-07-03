@@ -10,7 +10,10 @@ import '../profile/squad_profile_screen.dart';
 import 'create_squad_screen.dart';
 import '../../widgets/buttons/smart_draggable_fab.dart';
 import '../../core/constants/sudan_locations.dart';
+import '../../widgets/common/morph_transition.dart';
 import '../../widgets/common/glass_container.dart';
+import 'package:sudan_free/l10n/generated/app_localizations.dart';
+import '../home/home_screen.dart'; // To access BottomBarVisibilityProvider
 
 class SquadsExplorerScreen extends StatefulWidget {
   const SquadsExplorerScreen({super.key});
@@ -38,49 +41,72 @@ class _SquadsExplorerScreenState extends State<SquadsExplorerScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isAr ? 'اكتشف المجموعات' : 'Explore Squads'),
+        title: Text(AppLocalizations.of(context)!.exploreSquads),
         elevation: 0,
         backgroundColor: Colors.transparent,
       ),
       body: Stack(
         children: [
-          Column(
-            children: [
-              // Search Bar
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                child: GlassContainer(
-                  borderRadius: BorderRadius.circular(12),
-                  blur: 15,
-                  opacity: Theme.of(context).brightness == Brightness.dark
-                      ? 0.3
-                      : 0.6,
-                  color: Theme.of(context).cardColor,
-                  child: TextField(
-                    controller: _searchController,
-                    decoration: InputDecoration(
-                      hintText: isAr ? 'ابحث عن مجموعة...' : 'Search squads...',
-                      prefixIcon: const Icon(Icons.search),
-                      suffixIcon: _searchQuery.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear),
-                              onPressed: () {
-                                _searchController.clear();
-                                setState(() => _searchQuery = '');
-                              },
-                            )
-                          : null,
-                      border: InputBorder.none,
-                      filled: true,
-                      fillColor: Colors.transparent,
-                    ),
-                    onChanged: (value) {
-                      setState(() => _searchQuery = value);
+          NestedScrollView(
+            floatHeaderSlivers: true,
+            headerSliverBuilder: (context, innerBoxIsScrolled) {
+              return [
+                SliverToBoxAdapter(
+                  child: Consumer<BottomBarVisibilityProvider?>(
+                    builder: (context, visibilityProvider, child) {
+                      final isVisible = visibilityProvider?.isVisible ?? true;
+                      return AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
+                        height: isVisible ? 70 : 0,
+                        curve: Curves.easeOutCubic,
+                        clipBehavior: Clip.hardEdge,
+                        decoration: const BoxDecoration(),
+                        child: SingleChildScrollView(
+                          physics: const NeverScrollableScrollPhysics(),
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                            child: GlassContainer(
+                              borderRadius: BorderRadius.circular(12),
+                              blur: 15,
+                              opacity: Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? 0.3
+                                  : 0.6,
+                              color: Theme.of(context).cardColor,
+                              child: TextField(
+                                controller: _searchController,
+                                decoration: InputDecoration(
+                                  hintText: AppLocalizations.of(context)!.searchSquads,
+                                  prefixIcon: const Icon(Icons.search),
+                                  suffixIcon: _searchQuery.isNotEmpty
+                                      ? IconButton(
+                                          icon: const Icon(Icons.clear),
+                                          onPressed: () {
+                                            _searchController.clear();
+                                            setState(() => _searchQuery = '');
+                                          },
+                                        )
+                                      : null,
+                                  border: InputBorder.none,
+                                  filled: true,
+                                  fillColor: Colors.transparent,
+                                ),
+                                onChanged: (value) {
+                                  setState(() => _searchQuery = value);
+                                },
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
                     },
                   ),
                 ),
-              ),
-              // Category Filter
+                SliverToBoxAdapter(
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 16), // Added spacing here
+                      // Category Filter
               SizedBox(
                 height: 50,
                 child: ListView.builder(
@@ -131,7 +157,7 @@ class _SquadsExplorerScreenState extends State<SquadsExplorerScreen> {
                                         Colors.grey,
                                 fontFamily: 'Cairo',
                               ),
-                              child: Center(child: Text(isAr ? 'الكل' : 'All')),
+                              child: Center(child: Text(AppLocalizations.of(context)!.all)),
                             ),
                           ),
                         ),
@@ -187,9 +213,12 @@ class _SquadsExplorerScreenState extends State<SquadsExplorerScreen> {
                   },
                 ),
               ),
-              const SizedBox(height: 8),
-              Expanded(
-                child: StreamBuilder<QuerySnapshot>(
+            ],
+          ),
+        ),
+              ];
+            },
+            body: StreamBuilder<QuerySnapshot>(
                   stream: _selectedCategory == null
                       ? FirebaseFirestore.instance
                           .collection('squads')
@@ -201,10 +230,12 @@ class _SquadsExplorerScreenState extends State<SquadsExplorerScreen> {
                           .orderBy('rating', descending: true)
                           .snapshots(),
                   builder: (context, snapshot) {
-                    if (snapshot.hasError)
+                    if (snapshot.hasError) {
                       return Center(child: Text('Error: ${snapshot.error}'));
-                    if (!snapshot.hasData)
+                    }
+                    if (!snapshot.hasData) {
                       return const Center(child: CircularProgressIndicator());
+                    }
 
                     final docs = snapshot.data!.docs;
 
@@ -222,7 +253,7 @@ class _SquadsExplorerScreenState extends State<SquadsExplorerScreen> {
                     if (filteredDocs.isEmpty) {
                       return Center(
                         child:
-                            Text(isAr ? 'لا توجد مجموعات' : 'No squads found'),
+                            Text(AppLocalizations.of(context)!.noSquadsFound),
                       );
                     }
                     return ListView.builder(
@@ -231,7 +262,9 @@ class _SquadsExplorerScreenState extends State<SquadsExplorerScreen> {
                       itemBuilder: (context, index) {
                         final squad =
                             SquadModel.fromFirestore(filteredDocs[index]);
-                        return GlassContainer(
+                        return MorphTransition(
+                          openScreen: SquadProfileScreen(squad: squad),
+                          closedBuilder: (context, openContainer) => GlassContainer(
                           margin: const EdgeInsets.only(bottom: 16),
                           blur: 15,
                           opacity:
@@ -284,8 +317,8 @@ class _SquadsExplorerScreenState extends State<SquadsExplorerScreen> {
                                       const SizedBox(width: 4),
                                       Text(
                                         squad.isAvailable
-                                            ? (isAr ? 'متاح' : 'Available')
-                                            : (isAr ? 'مشغول' : 'Busy'),
+                                            ? (AppLocalizations.of(context)!.available)
+                                            : (AppLocalizations.of(context)!.busy),
                                         style: TextStyle(
                                             color: squad.isAvailable
                                                 ? Colors.green
@@ -337,27 +370,19 @@ class _SquadsExplorerScreenState extends State<SquadsExplorerScreen> {
                                         color: Colors.grey, size: 16),
                                     const SizedBox(width: 4),
                                     Text(
-                                        '${squad.completedJobs} ${isAr ? "عمل" : "jobs"}'),
+                                        '${squad.completedJobs} ${AppLocalizations.of(context)!.jobs1}'),
                                   ],
                                 ),
                               ],
                             ),
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (_) =>
-                                        SquadProfileScreen(squad: squad)),
-                              );
-                            },
+                            onTap: openContainer,
                           ),
-                        );
+                        ),
+                      );
                       },
                     );
                   },
-                ),
-              ),
-            ],
+          ),
           ),
           if (user != null &&
               user.role != UserRole.client &&
@@ -369,47 +394,20 @@ class _SquadsExplorerScreenState extends State<SquadsExplorerScreen> {
                   .limit(1)
                   .get(),
               builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting)
+                if (snapshot.connectionState == ConnectionState.waiting) {
                   return const SizedBox.shrink();
+                }
                 final isInSquad = snapshot.data?.docs.isNotEmpty ?? false;
                 if (isInSquad) return const SizedBox.shrink();
 
                 return SmartDraggableFab(
                   heroTag: 'create_squad_fab',
                   icon: Icons.add,
-                  label: isAr ? 'إنشاء مجموعة' : 'Create Squad',
+                  label: AppLocalizations.of(context)!.createSquad,
                   locale: locale,
                   initialBottom: MediaQuery.of(context).padding.bottom +
                       82.0, // navBar + safe area
-                  onPressed: () async {
-                    try {
-                      final existing = await FirebaseFirestore.instance
-                          .collection('squads')
-                          .where('memberIds', arrayContains: user.id)
-                          .get();
-                      if (existing.docs.isNotEmpty) {
-                        if (!context.mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(isAr
-                                ? 'عذراً، أنت بالفعل عضو في مجموعة. لا يمكنك إنشاء مجموعة أخرى.'
-                                : 'Sorry, you are already a member of a squad. You cannot create another one.'),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                        return;
-                      }
-                    } catch (e) {
-                      // Ignore error and proceed or log it
-                    }
-
-                    if (!context.mounted) return;
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (_) => const CreateSquadScreen()),
-                    );
-                  },
+                  openBuilder: (context, openContainer) => const CreateSquadScreen(),
                 );
               },
             ),

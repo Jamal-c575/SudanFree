@@ -14,13 +14,17 @@ import 'providers/chat_provider.dart';
 import 'services/notification_polling_service.dart';
 
 import 'providers/search_provider.dart';
-
+import 'providers/partners_provider.dart';
+import 'providers/favorites_provider.dart';
+import 'providers/recommendations_provider.dart';
 import 'views/auth/login_screen.dart';
 import 'views/auth/profile_setup_screen.dart';
 import 'views/home/home_screen.dart';
 import 'widgets/common/loading_widget.dart';
 import 'widgets/common/connectivity_wrapper.dart';
 import 'services/update_service.dart';
+import 'services/smart_welcome_service.dart';
+import 'services/data_saver_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'views/common/splash_screen.dart';
 import 'views/onboarding/onboarding_screen.dart';
@@ -31,6 +35,7 @@ import 'views/profile/profile_screen.dart';
 import 'views/posts/post_details_screen.dart';
 import 'views/profile/product_detail_screen.dart';
 import 'services/firestore_service.dart';
+import 'core/utils/navigation_utils.dart';
 
 class SudanFreeApp extends StatefulWidget {
   const SudanFreeApp({super.key});
@@ -111,32 +116,17 @@ class _SudanFreeAppState extends State<SudanFreeApp> with WidgetsBindingObserver
     
     if (context != null && context.mounted) {
       if (profileId != null && profileId.isNotEmpty) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => ProfileScreen(userId: profileId),
-          ),
-        );
+        NavigationUtils.navigateSafely(context, ProfileScreen(userId: profileId));
       } else if (productId != null && productId.isNotEmpty) {
         FirestoreService().getPost(productId).then((post) {
           if (post != null && context.mounted) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => ProductDetailScreen(product: post),
-              ),
-            );
+            NavigationUtils.navigateSafely(context, ProductDetailScreen(product: post));
           }
         });
       } else if (postId != null && postId.isNotEmpty) {
         FirestoreService().getPost(postId).then((post) {
           if (post != null && context.mounted) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => PostDetailsScreen(post: post),
-              ),
-            );
+            NavigationUtils.navigateSafely(context, PostDetailsScreen(post: post));
           }
         });
       }
@@ -149,6 +139,7 @@ class _SudanFreeAppState extends State<SudanFreeApp> with WidgetsBindingObserver
       providers: [
         ChangeNotifierProvider(create: (_) => LocaleProvider()..initialize()),
         ChangeNotifierProvider(create: (_) => ThemeProvider()..initialize()),
+        ChangeNotifierProvider.value(value: DataSaverService()),
         ChangeNotifierProvider(create: (_) => AuthProvider()..initialize()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
         ChangeNotifierProvider(create: (_) => LocationProvider()..loadLocations()),
@@ -157,6 +148,15 @@ class _SudanFreeAppState extends State<SudanFreeApp> with WidgetsBindingObserver
         ChangeNotifierProvider(create: (_) => ChatProvider()),
         ChangeNotifierProvider(create: (_) => SearchProvider()),
         ChangeNotifierProvider(create: (_) => NotificationPollingService()),
+        ChangeNotifierProvider(create: (_) => RecommendationsProvider()),
+        ChangeNotifierProxyProvider<AuthProvider, PartnersProvider>(
+          create: (_) => PartnersProvider(),
+          update: (_, auth, partners) => (partners ?? PartnersProvider())..update(auth),
+        ),
+        ChangeNotifierProxyProvider<AuthProvider, FavoritesProvider>(
+          create: (_) => FavoritesProvider(),
+          update: (_, auth, fav) => (fav ?? FavoritesProvider())..update(auth),
+        ),
       ],
       child: Consumer2<LocaleProvider, ThemeProvider>(
         builder: (context, localeProvider, themeProvider, _) {
@@ -181,11 +181,6 @@ class _SudanFreeAppState extends State<SudanFreeApp> with WidgetsBindingObserver
               GlobalCupertinoLocalizations.delegate,
             ],
             builder: (context, child) {
-              // Check for updates asynchronously
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                UpdateService.checkForUpdate(context);
-              });
-              
               return ConnectivityWrapper(
                 child: Stack(
                   children: [

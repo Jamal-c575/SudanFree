@@ -8,8 +8,10 @@ service cloud.firestore {
     }
     
     function isAdmin() {
-      return request.auth != null && 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      return request.auth != null && (
+        request.auth.token.admin == true || 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      );
     }
     
     function isAuthenticated() {
@@ -28,7 +30,7 @@ service cloud.firestore {
 
     // ═══════════════════ المستخدمين (Users) ═══════════════════
     match /users/{userId} {
-      allow read: if true;
+      allow read: if isAuthenticated();
       allow create: if isOwner(userId) &&
         hasRequiredFields(['name', 'role']) &&
         isValidString(request.resource.data.name, 100) &&
@@ -161,6 +163,12 @@ service cloud.firestore {
         request.resource.data.reviewerId == request.auth.uid;
     }
 
+    // ═══════════════════ علاقات العقود ومنع التلاعب (Contract Relations) ═══════════════════
+    match /contract_relations/{relationId} {
+      allow read: if isAuthenticated() && relationId.matches('.*' + request.auth.uid + '.*');
+      allow create, update: if isAuthenticated() && relationId.matches('.*' + request.auth.uid + '.*');
+    }
+
 
     // ═══════════════════ الوظائف (Jobs) ═══════════════════
     match /jobs/{jobId} {
@@ -271,6 +279,20 @@ service cloud.firestore {
       allow read: if isAuthenticated() && (isOwner(resource.data.reporterId) || isAdmin());
       allow update: if isAdmin();
       allow delete: if isAdmin();
+    }
+
+    match /user_reports_limit/{userId} {
+      allow read, create, update: if isAuthenticated() && request.auth.uid == userId;
+    }
+
+    match /user_proposals_limit/{userId} {
+      allow read, create, update: if isAuthenticated() && request.auth.uid == userId;
+    }
+
+    match /notification_limits/{limitId} {
+      // limitId is like ${postOwnerId}_like_${userId}_${postId} 
+      // We check if limitId contains the current user's ID
+      allow read, create, update: if isAuthenticated() && limitId.matches('.*' + request.auth.uid + '.*');
     }
     
     

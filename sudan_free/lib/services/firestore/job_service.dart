@@ -1,8 +1,11 @@
+import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../ai_service.dart';
 import 'dart:async';
 import '../../models/job_model.dart';
 import '../../models/proposal_model.dart';
 import '../../models/offer_model.dart';
+import "../../core/utils/price_utils.dart";
 
 class JobFirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -254,13 +257,43 @@ class JobFirestoreService {
 
   // Create Proposal
   Future<String> createProposal(ProposalModel proposal) async {
-    final docRef =
-        await _firestore.collection('proposals').add(proposal.toFirestore());
-    await _firestore
-        .collection('jobs')
-        .doc(proposal.jobId)
-        .update({'proposalsCount': FieldValue.increment(1)});
-    return docRef.id;
+    final limitRef = _firestore.collection('user_proposals_limit').doc(proposal.freelancerId);
+    // ignore: depend_on_referenced_packages
+    final todayStr = DateTime.now().toIso8601String().split('T')[0];
+    
+    return await _firestore.runTransaction((tx) async {
+      final doc = await tx.get(limitRef);
+      int dailyCount = 0;
+      String lastDate = '';
+      
+      if (doc.exists) {
+        dailyCount = doc.data()!['dailyCount'] ?? 0;
+        lastDate = doc.data()!['lastDate'] ?? '';
+      }
+      
+      if (lastDate == todayStr) {
+        if (dailyCount >= 5) {
+          throw Exception('لقد تجاوزت الحد اليومي المسموح للتقديم على الوظائف (5 عروض). يرجى المحاولة غداً.');
+        }
+        tx.set(limitRef, {
+          'dailyCount': dailyCount + 1,
+          'lastDate': todayStr,
+        }, SetOptions(merge: true));
+      } else {
+        tx.set(limitRef, {
+          'dailyCount': 1,
+          'lastDate': todayStr,
+        }, SetOptions(merge: true));
+      }
+
+      final docRef = _firestore.collection('proposals').doc();
+      tx.set(docRef, proposal.toFirestore());
+      
+      final jobRef = _firestore.collection('jobs').doc(proposal.jobId);
+      tx.update(jobRef, {'proposalsCount': FieldValue.increment(1)});
+      
+      return docRef.id;
+    });
   }
 
   // Update Proposal Status
@@ -274,7 +307,8 @@ class JobFirestoreService {
   // ==================== AI Fair-Pricing Broker (السمسار الذكي للتسعير العادل) ====================
 
   /// يحسب السعر العادل (Fair Market Value) بناءً على متوسط الوظائف السابقة المكتملة
-  Future<double?> calculateFairPrice(JobCategory category) async {
+  /// وإذا تم تمرير [jobDescription] فإنه يستعين بالذكاء الاصطناعي لتقدير تعقيد المهمة
+  Future<double?> calculateFairPrice(JobCategory category, {String? jobDescription}) async {
     try {
       final snapshot = await _firestore
           .collection('jobs')
@@ -298,17 +332,15 @@ class JobFirestoreService {
 
       if (prices.isEmpty) return null;
 
-      // حساب الوسيط (Median) لتجنب الأسعار الشاذة (Outliers)
-      prices.sort();
-      double median;
-      int middle = prices.length ~/ 2;
-      if (prices.length % 2 == 1) {
-        median = prices[middle];
-      } else {
-        median = (prices[middle - 1] + prices[middle]) / 2.0;
+      // حساب المتوسط العادل باستبعاد الأسعار الشاذة
+      final baseAverage = PriceUtils.calculateFairAverage(prices);
+      
+      // الاستعانة بالذكاء الاصطناعي لتعديل السعر بناءً على الوصف
+      if (jobDescription != null && jobDescription.isNotEmpty && baseAverage != null) {
+        return await AiService().estimateSmartPrice(jobDescription, baseAverage);
       }
-
-      return median;
+      
+      return baseAverage;
     } catch (e) {
       return null;
     }

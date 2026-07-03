@@ -23,12 +23,21 @@ import '../../providers/job_provider.dart';
 import '../../views/jobs/active_job_tracking_screen.dart';
 import '../../widgets/common/loading_widget.dart';
 import '../../widgets/common/linkable_text.dart';
+import '../../widgets/common/verification_badge.dart';
 import 'package:any_link_preview/any_link_preview.dart';
 import '../../widgets/common/internal_link_preview.dart';
 import '../../widgets/common/full_screen_image_viewer.dart';
 import '../../services/file_download_service.dart';
 import '../../services/smart_guide_service.dart';
 import '../../widgets/common/glass_container.dart';
+import '../../l10n/generated/app_localizations.dart';
+import '../../core/utils/app_error_handler.dart';
+import '../../widgets/common/premium_button.dart';
+import '../../widgets/common/premium_glass_card.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import '../../utils/animation_utils.dart';
+import '../../providers/user_provider.dart';
 
 class ChatScreen extends StatefulWidget {
   final ChatModel chat;
@@ -46,6 +55,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final ScrollController _scrollController = ScrollController();
   final AudioRecorder _audioRecorder = AudioRecorder();
   bool _isRecording = false;
+  bool _showWarningBanner = true;
 
   DateTime? _recordStartTime;
   Timer? _typingTimer;
@@ -133,12 +143,19 @@ class _ChatScreenState extends State<ChatScreen> {
       setState(() => _replyingTo = null);
     }
 
-    await context.read<ChatProvider>().sendMessage(
+    final success = await context.read<ChatProvider>().sendMessage(
           senderId: user.id,
           senderName: user.name,
           receiverId: otherId,
           content: finalContent,
         );
+
+    if (!success && mounted) {
+      final error = context.read<ChatProvider>().errorMessage;
+      if (error != null) {
+        AppErrorHandler.show(context, error, null, logContext: 'ChatScreen');
+      }
+    }
   }
 
   Future<void> _pickImage() async {
@@ -333,13 +350,23 @@ class _ChatScreenState extends State<ChatScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(otherName,
-                        style: const TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.bold)),
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(otherName,
+                              style: const TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.bold),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis),
+                        ),
+                        const SizedBox(width: 4),
+                        SmartVerificationBadgeAsync(userId: otherId, size: 14),
+                      ],
+                    ),
                     if (isOtherTyping)
-                      const Text('يكتب الآن...',
+                      Text(AppLocalizations.of(context)!.typing,
                           style:
-                              TextStyle(fontSize: 12, color: AppColors.primary))
+                              const TextStyle(fontSize: 12, color: AppColors.primary))
                     else
                       _buildOnlineStatus(otherId),
                   ],
@@ -352,33 +379,43 @@ class _ChatScreenState extends State<ChatScreen> {
           IconButton(
             onPressed: () => _showContractBottomSheet(context),
             icon: const Icon(Icons.handshake, size: 22),
-            tooltip: 'إنشاء اتفاق',
+            tooltip: AppLocalizations.of(context)!.createAgreement,
           ),
         ],
       ),
       body: Column(
         children: [
-          // Warning Banner
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-            color: Colors.amber.shade100,
-            child: Row(
-              children: [
-                const Icon(Icons.warning_amber_rounded,
-                    color: Colors.amber, size: 24),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'يفضل استخدام واتساب أو الاتصال المباشر للتواصل، الدردشة هنا فقط لإنشاء وتنسيق الاتفاقات لضمان حقوقك.',
-                    style: TextStyle(
-                        color: Colors.amber.shade900,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600),
-                  ),
+          // Warning Banner - Dismissible
+          if (_showWarningBanner)
+            Dismissible(
+              key: const Key('chat_warning_banner'),
+              direction: DismissDirection.horizontal,
+              onDismissed: (_) => setState(() => _showWarningBanner = false),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                color: Colors.amber.shade100,
+                child: Row(
+                  children: [
+                    const Icon(Icons.warning_amber_rounded,
+                        color: Colors.amber, size: 24),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        AppLocalizations.of(context)!.chatWarning,
+                        style: TextStyle(
+                            color: Colors.amber.shade900,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => setState(() => _showWarningBanner = false),
+                      child: Icon(Icons.close, size: 18, color: Colors.amber.shade700),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
-          ),
           Expanded(
             child: messages.isEmpty && chatProvider.isLoading
                 ? const LoadingIndicator()
@@ -608,8 +645,8 @@ class _ChatScreenState extends State<ChatScreen> {
         const SizedBox(width: 8),
         const Icon(Icons.fiber_manual_record, color: Colors.red, size: 12),
         const SizedBox(width: 6),
-        const Text('جاري التسجيل...',
-            style: TextStyle(
+        Text(AppLocalizations.of(context)!.recordingAudio,
+            style: const TextStyle(
                 color: Colors.red, fontWeight: FontWeight.bold, fontSize: 13)),
         const Spacer(),
         StreamBuilder<Duration>(
@@ -643,7 +680,7 @@ class _ChatScreenState extends State<ChatScreen> {
             children: [
               ListTile(
                 leading: const Icon(Icons.image, color: Colors.blue),
-                title: const Text('صورة'),
+                title: Text(AppLocalizations.of(context)!.image),
                 onTap: () {
                   Navigator.pop(ctx);
                   _pickImage();
@@ -652,7 +689,7 @@ class _ChatScreenState extends State<ChatScreen> {
               ListTile(
                 leading:
                     const Icon(Icons.insert_drive_file, color: Colors.orange),
-                title: const Text('ملف'),
+                title: Text(AppLocalizations.of(context)!.file),
                 onTap: () {
                   Navigator.pop(ctx);
                   _pickFile();
@@ -671,24 +708,47 @@ class _ChatScreenState extends State<ChatScreen> {
       builder: (context, snapshot) {
         final otherUser = snapshot.data;
         if (otherUser == null || otherUser.lastActive == null) {
-          return const Text('غير متصل',
-              style: TextStyle(fontSize: 12, color: Colors.grey));
+          return Text(AppLocalizations.of(context)!.offline,
+              style: const TextStyle(fontSize: 12, color: Colors.grey));
         }
         final lastActiveDate = otherUser.lastActive!;
         final diff = DateTime.now().difference(lastActiveDate).inMinutes;
         if (diff < 5) {
-          return const Text('نشط الآن',
-              style: TextStyle(fontSize: 12, color: Colors.green));
+          return Text(AppLocalizations.of(context)!.onlineNow,
+              style: const TextStyle(fontSize: 12, color: Colors.green));
         } else {
+          final locale = Localizations.localeOf(context).languageCode;
           return Text(
-              'آخر ظهور ${timeago.format(lastActiveDate, locale: "ar")}',
+              '${AppLocalizations.of(context)!.lastSeen} ${timeago.format(lastActiveDate, locale: locale)}',
               style: const TextStyle(fontSize: 11, color: Colors.grey));
         }
       },
     );
   }
 
-  void _showContractBottomSheet(BuildContext context) {
+  void _showContractBottomSheet(BuildContext context) async {
+    final chatProv = context.read<ChatProvider>();
+    final currentUserId = context.read<AuthProvider>().user?.id;
+
+    if (currentUserId == null) return;
+    final otherUserId = widget.chat.getOtherParticipantId(currentUserId);
+
+    if (otherUserId != null) {
+      final isBanned = await chatProv.checkIfBannedFromContracts(currentUserId, otherUserId);
+      if (isBanned && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('تنبيه بالتلاعب: تم حظرك نهائياً من إنشاء عقود مع هذا المستخدم بسبب التلاعب بالتقييمات.'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 5),
+          ),
+        );
+        return;
+      }
+    }
+
+    if (!mounted) return;
+
     final detailsController = TextEditingController();
     final priceController = TextEditingController();
     final deadlineController = TextEditingController();
@@ -835,7 +895,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     // Submit
                     SizedBox(
                       width: double.infinity,
-                      child: ElevatedButton(
+                      child: PremiumButton(
                         onPressed: () async {
                           final details = detailsController.text.trim();
                           final priceText = priceController.text.trim();
@@ -879,24 +939,8 @@ class _ChatScreenState extends State<ChatScreen> {
                             contractPrice: price,
                           );
                         },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14)),
-                          elevation: 4,
-                        ),
-                        child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.send, color: Colors.white, size: 20),
-                              SizedBox(width: 10),
-                              Text('إرسال الاتفاق',
-                                  style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold)),
-                            ]),
+                        icon: Icons.send,
+                        label: 'إرسال الاتفاق',
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -1011,19 +1055,13 @@ class _MessageBubbleState extends State<MessageBubble> {
                         style: const TextStyle(
                             fontSize: 18, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 16),
-                    ElevatedButton.icon(
+                    PremiumButton(
                       onPressed: () {
                         Navigator.pop(ctx);
                         setState(() => _isHidden = false);
                       },
-                      icon: const Icon(Icons.visibility, color: Colors.white),
-                      label: Text(isRtl ? 'إظهار الرسالة' : 'Show Message'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                      ),
+                      icon: Icons.visibility,
+                      label: isRtl ? 'إظهار الرسالة' : 'Show Message',
                     ),
                   ],
                 ),
@@ -1879,8 +1917,9 @@ class _MessageBubbleState extends State<MessageBubble> {
                                 );
                               }
                             } catch (e) {
-                              if (context.mounted)
+                              if (context.mounted) {
                                 Navigator.pop(context); // Close loading dialog
+                              }
                             }
                           },
                           style: ElevatedButton.styleFrom(

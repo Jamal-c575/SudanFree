@@ -336,17 +336,33 @@ class UserFirestoreService {
       });
 
       if (followerName != null) {
-        final notifRef = _firestore.collection('notifications').doc();
-        final notification = NotificationModel(
-          id: notifRef.id,
-          userId: targetId,
-          type: NotificationType.follow,
-          title: 'متابع جديد 👤',
-          message: 'لقد قام $followerName بمتابعتك للتو!',
-          createdAt: Timestamp.now(),
-          relatedId: followerId,
-        );
-        batch.set(notifRef, notification.toFirestore());
+        final limitKey = '${targetId}_follow_$followerId';
+        final limitRef = _firestore.collection('notification_limits').doc(limitKey);
+        final limitDoc = await limitRef.get();
+        bool canSendNotif = true;
+        
+        if (limitDoc.exists) {
+          final lastSent = (limitDoc.data()!['lastSent'] as Timestamp?)?.toDate();
+          if (lastSent != null && DateTime.now().difference(lastSent).inHours < 24) {
+            canSendNotif = false;
+          }
+        }
+        
+        if (canSendNotif) {
+          batch.set(limitRef, {'lastSent': FieldValue.serverTimestamp()}, SetOptions(merge: true));
+          
+          final notifRef = _firestore.collection('notifications').doc();
+          final notification = NotificationModel(
+            id: notifRef.id,
+            userId: targetId,
+            type: NotificationType.follow,
+            title: 'متابع جديد 👤',
+            message: 'لقد قام $followerName بمتابعتك للتو!',
+            createdAt: Timestamp.now(),
+            relatedId: followerId,
+          );
+          batch.set(notifRef, notification.toFirestore());
+        }
       }
     }
     await batch.commit();
@@ -910,5 +926,47 @@ class UserFirestoreService {
     }
 
     await batch.commit();
+  }
+
+  /// AI Recommendation: Get top freelancers matching a category
+  Future<List<UserModel>> getRecommendedFreelancers(String category, {int limit = 7}) async {
+    try {
+      // First get top rated freelancers, then filter locally for flexible matching
+      final querySnapshot = await _firestore
+          .collection('users')
+          .where('role', isEqualTo: 'freelancer')
+          .orderBy('rating', descending: true)
+          .limit(30)
+          .get();
+
+      final List<UserModel> recommended = [];
+      final matchTerm = category.toLowerCase().trim();
+      
+      for (var doc in querySnapshot.docs) {
+        try {
+          final user = UserModel.fromFirestore(doc);
+          final jobTitle = user.jobTitle?.toLowerCase() ?? '';
+          
+          if (jobTitle.contains(matchTerm) ||
+              user.skills.any((s) => s.toLowerCase().contains(matchTerm)) ||
+              user.searchKeywords.any((k) => k.toLowerCase().contains(matchTerm))) {
+            recommended.add(user);
+            if (recommended.length >= limit) break;
+          }
+        } catch (_) {}
+      }
+      
+      // If no exact match, try a looser match (e.g., just returning top 3 if completely empty to show something)
+      if (recommended.isEmpty && querySnapshot.docs.isNotEmpty) {
+        for (var doc in querySnapshot.docs.take(3)) {
+          recommended.add(UserModel.fromFirestore(doc));
+        }
+      }
+      
+      return recommended;
+    } catch (e) {
+      print('getRecommendedFreelancers error: $e');
+      return [];
+    }
   }
 }

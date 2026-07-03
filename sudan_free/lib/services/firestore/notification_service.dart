@@ -44,7 +44,18 @@ class NotificationFirestoreService {
   }
 
   // Add Notification
-  Future<void> addNotification(NotificationModel notification) async {
+  Future<void> addNotification(NotificationModel notification, {String? limitKey}) async {
+    if (limitKey != null) {
+      final limitRef = _firestore.collection('notification_limits').doc(limitKey);
+      final doc = await limitRef.get();
+      if (doc.exists) {
+        final lastSent = (doc.data()!['lastSent'] as Timestamp?)?.toDate();
+        if (lastSent != null && DateTime.now().difference(lastSent).inHours < 24) {
+          return; // Skip sending notification
+        }
+      }
+      await limitRef.set({'lastSent': FieldValue.serverTimestamp()}, SetOptions(merge: true));
+    }
     await _firestore
         .collection('notifications')
         .add(notification.toFirestore());

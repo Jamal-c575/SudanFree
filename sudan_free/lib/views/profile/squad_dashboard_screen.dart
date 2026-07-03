@@ -11,6 +11,9 @@ import '../../services/firestore_service.dart';
 import '../squads/create_squad_screen.dart';
 import 'create_portfolio_project_screen.dart';
 import '../../core/utils/job_titles_utils.dart';
+import 'package:sudan_free/l10n/generated/app_localizations.dart';
+import '../../models/notification_model.dart';
+import 'package:uuid/uuid.dart';
 
 class SquadDashboardScreen extends StatefulWidget {
   final SquadModel squad;
@@ -55,18 +58,16 @@ class _SquadDashboardScreenState extends State<SquadDashboardScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(isAr ? 'مغادرة المجموعة' : 'Leave Squad'),
-        content: Text(isAr
-            ? 'هل أنت متأكد من رغبتك في المغادرة؟'
-            : 'Are you sure you want to leave?'),
+        title: Text(AppLocalizations.of(context)!.leaveSquad),
+        content: Text(AppLocalizations.of(context)!.areYouSureYouWantTo),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: Text(isAr ? 'إلغاء' : 'Cancel')),
+              child: Text(AppLocalizations.of(context)!.cancel)),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: Text(isAr ? 'مغادرة' : 'Leave',
+            child: Text(AppLocalizations.of(context)!.leave,
                 style: const TextStyle(color: Colors.white)),
           ),
         ],
@@ -101,18 +102,16 @@ class _SquadDashboardScreenState extends State<SquadDashboardScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(isAr ? 'طرد العضو' : 'Remove Member'),
-        content: Text(isAr
-            ? 'هل أنت متأكد من طرد هذا العضو من المجموعة؟'
-            : 'Are you sure you want to remove this member?'),
+        title: Text(AppLocalizations.of(context)!.removeMember),
+        content: Text(AppLocalizations.of(context)!.areYouSureYouWantTo1),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: Text(isAr ? 'إلغاء' : 'Cancel')),
+              child: Text(AppLocalizations.of(context)!.cancel)),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: Text(isAr ? 'طرد' : 'Remove',
+            child: Text(AppLocalizations.of(context)!.remove,
                 style: const TextStyle(color: Colors.white)),
           ),
         ],
@@ -126,6 +125,17 @@ class _SquadDashboardScreenState extends State<SquadDashboardScreen> {
             .doc(_squad.id)
             .update({
           'memberIds': FieldValue.arrayRemove([memberId])
+        });
+
+        // Send notification to the removed member
+        await FirebaseFirestore.instance.collection('notifications').add({
+          'userId': memberId,
+          'title': isAr ? 'تم إزالتك من المجموعة' : 'Removed from Group',
+          'message': isAr ? 'تم إزالتك من المجموعة ${_squad.name} بواسطة القائد.' : 'You have been removed from the group ${_squad.name} by the leader.',
+          'type': 'squad_kick',
+          'relatedId': _squad.id,
+          'isRead': false,
+          'createdAt': FieldValue.serverTimestamp(),
         });
         await _refreshSquad();
       } catch (e) {
@@ -144,18 +154,16 @@ class _SquadDashboardScreenState extends State<SquadDashboardScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(isAr ? 'تحويل القيادة' : 'Transfer Leadership'),
-        content: Text(isAr
-            ? 'هل أنت متأكد من رغبتك في تسليم قيادة المجموعة لهذا العضو؟ لن تتمكن من استعادتها إلا إذا قام هو بإرجاعها لك.'
-            : 'Are you sure you want to transfer leadership to this member? You will lose leader privileges.'),
+        title: Text(AppLocalizations.of(context)!.transferLeadership),
+        content: Text(AppLocalizations.of(context)!.areYouSureYouWantTo2),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: Text(isAr ? 'إلغاء' : 'Cancel')),
+              child: Text(AppLocalizations.of(context)!.cancel)),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-            child: Text(isAr ? 'تأكيد التحويل' : 'Confirm Transfer',
+            child: Text(AppLocalizations.of(context)!.confirmTransfer,
                 style: const TextStyle(color: Colors.white)),
           ),
         ],
@@ -185,18 +193,16 @@ class _SquadDashboardScreenState extends State<SquadDashboardScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(isAr ? 'تفكيك المجموعة' : 'Disband Squad'),
-        content: Text(isAr
-            ? 'هل أنت متأكد؟ لا يمكن التراجع عن هذا الإجراء وسيتم حذف المجموعة نهائياً.'
-            : 'Are you sure? This cannot be undone and the squad will be deleted.'),
+        title: Text(AppLocalizations.of(context)!.disbandSquad),
+        content: Text(AppLocalizations.of(context)!.areYouSureThisCannotBe),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: Text(isAr ? 'إلغاء' : 'Cancel')),
+              child: Text(AppLocalizations.of(context)!.cancel)),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: Text(isAr ? 'تفكيك نهائي' : 'Disband Forever',
+            child: Text(AppLocalizations.of(context)!.disbandForever,
                 style: const TextStyle(color: Colors.white)),
           ),
         ],
@@ -233,7 +239,7 @@ class _SquadDashboardScreenState extends State<SquadDashboardScreen> {
     if (partnerIds.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content:
-              Text(isAr ? 'لا يوجد زملاء لدعوتهم' : 'No partners to invite')));
+              Text(AppLocalizations.of(context)!.noPartnersToInvite)));
       return;
     }
 
@@ -258,7 +264,7 @@ class _SquadDashboardScreenState extends State<SquadDashboardScreen> {
                       color: Colors.grey[400],
                       borderRadius: BorderRadius.circular(2))),
               const SizedBox(height: 12),
-              Text(isAr ? 'دعوة الزملاء للمجموعة' : 'Invite Partners to Squad',
+              Text(AppLocalizations.of(context)!.invitePartnersToSquad,
                   style: const TextStyle(
                       fontSize: 18, fontWeight: FontWeight.bold)),
               const Divider(),
@@ -266,11 +272,13 @@ class _SquadDashboardScreenState extends State<SquadDashboardScreen> {
                 child: FutureBuilder<List<UserModel>>(
                   future: FirestoreService().getUsersByIds(partnerIds),
                   builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting)
+                    if (snapshot.connectionState == ConnectionState.waiting) {
                       return const Center(child: CircularProgressIndicator());
-                    if (!snapshot.hasData || snapshot.data!.isEmpty)
+                    }
+                    if (!snapshot.hasData || snapshot.data!.isEmpty) {
                       return Center(
-                          child: Text(isAr ? 'لا يوجد زملاء' : 'No partners'));
+                          child: Text(AppLocalizations.of(context)!.noPartners));
+                    }
 
                     final partners = snapshot.data!;
                     return ListView.builder(
@@ -293,7 +301,7 @@ class _SquadDashboardScreenState extends State<SquadDashboardScreen> {
                                 : null,
                           ),
                           title: Text(partner.name),
-                          subtitle: Text(partner.jobTitle != null ? JobTitlesUtils.getLocalizedTitle(partner.jobTitle!, isAr ? 'ar' : 'en') : ''),
+                          subtitle: Text(partner.jobTitle != null ? JobTitlesUtils.getLocalizedTitle(partner.jobTitle!, AppLocalizations.of(context)!.en) : ''),
                           trailing: canInvite
                               ? ElevatedButton(
                                   onPressed: () async {
@@ -303,11 +311,11 @@ class _SquadDashboardScreenState extends State<SquadDashboardScreen> {
                                   style: ElevatedButton.styleFrom(
                                       backgroundColor: AppColors.primary,
                                       minimumSize: const Size(80, 36)),
-                                  child: Text(isAr ? 'دعوة' : 'Invite',
+                                  child: Text(AppLocalizations.of(context)!.invite,
                                       style: const TextStyle(
                                           color: Colors.white, fontSize: 12)),
                                 )
-                              : Text(isAr ? 'غير متاح' : 'Unavailable',
+                              : Text(AppLocalizations.of(context)!.unavailable,
                                   style: const TextStyle(
                                       color: Colors.grey, fontSize: 12)),
                         );
@@ -336,12 +344,11 @@ class _SquadDashboardScreenState extends State<SquadDashboardScreen> {
           .where('memberIds', arrayContains: targetUserId)
           .get();
       if (isLeaderSnap.docs.isNotEmpty || isMemberSnap.docs.isNotEmpty) {
-        if (mounted)
+        if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-              content: Text(isAr
-                  ? 'هذا المستخدم منضم لمجموعة بالفعل.'
-                  : 'User is already in a squad.'),
+              content: Text(AppLocalizations.of(context)!.userIsAlreadyInASquad),
               backgroundColor: Colors.red));
+        }
         return;
       }
 
@@ -351,16 +358,33 @@ class _SquadDashboardScreenState extends State<SquadDashboardScreen> {
           .update({
         'pendingSquadInvites': FieldValue.arrayUnion([_squad.id])
       });
-      if (mounted)
+
+      // Send push notification
+      final notification = NotificationModel(
+        id: const Uuid().v4(),
+        userId: targetUserId,
+        type: NotificationType.system,
+        title: isAr ? 'دعوة للانضمام למجموعة' : 'Squad Invitation',
+        message: isAr
+            ? 'لقد تمت دعوتك للانضمام إلى مجموعة "${_squad.name}"'
+            : 'You have been invited to join the squad "${_squad.name}"',
+        createdAt: Timestamp.now(),
+        relatedId: _squad.id,
+      );
+      FirestoreService().sendNotification(notification);
+
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content: Text(
-                isAr ? 'تم إرسال الدعوة بنجاح!' : 'Invite sent successfully!'),
+                AppLocalizations.of(context)!.inviteSentSuccessfully),
             backgroundColor: Colors.green));
+      }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content: Text(isAr ? 'حدث خطأ: $e' : 'Error: $e'),
             backgroundColor: Colors.red));
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -378,7 +402,7 @@ class _SquadDashboardScreenState extends State<SquadDashboardScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isAr ? 'لوحة تحكم المجموعة' : 'Squad Dashboard'),
+        title: Text(AppLocalizations.of(context)!.squadDashboard),
         centerTitle: true,
       ),
       body: _isLoading
@@ -413,12 +437,8 @@ class _SquadDashboardScreenState extends State<SquadDashboardScreen> {
                                     fontSize: 20, fontWeight: FontWeight.bold)),
                             Text(
                                 isLeader
-                                    ? (isAr
-                                        ? 'أنت قائد المجموعة'
-                                        : 'You are the Leader')
-                                    : (isAr
-                                        ? 'أنت عضو في المجموعة'
-                                        : 'You are a Member'),
+                                    ? (AppLocalizations.of(context)!.youAreTheLeader)
+                                    : (AppLocalizations.of(context)!.youAreAMember),
                                 style: TextStyle(
                                     color: isLeader
                                         ? AppColors.primary
@@ -432,7 +452,7 @@ class _SquadDashboardScreenState extends State<SquadDashboardScreen> {
                   const SizedBox(height: 32),
 
                   if (isLeader) ...[
-                    Text(isAr ? 'إدارة المجموعة' : 'Squad Management',
+                    Text(AppLocalizations.of(context)!.squadManagement,
                         style: const TextStyle(
                             fontSize: 18, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 16),
@@ -441,10 +461,8 @@ class _SquadDashboardScreenState extends State<SquadDashboardScreen> {
                     _buildActionCard(
                       icon: Icons.edit,
                       title:
-                          isAr ? 'تعديل بيانات المجموعة' : 'Edit Squad Details',
-                      subtitle: isAr
-                          ? 'تغيير الاسم، الوصف، أو الصورة'
-                          : 'Change name, description, or image',
+                          AppLocalizations.of(context)!.editSquadDetails,
+                      subtitle: AppLocalizations.of(context)!.changeNameDescriptionOrImage,
                       color: Colors.blue,
                       onTap: () {
                         Navigator.push(
@@ -468,7 +486,7 @@ class _SquadDashboardScreenState extends State<SquadDashboardScreen> {
                       ),
                       child: SwitchListTile(
                         title: Text(
-                            isAr ? 'متاح للتعاقد' : 'Available for hire',
+                            AppLocalizations.of(context)!.availableForHire,
                             style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 color: _squad.isAvailable
@@ -476,12 +494,8 @@ class _SquadDashboardScreenState extends State<SquadDashboardScreen> {
                                     : Colors.red)),
                         subtitle: Text(
                           _squad.isAvailable
-                              ? (isAr
-                                  ? 'المجموعة متاحة لتلقي طلبات وعروض جديدة'
-                                  : 'Squad is available for new requests')
-                              : (isAr
-                                  ? 'المجموعة مشغولة حالياً'
-                                  : 'Squad is currently busy'),
+                              ? (AppLocalizations.of(context)!.squadIsAvailableForNewRequests)
+                              : (AppLocalizations.of(context)!.squadIsCurrentlyBusy),
                         ),
                         value: _squad.isAvailable,
                         activeThumbColor: Colors.green,
@@ -510,9 +524,7 @@ class _SquadDashboardScreenState extends State<SquadDashboardScreen> {
                               });
                               ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                      content: Text(isAr
-                                          ? 'حدث خطأ'
-                                          : 'An error occurred')));
+                                      content: Text(AppLocalizations.of(context)!.anErrorOccurred)));
                             }
                           });
                         },
@@ -522,12 +534,8 @@ class _SquadDashboardScreenState extends State<SquadDashboardScreen> {
 
                     _buildActionCard(
                       icon: Icons.upload_file,
-                      title: isAr
-                          ? 'إضافة مشروع للمعرض'
-                          : 'Add Project to Portfolio',
-                      subtitle: isAr
-                          ? 'رفع أعمال المجموعة السابقة'
-                          : 'Upload previous squad works',
+                      title: AppLocalizations.of(context)!.addProjectToPortfolio,
+                      subtitle: AppLocalizations.of(context)!.uploadPreviousSquadWorks,
                       color: Colors.green,
                       onTap: () {
                         Navigator.push(
@@ -542,10 +550,8 @@ class _SquadDashboardScreenState extends State<SquadDashboardScreen> {
                     const SizedBox(height: 12),
                     _buildActionCard(
                       icon: Icons.person_add_alt_1_rounded,
-                      title: isAr ? 'دعوة زملاء' : 'Invite Partners',
-                      subtitle: isAr
-                          ? 'دعوة زملائك للانضمام للمجموعة'
-                          : 'Invite your partners to join the squad',
+                      title: AppLocalizations.of(context)!.invitePartners,
+                      subtitle: AppLocalizations.of(context)!.inviteYourPartnersToJoinThe,
                       color: Colors.purple,
                       onTap: _showInviteColleaguesBottomSheet,
                     ),
@@ -571,13 +577,15 @@ class _SquadDashboardScreenState extends State<SquadDashboardScreen> {
                         future: _membersFuture,
                         builder: (context, snapshot) {
                           if (snapshot.connectionState ==
-                              ConnectionState.waiting)
+                              ConnectionState.waiting) {
                             return const Padding(
                                 padding: EdgeInsets.all(20),
                                 child:
                                     Center(child: CircularProgressIndicator()));
-                          if (!snapshot.hasData || snapshot.data!.isEmpty)
+                          }
+                          if (!snapshot.hasData || snapshot.data!.isEmpty) {
                             return const SizedBox();
+                          }
 
                           final members = snapshot.data!;
                           return ListView.separated(
@@ -607,8 +615,8 @@ class _SquadDashboardScreenState extends State<SquadDashboardScreen> {
                                         fontWeight: FontWeight.bold)),
                                 subtitle: Text(
                                     isThisUserLeader
-                                        ? (isAr ? 'القائد' : 'Leader')
-                                        : (isAr ? 'عضو' : 'Member'),
+                                        ? (AppLocalizations.of(context)!.leader)
+                                        : (AppLocalizations.of(context)!.member),
                                     style: TextStyle(
                                         color: isThisUserLeader
                                             ? AppColors.primary
@@ -624,15 +632,11 @@ class _SquadDashboardScreenState extends State<SquadDashboardScreen> {
                                         itemBuilder: (context) => [
                                           PopupMenuItem(
                                               value: 'transfer',
-                                              child: Text(isAr
-                                                  ? 'تحويل القيادة'
-                                                  : 'Make Leader')),
+                                              child: Text(AppLocalizations.of(context)!.makeLeader)),
                                           PopupMenuItem(
                                               value: 'kick',
                                               child: Text(
-                                                  isAr
-                                                      ? 'طرد العضو'
-                                                      : 'Kick Member',
+                                                  AppLocalizations.of(context)!.kickMember,
                                                   style: const TextStyle(
                                                       color: Colors.red))),
                                         ],
@@ -648,10 +652,8 @@ class _SquadDashboardScreenState extends State<SquadDashboardScreen> {
                     const SizedBox(height: 32),
                     _buildActionCard(
                       icon: Icons.warning_amber_rounded,
-                      title: isAr ? 'تفكيك المجموعة' : 'Disband Squad',
-                      subtitle: isAr
-                          ? 'حذف المجموعة بشكل نهائي'
-                          : 'Delete the squad permanently',
+                      title: AppLocalizations.of(context)!.disbandSquad,
+                      subtitle: AppLocalizations.of(context)!.deleteTheSquadPermanently,
                       color: Colors.red,
                       onTap: _disbandSquad,
                     ),
@@ -673,9 +675,7 @@ class _SquadDashboardScreenState extends State<SquadDashboardScreen> {
                               size: 40, color: AppColors.primary),
                           const SizedBox(height: 16),
                           Text(
-                            isAr
-                                ? 'هذه لوحة تحكم المجموعة. فقط قائد المجموعة يمكنه تعديل البيانات أو إدارة الأعضاء وإضافة الأعمال.'
-                                : 'This is the squad dashboard. Only the leader can edit details, manage members, and add portfolio works.',
+                            AppLocalizations.of(context)!.thisIsTheSquadDashboardOnly,
                             textAlign: TextAlign.center,
                             style: const TextStyle(height: 1.5),
                           ),
@@ -703,7 +703,7 @@ class _SquadDashboardScreenState extends State<SquadDashboardScreen> {
                               side: const BorderSide(color: Colors.red)),
                         ),
                         icon: const Icon(Icons.exit_to_app),
-                        label: Text(isAr ? 'مغادرة المجموعة' : 'Leave Squad',
+                        label: Text(AppLocalizations.of(context)!.leaveSquad,
                             style: const TextStyle(
                                 fontWeight: FontWeight.bold, fontSize: 16)),
                       ),

@@ -26,20 +26,120 @@ class AdWidget extends StatelessWidget {
     final appliedMargin = margin ?? const EdgeInsets.only(bottom: 8);
     final appliedBorderRadius = borderRadius ?? BorderRadius.zero;
 
-    // ── Video Ad: clean fullscreen player, no badge/gradient overlay ──
+    // ── Video Ad: clean fullscreen player, but with badge/gradient overlay ──
     if (isVideo) {
-      return Container(
-        margin: appliedMargin,
-        decoration: BoxDecoration(
-          color: Colors.black,
-          borderRadius: appliedBorderRadius,
-        ),
-        clipBehavior: Clip.hardEdge,
-        child: SizedBox(
-          height: 400,
-          child: VideoAdWidget(
-            videoUrl: ad.mediaUrl,
-            onTapDetails: onTap, // tap anywhere except mute → open details
+      return GestureDetector(
+        onTap: onTap,
+        child: Container(
+          margin: appliedMargin,
+          decoration: BoxDecoration(
+            color: Colors.black,
+            borderRadius: appliedBorderRadius,
+          ),
+          clipBehavior: Clip.hardEdge,
+          child: SizedBox(
+            height: 400,
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: VideoAdWidget(
+                    videoUrl: ad.mediaUrl,
+                    onTapDetails: onTap, // tap anywhere except mute → open details
+                  ),
+                ),
+                
+                // Gradient Overlay for text readability (matches image ad)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  height: 150, // Only cover the bottom for text readability, let the video show
+                  child: IgnorePointer(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.transparent,
+                            Colors.black.withValues(alpha: 0.6),
+                            Colors.black.withValues(alpha: 0.9),
+                          ],
+                          stops: const [0.0, 0.5, 1.0],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+                // Sponsored badge at top right
+                Positioned(
+                  top: 0,
+                  right: 0,
+                  child: IgnorePointer(
+                    child: Container(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.teal.shade700.withValues(alpha: 0.9),
+                        borderRadius: const BorderRadius.only(
+                            bottomLeft: Radius.circular(16)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.campaign, color: Colors.white, size: 14),
+                          const SizedBox(width: 4),
+                          Text(
+                            ad.advertiserName != null
+                                ? 'إعلان من ${ad.advertiserName}'
+                                : 'إعلان ممول',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
+                // Ad Content at the bottom
+                Positioned(
+                  left: 12,
+                  right: 60, // Leave space for the mute button
+                  bottom: 12,
+                  child: IgnorePointer(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          ad.title,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          ad.description,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       );

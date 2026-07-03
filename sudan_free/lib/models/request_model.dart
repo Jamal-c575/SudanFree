@@ -5,6 +5,7 @@ class RequestModel {
   final String clientId;
   final String clientName;
   final String? clientImageUrl;
+  final bool isClientVerified; // New: to show verification badge
   final String text;
   final double? price; // New: optional price offered or expected
   final DateTime expiresAt; // New: 48 hour expiration
@@ -24,6 +25,7 @@ class RequestModel {
     required this.clientId,
     required this.clientName,
     this.clientImageUrl,
+    this.isClientVerified = false,
     required this.text,
     this.price,
     this.imageUrl,
@@ -37,7 +39,7 @@ class RequestModel {
     DateTime? expiresAt,
     this.offersCount = 0,
     this.isFulfilled = false,
-  }) : this.expiresAt = expiresAt ?? createdAt.add(const Duration(hours: 48));
+  }) : expiresAt = expiresAt ?? createdAt.add(const Duration(hours: 48));
 
   /// Get all image URLs (combines legacy imageUrl with new imageUrls)
   List<String> get allImageUrls {
@@ -56,6 +58,7 @@ class RequestModel {
       'clientId': clientId,
       'clientName': clientName,
       'clientImageUrl': clientImageUrl,
+      'isClientVerified': isClientVerified,
       'text': text,
       'price': price,
       'imageUrl': imageUrl,
@@ -78,6 +81,7 @@ class RequestModel {
       clientId: map['clientId'] ?? '',
       clientName: map['clientName'] ?? 'عميل',
       clientImageUrl: map['clientImageUrl'],
+      isClientVerified: map['isClientVerified'] ?? false,
       text: map['text'] ?? '',
       price: map['price'] != null ? (map['price'] as num).toDouble() : null,
       imageUrl: map['imageUrl'],

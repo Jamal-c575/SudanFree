@@ -11,6 +11,7 @@ import '../views/requests/request_details_screen.dart';
 import '../views/jobs/active_job_tracking_screen.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'dart:io';
+import '../core/utils/navigation_utils.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -161,74 +162,44 @@ class NotificationService {
       if (type == 'message' || type == 'contract') {
         final chat = await firestore.getChatById(relatedId);
         if (chat != null && context.mounted) {
-          Navigator.push(context,
-              MaterialPageRoute(builder: (_) => ChatScreen(chat: chat)));
+          NavigationUtils.navigateSafely(context, ChatScreen(chat: chat));
         }
       } else if (type == 'comment' || type == 'like' || type == 'mention') {
         final post = await firestore.getPost(relatedId);
         if (post != null && context.mounted) {
-          Navigator.push(context,
-              MaterialPageRoute(builder: (_) => PostDetailsScreen(post: post)));
+          NavigationUtils.navigateSafely(context, PostDetailsScreen(post: post));
         }
       } else if (type == 'partnerRequest' || type == 'follow') {
         final user = await firestore.getUser(relatedId);
         if (user != null && context.mounted) {
           if (user.isFreelancer) {
-            Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (_) =>
-                        FreelancerProfileScreen(user: user, isMe: false)));
+            NavigationUtils.navigateSafely(context, FreelancerProfileScreen(user: user, isMe: false));
           } else if (user.isShop) {
-            Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (_) =>
-                        ShopProfileScreen(user: user, isMe: false)));
+            NavigationUtils.navigateSafely(context, ShopProfileScreen(user: user, isMe: false));
           } else {
-            Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (_) => ProfileScreen(userId: user.id)));
+            NavigationUtils.navigateSafely(context, ProfileScreen(userId: user.id));
           }
         }
       } else if (type == 'offer') {
         final req = await firestore.getRequestById(relatedId);
         if (req != null && context.mounted) {
-          Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (_) => RequestDetailsScreen(request: req)));
+          NavigationUtils.navigateSafely(context, RequestDetailsScreen(request: req));
         }
       } else if (type == 'system' || type == 'assignment') {
         // Try user first, if not found, try job
         final user = await firestore.getUser(relatedId);
         if (user != null && context.mounted) {
           if (user.isFreelancer) {
-            Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (_) =>
-                        FreelancerProfileScreen(user: user, isMe: false)));
+            NavigationUtils.navigateSafely(context, FreelancerProfileScreen(user: user, isMe: false));
           } else if (user.isShop) {
-            Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (_) =>
-                        ShopProfileScreen(user: user, isMe: false)));
+            NavigationUtils.navigateSafely(context, ShopProfileScreen(user: user, isMe: false));
           } else {
-            Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (_) => ProfileScreen(userId: user.id)));
+            NavigationUtils.navigateSafely(context, ProfileScreen(userId: user.id));
           }
         } else {
           final job = await firestore.getJob(relatedId);
           if (job != null && context.mounted) {
-            Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (_) => ActiveJobTrackingScreen(jobId: job.id)));
+            NavigationUtils.navigateSafely(context, ActiveJobTrackingScreen(jobId: job.id));
           }
         }
       }

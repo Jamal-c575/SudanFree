@@ -13,6 +13,7 @@ class CommentModel {
   final bool isReply;
   final List<String> likedBy; // User IDs who liked this comment
   final List<String> mentionedNames; // Full names mentioned with @
+  final bool isUserVerified; // New: To show glass verification badge
 
   CommentModel({
     required this.id,
@@ -27,6 +28,7 @@ class CommentModel {
     this.isReply = false,
     this.likedBy = const [],
     this.mentionedNames = const [],
+    this.isUserVerified = false,
   });
 
   int get likesCount => likedBy.length;
@@ -46,6 +48,7 @@ class CommentModel {
       isReply: data['isReply'] ?? false,
       likedBy: List<String>.from(data['likedBy'] ?? []),
       mentionedNames: List<String>.from(data['mentionedNames'] ?? []),
+      isUserVerified: data['isUserVerified'] ?? false,
     );
   }
 
@@ -62,6 +65,7 @@ class CommentModel {
       'isReply': isReply,
       'likedBy': likedBy,
       'mentionedNames': mentionedNames,
+      'isUserVerified': isUserVerified,
     };
   }
 }

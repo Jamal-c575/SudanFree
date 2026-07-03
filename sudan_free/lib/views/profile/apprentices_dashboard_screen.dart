@@ -9,6 +9,7 @@ import '../../services/firestore_service.dart';
 import '../../services/firestore/user_service.dart';
 import '../../providers/job_provider.dart';
 import '../../models/job_model.dart';
+import 'package:sudan_free/l10n/generated/app_localizations.dart';
 
 class ApprenticesDashboardScreen extends StatefulWidget {
   const ApprenticesDashboardScreen({super.key});
@@ -31,7 +32,7 @@ class _ApprenticesDashboardScreenState
     if (user == null) {
       return Scaffold(
         appBar:
-            AppBar(title: Text(isAr ? 'لوحة تحكم المعلم' : 'Master Dashboard')),
+            AppBar(title: Text(AppLocalizations.of(context)!.masterDashboard)),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
@@ -40,7 +41,7 @@ class _ApprenticesDashboardScreenState
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          title: Text(isAr ? 'لوحة القيادة' : 'Dashboard',
+          title: Text(AppLocalizations.of(context)!.dashboard,
               style: const TextStyle(fontWeight: FontWeight.bold)),
           centerTitle: true,
           bottom: TabBar(
@@ -78,9 +79,7 @@ class _ApprenticesDashboardScreenState
             const Icon(Icons.group_off, size: 60, color: Colors.grey),
             const SizedBox(height: 16),
             Text(
-                isAr
-                    ? 'لا يوجد لديك صبيان حالياً'
-                    : 'You have no apprentices currently',
+                AppLocalizations.of(context)!.youHaveNoApprenticesCurrently,
                 style: TextStyle(color: Colors.grey[600], fontSize: 16)),
           ],
         ),
@@ -90,10 +89,12 @@ class _ApprenticesDashboardScreenState
     return FutureBuilder<List<UserModel>>(
       future: FirestoreService().getUsersByIds(user.apprenticesIds),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting)
+        if (snapshot.connectionState == ConnectionState.waiting) {
           return _buildShimmer(Theme.of(context).brightness == Brightness.dark);
-        if (snapshot.hasError)
-          return Center(child: Text(isAr ? 'حدث خطأ' : 'Error occurred'));
+        }
+        if (snapshot.hasError) {
+          return Center(child: Text(AppLocalizations.of(context)!.errorOccurred));
+        }
 
         final apprentices = snapshot.data ?? [];
         if (apprentices.isEmpty) return const SizedBox.shrink();
@@ -133,7 +134,7 @@ class _ApprenticesDashboardScreenState
                                       fontSize: 16)),
                               Text(
                                   apprentice.jobTitle ??
-                                      (isAr ? 'حرفي' : 'Craftsman'),
+                                      (AppLocalizations.of(context)!.craftsman),
                                   style: TextStyle(
                                       color: Colors.grey[600], fontSize: 13)),
                             ],
@@ -146,7 +147,7 @@ class _ApprenticesDashboardScreenState
                               color: Colors.green.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(20)),
                           child: Text(
-                              '${apprentice.completedJobs} ${isAr ? 'مهمة' : 'Jobs'}',
+                              '${apprentice.completedJobs} ${AppLocalizations.of(context)!.jobs}',
                               style: const TextStyle(
                                   color: Colors.green,
                                   fontWeight: FontWeight.bold)),
@@ -169,7 +170,7 @@ class _ApprenticesDashboardScreenState
                                   context, user, apprentice, isAr);
                             },
                             icon: const Icon(Icons.assignment),
-                            label: Text(isAr ? 'إسناد طلب' : 'Assign Task'),
+                            label: Text(AppLocalizations.of(context)!.assignTask),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -185,7 +186,7 @@ class _ApprenticesDashboardScreenState
                               context: context,
                               builder: (ctx) => AlertDialog(
                                 title: Text(
-                                    isAr ? 'طرد الصبي' : 'Fire Apprentice'),
+                                    AppLocalizations.of(context)!.fireApprentice),
                                 content: Text(isAr
                                     ? 'هل أنت متأكد من إنهاء تدريب ${apprentice.name}؟'
                                     : 'Are you sure you want to fire ${apprentice.name}?'),
@@ -193,10 +194,10 @@ class _ApprenticesDashboardScreenState
                                   TextButton(
                                       onPressed: () =>
                                           Navigator.pop(ctx, false),
-                                      child: Text(isAr ? 'تراجع' : 'Cancel')),
+                                      child: Text(AppLocalizations.of(context)!.cancel)),
                                   TextButton(
                                       onPressed: () => Navigator.pop(ctx, true),
-                                      child: Text(isAr ? 'طرد' : 'Fire',
+                                      child: Text(AppLocalizations.of(context)!.fire,
                                           style: const TextStyle(
                                               color: Colors.red))),
                                 ],
@@ -207,7 +208,7 @@ class _ApprenticesDashboardScreenState
                                   user.id, apprentice.id);
                             }
                           },
-                          child: Text(isAr ? 'طرد' : 'Fire'),
+                          child: Text(AppLocalizations.of(context)!.fire),
                         )
                       ],
                     )
@@ -231,9 +232,7 @@ class _ApprenticesDashboardScreenState
             const Icon(Icons.inbox, size: 60, color: Colors.grey),
             const SizedBox(height: 16),
             Text(
-                isAr
-                    ? 'لا توجد طلبات انضمام حالياً'
-                    : 'No pending requests currently',
+                AppLocalizations.of(context)!.noPendingRequestsCurrently,
                 style: TextStyle(color: Colors.grey[600], fontSize: 16)),
           ],
         ),
@@ -243,10 +242,12 @@ class _ApprenticesDashboardScreenState
     return FutureBuilder<List<UserModel>>(
       future: FirestoreService().getUsersByIds(user.pendingApprenticeRequests),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting)
+        if (snapshot.connectionState == ConnectionState.waiting) {
           return _buildShimmer(Theme.of(context).brightness == Brightness.dark);
-        if (snapshot.hasError)
-          return Center(child: Text(isAr ? 'حدث خطأ' : 'Error occurred'));
+        }
+        if (snapshot.hasError) {
+          return Center(child: Text(AppLocalizations.of(context)!.errorOccurred));
+        }
 
         final requests = snapshot.data ?? [];
         if (requests.isEmpty) return const SizedBox.shrink();
@@ -273,9 +274,7 @@ class _ApprenticesDashboardScreenState
                 ),
                 title: Text(requester.name,
                     style: const TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: Text(isAr
-                    ? 'يرغب في الانضمام كصبي لك'
-                    : 'Wants to join as your apprentice'),
+                subtitle: Text(AppLocalizations.of(context)!.wantsToJoinAsYourApprentice),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -371,7 +370,7 @@ class _ApprenticesDashboardScreenState
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(isAr ? 'إسناد طلب' : 'Assign Request',
+                            Text(AppLocalizations.of(context)!.assignRequest,
                                 style: const TextStyle(
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold,
@@ -402,9 +401,7 @@ class _ApprenticesDashboardScreenState
                                   size: 64, color: Colors.grey[400]),
                               const SizedBox(height: 16),
                               Text(
-                                  isAr
-                                      ? 'لا توجد طلبات نشطة لديك لإسنادها'
-                                      : 'No active requests available to assign',
+                                  AppLocalizations.of(context)!.noActiveRequestsAvailableToAssign,
                                   style: TextStyle(color: Colors.grey[600])),
                             ],
                           ),
@@ -460,20 +457,16 @@ class _ApprenticesDashboardScreenState
                                       Navigator.pop(ctx);
                                       ScaffoldMessenger.of(context)
                                           .showSnackBar(SnackBar(
-                                              content: Text(isAr
-                                                  ? 'تم إسناد الطلب بنجاح! سيتم إشعار العميل.'
-                                                  : 'Request assigned successfully! Client will be notified.'),
+                                              content: Text(AppLocalizations.of(context)!.requestAssignedSuccessfullyClientWillBe),
                                               backgroundColor: Colors.green));
                                     } else {
                                       ScaffoldMessenger.of(context)
                                           .showSnackBar(SnackBar(
-                                              content: Text(isAr
-                                                  ? 'حدث خطأ أثناء الإسناد'
-                                                  : 'Error assigning task'),
+                                              content: Text(AppLocalizations.of(context)!.errorAssigningTask),
                                               backgroundColor: Colors.red));
                                     }
                                   },
-                                  child: Text(isAr ? 'إسناد' : 'Assign'),
+                                  child: Text(AppLocalizations.of(context)!.assign),
                                 ),
                               ),
                             );

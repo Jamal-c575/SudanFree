@@ -222,8 +222,9 @@ class _CreatePortfolioProjectScreenState
     if (source == ImageSource.camera) {
       final image = await picker.pickImage(
           source: ImageSource.camera, imageQuality: 70, maxWidth: 1200);
-      if (image != null && mounted)
+      if (image != null && mounted) {
         setState(() => _selectedImages.add(File(image.path)));
+      }
     } else {
       final images =
           await picker.pickMultiImage(imageQuality: 70, maxWidth: 1200);
@@ -318,11 +319,12 @@ class _CreatePortfolioProjectScreenState
         ));
       }
     } finally {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _isLoading = false;
           _loadingStatus = '';
         });
+      }
     }
   }
 
@@ -363,11 +365,13 @@ class _CreatePortfolioProjectScreenState
                     child: FutureBuilder<List<UserModel>>(
                       future: partnersFuture,
                       builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting)
+                        if (snapshot.connectionState == ConnectionState.waiting) {
                           return const Center(
                               child: CircularProgressIndicator());
-                        if (!snapshot.hasData || snapshot.data!.isEmpty)
+                        }
+                        if (!snapshot.hasData || snapshot.data!.isEmpty) {
                           return const Center(child: Text('لا يوجد شركاء'));
+                        }
 
                         final partners = snapshot.data!;
                         return ListView.builder(

@@ -12,6 +12,7 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../../services/storage_service.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:sudan_free/l10n/generated/app_localizations.dart';
 
 class CreateSquadScreen extends StatefulWidget {
   final SquadModel? squadToEdit;
@@ -176,8 +177,8 @@ class _CreateSquadScreenState extends State<CreateSquadScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(isEditing
-            ? (isAr ? 'تعديل المجموعة' : 'Edit Squad')
-            : (isAr ? 'إنشاء مجموعة عمل' : 'Create Squad')),
+            ? (AppLocalizations.of(context)!.editSquad)
+            : (AppLocalizations.of(context)!.createSquad)),
         elevation: 0,
       ),
       body: _isLoading
@@ -228,7 +229,7 @@ class _CreateSquadScreenState extends State<CreateSquadScreen> {
                     ),
                     const SizedBox(height: 24),
                     Text(
-                      isAr ? 'اسم المجموعة' : 'Squad Name',
+                      AppLocalizations.of(context)!.squadName,
                       style: const TextStyle(
                           fontWeight: FontWeight.bold, fontSize: 16),
                     ),
@@ -236,21 +237,19 @@ class _CreateSquadScreenState extends State<CreateSquadScreen> {
                     TextFormField(
                       controller: _nameController,
                       decoration: InputDecoration(
-                        hintText: isAr
-                            ? 'مثال: فريق البناء المتكامل'
-                            : 'e.g., Integrated Builders Squad',
+                        hintText: AppLocalizations.of(context)!.egIntegratedBuildersSquad,
                         border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12)),
                       ),
                       validator: (val) => val == null || val.isEmpty
-                          ? (isAr ? 'مطلوب' : 'Required')
+                          ? (AppLocalizations.of(context)!.strRequired)
                           : null,
                     ),
 
                     const SizedBox(height: 24),
 
                     Text(
-                      isAr ? 'وصف المجموعة' : 'Squad Description',
+                      AppLocalizations.of(context)!.squadDescription,
                       style: const TextStyle(
                           fontWeight: FontWeight.bold, fontSize: 16),
                     ),
@@ -258,22 +257,20 @@ class _CreateSquadScreenState extends State<CreateSquadScreen> {
                     TextFormField(
                       controller: _descController,
                       decoration: InputDecoration(
-                        hintText: isAr
-                            ? 'اشرح تخصص المجموعة وأهدافها...'
-                            : 'Describe the squad specialization...',
+                        hintText: AppLocalizations.of(context)!.describeTheSquadSpecialization,
                         border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12)),
                       ),
                       maxLines: 4,
                       validator: (val) => val == null || val.isEmpty
-                          ? (isAr ? 'مطلوب' : 'Required')
+                          ? (AppLocalizations.of(context)!.strRequired)
                           : null,
                     ),
 
                     const SizedBox(height: 24),
 
                     Text(
-                      isAr ? 'فئة المجموعة' : 'Squad Category',
+                      AppLocalizations.of(context)!.squadCategory,
                       style: const TextStyle(
                           fontWeight: FontWeight.bold, fontSize: 16),
                     ),
@@ -290,9 +287,7 @@ class _CreateSquadScreenState extends State<CreateSquadScreen> {
                           value: _selectedCategory,
                           hint: Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: Text(isAr
-                                ? 'اختر التخصص الأساسي'
-                                : 'Select main specialization'),
+                            child: Text(AppLocalizations.of(context)!.selectMainSpecialization),
                           ),
                           items: SquadCategory.values.map((cat) {
                             return DropdownMenuItem(
@@ -313,9 +308,7 @@ class _CreateSquadScreenState extends State<CreateSquadScreen> {
                     const SizedBox(height: 24),
 
                     Text(
-                      isAr
-                          ? 'الخدمات والتخصصات (اختياري)'
-                          : 'Services & Specialties (Optional)',
+                      AppLocalizations.of(context)!.servicesSpecialtiesOptional,
                       style: const TextStyle(
                           fontWeight: FontWeight.bold, fontSize: 16),
                     ),
@@ -323,18 +316,14 @@ class _CreateSquadScreenState extends State<CreateSquadScreen> {
                     TextFormField(
                       controller: _skillsController,
                       decoration: InputDecoration(
-                        hintText: isAr
-                            ? 'أدخل التخصصات مفصولة بفاصلة (،) مثال: كهرباء، سباكة'
-                            : 'Enter skills separated by comma (,)',
+                        hintText: AppLocalizations.of(context)!.enterSkillsSeparatedByComma,
                         border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12)),
                       ),
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      isAr
-                          ? '* إذا تركتها فارغة، سيتم عرض تخصصات أعضاء المجموعة تلقائياً.'
-                          : '* If left empty, members skills will be displayed automatically.',
+                      AppLocalizations.of(context)!.ifLeftEmptyMembersSkillsWill,
                       style: const TextStyle(color: Colors.grey, fontSize: 12),
                     ),
 
@@ -342,9 +331,7 @@ class _CreateSquadScreenState extends State<CreateSquadScreen> {
 
                     // Location Selection
                     Text(
-                      isAr
-                          ? 'موقع المجموعة (اختياري)'
-                          : 'Squad Location (Optional)',
+                      AppLocalizations.of(context)!.squadLocationOptional,
                       style: const TextStyle(
                           fontWeight: FontWeight.bold, fontSize: 16),
                     ),
@@ -365,7 +352,7 @@ class _CreateSquadScreenState extends State<CreateSquadScreen> {
                                 hint: Padding(
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 16),
-                                  child: Text(isAr ? 'الولاية' : 'State'),
+                                  child: Text(AppLocalizations.of(context)!.state),
                                 ),
                                 items: SudanLocations.states.map((state) {
                                   return DropdownMenuItem(
@@ -403,7 +390,7 @@ class _CreateSquadScreenState extends State<CreateSquadScreen> {
                                 hint: Padding(
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 16),
-                                  child: Text(isAr ? 'المحلية' : 'Locality'),
+                                  child: Text(AppLocalizations.of(context)!.locality),
                                 ),
                                 items: _selectedState == null
                                     ? []
@@ -449,8 +436,8 @@ class _CreateSquadScreenState extends State<CreateSquadScreen> {
                         ),
                         child: Text(
                           isEditing
-                              ? (isAr ? 'حفظ التعديلات' : 'Save Changes')
-                              : (isAr ? 'إنشاء واعتماد' : 'Create Squad'),
+                              ? (AppLocalizations.of(context)!.saveChanges)
+                              : (AppLocalizations.of(context)!.createSquad),
                           style: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,

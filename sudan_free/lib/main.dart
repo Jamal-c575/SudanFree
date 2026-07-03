@@ -2,16 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:onesignal_flutter/onesignal_flutter.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:onesignal_flutter/onesignal_flutter.dart'; // kept for auth_provider references
 import 'package:timeago/timeago.dart' as timeago;
 import 'dart:async';
 import 'dart:ui';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'app.dart';
 import 'services/notification_service.dart';
 import 'services/cache_service.dart';
 import 'services/error_service.dart';
 import 'services/network_service.dart';
 import 'services/performance_service.dart';
+import 'services/data_saver_service.dart';
 import 'core/utils/app_error_handler.dart';
 import 'core/config/image_cache_config.dart';
 import 'firebase_options.dart';
@@ -33,18 +36,20 @@ void main() {
     imageCache.maximumSize = ImageCacheConfig.maxMemoryCacheCount;
     imageCache.maximumSizeBytes = ImageCacheConfig.maxMemoryCacheSizeMB * 1024 * 1024;
     
-    // Initialize OneSignal with the current package API
-    try {
-      await OneSignal.Debug.setLogLevel(OSLogLevel.verbose);
-      const oneSignalAppId = String.fromEnvironment('ONESIGNAL_APP_ID', defaultValue: '5b1ec6d9-34d2-44ee-b985-d58a598e71d7');
-      OneSignal.initialize(oneSignalAppId);
-      // Prompt for permission on iOS only
-      try {
-        await OneSignal.Notifications.requestPermission(true);
-      } catch (_) {}
-    } catch (e) {
-      debugPrint('OneSignal init warning: $e');
-    }
+    // OneSignal disabled — notifications handled exclusively by Firebase Cloud Messaging (FCM)
+    // OneSignal was causing duplicate push notifications since FCM is already active.
+    // To re-enable: restore the OneSignal.initialize() block below.
+    // try {
+    //   await OneSignal.Debug.setLogLevel(OSLogLevel.verbose);
+    //   const oneSignalAppId = String.fromEnvironment('ONESIGNAL_APP_ID', defaultValue: '5b1ec6d9-34d2-44ee-b985-d58a598e71d7');
+    //   OneSignal.initialize(oneSignalAppId);
+    //   try { await OneSignal.Notifications.requestPermission(true); } catch (_) {}
+    // } catch (e) {
+    //   debugPrint('OneSignal init warning: $e');
+    // }
+
+    // Load Environment Variables
+    await dotenv.load(fileName: ".env");
 
     // Initialize network monitoring
     await NetworkService().initialize();
@@ -91,17 +96,26 @@ void main() {
       debugPrint('Cache service error: $e');
       ErrorService().logError(e, stack, context: 'CacheServiceInit');
     }
+    
+    // Initialize Data Saver
+    try {
+      await DataSaverService().init();
+    } catch (e) {
+      debugPrint('DataSaver service error: $e');
+    }
 
     initTrace.stop();
     
     // Setup global error handling for Flutter framework errors
     FlutterError.onError = (FlutterErrorDetails details) {
       FlutterError.presentError(details);
+      FirebaseCrashlytics.instance.recordFlutterFatalError(details);
       AppErrorHandler.log(details.exception, details.stack, context: 'FlutterError');
     };
     
     // Catch asynchronous errors (Flutter 3.3+)
     PlatformDispatcher.instance.onError = (error, stack) {
+      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
       AppErrorHandler.log(error, stack, context: 'PlatformDispatcher');
       return true; // prevent default behavior
     };

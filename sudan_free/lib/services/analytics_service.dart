@@ -272,12 +272,15 @@ class AnalyticsService {
   }) async {
     try {
       await _analytics.setUserId(id: userId);
-      if (role != null)
+      if (role != null) {
         await _analytics.setUserProperty(name: 'user_role', value: role);
-      if (region != null)
+      }
+      if (region != null) {
         await _analytics.setUserProperty(name: 'user_region', value: region);
-      if (jobTitle != null)
+      }
+      if (jobTitle != null) {
         await _analytics.setUserProperty(name: 'job_title', value: jobTitle);
+      }
     } catch (e) {
       debugPrint('Analytics Error: $e');
     }

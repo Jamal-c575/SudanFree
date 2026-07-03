@@ -230,8 +230,9 @@ class _ActiveJobTrackingScreenState extends State<ActiveJobTrackingScreen> {
                             .snapshots(),
                         builder: (context, snapshot) {
                           if (snapshot.connectionState ==
-                              ConnectionState.waiting)
+                              ConnectionState.waiting) {
                             return const SizedBox.shrink();
+                          }
 
                           if (snapshot.hasData && snapshot.data!.exists) {
                             return Container(
@@ -967,7 +968,9 @@ class _ActiveJobTrackingScreenState extends State<ActiveJobTrackingScreen> {
               child: ElevatedButton(
                 onPressed: () {
                   if (titleController.text.trim().isEmpty ||
-                      amountController.text.trim().isEmpty) return;
+                      amountController.text.trim().isEmpty) {
+                    return;
+                  }
 
                   final newAmount = double.tryParse(amountController.text) ?? 0;
                   if (newAmount <= 0) return;
@@ -1145,6 +1148,24 @@ class _ActiveJobTrackingScreenState extends State<ActiveJobTrackingScreen> {
   }
 
   void _showCompleteDialog(BuildContext context, JobModel job) {
+    final double totalMilestonesAmount =
+        job.milestones.fold(0.0, (acc, m) => acc + m.amount);
+    final bool isAmountComplete = totalMilestonesAmount >= job.budgetMax;
+    final bool allMilestonesConfirmed = job.milestones.isNotEmpty &&
+        job.milestones
+            .every((m) => m.status == MilestoneStatus.confirmedByProvider);
+
+    if (!isAmountComplete || !allMilestonesConfirmed) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+              'لا يمكن إكمال الاتفاق قبل إكمال جميع الدفعات للمبلغ المتفق عليه (100%).'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(

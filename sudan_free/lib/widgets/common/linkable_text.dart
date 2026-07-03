@@ -120,8 +120,9 @@ class LinkableText extends StatelessWidget {
           style: mentionStyle,
           recognizer: TapGestureRecognizer()
             ..onTap = () {
-              if (onMentionTap != null)
+              if (onMentionTap != null) {
                 onMentionTap!(mentionMatch.substring(1)); // Remove '@'
+              }
             },
         ));
       }

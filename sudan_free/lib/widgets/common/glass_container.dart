@@ -68,10 +68,12 @@ class GlassContainer extends StatelessWidget {
             ? LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
+                stops: const [0.0, 0.4, 0.6, 1.0],
                 colors: [
-                  baseColor.withValues(alpha: activeOpacity),
-                  baseColor.withValues(
-                      alpha: (activeOpacity * 0.5).clamp(0.0, 1.0)),
+                  baseColor.withValues(alpha: activeOpacity + 0.1),
+                  baseColor.withValues(alpha: activeOpacity * 0.5),
+                  baseColor.withValues(alpha: activeOpacity * 0.3),
+                  baseColor.withValues(alpha: activeOpacity + 0.05),
                 ],
               )
             : null,
@@ -79,11 +81,18 @@ class GlassContainer extends StatelessWidget {
             ? [
                 BoxShadow(
                   color: isDark
-                      ? const Color(0xFF38BDF8).withValues(alpha: 0.15) // Neon Cyan glow
-                      : AppColors.primary.withValues(alpha: 0.15), // Primary color glow
-                  blurRadius: isDark ? 30 : 20,
-                  spreadRadius: isDark ? 1 : 0,
-                  offset: isDark ? Offset.zero : const Offset(0, 4),
+                      ? Colors.black.withValues(alpha: 0.2)
+                      : baseColor.withValues(alpha: 0.1),
+                  blurRadius: isDark ? 20 : 15,
+                  spreadRadius: 0,
+                  offset: const Offset(0, 8),
+                ),
+                // Inner highlight simulation
+                BoxShadow(
+                  color: Colors.white.withValues(alpha: isDark ? 0.05 : 0.4),
+                  blurRadius: 0,
+                  spreadRadius: 1,
+                  offset: const Offset(0, 1), // Top light reflection
                 )
               ]
             : [
@@ -95,13 +104,34 @@ class GlassContainer extends StatelessWidget {
               ],
         border: border ??
             (isGlassEnabled
-                ? Border.all(color: borderColor, width: 1.0)
+                ? Border.all(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.15)
+                        : Colors.white.withValues(alpha: 0.6),
+                    width: 1.0)
                 : Border.all(
-                    color: isDark ? Colors.white.withValues(alpha: 0.2) : AppColors.primary.withValues(alpha: 0.1),
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.1)
+                        : Colors.black.withValues(alpha: 0.05),
                     width: 1.0,
                   )),
       ),
-      child: child,
+      child: isGlassEnabled
+          ? DefaultTextStyle.merge(
+              style: TextStyle(
+                shadows: [
+                  Shadow(
+                    offset: const Offset(0, 1),
+                    blurRadius: 2.0,
+                    color: isDark
+                        ? Colors.black.withValues(alpha: 0.8)
+                        : Colors.white.withValues(alpha: 0.9),
+                  ),
+                ],
+              ),
+              child: child,
+            )
+          : child,
     );
 
     return Padding(

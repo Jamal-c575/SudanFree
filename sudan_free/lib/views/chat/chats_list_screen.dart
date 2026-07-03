@@ -10,6 +10,12 @@ import 'package:timeago/timeago.dart' as timeago;
 import '../../widgets/common/empty_state_widget.dart';
 import '../../models/message_model.dart';
 import '../../widgets/common/glass_container.dart';
+import '../../widgets/common/verification_badge.dart';
+import 'package:sudan_free/l10n/generated/app_localizations.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import '../../utils/animation_utils.dart';
+import '../../widgets/common/premium_glass_card.dart';
 
 class ChatsListScreen extends StatefulWidget {
   const ChatsListScreen({super.key});
@@ -41,7 +47,7 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(locale == 'ar' ? 'المحادثات' : 'Chats'),
+        title: Text(AppLocalizations.of(context)!.chats),
         centerTitle: true,
       ),
       body: Selector<ChatProvider, _ChatListState>(
@@ -57,13 +63,9 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
           if (chats.isEmpty) {
             return EmptyStateWidget(
               icon: Icons.chat_bubble_outline_rounded,
-              title: locale == 'ar'
-                  ? 'لا توجد محادثات سابقة'
-                  : 'No previous chats',
-              subtitle: locale == 'ar'
-                  ? 'تواصل مع الحرفيين أو المتاجر للاتفاق على الخدمات.'
-                  : 'Contact freelancers or shops to agree on services.',
-              actionLabel: locale == 'ar' ? 'ابحث الآن' : 'Search Now',
+              title: AppLocalizations.of(context)!.noPreviousChats,
+              subtitle: AppLocalizations.of(context)!.contactFreelancersOrShopsToAgree,
+              actionLabel: AppLocalizations.of(context)!.searchNow,
               actionIcon: Icons.search_rounded,
               onAction: () {
                 Navigator.popUntil(context, (route) => route.isFirst);
@@ -76,32 +78,34 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
               await context.read<ChatProvider>().fetchChats(user.id);
             },
             child: ListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.symmetric(vertical: 8),
+              itemExtent: 88, // Fixed height for smoothness
               itemCount: chats.length,
               itemBuilder: (context, index) {
                 final chat = chats[index];
                 final otherName = chat.getOtherParticipantName(user.id);
+                final otherId = chat.getOtherParticipantId(user.id);
                 final otherImage = chat.getOtherParticipantImage(user.id);
                 final unreadCount = chat.getUnreadCount(user.id);
                 final isDark = Theme.of(context).brightness == Brightness.dark;
 
-                return GlassContainer(
+                return Padding(
                   key: ValueKey('chat_${chat.id}'),
-                  margin:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  blur: 15,
-                  opacity: isDark ? 0.3 : 0.6,
-                  color: unreadCount > 0
-                      ? AppColors.primary.withValues(alpha: isDark ? 0.2 : 0.1)
-                      : Theme.of(context).cardColor,
-                  borderRadius: BorderRadius.circular(14),
-                  child: InkWell(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  child: PremiumGlassCard(
+                    padding: EdgeInsets.zero,
+                    color: unreadCount > 0
+                        ? AppColors.primary
+                        : (isDark ? Colors.grey[900] : Colors.white),
+                    opacity: unreadCount > 0 ? (isDark ? 0.2 : 0.1) : (isDark ? 0.5 : 1.0),
+                    borderRadius: BorderRadius.circular(14),
+                    border: unreadCount > 0,
                     onTap: () {
+                      HapticFeedback.lightImpact();
                       Navigator.push(
                         context,
-                        MaterialPageRoute(
-                          builder: (_) => ChatScreen(chat: chat),
-                        ),
+                        AnimationUtils.createPremiumRoute(ChatScreen(chat: chat)),
                       ).then((_) {
                         // تحديث القائمة عند الرجوع من المحادثة (قد يكون تم قراءة رسائل)
                         if (context.mounted) {
@@ -109,7 +113,6 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                         }
                       });
                     },
-                    borderRadius: BorderRadius.circular(14),
                     child: Padding(
                       padding: const EdgeInsets.all(14),
                       child: Row(
@@ -144,23 +147,32 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  otherName,
-                                  style: TextStyle(
-                                    fontWeight: unreadCount > 0
-                                        ? FontWeight.w800
-                                        : FontWeight.bold,
-                                    fontSize: 15,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
+                                Row(
+                                  children: [
+                                    Flexible(
+                                      child: Text(
+                                        otherName,
+                                        style: TextStyle(
+                                          fontWeight: unreadCount > 0
+                                              ? FontWeight.w800
+                                              : FontWeight.bold,
+                                          fontSize: 15,
+                                          color: isDark
+                                              ? Colors.white
+                                              : Colors.black87,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    SmartVerificationBadgeAsync(userId: otherId, size: 14),
+                                  ],
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
                                   chat.lastMessage ??
-                                      (locale == 'ar'
-                                          ? 'بدأت المحادثة'
-                                          : 'Chat started'),
+                                      (AppLocalizations.of(context)!.chatStarted),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
@@ -222,7 +234,7 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                       ),
                     ),
                   ),
-                );
+                ).animate().fade(duration: 400.ms).slideX(begin: 0.1, end: 0, duration: 400.ms, curve: Curves.easeOutQuad);
               },
             ),
           );

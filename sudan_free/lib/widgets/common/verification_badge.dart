@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
-import '../../core/constants/app_colors.dart';
 import '../../models/user_model.dart';
+import '../../core/constants/app_colors.dart';
+import '../../l10n/generated/app_localizations.dart';
+import '../../services/trust_service.dart';
+import 'package:provider/provider.dart';
+import '../../services/firestore_service.dart';
 
 /// شارة تحقق متعددة المستويات — تعرض مستوى ثقة المستخدم بصرياً
 ///
@@ -22,14 +26,7 @@ class VerificationBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     if (!isVerified) return const SizedBox.shrink();
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4.0),
-      child: Icon(
-        Icons.verified,
-        color: Colors.blue,
-        size: size,
-      ),
-    );
+    return _IdentityBadge(size: size);
   }
 }
 
@@ -78,7 +75,7 @@ class SmartVerificationBadge extends StatelessWidget {
     final isAr = Localizations.localeOf(context).languageCode == 'ar';
 
     return Tooltip(
-      message: _getTooltipText(level, isAr),
+      message: _getTooltipText(level, context),
       preferBelow: false,
       child: badge,
     );
@@ -106,20 +103,16 @@ class SmartVerificationBadge extends StatelessWidget {
     }
   }
 
-  String _getTooltipText(_BadgeLevel level, bool isAr) {
+  String _getTooltipText(_BadgeLevel level, BuildContext context) {
     switch (level) {
       case _BadgeLevel.premium:
-        return isAr
-            ? '👑 حساب مميز — متجر موثق وملكي'
-            : '👑 Premium — Verified Royal Account';
+        return AppLocalizations.of(context)!.premiumVerifiedRoyalAccount;
       case _BadgeLevel.topPro:
-        return isAr
-            ? '⭐ محترف متميز — موثق وذو تقييم عالٍ'
-            : '⭐ Top Pro — Verified with excellent ratings';
+        return AppLocalizations.of(context)!.topProVerifiedWithExcellentRatings;
       case _BadgeLevel.identityVerified:
-        return isAr ? '✅ تم التحقق من الهوية' : '✅ Identity Verified';
+        return AppLocalizations.of(context)!.identityVerified;
       case _BadgeLevel.phoneVerified:
-        return isAr ? '📱 رقم الهاتف مُوثق' : '📱 Phone Verified';
+        return AppLocalizations.of(context)!.phoneVerified;
       case _BadgeLevel.none:
         return '';
     }
@@ -229,10 +222,10 @@ class _IdentityBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 3.0),
+      padding: const EdgeInsets.symmetric(horizontal: 2.0),
       child: Container(
-        width: size * 1.4,
-        height: size * 1.4,
+        width: size * 1.15,
+        height: size * 1.15,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           gradient: const LinearGradient(
@@ -268,7 +261,7 @@ class _IdentityBadge extends StatelessWidget {
           child: Icon(
             Icons.handshake_rounded,
             color: Colors.white,
-            size: size * 0.85,
+            size: size * 0.7,
             shadows: [
               Shadow(
                 color: Colors.black.withValues(alpha: 0.3),
@@ -299,37 +292,27 @@ class ReputationScoreWidget extends StatelessWidget {
   });
 
   /// حساب نقاط السمعة (0 — 100)
-  double get _score {
-    double raw = (user.rating * 20) // max 100
-        +
-        (user.completedJobs * 2).clamp(0, 60) // max 60
-        +
-        (user.reviewsCount * 3).clamp(0, 40) // max 40
-        -
-        (user.negativeReports * 10); // penalty
-    return raw.clamp(0, 100);
+  int get _score {
+    return TrustService.calculateTrustScore(user);
   }
 
-  Color _scoreColor(double score) {
-    if (score >= 80) return AppColors.success;
-    if (score >= 50) return AppColors.warning;
-    return AppColors.error;
+  Color _scoreColor(int score) {
+    return TrustService.getScoreColor(score);
   }
 
-  String _scoreLabel(double score, bool isAr) {
-    if (score >= 90) return isAr ? 'استثنائي' : 'Exceptional';
-    if (score >= 80) return isAr ? 'ممتاز' : 'Excellent';
-    if (score >= 60) return isAr ? 'جيد جداً' : 'Very Good';
-    if (score >= 40) return isAr ? 'جيد' : 'Good';
-    return isAr ? 'مبتدئ' : 'Starter';
+  String _scoreLabel(int score, BuildContext context) {
+    if (score >= 90) return AppLocalizations.of(context)!.exceptional;
+    if (score >= 80) return AppLocalizations.of(context)!.excellent;
+    if (score >= 60) return AppLocalizations.of(context)!.veryGood;
+    if (score >= 40) return AppLocalizations.of(context)!.good;
+    return AppLocalizations.of(context)!.starter;
   }
 
   @override
   Widget build(BuildContext context) {
     final score = _score;
     final color = _scoreColor(score);
-    final isAr = Localizations.localeOf(context).languageCode == 'ar';
-    final label = _scoreLabel(score, isAr);
+    final label = _scoreLabel(score, context);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -401,5 +384,39 @@ class ReputationScoreWidget extends StatelessWidget {
         ],
       ],
     );
+  }
+}
+
+class SmartVerificationBadgeAsync extends StatelessWidget {
+  final String userId;
+  final double size;
+  final bool showTooltip;
+
+  const SmartVerificationBadgeAsync({
+    super.key,
+    required this.userId,
+    this.size = 18.0,
+    this.showTooltip = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<UserModel?>(
+      future: _fetchUser(context),
+      builder: (context, snapshot) {
+        if (snapshot.hasData && snapshot.data != null) {
+          return SmartVerificationBadge(
+            user: snapshot.data!,
+            size: size,
+            showTooltip: showTooltip,
+          );
+        }
+        return const SizedBox.shrink();
+      },
+    );
+  }
+
+  Future<UserModel?> _fetchUser(BuildContext context) async {
+    return await FirestoreService().getUser(userId);
   }
 }

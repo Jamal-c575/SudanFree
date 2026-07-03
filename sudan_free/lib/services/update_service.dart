@@ -81,14 +81,14 @@ class UpdateService {
   static void _showUpdateDialog(BuildContext context, String storeUrl) {
     showDialog(
       context: context,
-      barrierDismissible: false, // Force update
+      barrierDismissible: true, // Optional update
       builder: (context) {
         final isArabic = context.read<LocaleProvider>().isArabic;
         return PopScope(
-          canPop: false, // Prevent back button
+          canPop: true, // Allow back button
           child: AlertDialog(
             title: Text(
-              isArabic ? 'تحديث إجباري' : 'Update Required',
+              isArabic ? 'تحديث جديد متوفر' : 'Update Available',
               style: const TextStyle(
                 fontWeight: FontWeight.bold,
                 color: AppColors.primary,
@@ -96,17 +96,23 @@ class UpdateService {
             ),
             content: Text(
               isArabic
-                  ? 'نسختك الحالية قديمة جداً. يرجى تحديث التطبيق للمتابعة واستخدام أحدث الميزات بأمان.'
-                  : 'Your app version is too old. Please update to continue using the app safely.',
+                  ? 'هناك إصدار جديد من التطبيق يوفر ميزات أفضل وتجربة أسرع. ننصحك بتحديثه الآن.'
+                  : 'A new version of the app is available with better features and faster experience. We recommend updating now.',
             ),
             actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text(
+                  isArabic ? 'تخطي' : 'Skip',
+                  style: const TextStyle(color: Colors.grey),
+                ),
+              ),
               ElevatedButton(
                 onPressed: () async {
                   try {
                     final uri = Uri.parse(storeUrl);
                     if (await canLaunchUrl(uri)) {
-                      await launchUrl(uri,
-                          mode: LaunchMode.externalApplication);
+                      await launchUrl(uri, mode: LaunchMode.externalApplication);
                     } else {
                       debugPrint('UpdateService: Cannot launch URL: $storeUrl');
                       if (context.mounted) {

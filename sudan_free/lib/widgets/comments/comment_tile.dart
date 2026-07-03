@@ -9,6 +9,9 @@ import '../../models/comment_model.dart';
 import '../../core/constants/app_colors.dart';
 import 'package:any_link_preview/any_link_preview.dart';
 import '../common/internal_link_preview.dart';
+import '../common/verification_badge.dart';
+import '../common/morph_transition.dart';
+import '../../views/profile/profile_screen.dart';
 
 class CommentTile extends StatelessWidget {
   final CommentModel comment;
@@ -64,8 +67,10 @@ class CommentTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Avatar
-              GestureDetector(
-                onTap: onProfileTap,
+              MorphTransition(
+                openScreen: ProfileScreen(userId: comment.userId),
+                closedBuilder: (context, openContainer) => GestureDetector(
+                  onTap: openContainer,
                 child: CircleAvatar(
                   radius: isReply ? 14 : 18,
                   backgroundColor: AppColors.primary.withValues(alpha: 0.1),
@@ -77,7 +82,8 @@ class CommentTile extends StatelessWidget {
                           size: isReply ? 14 : 18, color: AppColors.primary)
                       : null,
                 ),
-              ),
+              ), // Close GestureDetector
+            ), // Close MorphTransition
               const SizedBox(width: 10),
               // Content
               Expanded(
@@ -96,9 +102,8 @@ class CommentTile extends StatelessWidget {
                                     AppColors.primary.withValues(alpha: 0.8)),
                             const SizedBox(width: 4),
                             Text(
-                              AppLocalizations.of(context)!.localeName == 'ar'
-                                  ? 'رداً على ${comment.parentUserName}'
-                                  : 'Replying to ${comment.parentUserName}',
+                              AppLocalizations.of(context)!
+                                  .replyingTo(comment.parentUserName!),
                               style: TextStyle(
                                 color: AppColors.primary.withValues(alpha: 0.9),
                                 fontSize: 12, // Increased font size
@@ -111,8 +116,10 @@ class CommentTile extends StatelessWidget {
                     // Name + Time
                     Row(
                       children: [
-                        GestureDetector(
-                          onTap: onProfileTap,
+                        MorphTransition(
+                          openScreen: ProfileScreen(userId: comment.userId),
+                          closedBuilder: (context, openContainer) => GestureDetector(
+                            onTap: openContainer,
                           child: Text(
                             comment.userName,
                             style: TextStyle(
@@ -121,7 +128,10 @@ class CommentTile extends StatelessWidget {
                               color: isDark ? Colors.white : Colors.black87,
                             ),
                           ),
-                        ),
+                        ), // Close GestureDetector
+                      ), // Close MorphTransition
+                        const SizedBox(width: 4),
+                        SmartVerificationBadgeAsync(userId: comment.userId, size: 14),
                         const SizedBox(width: 8),
                         Text(
                           _timeAgo(comment.createdAt, context),
@@ -194,11 +204,7 @@ class CommentTile extends StatelessWidget {
                                     color: AppColors.primary
                                         .withValues(alpha: 0.7)),
                                 const SizedBox(width: 2),
-                                Text(
-                                    AppLocalizations.of(context)!.localeName ==
-                                            'ar'
-                                        ? 'رد'
-                                        : 'Reply',
+                                Text(AppLocalizations.of(context)!.replyAction,
                                     style: TextStyle(
                                         fontSize: 11,
                                         fontWeight: FontWeight.bold,
@@ -220,7 +226,6 @@ class CommentTile extends StatelessWidget {
   }
 
   void _showCommentOptions(BuildContext context) {
-    final locale = AppLocalizations.of(context)!.localeName;
     HapticFeedback.mediumImpact();
     showModalBottomSheet(
       context: context,
@@ -242,14 +247,14 @@ class CommentTile extends StatelessWidget {
             const SizedBox(height: 16),
             ListTile(
               leading: const Icon(Icons.copy_rounded),
-              title: Text(locale == 'ar' ? 'نسخ التعليق' : 'Copy comment'),
+              title: Text(AppLocalizations.of(context)!.copyComment),
               onTap: () {
                 Clipboard.setData(ClipboardData(text: comment.content));
                 if (context.mounted) Navigator.pop(context);
                 final scaffoldMessenger = ScaffoldMessenger.of(context);
                 scaffoldMessenger.showSnackBar(
                   SnackBar(
-                    content: Text(locale == 'ar' ? 'تم النسخ' : 'Copied'),
+                    content: Text(AppLocalizations.of(context)!.copied),
                     duration: const Duration(seconds: 1),
                   ),
                 );
@@ -259,7 +264,7 @@ class CommentTile extends StatelessWidget {
               ListTile(
                 leading: const Icon(Icons.delete_outline, color: Colors.red),
                 title: Text(
-                  locale == 'ar' ? 'حذف التعليق' : 'Delete comment',
+                  AppLocalizations.of(context)!.deleteComment,
                   style: const TextStyle(color: Colors.red),
                 ),
                 onTap: () {
@@ -431,16 +436,19 @@ class CommentTile extends StatelessWidget {
     final now = DateTime.now();
     final diff = now.difference(dateTime);
     final locale = AppLocalizations.of(context)!.localeName;
-    if (diff.inDays > 0)
+    if (diff.inDays > 0) {
       return locale == 'ar' ? 'منذ ${diff.inDays} يوم' : '${diff.inDays}d ago';
-    if (diff.inHours > 0)
+    }
+    if (diff.inHours > 0) {
       return locale == 'ar'
           ? 'منذ ${diff.inHours} ساعة'
           : '${diff.inHours}h ago';
-    if (diff.inMinutes > 0)
+    }
+    if (diff.inMinutes > 0) {
       return locale == 'ar'
           ? 'منذ ${diff.inMinutes} دقيقة'
           : '${diff.inMinutes}m ago';
-    return locale == 'ar' ? 'الآن' : 'now';
+    }
+    return AppLocalizations.of(context)!.now;
   }
 }

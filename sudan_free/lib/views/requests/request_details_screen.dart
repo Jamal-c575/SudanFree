@@ -5,6 +5,7 @@ import '../../models/request_model.dart';
 import '../../models/offer_model.dart';
 import '../../models/user_model.dart';
 import '../../services/firestore_service.dart';
+import '../../services/ai_service.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/locale_provider.dart';
 import '../../core/constants/app_colors.dart';
@@ -12,6 +13,7 @@ import '../../widgets/common/custom_text_field.dart';
 import '../../widgets/common/linkable_text.dart';
 import 'request_offers_screen.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:sudan_free/l10n/generated/app_localizations.dart';
 
 class RequestDetailsScreen extends StatefulWidget {
   final RequestModel request;
@@ -65,7 +67,7 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(locale == 'ar' ? 'قدم عرضك' : 'Submit your offer',
+                        Text(AppLocalizations.of(context)!.submitYourOffer,
                             style: const TextStyle(
                                 fontWeight: FontWeight.bold, fontSize: 18)),
                         IconButton(
@@ -76,26 +78,54 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
                     const SizedBox(height: 16),
                     CustomTextField(
                       controller: _offerController,
-                      hint: locale == 'ar'
-                          ? 'مرحباً، أنا مستعد لتنفيذ طلبك. لدي خبرة سابقة...'
-                          : 'Hello, I am ready to fulfill your request. I have previous experience...',
+                      hint: AppLocalizations.of(context)!.helloIAmReadyToFulfill,
                       maxLines: 4,
                     ),
                     const SizedBox(height: 12),
-                    CustomTextField(
-                      controller: _priceController,
-                      hint: locale == 'ar'
-                          ? 'السعر التقديري (اختياري)'
-                          : 'Estimated Price (Optional)',
-                      keyboardType: TextInputType.number,
-                      prefixIcon: Icons.attach_money,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: CustomTextField(
+                            controller: _priceController,
+                            hint: AppLocalizations.of(context)!.estimatedPriceOptional,
+                            keyboardType: TextInputType.number,
+                            prefixIcon: Icons.attach_money,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          onPressed: () async {
+                            setSheetState(() => _isApplying = true);
+                            try {
+                              double basePrice = 20000;
+                              final smartPrice = await AiService().estimateSmartPrice(widget.request.text, basePrice);
+                              if (smartPrice > 0) {
+                                _priceController.text = smartPrice.toStringAsFixed(0);
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('تم تقدير السعر الذكي بنجاح ✨'),
+                                      backgroundColor: AppColors.success,
+                                    ),
+                                  );
+                                }
+                              }
+                            } finally {
+                              setSheetState(() => _isApplying = false);
+                            }
+                          },
+                          icon: const Icon(Icons.auto_awesome, color: Colors.amber),
+                          tooltip: 'تسعير ذكي',
+                          style: IconButton.styleFrom(
+                            backgroundColor: Colors.amber.withOpacity(0.1),
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 12),
                     CustomTextField(
                       controller: _timeController,
-                      hint: locale == 'ar'
-                          ? 'المدة التقديرية لإنجاز العمل (اختياري)'
-                          : 'Estimated time to complete (Optional)',
+                      hint: AppLocalizations.of(context)!.estimatedTimeToCompleteOptional,
                       prefixIcon: Icons.timer_outlined,
                     ),
                     const SizedBox(height: 24),
@@ -110,9 +140,7 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
                                       ScaffoldMessenger.of(context);
                                   scaffoldMessenger.showSnackBar(
                                     SnackBar(
-                                        content: Text(locale == 'ar'
-                                            ? 'الرجاء كتابة تفاصيل العرض'
-                                            : 'Please write offer details'),
+                                        content: Text(AppLocalizations.of(context)!.pleaseWriteOfferDetails),
                                         backgroundColor: AppColors.warning),
                                   );
                                   return;
@@ -130,9 +158,7 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
                                   if (existingCount >= 2) {
                                     messenger.showSnackBar(
                                       SnackBar(
-                                        content: Text(locale == 'ar'
-                                            ? 'لقد قدمت الحد الأقصى من العروض (عرضين) على هذا الطلب'
-                                            : 'You have reached the maximum offers (2)'),
+                                        content: Text(AppLocalizations.of(context)!.youHaveReachedTheMaximumOffers),
                                         backgroundColor: Colors.orange,
                                       ),
                                     );
@@ -150,9 +176,7 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
                                         currentUser.profileImageUrl,
                                     providerJobTitle: currentUser.jobTitle ??
                                         currentUser.getShopCategoryName(locale),
-                                    title: locale == 'ar'
-                                        ? 'عرض جديد'
-                                        : 'New Offer',
+                                    title: AppLocalizations.of(context)!.newOffer,
                                     text: _offerController.text.trim(),
                                     price: _priceController.text.isNotEmpty
                                         ? double.tryParse(_priceController.text)
@@ -172,9 +196,7 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
                                     _timeController.clear();
                                     messenger.showSnackBar(
                                       SnackBar(
-                                          content: Text(locale == 'ar'
-                                              ? 'تم تقديم العرض بنجاح!'
-                                              : 'Offer submitted successfully!'),
+                                          content: Text(AppLocalizations.of(context)!.offerSubmittedSuccessfully),
                                           backgroundColor: AppColors.success),
                                     );
                                     nav.pop();
@@ -190,8 +212,9 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
                                     );
                                   }
                                 } finally {
-                                  if (mounted)
+                                  if (mounted) {
                                     setSheetState(() => _isApplying = false);
+                                  }
                                 }
                               },
                         style: ElevatedButton.styleFrom(
@@ -208,7 +231,7 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
                                 child: CircularProgressIndicator(
                                     color: Colors.white, strokeWidth: 2))
                             : Text(
-                                locale == 'ar' ? 'إرسال العرض' : 'Submit Offer',
+                                AppLocalizations.of(context)!.submitOffer,
                                 style: const TextStyle(
                                     fontWeight: FontWeight.bold, fontSize: 16)),
                       ),
@@ -237,7 +260,7 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(locale == 'ar' ? 'تفاصيل الطلب' : 'Request Details'),
+        title: Text(AppLocalizations.of(context)!.requestDetails1),
         actions: [
           if (isMyRequest)
             IconButton(
@@ -274,9 +297,7 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
                           disabledBackgroundColor: Colors.grey[300],
                         ),
                         child: Text(
-                          locale == 'ar'
-                              ? 'لقد تجاوزت الحد المسموح للتقديم'
-                              : 'Apply limit reached',
+                          AppLocalizations.of(context)!.applyLimitReached,
                           style: const TextStyle(
                               fontWeight: FontWeight.bold, fontSize: 16),
                         ),
@@ -294,7 +315,7 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
                       ),
                       icon: const Icon(Icons.local_offer_outlined),
                       label: Text(
-                        locale == 'ar' ? 'قدم على هذا الطلب' : 'Submit Offer',
+                        AppLocalizations.of(context)!.submitOffer,
                         style: const TextStyle(
                             fontWeight: FontWeight.bold, fontSize: 16),
                       ),
@@ -321,7 +342,7 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
                       ),
                       icon: const Icon(Icons.people_alt_outlined),
                       label: Text(
-                        locale == 'ar' ? 'عرض المقدمين' : 'View Offers',
+                        AppLocalizations.of(context)!.viewOffers,
                         style: const TextStyle(
                             fontWeight: FontWeight.bold, fontSize: 16),
                       ),
@@ -557,9 +578,7 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        locale == 'ar'
-                            ? 'يرجى حذف الطلب من أيقونة السلة بالاعلى عند اكتفاءك وتلقي الخدمة المطلوبة.'
-                            : 'Please delete the request from the trash icon above when you are satisfied and received the service.',
+                        AppLocalizations.of(context)!.pleaseDeleteTheRequestFromThe,
                         style: TextStyle(
                             color: AppColors.warning.withValues(alpha: 0.9),
                             fontSize: 13,
@@ -594,9 +613,7 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
                           const SizedBox(width: 8),
                           Expanded(
                               child: Text(
-                            locale == 'ar'
-                                ? 'لقد قدمت الحد الأقصى من العروض (عرضين) على هذا الطلب'
-                                : 'You have reached the maximum offers (2) on this request',
+                            AppLocalizations.of(context)!.youHaveReachedTheMaximumOffers1,
                             style: const TextStyle(
                                 color: Colors.orange,
                                 fontSize: 13,
@@ -623,9 +640,7 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
                           const SizedBox(width: 6),
                           Expanded(
                               child: Text(
-                            locale == 'ar'
-                                ? 'هذا آخر عرض يمكنك تقديمه على هذا الطلب'
-                                : 'This is your last offer on this request',
+                            AppLocalizations.of(context)!.thisIsYourLastOfferOn,
                             style: TextStyle(
                                 color: Colors.amber.shade800,
                                 fontSize: 12,
@@ -692,19 +707,17 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(locale == 'ar' ? 'حذف الطلب' : 'Delete Request'),
-        content: Text(locale == 'ar'
-            ? 'هل أنت متأكد أنك تريد حذف هذا الطلب؟ لا يمكن التراجع عن هذا الإجراء.'
-            : 'Are you sure you want to delete this request? This cannot be undone.'),
+        title: Text(AppLocalizations.of(context)!.deleteRequest),
+        content: Text(AppLocalizations.of(context)!.areYouSureYouWantTo5),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text(locale == 'ar' ? 'إلغاء' : 'Cancel'),
+            child: Text(AppLocalizations.of(context)!.cancel),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: Text(locale == 'ar' ? 'حذف' : 'Delete'),
+            child: Text(AppLocalizations.of(context)!.delete),
           ),
         ],
       ),
@@ -718,7 +731,7 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
         messenger.showSnackBar(
           SnackBar(
               content: Text(
-                  locale == 'ar' ? 'تم الحذف بنجاح' : 'Deleted Successfully'),
+                  AppLocalizations.of(context)!.deletedSuccessfully1),
               backgroundColor: AppColors.success),
         );
       } catch (e) {
@@ -745,7 +758,7 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
           ? 'منذ ${diff.inMinutes} دقيقة'
           : '${diff.inMinutes}m ago';
     } else {
-      return locale == 'ar' ? 'الآن' : 'Just now';
+      return AppLocalizations.of(context)!.justNow;
     }
   }
 
@@ -861,11 +874,12 @@ class _RequestAudioPlayerState extends State<RequestAudioPlayer> {
       if (mounted && dur > Duration.zero) setState(() => _duration = dur);
     });
     _audioPlayer.onPlayerComplete.listen((_) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _isPlaying = false;
           _position = Duration.zero;
         });
+      }
     });
   }
 

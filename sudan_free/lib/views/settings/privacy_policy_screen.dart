@@ -1,8 +1,8 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
-import '../../widgets/common/glass_container.dart';
 import '../../widgets/common/glass_card.dart';
+import 'package:sudan_free/l10n/generated/app_localizations.dart';
 
 class PrivacyPolicyScreen extends StatelessWidget {
   const PrivacyPolicyScreen({super.key});
@@ -17,7 +17,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: Text(
-          isAr ? 'السياسات وشروط الاستخدام' : 'Policies & Terms',
+          AppLocalizations.of(context)!.policiesTerms,
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
@@ -61,9 +61,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
                 const Icon(Icons.gavel, size: 48, color: Colors.white),
                 const SizedBox(height: 12),
                 Text(
-                  isAr
-                      ? 'سياسات ومعايير الاستخدام'
-                      : 'Usage Policies & Standards',
+                  AppLocalizations.of(context)!.usagePoliciesStandards,
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -79,32 +77,24 @@ class PrivacyPolicyScreen extends StatelessWidget {
           // 1. Strict Usage Warnings
           _SectionTitle(
             icon: Icons.warning_amber_rounded,
-            title: isAr
-                ? '⚠️ تحذيرات هامة وشروط الاستخدام'
-                : '⚠️ Important Warnings & Terms',
+            title: AppLocalizations.of(context)!.importantWarningsTerms,
             color: Colors.redAccent,
           ),
           const SizedBox(height: 12),
           _PolicyCard(
             icon: Icons.check_circle,
             iconColor: Colors.green,
-            text: isAr
-                ? 'يستخدم هذا التطبيق للبحث عن العمل والخدمات بالطرق المشروعة والآمنة فقط.'
-                : 'This app is strictly for legitimate and safe job and service searching.',
+            text: AppLocalizations.of(context)!.thisAppIsStrictlyForLegitimate,
           ),
           _PolicyCard(
             icon: Icons.block,
             iconColor: Colors.red,
-            text: isAr
-                ? 'يمنع منعاً باتاً نشر محتوى مسيء، غير لائق، أو استدراج أي طرف لأغراض غير أخلاقية. أي تصرف مشبوه يعرض حسابك للحظر النهائي فوراً.'
-                : 'Posting offensive content or engaging in unethical behavior is strictly prohibited and will result in an immediate permanent ban.',
+            text: AppLocalizations.of(context)!.postingOffensiveContentOrEngagingIn,
           ),
           _PolicyCard(
             icon: Icons.gavel,
             iconColor: Colors.orange,
-            text: isAr
-                ? 'التطبيق يعتبر منصة وسيطة لربط العملاء بأصحاب المهن الحرة والمحلات. نحن لا نتحمل المسؤولية القانونية أو المالية لأي اتفاق يتم خارج أو داخل التطبيق.'
-                : 'The app is a medium to connect clients with freelancers and shops. We hold no legal or financial responsibility for agreements made.',
+            text: AppLocalizations.of(context)!.theAppIsAMediumTo,
           ),
 
           const SizedBox(height: 24),
@@ -112,30 +102,24 @@ class PrivacyPolicyScreen extends StatelessWidget {
           // 2. Safety Advice
           _SectionTitle(
             icon: Icons.health_and_safety,
-            title: isAr ? '🛡️ نصائح السلامة والأمان' : '🛡️ Safety Tips',
+            title: AppLocalizations.of(context)!.safetyTips,
             color: Colors.green,
           ),
           const SizedBox(height: 12),
           _PolicyCard(
             icon: Icons.monetization_on,
             iconColor: Colors.green,
-            text: isAr
-                ? 'لا تقم بدفع أي مبالغ مالية مقدماً قبل استلام الخدمة أو التأكد من مصداقية الطرف الآخر.'
-                : 'Do not pay any money in advance before receiving the service or verifying credibility.',
+            text: AppLocalizations.of(context)!.doNotPayAnyMoneyIn,
           ),
           _PolicyCard(
             icon: Icons.place,
             iconColor: Colors.blue,
-            text: isAr
-                ? 'عند الاتفاق على لقاء للعمل، احرص على أن يكون في أماكن عامة وآمنة.'
-                : 'When agreeing to meet, ensure it is in a public and safe place.',
+            text: AppLocalizations.of(context)!.whenAgreeingToMeetEnsureIt,
           ),
           _PolicyCard(
             icon: Icons.verified_user,
             iconColor: Colors.purple,
-            text: isAr
-                ? 'تعامل دائماً مع الحسابات الموثقة (التي تحمل شعار التصافح 🤝) لضمان موثوقية أكبر وأمان في التعاملات.'
-                : 'Always deal with verified accounts (with the handshake symbol 🤝) for higher reliability and safer transactions.',
+            text: AppLocalizations.of(context)!.alwaysDealWithVerifiedAccountsWith,
           ),
 
           const SizedBox(height: 24),
@@ -143,23 +127,19 @@ class PrivacyPolicyScreen extends StatelessWidget {
           // 3. Trust Levels
           _SectionTitle(
             icon: Icons.military_tech,
-            title: isAr ? '🏆 التقييم ونظام الثقة' : '🏆 Rating & Trust System',
+            title: AppLocalizations.of(context)!.ratingTrustSystem,
             color: Colors.amber,
           ),
           const SizedBox(height: 12),
           _PolicyCard(
             icon: Icons.star,
             iconColor: Colors.amber,
-            text: isAr
-                ? 'النجوم الممنوحة في التقييمات ترفع من رتبتك من "مستخدم عادي" إلى "محترف" وتزيد فرص ظهورك للعملاء.'
-                : 'Stars awarded in reviews upgrade your rank from standard to professional, increasing your visibility.',
+            text: AppLocalizations.of(context)!.starsAwardedInReviewsUpgradeYour,
           ),
           _PolicyCard(
             icon: Icons.balance,
             iconColor: Colors.blue,
-            text: isAr
-                ? 'نظام التقييم مصمم لمنع التلاعب. يتم احتساب التقييم الأول فقط من كل عميل لضمان نزاهة النجوم.'
-                : 'The rating system prevents manipulation. Only the first rating from each client counts towards stars.',
+            text: AppLocalizations.of(context)!.theRatingSystemPreventsManipulationOnly,
           ),
 
           const SizedBox(height: 24),
@@ -167,41 +147,31 @@ class PrivacyPolicyScreen extends StatelessWidget {
           // 4. Privacy & Data Deletion
           _SectionTitle(
             icon: Icons.privacy_tip,
-            title: isAr
-                ? '🔒 سياسة الخصوصية وحذف البيانات'
-                : '🔒 Privacy & Data Deletion',
+            title: AppLocalizations.of(context)!.privacyDataDeletion,
             color: Colors.teal,
           ),
           const SizedBox(height: 12),
           _PolicyCard(
             icon: Icons.phone_android,
             iconColor: Colors.teal,
-            text: isAr
-                ? 'بياناتك الشخصية (الاسم، الموقع الجغرافي، رقم الهاتف) تستخدم حصرياً لتحسين تجربتك وربطك بالعملاء داخل التطبيق، ولا نشاركها مع أي جهات خارجية.'
-                : 'Your personal data (name, location, phone) is used exclusively to connect you with clients. We do not share it with third parties.',
+            text: AppLocalizations.of(context)!.yourPersonalDataNameLocationPhone,
           ),
           _PolicyCard(
             icon: Icons.location_off,
             iconColor: Colors.indigo,
-            text: isAr
-                ? 'التحكم في الخريطة: يحق لأي حرفي أو متجر إخفاء موقعه الجغرافي بالكامل من الخريطة العامة في أي وقت عبر الإعدادات ("الظهور على الخريطة"). عند التعطيل، يتم حجب موقعك فوراً لحماية خصوصيتك.'
-                : 'Map Control: Any freelancer or shop can hide their location entirely from the public map at any time via settings. When disabled, your location is immediately hidden to protect your privacy.',
+            text: AppLocalizations.of(context)!.mapControlAnyFreelancerOrShop,
           ),
           _PolicyCard(
             icon: Icons.delete_forever,
             iconColor: Colors.deepOrange,
-            text: isAr
-                ? 'يحق لك المطالبة بحذف حسابك نهائياً. عند طلب الحذف من الإعدادات، يتم مراجعة طلبك لأسباب أمنية (لضمان عدم وجود حقوق معلقة للآخرين) ثم تُحذف كافة بياناتك بالكامل من خوادمنا بما فيها الإعجابات والمفضلات والموقع.'
-                : 'You have the right to request account deletion. Upon request, it is reviewed for security reasons, then all your data including favorites and location is permanently deleted.',
+            text: AppLocalizations.of(context)!.youHaveTheRightToRequest,
           ),
 
           const SizedBox(height: 40),
 
           Center(
             child: Text(
-              isAr
-                  ? 'استخدامك للتطبيق يعني موافقتك الصريحة على هذه السياسات'
-                  : 'Using the app means your explicit agreement to these policies',
+              AppLocalizations.of(context)!.usingTheAppMeansYourExplicit,
               style: TextStyle(
                 color: Colors.grey[500],
                 fontSize: 12,

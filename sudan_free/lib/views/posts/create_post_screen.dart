@@ -14,6 +14,7 @@ import '../../models/user_model.dart';
 import '../../services/firestore_service.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../services/cloudinary_service.dart';
+import '../../services/ai_service.dart';
 
 class CreatePostScreen extends StatefulWidget {
   final PostModel? post;
@@ -135,6 +136,24 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
 
     // Listen for mentions
     _captionController.addListener(_checkForMentions);
+  }
+
+  bool _isEnhancing = false;
+
+  Future<void> _enhanceWithAi() async {
+    final text = _captionController.text.trim();
+    if (text.isEmpty) return;
+
+    setState(() => _isEnhancing = true);
+
+    final enhanced = await AiService().enhanceText(text);
+
+    if (mounted) {
+      setState(() {
+        _captionController.text = enhanced;
+        _isEnhancing = false;
+      });
+    }
   }
 
   Future<void> _fetchPartners() async {
@@ -285,8 +304,9 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     if (source == ImageSource.camera) {
       final image = await picker.pickImage(
           source: ImageSource.camera, imageQuality: 70, maxWidth: 1200);
-      if (image != null && mounted)
+      if (image != null && mounted) {
         setState(() => _selectedImages.add(File(image.path)));
+      }
     } else {
       final images =
           await picker.pickMultiImage(imageQuality: 70, maxWidth: 1200);
@@ -314,9 +334,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         final scaffoldMessenger = ScaffoldMessenger.of(context);
         scaffoldMessenger.showSnackBar(
           SnackBar(
-            content: Text(locale == 'ar'
-                ? 'يرجى تعبئة كلا الحقلين: ماذا تقدم وماذا تطلب'
-                : 'Please fill both fields: what you offer and what you need'),
+            content: Text(AppLocalizations.of(context)!.pleaseFillBothFieldsWhatYou),
             backgroundColor: Colors.orange,
           ),
         );
@@ -345,9 +363,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       final scaffoldMessenger = ScaffoldMessenger.of(context);
       scaffoldMessenger.showSnackBar(
         SnackBar(
-          content: Text(locale == 'ar'
-              ? 'يرجى إضافة الصور الإعلانية للمنتج، لأنه عند نشر نص فقط لا يتم عرض التفاصيل بشكل جيد'
-              : 'Please add promotional images for the product, as text-only posts do not display details well'),
+          content: Text(AppLocalizations.of(context)!.pleaseAddPromotionalImagesForThe),
           backgroundColor: Colors.orange,
         ),
       );
@@ -362,9 +378,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       final scaffoldMessenger = ScaffoldMessenger.of(context);
       scaffoldMessenger.showSnackBar(
         SnackBar(
-          content: Text(locale == 'ar'
-              ? 'يرجى كتابة نص أو إضافة صورة أو استطلاع رأي'
-              : 'Please write text, add image, or add a poll'),
+          content: Text(AppLocalizations.of(context)!.pleaseWriteTextAddImageOr),
         ),
       );
       return;
@@ -375,9 +389,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       final scaffoldMessenger = ScaffoldMessenger.of(context);
       scaffoldMessenger.showSnackBar(
         SnackBar(
-          content: Text(locale == 'ar'
-              ? 'يرجى تصنيف منشورك (عام، نقاش، بيع/شراء، مساعدة، إعلان، أو سؤال)'
-              : 'Please classify your post (General, Discussion, Buy/Sell, Help, Announcement, or Question)'),
+          content: Text(AppLocalizations.of(context)!.pleaseClassifyYourPostGeneralDiscussion),
           backgroundColor: Colors.orange,
           duration: const Duration(seconds: 4),
         ),
@@ -434,6 +446,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                   widget.linkedProduct?.allImageUrls.firstOrNull,
               linkedProductPrice: widget.linkedProduct?.price,
               poll: pollData,
+              isUserVerified: user.isVerified,
             );
         success = true;
       }
@@ -457,12 +470,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       scaffoldMessenger.showSnackBar(
         SnackBar(
           content: Text(widget.post != null
-              ? (locale == 'ar'
-                  ? 'تم تحديث المنشور بنجاح ✅'
-                  : 'Post updated successfully ✅')
-              : (locale == 'ar'
-                  ? 'جاري النشر في الخلفية... ⏳'
-                  : 'Posting in background... ⏳')),
+              ? (AppLocalizations.of(context)!.postUpdatedSuccessfully)
+              : (AppLocalizations.of(context)!.postingInBackground)),
           backgroundColor:
               widget.post != null ? Colors.green : AppColors.primary,
         ),
@@ -470,9 +479,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       if (context.mounted) Navigator.pop(context);
     } else if (!success && mounted) {
       final errorMsg = context.read<PostsProvider>().errorMessage ??
-          (locale == 'ar'
-              ? 'حدث خطأ، حاول مرة أخرى'
-              : 'An error occurred, please try again');
+          (AppLocalizations.of(context)!.anErrorOccurredPleaseTryAgain);
       final scaffoldMessenger = ScaffoldMessenger.of(context);
       scaffoldMessenger.showSnackBar(
         SnackBar(
@@ -789,6 +796,38 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                       style: const TextStyle(fontSize: 18),
                     ),
                   ],
+
+                  // AI Enhance Button
+                  if (!(_selectedCategory == PostCategory.barter))
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        onPressed: _isEnhancing ? null : _enhanceWithAi,
+                        icon: _isEnhancing
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.auto_awesome, color: Colors.amber, size: 20),
+                        label: Text(
+                          context.read<LocaleProvider>().isArabic
+                              ? 'تحسين بالذكاء الاصطناعي ✨'
+                              : 'AI Enhance ✨',
+                          style: TextStyle(
+                            color: _isEnhancing ? Colors.grey : Colors.amber,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          backgroundColor: Colors.amber.withOpacity(0.1),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                        ),
+                      ),
+                    ),
 
                   const SizedBox(height: 16),
 

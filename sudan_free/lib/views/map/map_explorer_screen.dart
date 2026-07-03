@@ -8,14 +8,26 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../core/constants/app_colors.dart';
 import '../../models/user_model.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/locale_provider.dart';
 import '../../services/firestore_service.dart';
 import '../../services/smart_guide_service.dart';
+import '../../services/ai_guide_service.dart';
+import '../../services/osrm_service.dart';
 import '../../models/job_model.dart';
+import '../../models/filter_model.dart';
 import '../profile/profile_screen.dart';
 import '../../core/utils/job_titles_utils.dart';
+import '../../widgets/common/premium_glass_card.dart';
+import '../../widgets/common/premium_button.dart';
 import '../../widgets/common/glass_container.dart';
+import '../../widgets/common/filter_bottom_sheet.dart';
 import '../../widgets/common/premium_animations.dart';
+import '../../widgets/common/pulsing_marker.dart';
+import 'package:sudan_free/l10n/generated/app_localizations.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import '../../utils/animation_utils.dart';
 
 class CachedTileProvider extends TileProvider {
   CachedTileProvider();
@@ -49,10 +61,11 @@ class _MapExplorerScreenState extends State<MapExplorerScreen>
   bool _isLoading = true;
   bool _isSearching = false;
   String _searchQuery = '';
+  RouteData? _currentRoute;
+  bool _isLoadingRoute = false;
 
-  String _selectedRoleFilter = 'all'; // 'all', 'shop', 'freelancer'
-  ShopCategory? _selectedShopCategoryFilter;
-  JobCategory? _selectedFreelancerCategoryFilter;
+  SearchFilter _currentFilter = const SearchFilter();
+  bool _showOnlyAvailable = false;
 
   // حدود السودان التقريبية (وسعناها قليلاً لتجنب الأخطاء)
   final LatLngBounds _sudanBounds = LatLngBounds(
@@ -64,6 +77,8 @@ class _MapExplorerScreenState extends State<MapExplorerScreen>
       const LatLng(15.5007, 32.5599); // الخرطوم كموقع افتراضي
 
   Timer? _debounceTimer;
+  Position? _currentUserPosition;
+  StreamSubscription<Position>? _positionStreamSubscription;
 
   bool _isValidSudanCoordinate(double? lat, double? lng) {
     if (lat == null || lng == null) return false;
@@ -127,12 +142,11 @@ class _MapExplorerScreenState extends State<MapExplorerScreen>
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _locateUser();
 
-        SmartGuideService.showMicroTip(
+        // Using dynamic AI Guide instead of hardcoded MicroTip
+        AiGuideService.showPageGuide(
           context,
-          messageAr: 'اضغط على أي نقطة لرؤية تفاصيل مقدم الخدمة 📍',
-          messageEn: 'Tap any point to see provider details 📍',
-          tipId: 'map_first_use',
-          icon: Icons.map_rounded,
+          'الخريطة والمتاجر',
+          context.read<AuthProvider>().user?.name ?? 'عزيزي',
         );
       });
     }
@@ -142,6 +156,7 @@ class _MapExplorerScreenState extends State<MapExplorerScreen>
   void dispose() {
     _debounceTimer?.cancel();
     _searchController.dispose();
+    _positionStreamSubscription?.cancel();
     super.dispose();
   }
 
@@ -165,8 +180,22 @@ class _MapExplorerScreenState extends State<MapExplorerScreen>
       // Try to get last known position first for instant response
       Position? position = await Geolocator.getLastKnownPosition();
       if (position != null) {
+        if (mounted) setState(() => _currentUserPosition = position);
         _animatedMapMove(LatLng(position.latitude, position.longitude), 14.5);
       }
+
+      // Start listening to location updates
+      _positionStreamSubscription?.cancel();
+      _positionStreamSubscription = Geolocator.getPositionStream(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          distanceFilter: 10, // Update every 10 meters
+        ),
+      ).listen((Position pos) {
+        if (mounted) {
+          setState(() => _currentUserPosition = pos);
+        }
+      });
 
       // Then get current with high accuracy for precise location
       position = await Geolocator.getCurrentPosition(
@@ -174,6 +203,8 @@ class _MapExplorerScreenState extends State<MapExplorerScreen>
         accuracy: LocationAccuracy.high,
         timeLimit: Duration(seconds: 10),
       ));
+
+      if (mounted) setState(() => _currentUserPosition = position);
 
       // التوجه إلى موقع المستخدم الفعلي بزووم قريب
       _animatedMapMove(LatLng(position.latitude, position.longitude), 15.5);
@@ -248,28 +279,35 @@ class _MapExplorerScreenState extends State<MapExplorerScreen>
     if (position.bounds == null) return;
 
     if (_debounceTimer?.isActive ?? false) _debounceTimer!.cancel();
-    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
-      _fetchUsersInBounds(position.bounds!);
+    _debounceTimer = Timer(const Duration(milliseconds: 800), () {
+      if (!mounted) return;
+      if (_mapController.camera.zoom > 5.5) {
+        _fetchUsersInBounds(position.bounds!);
+      }
     });
   }
 
   void _applyFilters({bool setStateOnly = true}) {
     final filtered = _allMapUsers.where((user) {
-      if (_selectedRoleFilter == 'shop' && user.role != UserRole.shop)
-        return false;
-      if (_selectedRoleFilter == 'freelancer' &&
-          user.role != UserRole.freelancer) return false;
-      if (_selectedShopCategoryFilter != null) {
-        if (user.role != UserRole.shop) return false;
-        if (user.shopCategory != _selectedShopCategoryFilter) return false;
+      if (_currentFilter.category != null) {
+        if (user.shopCategory?.name != _currentFilter.category && user.jobTitle != _currentFilter.category) {
+            return false;
+        }
       }
-      if (_selectedFreelancerCategoryFilter != null) {
-        if (user.role != UserRole.freelancer &&
-            user.role != UserRole.techService &&
-            user.role != UserRole.privateService) return false;
-        if (user.jobTitle == null) return false;
-        if (user.jobTitle!.toLowerCase() !=
-            _selectedFreelancerCategoryFilter!.name.toLowerCase()) return false;
+      if (_currentFilter.minRating != null && user.rating < _currentFilter.minRating!) {
+        return false;
+      }
+      if (_currentFilter.availability != null) {
+         if (_currentFilter.availability == 'now' && !_getUserIsActive(user)) return false;
+      }
+      if (_currentFilter.maxDistanceKm != null && _currentUserPosition != null && user.latitude != null && user.longitude != null) {
+        final distance = Geolocator.distanceBetween(
+            _currentUserPosition!.latitude, _currentUserPosition!.longitude,
+            user.latitude!, user.longitude!);
+        if (distance / 1000 > _currentFilter.maxDistanceKm!) return false;
+      }
+      if (_showOnlyAvailable && !_getUserIsActive(user)) {
+        return false;
       }
       return true;
     }).toList();
@@ -296,23 +334,27 @@ class _MapExplorerScreenState extends State<MapExplorerScreen>
 
   // ترجمة المسمى الوظيفي إذا كان من قائمة النظام، أو إرجاعه كما هو إذا كان مخصصاً
   String _getTranslatedSkill(String skill, bool isAr) {
-    return JobTitlesUtils.getLocalizedTitle(skill, isAr ? 'ar' : 'en');
+    return JobTitlesUtils.getLocalizedTitle(
+        skill, AppLocalizations.of(context)!.en);
   }
 
   // تحديد المهنة أو تصنيف المتجر - المسمى الوظيفي الفعلي فقط
   String? _getUserProfession(UserModel user, bool isAr) {
     if (user.isShop) {
-      final category = user.getShopCategoryName(isAr ? 'ar' : 'en');
+      final category =
+          user.getShopCategoryName(AppLocalizations.of(context)!.en);
       if (category.isNotEmpty) return category;
       return null;
     }
     // حرفي / تقني / خاص - المسمى الوظيفي الحقيقي فقط
-    if (user.jobTitle != null && user.jobTitle!.isNotEmpty)
+    if (user.jobTitle != null && user.jobTitle!.isNotEmpty) {
       return JobTitlesUtils.getLocalizedTitle(
-          user.jobTitle!, isAr ? 'ar' : 'en');
-    if (user.skills.isNotEmpty)
+          user.jobTitle!, AppLocalizations.of(context)!.en);
+    }
+    if (user.skills.isNotEmpty) {
       return _getTranslatedSkill(user.skills.first,
           isAr); // أخذ المسمى الذي اختاره عند التسجيل وترجمته
+    }
     return null;
   }
 
@@ -325,12 +367,12 @@ class _MapExplorerScreenState extends State<MapExplorerScreen>
   String _getUserStatusText(UserModel user, bool isAr, bool isActive) {
     if (user.isShop) {
       return isActive
-          ? (isAr ? 'مفتوح الآن' : 'Open Now')
-          : (isAr ? 'مغلق الآن' : 'Closed Now');
+          ? (AppLocalizations.of(context)!.openNow)
+          : (AppLocalizations.of(context)!.closedNow);
     }
     return isActive
-        ? (isAr ? 'متوفر' : 'Available')
-        : (isAr ? 'غير متوفر' : 'Unavailable');
+        ? (AppLocalizations.of(context)!.available)
+        : (AppLocalizations.of(context)!.unavailable);
   }
 
   void _showUserPopup(UserModel user) {
@@ -345,18 +387,13 @@ class _MapExplorerScreenState extends State<MapExplorerScreen>
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (context) => GlassContainer(
+      builder: (context) => PremiumGlassCard(
         padding: const EdgeInsets.all(24),
         blur: 20,
         opacity: Theme.of(context).brightness == Brightness.dark ? 0.7 : 0.85,
         color: Theme.of(context).scaffoldBackgroundColor,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-        border: Border(
-          top: BorderSide(
-            color: Colors.white.withValues(alpha: 0.2),
-            width: 1,
-          ),
-        ),
+        border: true,
         child: SafeArea(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -476,7 +513,7 @@ class _MapExplorerScreenState extends State<MapExplorerScreen>
                                   fontSize: 14, fontWeight: FontWeight.bold),
                             ),
                             Text(
-                              ' (${user.completedJobs} ${isAr ? 'عمل' : 'jobs'})',
+                              ' (${user.completedJobs} ${AppLocalizations.of(context)!.jobs1})',
                               style: TextStyle(
                                   fontSize: 12, color: Colors.grey[600]),
                             ),
@@ -593,50 +630,63 @@ class _MapExplorerScreenState extends State<MapExplorerScreen>
               else
                 const SizedBox(height: 20),
 
-              SizedBox(
-                width: double.infinity,
-                child: PressableCard(
-                  onTap: () {
-                    if (context.mounted) Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (_) => ProfileScreen(userId: user.id)),
-                    );
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.primary.withValues(alpha: 0.3),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.person, size: 20, color: Colors.white),
-                        const SizedBox(width: 8),
-                        Text(isAr ? 'زيارة الملف الشخصي' : 'View Profile',
-                            style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white)),
-                      ],
-                    ),
-                  ),
+              // زر عرض الطريق
+              if (_currentUserPosition != null && user.latitude != null && user.longitude != null) ...[
+                PremiumButton(
+                  onPressed: () => _calculateAndShowRoute(user),
+                  label: isAr ? 'عرض الطريق' : 'Show Route',
+                  icon: Icons.directions,
+                  isPrimary: false,
+                  isLoading: _isLoadingRoute,
                 ),
+                const SizedBox(height: 12),
+              ],
+
+              PremiumButton(
+                onPressed: () {
+                  if (context.mounted) Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    AnimationUtils.createPremiumRoute(page: ProfileScreen(userId: user.id)),
+                  );
+                },
+                label: AppLocalizations.of(context)!.viewProfile,
+                icon: Icons.person,
+                isPrimary: true,
               ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  Future<void> _calculateAndShowRoute(UserModel user) async {
+    if (context.mounted) Navigator.pop(context);
+    if (_currentUserPosition == null || user.latitude == null || user.longitude == null) return;
+    
+    setState(() => _isLoadingRoute = true);
+    
+    final start = LatLng(_currentUserPosition!.latitude, _currentUserPosition!.longitude);
+    final end = LatLng(user.latitude!, user.longitude!);
+    
+    final routeData = await OSRMService.getRoute(start, end);
+    
+    if (mounted) {
+      setState(() {
+        _isLoadingRoute = false;
+        if (routeData != null) {
+          _currentRoute = routeData;
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(context.read<LocaleProvider>().isArabic ? 'حدث خطأ أثناء جلب المسار' : 'Failed to fetch route'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      });
+    }
   }
 
   // بناء شريط البحث
@@ -648,48 +698,122 @@ class _MapExplorerScreenState extends State<MapExplorerScreen>
       child: SafeArea(
         child: Column(
           children: [
-            Container(
-              decoration: BoxDecoration(
-                color: Theme.of(context).cardColor,
-                borderRadius: BorderRadius.circular(30),
-                boxShadow: const [
-                  BoxShadow(
-                      color: Colors.black26,
-                      blurRadius: 10,
-                      offset: Offset(0, 4))
-                ],
-              ),
-              child: TextField(
-                controller: _searchController,
-                onChanged: (val) {
-                  setState(() {
-                    _searchQuery = val.toLowerCase();
-                    _isSearching = _searchQuery.isNotEmpty;
-                  });
-                },
-                decoration: InputDecoration(
-                  hintText: isAr
-                      ? 'ابحث عن متجر أو حرفي...'
-                      : 'Search shops or freelancers...',
-                  prefixIcon:
-                      const Icon(Icons.search, color: AppColors.primary),
-                  suffixIcon: _isSearching
-                      ? IconButton(
-                          icon: const Icon(Icons.close),
-                          onPressed: () {
-                            _searchController.clear();
-                            setState(() {
-                              _searchQuery = '';
-                              _isSearching = false;
-                            });
-                            FocusScope.of(context).unfocus();
-                          })
-                      : null,
-                  border: InputBorder.none,
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+            Row(
+              children: [
+                Expanded(
+                  child: PremiumGlassCard(
+                    blur: 15,
+                    opacity: Theme.of(context).brightness == Brightness.dark
+                        ? 0.7
+                        : 0.85,
+                    borderRadius: BorderRadius.circular(30),
+                    child: _currentRoute != null 
+                        ? Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Icon(Icons.directions_car, color: AppColors.primary),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      '${_currentRoute!.distanceKm.toStringAsFixed(1)} ${isAr ? 'كم' : 'km'}',
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                    ),
+                                  ],
+                                ),
+                                GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      _currentRoute = null;
+                                    });
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red.withOpacity(0.15),
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(color: Colors.red.withOpacity(0.3)),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(Icons.close, color: Colors.red, size: 16),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          isAr ? 'إلغاء' : 'Cancel',
+                                          style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 14),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : TextField(
+                            controller: _searchController,
+                            onChanged: (val) {
+                              setState(() {
+                                _searchQuery = val.toLowerCase();
+                                _isSearching = _searchQuery.isNotEmpty;
+                              });
+                            },
+                            decoration: InputDecoration(
+                              hintText: AppLocalizations.of(context)!
+                                  .searchShopsOrFreelancers,
+                              prefixIcon:
+                                  const Icon(Icons.search, color: AppColors.primary),
+                              suffixIcon: _isSearching
+                                  ? IconButton(
+                                      icon: const Icon(Icons.close),
+                                      onPressed: () {
+                                        _searchController.clear();
+                                        setState(() {
+                                          _searchQuery = '';
+                                          _isSearching = false;
+                                        });
+                                        FocusScope.of(context).unfocus();
+                                      })
+                                  : null,
+                              border: InputBorder.none,
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 20, vertical: 15),
+                            ),
+                          ),
+                  ),
                 ),
-              ),
+                const SizedBox(width: 8),
+                // Available Only Toggle
+                GestureDetector(
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    setState(() {
+                      _showOnlyAvailable = !_showOnlyAvailable;
+                      _applyFilters();
+                    });
+                  },
+                  child: PremiumGlassCard(
+                    blur: 15,
+                    width: 50,
+                    height: 50,
+                    opacity: _showOnlyAvailable
+                        ? 0.9
+                        : (Theme.of(context).brightness == Brightness.dark
+                            ? 0.7
+                            : 0.85),
+                    color: _showOnlyAvailable ? AppColors.primary : null,
+                    borderRadius: BorderRadius.circular(25),
+                    child: Icon(
+                      Icons.bolt,
+                      color:
+                          _showOnlyAvailable ? Colors.white : AppColors.primary,
+                      size: 28,
+                    ),
+                  ),
+                ).animate().fade().scale(),
+              ],
             ),
 
             // قائمة النتائج
@@ -733,14 +857,15 @@ class _MapExplorerScreenState extends State<MapExplorerScreen>
                                 const TextStyle(fontWeight: FontWeight.bold)),
                         subtitle: Text(
                           user.jobTitle != null && user.jobTitle!.isNotEmpty
-                              ? JobTitlesUtils.getLocalizedTitle(
-                                  user.jobTitle!, isAr ? 'ar' : 'en')
+                              ? JobTitlesUtils.getLocalizedTitle(user.jobTitle!,
+                                  AppLocalizations.of(context)!.en)
                               : (user.role == UserRole.shop
-                                  ? (isAr ? 'متجر' : 'Shop')
-                                  : (isAr ? 'حرفي' : 'Freelancer')),
+                                  ? (AppLocalizations.of(context)!.shop)
+                                  : (AppLocalizations.of(context)!.freelancer)),
                           style: TextStyle(color: Colors.grey[600]),
                         ),
                         onTap: () {
+                          HapticFeedback.lightImpact();
                           FocusScope.of(context).unfocus();
                           setState(() {
                             _searchQuery = '';
@@ -764,155 +889,22 @@ class _MapExplorerScreenState extends State<MapExplorerScreen>
               )
           ],
         ),
-      ),
+      ).animate().slideY(begin: -0.5, curve: Curves.easeOut).fade(),
     );
   }
 
-  void _showFilterSheet() {
-    final locale = context.read<LocaleProvider>().locale.languageCode;
-    final isAr = locale == 'ar';
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (context) => StatefulBuilder(
-        builder: (context, setSheetState) {
-          return Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(isAr ? 'تصفية الخريطة' : 'Filter Map',
-                    style: const TextStyle(
-                        fontSize: 22, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 24),
-                Text(isAr ? 'عرض:' : 'Show:',
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 16)),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 12,
-                  children: [
-                    FilterChip(
-                      label: Text(isAr ? 'الكل' : 'All'),
-                      selected: _selectedRoleFilter == 'all',
-                      onSelected: (val) {
-                        if (val)
-                          setSheetState(() {
-                            _selectedRoleFilter = 'all';
-                            _selectedShopCategoryFilter = null;
-                            _selectedFreelancerCategoryFilter = null;
-                          });
-                      },
-                    ),
-                    FilterChip(
-                      label: Text(isAr ? 'المتاجر' : 'Shops'),
-                      selected: _selectedRoleFilter == 'shop',
-                      onSelected: (val) {
-                        if (val)
-                          setSheetState(() {
-                            _selectedRoleFilter = 'shop';
-                            _selectedFreelancerCategoryFilter = null;
-                          });
-                      },
-                    ),
-                    FilterChip(
-                      label: Text(isAr ? 'الحرفيين' : 'Freelancers'),
-                      selected: _selectedRoleFilter == 'freelancer',
-                      onSelected: (val) {
-                        if (val)
-                          setSheetState(() {
-                            _selectedRoleFilter = 'freelancer';
-                            _selectedShopCategoryFilter = null;
-                          });
-                      },
-                    ),
-                  ],
-                ),
-                if (_selectedRoleFilter == 'shop') ...[
-                  const SizedBox(height: 16),
-                  Text(isAr ? 'تصنيف المتجر:' : 'Shop Category:',
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 14)),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    height: 45,
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      children: ShopCategory.values.map((cat) {
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 8.0),
-                          child: FilterChip(
-                            label: Text(UserModel.getLocalizedShopCategory(
-                                cat, isAr ? 'ar' : 'en')),
-                            selected: _selectedShopCategoryFilter == cat,
-                            onSelected: (val) {
-                              setSheetState(() {
-                                _selectedShopCategoryFilter = val ? cat : null;
-                              });
-                            },
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                ],
-                if (_selectedRoleFilter == 'freelancer') ...[
-                  const SizedBox(height: 16),
-                  Text(isAr ? 'التخصص:' : 'Profession:',
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 14)),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    height: 45,
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      children: JobCategory.values.map((cat) {
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 8.0),
-                          child: FilterChip(
-                            label: Text(JobTitlesUtils.getLocalizedTitle(
-                                cat.name, isAr ? 'ar' : 'en')),
-                            selected: _selectedFreelancerCategoryFilter == cat,
-                            onSelected: (val) {
-                              setSheetState(() {
-                                _selectedFreelancerCategoryFilter =
-                                    val ? cat : null;
-                              });
-                            },
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 32),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      if (context.mounted) Navigator.pop(context);
-                      _applyFilters();
-                    },
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16)),
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                    ),
-                    child: Text(isAr ? 'تطبيق' : 'Apply',
-                        style: const TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.bold)),
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
+  void _showFilterSheet() async {
+    final filter = await FilterBottomSheet.show(
+      context,
+      current: _currentFilter,
+      isAr: context.read<LocaleProvider>().isArabic,
     );
+    if (filter != null) {
+      setState(() {
+        _currentFilter = filter;
+        _applyFilters();
+      });
+    }
   }
 
   @override
@@ -936,9 +928,12 @@ class _MapExplorerScreenState extends State<MapExplorerScreen>
             ),
             child: IconButton(
               icon: const Icon(Icons.filter_list, color: Colors.white),
-              onPressed: _showFilterSheet,
+              onPressed: () {
+                HapticFeedback.lightImpact();
+                _showFilterSheet();
+              },
             ),
-          ),
+          ).animate().fade().scale(),
         ],
       ),
       body: Stack(
@@ -955,10 +950,32 @@ class _MapExplorerScreenState extends State<MapExplorerScreen>
             ),
             children: [
               TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                urlTemplate: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+                subdomains: const ['a', 'b', 'c', 'd'],
                 userAgentPackageName: 'com.sudan.free',
                 tileProvider: CachedTileProvider(),
+                tileBuilder: Theme.of(context).brightness == Brightness.dark
+                    ? (context, tileWidget, tile) => ColorFiltered(
+                          colorFilter: const ColorFilter.matrix([
+                            -1,  0,  0, 0, 255,
+                             0, -1,  0, 0, 255,
+                             0,  0, -1, 0, 255,
+                            0,  0,  0, 1,   0,
+                          ]),
+                          child: tileWidget,
+                        )
+                    : null,
               ),
+              if (_currentRoute != null)
+                PolylineLayer(
+                  polylines: [
+                    Polyline(
+                      points: _currentRoute!.points,
+                      color: Colors.blue,
+                      strokeWidth: 4.0,
+                    ),
+                  ],
+                ),
               MarkerClusterLayerWidget(
                 options: MarkerClusterLayerOptions(
                   maxClusterRadius: 45,
@@ -975,58 +992,69 @@ class _MapExplorerScreenState extends State<MapExplorerScreen>
                     return Marker(
                       key: ValueKey('marker_${user.id}'),
                       point: LatLng(user.latitude!, user.longitude!),
-                      width: 50,
-                      height: 50,
+                      width: 70,
+                      height: 70,
                       child: RepaintBoundary(
                         child: GestureDetector(
                           onTap: () {
+                            HapticFeedback.lightImpact();
                             _animatedMapMove(
                                 LatLng(user.latitude!, user.longitude!), 16.0);
                             _showUserPopup(user);
                           },
-                          child: Container(
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border:
-                                  Border.all(color: markerColor, width: 2.5),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: markerColor.withValues(alpha: 0.5),
-                                  blurRadius: 8,
-                                  spreadRadius: 1,
-                                ),
-                              ],
-                            ),
-                            child: ClipOval(
-                              child: user.profileImageUrl != null
-                                  ? CachedNetworkImage(
-                                      imageUrl: user.profileImageUrl!,
-                                      fit: BoxFit.cover,
-                                      memCacheWidth: 100,
-                                      fadeInDuration:
-                                          const Duration(milliseconds: 150),
-                                      placeholder: (_, __) => Container(
-                                        color: Colors.grey[900],
-                                        child: Icon(
-                                            isShop ? Icons.store : Icons.work,
-                                            color: Colors.white,
-                                            size: 22),
-                                      ),
-                                      errorWidget: (_, __, ___) => Container(
-                                        color: Colors.grey[900],
-                                        child: Icon(
-                                            isShop ? Icons.store : Icons.work,
-                                            color: Colors.white,
-                                            size: 22),
-                                      ),
-                                    )
-                                  : Container(
-                                      color: Colors.grey[900],
-                                      child: Icon(
-                                          isShop ? Icons.store : Icons.work,
-                                          color: Colors.white,
-                                          size: 22),
+                          child: PulsingMarker(
+                            isPulsing: _getUserIsActive(user) && !isPrivacyProtected,
+                            pulseColor: markerColor,
+                            baseSize: 50,
+                            pulseSize: 70,
+                            child: Center(
+                              child: Container(
+                                width: 50,
+                                height: 50,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border:
+                                      Border.all(color: markerColor, width: 2.5),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: markerColor.withOpacity(0.5),
+                                      blurRadius: 8,
+                                      spreadRadius: 1,
                                     ),
+                                  ],
+                                ),
+                                child: ClipOval(
+                                  child: user.profileImageUrl != null
+                                      ? CachedNetworkImage(
+                                          imageUrl: user.profileImageUrl!,
+                                          fit: BoxFit.cover,
+                                          memCacheWidth: 100,
+                                          fadeInDuration:
+                                              const Duration(milliseconds: 150),
+                                          placeholder: (_, __) => Container(
+                                            color: Colors.grey[900],
+                                            child: Icon(
+                                                isShop ? Icons.store : Icons.work,
+                                                color: Colors.white,
+                                                size: 22),
+                                          ),
+                                          errorWidget: (_, __, ___) => Container(
+                                            color: Colors.grey[900],
+                                            child: Icon(
+                                                isShop ? Icons.store : Icons.work,
+                                                color: Colors.white,
+                                                size: 22),
+                                          ),
+                                        )
+                                      : Container(
+                                          color: Colors.grey[900],
+                                          child: Icon(
+                                              isShop ? Icons.store : Icons.work,
+                                              color: Colors.white,
+                                              size: 22),
+                                        ),
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -1060,22 +1088,61 @@ class _MapExplorerScreenState extends State<MapExplorerScreen>
                   },
                 ),
               ),
+              if (_currentUserPosition != null)
+                MarkerLayer(
+                  markers: [
+                    Marker(
+                      point: LatLng(_currentUserPosition!.latitude,
+                          _currentUserPosition!.longitude),
+                      width: 44,
+                      height: 44,
+                      child: PulsingMarker(
+                        isPulsing: true,
+                        pulseColor: Colors.blue,
+                        baseSize: 24,
+                        pulseSize: 44,
+                        child: Center(
+                          child: Container(
+                            width: 24,
+                            height: 24,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.blue,
+                              border: Border.all(color: Colors.white, width: 2),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Colors.black26,
+                                  blurRadius: 8,
+                                  offset: Offset(0, 2),
+                                )
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
             ],
           ),
 
           // شريط البحث المخصص
           _buildSearchBar(isAr),
 
+          // معلومات المسار تم دمجها في شريط البحث
           // زر "تحديد موقعي"
           Positioned(
             bottom: 24,
             right: 16,
-            child: FloatingActionButton(
+            child: FloatingActionButton.small(
               heroTag: 'myLocationBtn',
               backgroundColor: Theme.of(context).cardColor,
-              onPressed: _locateUser,
-              child: const Icon(Icons.my_location, color: AppColors.primary),
-            ),
+              onPressed: () {
+                HapticFeedback.lightImpact();
+                _locateUser();
+              },
+              child: const Icon(Icons.my_location, color: AppColors.primary, size: 20),
+            ).animate().scale().fade(),
           ),
 
           if (_isLoading)
@@ -1105,6 +1172,13 @@ class _MapExplorerScreenState extends State<MapExplorerScreen>
                     ],
                   ),
                 ),
+              ),
+            ),
+          if (_isLoadingRoute)
+            Container(
+              color: Colors.black.withValues(alpha: 0.3),
+              child: const Center(
+                child: CircularProgressIndicator(),
               ),
             ),
         ],

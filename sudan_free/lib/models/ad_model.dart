@@ -18,6 +18,9 @@ enum AdPlacement {
 
   /// بانر شريطي صغير (text + CTA)
   strip,
+
+  /// نشر مزدوج في الرئيسية والمجتمع
+  homeAndCommunity,
 }
 
 class AdModel {
@@ -152,6 +155,8 @@ class AdModel {
           return 'متجر مميز';
         case AdPlacement.strip:
           return 'شريط إعلاني';
+        case AdPlacement.homeAndCommunity:
+          return 'الرئيسية والمجتمع';
       }
     }
     switch (placement) {
@@ -165,6 +170,8 @@ class AdModel {
         return 'Featured Shop';
       case AdPlacement.strip:
         return 'Strip Banner';
+      case AdPlacement.homeAndCommunity:
+        return 'Home and Community';
     }
   }
 }

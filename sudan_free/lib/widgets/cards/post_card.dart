@@ -20,6 +20,8 @@ import '../../views/search/search_screen.dart';
 import 'package:any_link_preview/any_link_preview.dart';
 import '../common/internal_link_preview.dart';
 import '../common/glass_container.dart';
+import '../common/full_screen_image_viewer.dart';
+import '../common/verification_badge.dart';
 
 class PostCard extends StatefulWidget {
   final PostModel post;
@@ -28,6 +30,7 @@ class PostCard extends StatefulWidget {
   final bool enableHero;
   final bool showActions;
   final bool isPromoted;
+  final bool disableProfileNavigation;
 
   const PostCard({
     super.key,
@@ -37,6 +40,7 @@ class PostCard extends StatefulWidget {
     this.enableHero = true,
     this.showActions = true,
     this.isPromoted = false,
+    this.disableProfileNavigation = false,
   });
 
   @override
@@ -180,7 +184,8 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildGridImage(String url, {double? height, bool isHero = false}) {
+  Widget _buildGridImage(String url, int index, List<String> allUrls,
+      {double? height, bool isHero = false}) {
     Widget image;
 
     if (url.startsWith('/')) {
@@ -223,7 +228,7 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
     }
 
     if (isHero && widget.enableHero) {
-      image = Hero(tag: widget.post.id, child: image);
+      image = Hero(tag: '${widget.post.id}_$index', child: image);
     }
 
     return GestureDetector(
@@ -237,7 +242,7 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
     if (urls.length == 1) {
       return ConstrainedBox(
         constraints: const BoxConstraints(maxHeight: 500, minHeight: 250),
-        child: _buildGridImage(urls[0], isHero: true),
+        child: _buildGridImage(urls[0], 0, urls, isHero: true),
       );
     }
 
@@ -253,7 +258,7 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
               });
             },
             itemBuilder: (context, index) {
-              return _buildGridImage(urls[index], isHero: index == 0);
+              return _buildGridImage(urls[index], index, urls, isHero: true);
             },
           ),
         ),
@@ -314,52 +319,73 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
                 children: [
                   // Avatar
                   GestureDetector(
-                    onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) =>
-                                ProfileScreen(userId: widget.post.userId))),
+                    onTap: widget.disableProfileNavigation
+                        ? null
+                        : () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => ProfileScreen(
+                                    userId: widget.post.userId,
+                                    heroTag: 'post_avatar_${widget.post.id}',
+                                ))),
                     child: Stack(
                       children: [
-                        CircleAvatar(
-                          radius: 22,
-                          backgroundColor:
-                              AppColors.primary.withValues(alpha: 0.1),
-                          backgroundImage: widget.post.userImageUrl != null
-                              ? CachedNetworkImageProvider(
-                                  CloudinaryService.getOptimizedUrl(
-                                      widget.post.userImageUrl!,
-                                      width: 100,
-                                      quality: 'auto'),
-                                  maxWidth: 150,
-                                  maxHeight: 150,
-                                )
-                              : null,
-                          child: widget.post.userImageUrl == null
-                              ? Text(
-                                  widget.post.userName.isNotEmpty
-                                      ? widget.post.userName[0].toUpperCase()
-                                      : '?',
-                                  style: const TextStyle(
-                                      color: AppColors.primary,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16),
-                                )
-                              : null,
-                        ),
-                        if (widget.post.isUserVerified)
-                          Positioned(
-                            bottom: 0,
-                            right: 0,
-                            child: Container(
-                              padding: const EdgeInsets.all(1),
-                              decoration: BoxDecoration(
-                                  color: Theme.of(context).cardColor,
-                                  shape: BoxShape.circle),
-                              child: const Icon(Icons.verified,
-                                  size: 14, color: AppColors.primary),
-                            ),
-                          ),
+                        widget.enableHero
+                            ? Hero(
+                                tag: 'post_avatar_${widget.post.id}',
+                                child: CircleAvatar(
+                                  radius: 22,
+                                  backgroundColor: AppColors.primary
+                                      .withValues(alpha: 0.1),
+                                  backgroundImage: widget.post.userImageUrl != null
+                                      ? CachedNetworkImageProvider(
+                                          CloudinaryService.getOptimizedUrl(
+                                              widget.post.userImageUrl!,
+                                              width: 100,
+                                              quality: 'auto'),
+                                          maxWidth: 150,
+                                          maxHeight: 150,
+                                        )
+                                      : null,
+                                  child: widget.post.userImageUrl == null
+                                      ? Text(
+                                          widget.post.userName.isNotEmpty
+                                              ? widget.post.userName[0].toUpperCase()
+                                              : '?',
+                                          style: const TextStyle(
+                                              color: AppColors.primary,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16),
+                                        )
+                                      : null,
+                                ),
+                              )
+                            : CircleAvatar(
+                                radius: 22,
+                                backgroundColor: AppColors.primary
+                                    .withValues(alpha: 0.1),
+                                backgroundImage: widget.post.userImageUrl != null
+                                    ? CachedNetworkImageProvider(
+                                        CloudinaryService.getOptimizedUrl(
+                                            widget.post.userImageUrl!,
+                                            width: 100,
+                                            quality: 'auto'),
+                                        maxWidth: 150,
+                                        maxHeight: 150,
+                                      )
+                                    : null,
+                                child: widget.post.userImageUrl == null
+                                    ? Text(
+                                        widget.post.userName.isNotEmpty
+                                            ? widget.post.userName[0].toUpperCase()
+                                            : '?',
+                                        style: const TextStyle(
+                                            color: AppColors.primary,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16),
+                                      )
+                                    : null,
+                              ),
                       ],
                     ),
                   ),
@@ -368,11 +394,15 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
                   // Name + title + time
                   Expanded(
                     child: GestureDetector(
-                      onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (_) =>
-                                  ProfileScreen(userId: widget.post.userId))),
+                      onTap: widget.disableProfileNavigation
+                          ? null
+                          : () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) => ProfileScreen(
+                                      userId: widget.post.userId,
+                                      heroTag: 'post_avatar_${widget.post.id}',
+                                  ))),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -388,6 +418,11 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
+                              if (widget.post.isUserVerified || (widget.post.userId == widget.currentUserId && (context.watch<AuthProvider>().user?.isVerified ?? false)))
+                                const Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 4.0),
+                                  child: VerificationBadge(isVerified: true, size: 14),
+                                ),
                               if (widget.isPromoted)
                                 const Padding(
                                   padding:

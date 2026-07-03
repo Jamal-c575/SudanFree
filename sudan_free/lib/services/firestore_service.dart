@@ -112,6 +112,8 @@ class FirestoreService {
       _users.toggleBlock(currentUserId, targetUserId, isBlocked);
   Future<void> incrementProfileViews(String userId, [String? viewerId]) =>
       _users.incrementProfileViews(userId, viewerId);
+  Future<List<UserModel>> getRecommendedFreelancers(String category, {int limit = 7}) =>
+      _users.getRecommendedFreelancers(category, limit: limit);
 
   Future<Map<String, dynamic>> getFreelancersPaginated(
           {DocumentSnapshot? startAfterDoc, int limit = 15, String? state}) =>
@@ -279,8 +281,8 @@ class FirestoreService {
       _notifications.getNotifications(userId);
   Stream<int> getUnreadNotificationsCount(String userId) =>
       _notifications.getUnreadNotificationsCount(userId);
-  Future<void> sendNotification(NotificationModel notification) =>
-      _notifications.addNotification(notification);
+  Future<void> sendNotification(NotificationModel notification, {String? limitKey}) =>
+      _notifications.addNotification(notification, limitKey: limitKey);
   Future<void> markNotificationAsRead(String notifId) => _firestore
       .collection('notifications')
       .doc(notifId)

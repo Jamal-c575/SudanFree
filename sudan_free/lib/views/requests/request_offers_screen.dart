@@ -6,6 +6,7 @@ import '../../models/request_model.dart';
 import '../../models/offer_model.dart';
 import '../../models/contact_log_model.dart';
 import '../../services/firestore_service.dart';
+import '../../services/ai_service.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/chat_provider.dart';
 import '../../providers/locale_provider.dart';
@@ -14,6 +15,7 @@ import '../profile/profile_screen.dart';
 import '../../core/constants/app_colors.dart';
 import '../../widgets/common/loading_widget.dart';
 import '../../widgets/common/linkable_text.dart';
+import 'package:sudan_free/l10n/generated/app_localizations.dart';
 
 class RequestOffersScreen extends StatelessWidget {
   final RequestModel request;
@@ -29,7 +31,7 @@ class RequestOffersScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isAr ? 'عروض المقدمين' : 'Submitted Offers'),
+        title: Text(AppLocalizations.of(context)!.submittedOffers),
         centerTitle: true,
       ),
       body: StreamBuilder<List<OfferModel>>(
@@ -51,9 +53,7 @@ class RequestOffersScreen extends StatelessWidget {
                         size: 64, color: Colors.grey[400]),
                     const SizedBox(height: 16),
                     Text(
-                      isAr
-                          ? 'لم يتم تقديم عروض بعد'
-                          : 'No offers submitted yet',
+                      AppLocalizations.of(context)!.noOffersSubmittedYet,
                       style: TextStyle(color: Colors.grey[600], fontSize: 16),
                     ),
                   ],
@@ -69,6 +69,7 @@ class RequestOffersScreen extends StatelessWidget {
             itemBuilder: (context, index) {
               final offer = offers[index];
               return _OfferCardDetailed(
+                request: request,
                 offer: offer,
                 locale: locale,
                 currentUserId: currentUser?.id,
@@ -82,19 +83,27 @@ class RequestOffersScreen extends StatelessWidget {
   }
 }
 
-class _OfferCardDetailed extends StatelessWidget {
+class _OfferCardDetailed extends StatefulWidget {
+  final RequestModel request;
   final OfferModel offer;
   final String locale;
   final String? currentUserId;
   final String? currentUserName;
 
   const _OfferCardDetailed(
-      {required this.offer,
+      {required this.request,
+      required this.offer,
       required this.locale,
       this.currentUserId,
       this.currentUserName});
 
-  bool get isAr => locale == 'ar';
+  @override
+  State<_OfferCardDetailed> createState() => _OfferCardDetailedState();
+}
+
+class _OfferCardDetailedState extends State<_OfferCardDetailed> {
+  bool get isAr => widget.locale == 'ar';
+  bool _isAnalyzing = false;
 
   @override
   Widget build(BuildContext context) {
@@ -121,14 +130,14 @@ class _OfferCardDetailed extends StatelessWidget {
           Row(
             children: [
               GestureDetector(
-                onTap: () => _navigateToProfile(context, offer),
+                onTap: () => _navigateToProfile(context, widget.offer),
                 child: CircleAvatar(
                   radius: 24,
                   backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                  backgroundImage: offer.providerImageUrl != null
-                      ? CachedNetworkImageProvider(offer.providerImageUrl!)
+                  backgroundImage: widget.offer.providerImageUrl != null
+                      ? CachedNetworkImageProvider(widget.offer.providerImageUrl!)
                       : null,
-                  child: offer.providerImageUrl == null
+                  child: widget.offer.providerImageUrl == null
                       ? const Icon(Icons.person,
                           color: AppColors.primary, size: 24)
                       : null,
@@ -140,23 +149,23 @@ class _OfferCardDetailed extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     GestureDetector(
-                      onTap: () => _navigateToProfile(context, offer),
+                      onTap: () => _navigateToProfile(context, widget.offer),
                       child: Text(
-                        offer.providerName,
+                        widget.offer.providerName,
                         style: const TextStyle(
                             fontWeight: FontWeight.bold, fontSize: 16),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    if (offer.providerJobTitle != null &&
-                        offer.providerJobTitle!.isNotEmpty) ...[
+                    if (widget.offer.providerJobTitle != null &&
+                        widget.offer.providerJobTitle!.isNotEmpty) ...[
                       const SizedBox(height: 4),
                       Text(
-                        offer.providerJobTitle!,
+                        widget.offer.providerJobTitle!,
                         style: TextStyle(
                           fontSize: 12,
-                          color: offer.providerRole == 'shop'
+                          color: widget.offer.providerRole == 'shop'
                               ? Colors.amber.shade700
                               : AppColors.primary,
                         ),
@@ -177,7 +186,7 @@ class _OfferCardDetailed extends StatelessWidget {
                   onPressed: () => _showContactSheet(context),
                   icon: const Icon(Icons.support_agent, size: 22),
                   color: AppColors.primary,
-                  tooltip: isAr ? 'تواصل' : 'Contact',
+                  tooltip: AppLocalizations.of(context)!.contact,
                 ),
               ),
             ],
@@ -187,33 +196,33 @@ class _OfferCardDetailed extends StatelessWidget {
           const Divider(height: 1),
           const SizedBox(height: 16),
 
-          // Price & Time Row
-          if ((offer.price != null && offer.price! > 0) ||
-              (offer.estimatedTime != null && offer.estimatedTime!.isNotEmpty))
+          // Price & Time
+          if ((widget.offer.price != null && widget.offer.price! > 0) ||
+              (widget.offer.estimatedTime != null && widget.offer.estimatedTime!.isNotEmpty))
             Padding(
               padding: const EdgeInsets.only(bottom: 16),
               child: Row(
                 children: [
-                  if (offer.price != null && offer.price! > 0)
+                  if (widget.offer.price != null && widget.offer.price! > 0)
                     Expanded(
                       child: _buildInfoTag(
                         icon: Icons.attach_money,
-                        label: isAr ? 'الميزانية المقترحة' : 'Proposed Budget',
-                        value: '${offer.price} SDG',
+                        label: AppLocalizations.of(context)!.proposedBudget,
+                        value: '${widget.offer.price} SDG',
                         color: Colors.green,
                       ),
                     ),
-                  if ((offer.price != null && offer.price! > 0) &&
-                      (offer.estimatedTime != null &&
-                          offer.estimatedTime!.isNotEmpty))
+                  if ((widget.offer.price != null && widget.offer.price! > 0) &&
+                      (widget.offer.estimatedTime != null &&
+                          widget.offer.estimatedTime!.isNotEmpty))
                     const SizedBox(width: 12),
-                  if (offer.estimatedTime != null &&
-                      offer.estimatedTime!.isNotEmpty)
+                  if (widget.offer.estimatedTime != null &&
+                      widget.offer.estimatedTime!.isNotEmpty)
                     Expanded(
                       child: _buildInfoTag(
                         icon: Icons.timer_outlined,
-                        label: isAr ? 'مدة الإنجاز' : 'Estimated Time',
-                        value: offer.estimatedTime!,
+                        label: AppLocalizations.of(context)!.estimatedTime,
+                        value: widget.offer.estimatedTime!,
                         color: Colors.orange,
                       ),
                     ),
@@ -222,9 +231,36 @@ class _OfferCardDetailed extends StatelessWidget {
             ),
 
           // Offer Text
-          Text(
-            isAr ? 'تفاصيل العرض:' : 'Offer Details:',
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                AppLocalizations.of(context)!.offerDetails,
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+              ),
+              if (widget.currentUserId == widget.request.clientId)
+                TextButton.icon(
+                  onPressed: _isAnalyzing
+                      ? null
+                      : () async {
+                          setState(() => _isAnalyzing = true);
+                          try {
+                            final result = await AiService()
+                                .analyzeOfferSafety(widget.offer.text, widget.request.text);
+                            if (mounted) {
+                              _showSafetyResult(context, result);
+                            }
+                          } finally {
+                            if (mounted) setState(() => _isAnalyzing = false);
+                          }
+                        },
+                  icon: _isAnalyzing
+                      ? const SizedBox(
+                          width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.security, size: 16, color: Colors.blue),
+                  label: Text('فحص العرض', style: TextStyle(color: Colors.blue[700])),
+                ),
+            ],
           ),
           const SizedBox(height: 8),
           Container(
@@ -235,11 +271,63 @@ class _OfferCardDetailed extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
             ),
             child: LinkableText(
-              text: offer.text,
+              text: widget.offer.text,
               style: const TextStyle(fontSize: 14, height: 1.6),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showSafetyResult(BuildContext context, Map<String, dynamic> result) {
+    final bool isSafe = result['isSafe'] ?? true;
+    final String reason = result['reason'] ?? '';
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                isSafe ? Icons.verified_user : Icons.warning_rounded,
+                size: 64,
+                color: isSafe ? Colors.green : Colors.red,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                isSafe ? 'العرض يبدو آمناً ✅' : 'تحذير: عرض مشبوه ⚠️',
+                style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: isSafe ? Colors.green : Colors.red),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                reason,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 16, height: 1.5),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                  child: const Text('حسناً، فهمت', style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -291,7 +379,7 @@ class _OfferCardDetailed extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                isAr ? 'تواصل مع مقدم الخدمة' : 'Contact Provider',
+                AppLocalizations.of(context)!.contactProvider,
                 style:
                     const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
@@ -300,22 +388,22 @@ class _OfferCardDetailed extends StatelessWidget {
                 leading: const CircleAvatar(
                     backgroundColor: Color(0xFF25D366),
                     child: Icon(Icons.chat, color: Colors.white)),
-                title: Text(isAr ? 'واتساب' : 'WhatsApp'),
+                title: Text(AppLocalizations.of(context)!.whatsapp),
                 onTap: () async {
                   Navigator.pop(ctx);
                   try {
                     final provider =
-                        await FirestoreService().getUser(offer.providerId);
+                        await FirestoreService().getUser(widget.offer.providerId);
                     if (provider != null) {
-                      if (currentUserId != null &&
-                          currentUserId != offer.providerId) {
+                      if (widget.currentUserId != null &&
+                          widget.currentUserId != widget.offer.providerId) {
                         try {
                           final log = ContactLogModel(
                             id: '',
-                            contacterId: currentUserId!,
-                            contacterName: currentUserName ?? '',
-                            freelancerId: offer.providerId,
-                            freelancerName: offer.providerName,
+                            contacterId: widget.currentUserId!,
+                            contacterName: widget.currentUserName ?? '',
+                            freelancerId: widget.offer.providerId,
+                            freelancerName: widget.offer.providerName,
                             contactType: 'whatsapp',
                             createdAt: DateTime.now(),
                           );
@@ -324,7 +412,7 @@ class _OfferCardDetailed extends StatelessWidget {
                           debugPrint('Error creating contact log: $e');
                         }
                       }
-                      _openWhatsApp(
+                      _openWhatsApp(context,
                           provider.whatsappNumber ?? provider.phoneNumber);
                     }
                   } catch (e) {
@@ -336,12 +424,12 @@ class _OfferCardDetailed extends StatelessWidget {
                 leading: CircleAvatar(
                     backgroundColor: AppColors.primary,
                     child: const Icon(Icons.call, color: Colors.white)),
-                title: Text(isAr ? 'اتصال مباشر' : 'Direct Call'),
+                title: Text(AppLocalizations.of(context)!.directCall),
                 onTap: () async {
                   Navigator.pop(ctx);
                   try {
                     final provider =
-                        await FirestoreService().getUser(offer.providerId);
+                        await FirestoreService().getUser(widget.offer.providerId);
                     if (provider != null) {
                       final phone =
                           provider.phoneNumber ?? provider.whatsappNumber;
@@ -362,12 +450,10 @@ class _OfferCardDetailed extends StatelessWidget {
                 leading: CircleAvatar(
                     backgroundColor: Colors.blue.shade600,
                     child: const Icon(Icons.handshake, color: Colors.white)),
-                title: Text(isAr
-                    ? 'قبول والاتفاق (إنشاء اتفاق)'
-                    : 'Accept & Agree (Create Agreement)'),
+                title: Text(AppLocalizations.of(context)!.acceptAgreeCreateAgreement),
                 onTap: () async {
                   Navigator.pop(ctx);
-                  if (currentUserId == null) return;
+                  if (widget.currentUserId == null) return;
 
                   showDialog(
                     context: context,
@@ -382,12 +468,12 @@ class _OfferCardDetailed extends StatelessWidget {
 
                   try {
                     final chat = await chatProvider.getOrCreateChat(
-                      currentUserId: currentUserId!,
-                      currentUserName: currentUserName ?? '',
+                      currentUserId: widget.currentUserId!,
+                      currentUserName: widget.currentUserName ?? '',
                       currentUserImageUrl: null,
-                      otherUserId: offer.providerId,
-                      otherUserName: offer.providerName,
-                      otherUserImageUrl: offer.providerImageUrl,
+                      otherUserId: widget.offer.providerId,
+                      otherUserName: widget.offer.providerName,
+                      otherUserImageUrl: widget.offer.providerImageUrl,
                     );
 
                     navigator.pop(); // dismiss dialog
@@ -401,9 +487,7 @@ class _OfferCardDetailed extends StatelessWidget {
                       );
                     } else {
                       final errorMsg = chatProvider.errorMessage ??
-                          (isAr
-                              ? 'حدث خطأ أثناء إنشاء المحادثة'
-                              : 'Error creating chat');
+                          (AppLocalizations.of(context)!.errorCreatingChat);
                       messenger.showSnackBar(
                         SnackBar(
                             content: Text(errorMsg),
@@ -427,7 +511,7 @@ class _OfferCardDetailed extends StatelessWidget {
     );
   }
 
-  Future<void> _openWhatsApp(String? number) async {
+  Future<void> _openWhatsApp(BuildContext context, String? number) async {
     if (number == null || number.isEmpty) return;
 
     String cleaned = number.replaceAll(RegExp(r'[^\d]'), '');
@@ -438,9 +522,7 @@ class _OfferCardDetailed extends StatelessWidget {
       cleaned = '249$cleaned';
     }
 
-    final message = Uri.encodeComponent(isAr
-        ? 'مرحباً، أتواصل معك بخصوص العرض الذي قدمته على طلبي في منصة سودان فري.'
-        : 'Hello, I am contacting you regarding the offer you submitted on my request in Sudan Free platform.');
+    final message = Uri.encodeComponent(AppLocalizations.of(context)!.helloIAmContactingYouRegarding);
     final url = 'https://wa.me/$cleaned?text=$message';
     try {
       await launchUrl(Uri.parse(url),
@@ -449,7 +531,7 @@ class _OfferCardDetailed extends StatelessWidget {
   }
 
   void _navigateToProfile(BuildContext context, OfferModel offer) async {
-    final providerUser = await FirestoreService().getUser(offer.providerId);
+    final providerUser = await FirestoreService().getUser(widget.offer.providerId);
     if (providerUser != null && context.mounted) {
       Navigator.push(
         context,

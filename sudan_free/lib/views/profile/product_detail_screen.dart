@@ -3,12 +3,14 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../models/post_model.dart';
-import '../../widgets/common/linkable_text.dart';
 import '../../core/constants/app_colors.dart';
-import '../../providers/locale_provider.dart';
 import '../../providers/auth_provider.dart';
 import 'package:provider/provider.dart';
 import '../../widgets/common/full_screen_image_viewer.dart';
+import '../../widgets/common/verification_badge.dart';
+import '../../widgets/common/linkable_text.dart';
+import '../../providers/locale_provider.dart';
+import '../../widgets/common/glass_container.dart';
 import '../../models/user_model.dart';
 import '../posts/create_post_screen.dart';
 import '../../providers/posts_provider.dart';
@@ -18,6 +20,9 @@ import '../../services/cloudinary_service.dart';
 import '../../services/firestore_service.dart';
 import '../../providers/chat_provider.dart';
 import '../chat/chat_screen.dart';
+
+import "package:sudan_free/providers/favorites_provider.dart";
+import 'package:sudan_free/l10n/generated/app_localizations.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final PostModel product;
@@ -44,15 +49,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   String _buildProductLink() =>
       'https://sudanfree.com/sudan-free.html?productId=${widget.product.id}';
 
-  Future<void> _copyProductLink(bool isArabic) async {
+  Future<void> _copyProductLink(BuildContext context) async {
     await Clipboard.setData(ClipboardData(text: _buildProductLink()));
-    if (!mounted) return;
+    if (!context.mounted) return;
     final scaffoldMessenger = ScaffoldMessenger.of(context);
     scaffoldMessenger.showSnackBar(SnackBar(
       content: Row(children: [
         const Icon(Icons.check_circle, color: Colors.white, size: 18),
         const SizedBox(width: 8),
-        Text(isArabic ? 'تم نسخ رابط المنتج ✅' : 'Product link copied ✅'),
+        Text(AppLocalizations.of(context)!.productLinkCopied),
       ]),
       backgroundColor: Colors.green,
       behavior: SnackBarBehavior.floating,
@@ -74,7 +79,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
-  Future<void> _handleOrderNow(BuildContext context, bool isArabic) async {
+  Future<void> _handleOrderNow(BuildContext context) async {
     final scaffoldMessenger = ScaffoldMessenger.of(context);
 
     // Fetch Shop User to get their WhatsApp number
@@ -91,16 +96,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
       if (shopUser == null) {
         scaffoldMessenger.showSnackBar(SnackBar(
-            content:
-                Text(isArabic ? 'حدث خطأ، المتجر غير موجود' : 'Shop not found'),
+            content: Text(AppLocalizations.of(context)!.shopNotFound),
             backgroundColor: Colors.red));
         return;
       }
 
       final productUrl = _buildProductLink();
-      final message = isArabic
-          ? 'مرحباً، أريد طلب هذا المنتج:\n${widget.product.caption?.split('\n').first ?? ''}\n$productUrl\n\nهل هو متوفر؟'
-          : 'Hello, I want to order this product:\n${widget.product.caption?.split('\n').first ?? ''}\n$productUrl\n\nIs it available?';
+      final productName = widget.product.caption?.split('\n').first ?? '';
+      final message = AppLocalizations.of(context)!.orderProductWhatsAppMessage(productName, productUrl);
 
       showModalBottomSheet(
         context: context,
@@ -113,7 +116,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  isArabic ? 'اطلب الآن عبر' : 'Order Now via',
+                  AppLocalizations.of(context)!.orderNowVia,
                   style: const TextStyle(
                       fontSize: 18, fontWeight: FontWeight.bold),
                 ),
@@ -122,7 +125,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   leading: const CircleAvatar(
                       backgroundColor: Colors.green,
                       child: Icon(Icons.chat, color: Colors.white)),
-                  title: Text(isArabic ? 'واتساب' : 'WhatsApp'),
+                  title: Text(AppLocalizations.of(context)!.whatsapp),
                   onTap: () async {
                     Navigator.pop(ctx);
                     final number =
@@ -144,9 +147,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     } catch (e) {
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                            content: Text(isArabic
-                                ? 'لم يتم العثور على واتساب'
-                                : 'WhatsApp not found')));
+                            content: Text(AppLocalizations.of(context)!.whatsappNotFound)));
                       }
                     }
                   },
@@ -156,7 +157,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       backgroundColor: AppColors.primary,
                       child: const Icon(Icons.message_rounded,
                           color: Colors.white)),
-                  title: Text(isArabic ? 'محادثة داخل التطبيق' : 'In-App Chat'),
+                  title: Text(AppLocalizations.of(context)!.inAppChat),
                   onTap: () async {
                     Navigator.pop(ctx);
                     final authProvider = context.read<AuthProvider>();
@@ -208,15 +209,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       if (!context.mounted) return;
       Navigator.pop(context); // Pop loading
       scaffoldMessenger.showSnackBar(SnackBar(
-          content: Text(isArabic ? 'حدث خطأ' : 'An error occurred'),
+          content: Text('An error occurred'),
           backgroundColor: Colors.red));
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final locale = context.watch<LocaleProvider>().locale.languageCode;
-    final isArabic = locale == 'ar';
+    context.watch<LocaleProvider>(); // Rebuild on locale change
     final currentUser = context.watch<AuthProvider>().user;
     final isMyProduct = currentUser?.id == widget.product.userId;
     final isShopOwner = currentUser?.role == UserRole.shop;
@@ -236,7 +236,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         title: Text(
-          isArabic ? 'تفاصيل المنتج' : 'Product Details',
+          AppLocalizations.of(context)!.productDetails,
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
@@ -253,30 +253,32 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     isFavorite ? Icons.favorite : Icons.favorite_border,
                     color: isFavorite ? Colors.red : null,
                   ),
-                  tooltip: isArabic ? 'مفضلة' : 'Favorite',
+                  tooltip: AppLocalizations.of(context)!.favorite,
                   onPressed: () =>
-                      auth.toggleFavoriteProduct(widget.product.id),
+                      context.read<FavoritesProvider>().toggleFavoriteProduct(widget.product.id),
                 );
               },
             ),
           IconButton(
             icon: const Icon(Icons.link_rounded),
-            tooltip: isArabic ? 'نسخ رابط المنتج' : 'Copy link',
-            onPressed: () => _copyProductLink(isArabic),
+            tooltip: AppLocalizations.of(context)!.copyLink,
+            onPressed: () => _copyProductLink(context),
           ),
         ],
       ),
       bottomNavigationBar: (isMyProduct && isShopOwner)
           ? SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+              child: GlassContainer(
+                margin: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                borderRadius: BorderRadius.circular(16),
                 child: SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
                     onPressed: _shareInCommunity,
                     icon: const Icon(Icons.group_rounded, size: 18),
                     label: Text(
-                      isArabic ? 'نشر في المجتمع' : 'Post to Community',
+                      AppLocalizations.of(context)!.postToCommunity,
                       style: const TextStyle(fontSize: 13),
                     ),
                     style: ElevatedButton.styleFrom(
@@ -292,16 +294,18 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             )
           : (!isMyProduct
               ? SafeArea(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                  child: GlassContainer(
+                    margin: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    borderRadius: BorderRadius.circular(16),
                     child: SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
-                        onPressed: () => _handleOrderNow(context, isArabic),
+                        onPressed: () => _handleOrderNow(context),
                         icon: const Icon(Icons.shopping_cart_checkout_rounded,
                             size: 20),
                         label: Text(
-                          isArabic ? 'اطلب الآن' : 'Order Now',
+                          AppLocalizations.of(context)!.orderNow,
                           style: const TextStyle(
                               fontSize: 16, fontWeight: FontWeight.bold),
                         ),
@@ -522,14 +526,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           children: [
                             if (widget.product.price != null)
                               _PriceBadge(
-                                  price: widget.product.price!,
-                                  isArabic: isArabic),
+                                  price: widget.product.price!),
                             if (widget.product.productCondition != null)
                               _ConditionBadge(
-                                  condition: widget.product.productCondition!,
-                                  isArabic: isArabic),
+                                  condition: widget.product.productCondition!),
                             if (widget.product.hasShipping)
-                              _ShippingBadge(isArabic: isArabic),
+                              const _ShippingBadge(),
                           ],
                         ),
                       ],
@@ -546,7 +548,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         children: [
                           _SectionTitle(
                             icon: Icons.description_outlined,
-                            label: isArabic ? 'الوصف' : 'Description',
+                            label: AppLocalizations.of(context)!.description,
                           ),
                           const SizedBox(height: 10),
                           LinkableText(
@@ -572,15 +574,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         children: [
                           _SectionTitle(
                             icon: Icons.info_outline_rounded,
-                            label: isArabic ? 'تفاصيل المنتج' : 'Product Info',
+                            label: AppLocalizations.of(context)!.productInfo,
                           ),
                           const SizedBox(height: 12),
                           if (widget.product.productAgeGroup != null)
                             _DetailRow(
-                              label: isArabic ? 'الفئة العمرية' : 'Age Group',
+                              label: AppLocalizations.of(context)!.ageGroup,
                               icon: Icons.people_outline,
                               value: _getAgeGroupLabel(
-                                  widget.product.productAgeGroup!, isArabic),
+                                  widget.product.productAgeGroup!),
                             ),
                           if (widget.product.productAgeGroup != null &&
                               widget.product.quantity != null)
@@ -588,7 +590,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           if (widget.product.quantity != null)
                             _DetailRow(
                               label:
-                                  isArabic ? 'الكمية المتاحة' : 'Available Qty',
+                                  AppLocalizations.of(context)!.availableQty,
                               icon: Icons.inventory_2_outlined,
                               value: '${widget.product.quantity}',
                             ),
@@ -608,9 +610,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         children: [
                           _SectionTitle(
                             icon: Icons.straighten_rounded,
-                            label: isArabic
-                                ? 'المقاسات المتوفرة'
-                                : 'Available Sizes',
+                            label: AppLocalizations.of(context)!.availableSizes,
                           ),
                           const SizedBox(height: 12),
                           Wrap(
@@ -635,9 +635,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         children: [
                           _SectionTitle(
                             icon: Icons.palette_outlined,
-                            label: isArabic
-                                ? 'الألوان / التنوعات'
-                                : 'Colors / Variants',
+                            label: AppLocalizations.of(context)!.colors,
                           ),
                           const SizedBox(height: 12),
                           Wrap(
@@ -803,16 +801,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
-  String _getAgeGroupLabel(String group, bool isAr) {
-    const labels = {
-      'baby': {'ar': '👶 رضيع', 'en': '👶 Baby'},
-      'child': {'ar': '🧒 طفل', 'en': '🧒 Child'},
-      'youth': {'ar': '👦 شباب', 'en': '👦 Youth'},
-      'adult': {'ar': '👨 بالغ', 'en': '👨 Adult'},
-      'elderly': {'ar': '👴 كبار', 'en': '👴 Elderly'},
-      'all': {'ar': '👨‍👩‍👧 الكل', 'en': '👨‍👩‍👧 All Ages'},
-    };
-    return labels[group]?[isAr ? 'ar' : 'en'] ?? group;
+  String _getAgeGroupLabel(String group) {
+    return AppLocalizations.of(context)!.ageGroupFormat(group);
   }
 }
 
@@ -956,8 +946,7 @@ class _ColorChip extends StatelessWidget {
 /// شارة السعر الكبيرة
 class _PriceBadge extends StatelessWidget {
   final double price;
-  final bool isArabic;
-  const _PriceBadge({required this.price, required this.isArabic});
+  const _PriceBadge({required this.price});
 
   @override
   Widget build(BuildContext context) {
@@ -991,16 +980,15 @@ class _PriceBadge extends StatelessWidget {
 /// شارة حالة المنتج (جديد / مستعمل)
 class _ConditionBadge extends StatelessWidget {
   final String condition;
-  final bool isArabic;
-  const _ConditionBadge({required this.condition, required this.isArabic});
+  const _ConditionBadge({required this.condition});
 
   @override
   Widget build(BuildContext context) {
     final isNew = condition == 'new';
     final color = isNew ? Colors.green : Colors.orange;
     final label = isNew
-        ? (isArabic ? '✨ جديد' : '✨ New')
-        : (isArabic ? '♻️ مستعمل' : '♻️ Used');
+        ? AppLocalizations.of(context)!.conditionNew
+        : AppLocalizations.of(context)!.conditionUsed;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -1023,8 +1011,7 @@ class _ConditionBadge extends StatelessWidget {
 
 /// شارة التوصيل
 class _ShippingBadge extends StatelessWidget {
-  final bool isArabic;
-  const _ShippingBadge({required this.isArabic});
+  const _ShippingBadge();
 
   @override
   Widget build(BuildContext context) {
@@ -1036,7 +1023,7 @@ class _ShippingBadge extends StatelessWidget {
         border: Border.all(color: Colors.teal.withValues(alpha: 0.4)),
       ),
       child: Text(
-        isArabic ? '🚚 توصيل متاح' : '🚚 Ships',
+        AppLocalizations.of(context)!.shippingAvailable,
         style: TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.bold,

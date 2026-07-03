@@ -11,8 +11,12 @@ import '../../providers/locale_provider.dart';
 import '../../services/firestore_service.dart';
 import '../../providers/posts_provider.dart';
 import '../../widgets/comments/comment_tile.dart';
+import '../../widgets/common/glass_container.dart';
 import '../profile/profile_screen.dart';
 import '../../widgets/mentions/mention_overlay.dart';
+
+import "package:sudan_free/providers/partners_provider.dart";
+import 'package:sudan_free/l10n/generated/app_localizations.dart';
 
 class CommentsSheet extends StatefulWidget {
   final String postId;
@@ -72,10 +76,10 @@ class _CommentsSheetState extends State<CommentsSheet> {
   void _fetchPartners() {
     final authProvider = context.read<AuthProvider>();
     // Ensure partners are loaded
-    authProvider.fetchPartners().then((_) {
+    context.read<PartnersProvider>().fetchPartners().then((_) {
       if (mounted) {
         setState(() {
-          _allPartners = authProvider.partners;
+          _allPartners = context.watch<PartnersProvider>().partners;
           _filteredPartners = _allPartners;
         });
       }
@@ -211,6 +215,7 @@ class _CommentsSheetState extends State<CommentsSheet> {
             parentUserName: _replyingToName,
             parentUserId: _parentUserId,
             mentionedNames: mentionedNames,
+            isUserVerified: user.isVerified,
           );
 
       // Handle Notifications for Mentions
@@ -295,12 +300,12 @@ class _CommentsSheetState extends State<CommentsSheet> {
     // CommentTile uses 'isMe' to hide reply button.
     final currentUser = context.read<AuthProvider>().user;
 
-    return Container(
+    return GlassContainer(
+      enableBlur: true,
+      blur: 20,
       height: MediaQuery.of(context).size.height * 0.85,
-      decoration: BoxDecoration(
-        color: Theme.of(context).scaffoldBackgroundColor,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      color: Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.85),
       child: Stack(
         children: [
           Column(
@@ -323,9 +328,7 @@ class _CommentsSheetState extends State<CommentsSheet> {
                     builder: (context, snap) {
                       final count = snap.data?.length ?? 0;
                       return Text(
-                        locale == 'ar'
-                            ? 'التعليقات ($count)'
-                            : 'Comments ($count)',
+                        AppLocalizations.of(context)!.commentsCount(count),
                         style: Theme.of(context)
                             .textTheme
                             .titleMedium
@@ -356,6 +359,37 @@ class _CommentsSheetState extends State<CommentsSheet> {
                       );
                     }
 
+                    if (snapshot.hasError) {
+                      final locale = context.read<LocaleProvider>().locale.languageCode;
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.error_outline, size: 48, color: Colors.red[300]),
+                            const SizedBox(height: 12),
+                            Text(
+                              locale == 'ar'
+                                  ? 'تعذّر تحميل التعليقات'
+                                  : 'Failed to load comments',
+                              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                color: Colors.red[300],
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              locale == 'ar'
+                                  ? 'يرجى المحاولة مرة أخرى لاحقاً'
+                                  : 'Please try again later',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Colors.grey[400],
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
                     final allComments = snapshot.data ?? [];
 
                     if (allComments.isEmpty) {
@@ -367,9 +401,7 @@ class _CommentsSheetState extends State<CommentsSheet> {
                                 size: 56, color: Colors.grey[300]),
                             const SizedBox(height: 12),
                             Text(
-                              locale == 'ar'
-                                  ? 'لا توجد تعليقات بعد'
-                                  : 'No comments yet',
+                              AppLocalizations.of(context)!.noCommentsYet,
                               style: Theme.of(context)
                                   .textTheme
                                   .titleSmall
@@ -380,9 +412,7 @@ class _CommentsSheetState extends State<CommentsSheet> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              locale == 'ar'
-                                  ? 'كن أول من يعلق! 💬'
-                                  : 'Be the first to comment! 💬',
+                              AppLocalizations.of(context)!.beTheFirstToComment,
                               style: Theme.of(context)
                                   .textTheme
                                   .bodySmall
@@ -408,10 +438,12 @@ class _CommentsSheetState extends State<CommentsSheet> {
 
                     // Depth colors for the connecting line
                     Color depthColor(int d) {
-                      if (d == 1)
+                      if (d == 1) {
                         return AppColors.primary.withValues(alpha: 0.5);
-                      if (d == 2)
+                      }
+                      if (d == 2) {
                         return AppColors.sudanGold.withValues(alpha: 0.7);
+                      }
                       if (d == 3) return Colors.purple.withValues(alpha: 0.5);
                       if (d >= 4) return Colors.teal.withValues(alpha: 0.5);
                       return Colors.transparent;
@@ -546,13 +578,9 @@ class _CommentsSheetState extends State<CommentsSheet> {
                                         size: 14, color: depthColor(nextDepth)),
                                     const SizedBox(width: 4),
                                     Text(
-                                      locale == 'ar'
-                                          ? (visibleCount == 0
-                                              ? 'عرض الردود ($hiddenCount)'
-                                              : 'عرض ردود أخرى ($hiddenCount)')
-                                          : (visibleCount == 0
-                                              ? 'Show replies ($hiddenCount)'
-                                              : 'Show more replies ($hiddenCount)'),
+                                      visibleCount == 0
+                                          ? AppLocalizations.of(context)!.showReplies(hiddenCount)
+                                          : AppLocalizations.of(context)!.showMoreReplies(hiddenCount),
                                       style: TextStyle(
                                         color: depthColor(nextDepth),
                                         fontSize: 12,
@@ -598,10 +626,10 @@ class _CommentsSheetState extends State<CommentsSheet> {
                     bottom: MediaQuery.of(context).viewInsets.bottom + 8,
                   ),
                   decoration: BoxDecoration(
+                    color: Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.9),
                     border: Border(
                         top: BorderSide(
-                            color: AppColors.border.withValues(alpha: 0.3))),
-                    color: Theme.of(context).scaffoldBackgroundColor,
+                            color: AppColors.border.withValues(alpha: 0.2))),
                   ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -628,9 +656,7 @@ class _CommentsSheetState extends State<CommentsSheet> {
                               const SizedBox(width: 6),
                               Expanded(
                                 child: Text(
-                                  locale == 'ar'
-                                      ? 'الرد على $_replyingToName'
-                                      : 'Replying to $_replyingToName',
+                                  AppLocalizations.of(context)!.replyingTo(_replyingToName!),
                                   style: TextStyle(
                                       color: AppColors.primary
                                           .withValues(alpha: 0.8),
@@ -660,19 +686,17 @@ class _CommentsSheetState extends State<CommentsSheet> {
                               onChanged: _onTextChanged,
                               decoration: InputDecoration(
                                 hintText: _parentId == null
-                                    ? (locale == 'ar'
-                                        ? 'اكتب تعليقاً... (@لذكر زميل)'
-                                        : 'Write a comment... (@ to mention)')
-                                    : (locale == 'ar'
-                                        ? 'اكتب رداً...'
-                                        : 'Write a reply...'),
+                                    ? AppLocalizations.of(context)!.writeACommentToMention
+                                    : AppLocalizations.of(context)!.writeAReply,
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(24),
                                   borderSide: BorderSide.none,
                                 ),
                                 filled: true,
                                 fillColor:
-                                    AppColors.border.withValues(alpha: 0.1),
+                                    Theme.of(context).brightness == Brightness.dark 
+                                    ? Colors.black26 
+                                    : AppColors.border.withValues(alpha: 0.1),
                                 contentPadding: const EdgeInsets.symmetric(
                                     horizontal: 16, vertical: 8),
                               ),

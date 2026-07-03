@@ -1,17 +1,7 @@
 import 'package:flutter/foundation.dart';
+import 'package:firebase_performance/firebase_performance.dart';
 
 /// Performance monitoring service for tracking custom traces and network metrics.
-///
-/// Uses Stopwatch-based timing for now. When firebase_performance is added
-/// to pubspec.yaml, this can be upgraded to full Firebase Performance traces
-/// with zero API changes for callers.
-///
-/// Usage:
-/// ```dart
-/// final trace = PerformanceService().startTrace('load_freelancers');
-/// await doSomething();
-/// trace.stop();
-/// ```
 class PerformanceService {
   static final PerformanceService _instance = PerformanceService._internal();
   factory PerformanceService() => _instance;
@@ -37,41 +27,56 @@ class PerformanceService {
           e.toString().substring(0, 100.clamp(0, e.toString().length)));
       rethrow;
     } finally {
-      trace.stop();
+      await trace.stop();
     }
   }
 }
 
-/// A lightweight performance trace that logs timing data.
+/// A lightweight performance trace that logs timing data and sends it to Firebase.
 class AppTrace {
   final String name;
+  Trace? _firebaseTrace;
   final Stopwatch _stopwatch = Stopwatch();
   final Map<String, String> _attributes = {};
   final Map<String, int> _metrics = {};
 
   AppTrace._(this.name);
 
-  void _start() {
+  Future<void> _start() async {
     _stopwatch.start();
     debugPrint('⏱️ [Perf] Trace "$name" started');
+    try {
+      _firebaseTrace = FirebasePerformance.instance.newTrace(name);
+      await _firebaseTrace?.start();
+    } catch (e) {
+      debugPrint('Perf Init Error: $e');
+    }
   }
 
   /// Add a string attribute to this trace
   void putAttribute(String key, String value) {
     _attributes[key] = value;
+    _firebaseTrace?.putAttribute(key, value);
   }
 
   /// Add a numeric metric to this trace
   void incrementMetric(String name, int value) {
     _metrics[name] = (_metrics[name] ?? 0) + value;
+    _firebaseTrace?.incrementMetric(name, value);
   }
 
   /// Stop the trace and log the results
-  void stop() {
+  Future<void> stop() async {
     _stopwatch.stop();
     final durationMs = _stopwatch.elapsedMilliseconds;
 
-    // Log performance data
+    try {
+      await _firebaseTrace?.stop();
+    } catch (e) {
+      debugPrint('Perf Stop Error: $e');
+    }
+
+    // Log performance data locally
     final buffer =
         StringBuffer('⏱️ [Perf] "$name" completed in ${durationMs}ms');
     if (_attributes.isNotEmpty) {
@@ -81,7 +86,6 @@ class AppTrace {
       buffer.write(' | metrics: $_metrics');
     }
 
-    // Warn if operation took too long
     if (durationMs > 3000) {
       debugPrint('⚠️ [Perf] SLOW: $buffer');
     } else {

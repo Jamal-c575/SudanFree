@@ -1,11 +1,9 @@
 import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../models/request_model.dart';
-import '../../models/user_model.dart';
 import '../../services/firestore_service.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/locale_provider.dart';
@@ -13,8 +11,11 @@ import '../../core/constants/app_colors.dart';
 import '../../widgets/common/glass_container.dart';
 import '../../widgets/buttons/smart_draggable_fab.dart';
 import '../../services/smart_guide_service.dart';
+import '../../services/ai_guide_service.dart';
 import 'add_request_screen.dart';
 import 'request_details_screen.dart';
+import 'package:sudan_free/l10n/generated/app_localizations.dart';
+import '../home/home_screen.dart'; // To access BottomBarVisibilityProvider
 
 class RequestsScreen extends StatefulWidget {
   const RequestsScreen({super.key});
@@ -61,12 +62,13 @@ class _RequestsScreenState extends State<RequestsScreen> {
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      SmartGuideService.showMicroTip(
+      final authProvider = context.read<AuthProvider>();
+      final userName = authProvider.user?.name ?? 'عزيزي';
+
+      AiGuideService.showPageGuide(
         context,
-        messageAr: 'مرحباً بك في العروض المؤقتة! تصفح أفضل الصفقات التي تنتهي قريباً ⏳',
-        messageEn: 'Welcome to the Marketplace! Browse the best deals expiring soon ⏳',
-        tipId: 'marketplace_first_visit',
-        icon: Icons.storefront_rounded,
+        'الطلبات والمناقصات',
+        userName,
       );
     });
   }
@@ -91,7 +93,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: Text(locale == 'ar' ? 'عروض مؤقتة' : 'Marketplace', style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(AppLocalizations.of(context)!.marketplace, style: const TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.transparent,
         elevation: 0,
         flexibleSpace: ClipRect(
@@ -118,75 +120,83 @@ class _RequestsScreenState extends State<RequestsScreen> {
             ),
             child: SafeArea(
               bottom: false,
-              child: Column(
-                children: [
-                  // Search & Filter Section
-                  _buildTopSection(isDark, locale),
-                  
-                  // Feed Section
-                  Expanded(
-                    child: StreamBuilder<List<RequestModel>>(
-                      stream: _requestsStream,
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
-                          return _buildShimmerGrid(isDark);
-                        }
+              child: NestedScrollView(
+                floatHeaderSlivers: true,
+                headerSliverBuilder: (context, innerBoxIsScrolled) {
+                  return [
+                    SliverAppBar(
+                      floating: true,
+                      snap: true, // Appears instantly when scrolling up
+                      backgroundColor: Colors.transparent,
+                      elevation: 0,
+                      automaticallyImplyLeading: false,
+                      toolbarHeight: 125, // Height of _buildTopSection
+                      flexibleSpace: FlexibleSpaceBar(
+                        background: _buildTopSection(isDark, locale),
+                      ),
+                    ),
+                  ];
+                },
+                body: StreamBuilder<List<RequestModel>>(
+                  stream: _requestsStream,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return _buildShimmerGrid(isDark);
+                    }
 
-                        var posts = snapshot.data ?? [];
+                    var posts = snapshot.data ?? [];
 
-                        if (_selectedCategoryKey != 'All') {
-                          posts = posts.where((p) => (p.category ?? 'Services') == _selectedCategoryKey).toList();
-                        }
+                    if (_selectedCategoryKey != 'All') {
+                      posts = posts.where((p) => (p.category ?? 'Services') == _selectedCategoryKey).toList();
+                    }
 
-                        if (_searchQuery.isNotEmpty) {
-                          final q = _searchQuery.toLowerCase();
-                          posts = posts.where((p) =>
-                            p.text.toLowerCase().contains(q) ||
-                            ((p.category ?? 'Services').toLowerCase().contains(q)) ||
-                            (p.clientName.toLowerCase().contains(q))
-                          ).toList();
-                        }
+                    if (_searchQuery.isNotEmpty) {
+                      final q = _searchQuery.toLowerCase();
+                      posts = posts.where((p) =>
+                        p.text.toLowerCase().contains(q) ||
+                        ((p.category ?? 'Services').toLowerCase().contains(q)) ||
+                        (p.clientName.toLowerCase().contains(q))
+                      ).toList();
+                    }
 
-                        if (posts.isEmpty) {
-                          return Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.storefront_outlined, size: 80, color: Colors.grey[300]),
-                                const SizedBox(height: 16),
-                                Text(
-                                  locale == 'ar' ? 'لا توجد عروض حالياً' : 'No active offers right now',
-                                  style: TextStyle(color: Colors.grey[500], fontSize: 18, fontWeight: FontWeight.bold),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  locale == 'ar' ? 'كن أول من ينشر عرضاً!' : 'Be the first to post an offer!',
-                                  style: TextStyle(color: Colors.grey[400], fontSize: 14),
-                                ),
-                              ],
+                    if (posts.isEmpty) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.storefront_outlined, size: 80, color: Colors.grey[300]),
+                            const SizedBox(height: 16),
+                            Text(
+                              AppLocalizations.of(context)!.noActiveOffersRightNow,
+                              style: TextStyle(color: Colors.grey[500], fontSize: 18, fontWeight: FontWeight.bold),
                             ),
-                          );
-                        }
+                            const SizedBox(height: 8),
+                            Text(
+                              AppLocalizations.of(context)!.beTheFirstToPostAn,
+                              style: TextStyle(color: Colors.grey[400], fontSize: 14),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
 
-                        return ListView.builder(
-                          padding: EdgeInsets.fromLTRB(16, 8, 16, navBarTop + 20),
-                          itemCount: posts.length,
-                          itemBuilder: (context, index) {
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 16),
-                              child: MarketplaceItemCard(
-                                post: posts[index],
-                                locale: locale,
-                                currentUserId: currentUser?.id,
-                                now: _now,
-                              ),
-                            );
-                          },
+                    return ListView.builder(
+                      padding: EdgeInsets.fromLTRB(16, 8, 16, navBarTop + 20),
+                      itemCount: posts.length,
+                      itemBuilder: (context, index) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: MarketplaceItemCard(
+                            post: posts[index],
+                            locale: locale,
+                            currentUserId: currentUser?.id,
+                            now: _now,
+                          ),
                         );
                       },
-                    ),
-                  ),
-                ],
+                    );
+                  },
+                ),
               ),
             ),
           ),
@@ -196,16 +206,14 @@ class _RequestsScreenState extends State<RequestsScreen> {
             SmartDraggableFab(
               heroTag: 'add_market_post',
               icon: Icons.add_circle_outline,
-              label: locale == 'ar' ? 'نشر عرض +' : 'Post Offer +',
+              label: AppLocalizations.of(context)!.postOffer,
               locale: locale,
               initialBottom: MediaQuery.of(context).padding.bottom + 82.0,
-              onPressed: () {
-                 showModalBottomSheet(
-                    context: context,
-                    isScrollControlled: true,
-                    backgroundColor: Colors.transparent,
-                    builder: (_) => AddRequestBottomSheet(user: currentUser),
-                  );
+              openBuilder: (context, openContainer) {
+                return Scaffold(
+                  backgroundColor: AppColors.background,
+                  body: AddRequestBottomSheet(user: currentUser),
+                );
               },
             ),
         ],
@@ -216,34 +224,53 @@ class _RequestsScreenState extends State<RequestsScreen> {
   Widget _buildTopSection(bool isDark, String locale) {
     return Column(
       children: [
-        // ✅ FIX #3: Fully working search field
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-          child: GlassContainer(
-            borderRadius: BorderRadius.circular(24),
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            blur: 10,
-            color: isDark ? Colors.black26 : Colors.white54,
-            child: TextField(
-              controller: _searchController,
-              onChanged: (val) => setState(() => _searchQuery = val.trim()),
-              decoration: InputDecoration(
-                border: InputBorder.none,
-                hintText: locale == 'ar' ? 'ابحث في العروض...' : 'Search offers...',
-                icon: const Icon(Icons.search, color: AppColors.primary),
-                suffixIcon: _searchQuery.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear, size: 18),
-                        onPressed: () {
-                          _searchController.clear();
-                          setState(() => _searchQuery = '');
-                        },
-                      )
-                    : null,
+        // ✅ FIX #3: Fully working search field with visibility animation
+        Consumer<BottomBarVisibilityProvider?>(
+          builder: (context, visibilityProvider, child) {
+            final isVisible = visibilityProvider?.isVisible ?? true;
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              height: isVisible ? 64 : 0,
+              curve: Curves.easeOutCubic,
+              clipBehavior: Clip.hardEdge,
+              decoration: const BoxDecoration(),
+              child: SingleChildScrollView(
+                physics: const NeverScrollableScrollPhysics(),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16.0, vertical: 8.0),
+                  child: GlassContainer(
+                    borderRadius: BorderRadius.circular(24),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    blur: 10,
+                    color: isDark ? Colors.black26 : Colors.white54,
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: (val) =>
+                          setState(() => _searchQuery = val.trim()),
+                      decoration: InputDecoration(
+                        border: InputBorder.none,
+                        hintText: AppLocalizations.of(context)!.searchOffers,
+                        icon:
+                            const Icon(Icons.search, color: AppColors.primary),
+                        suffixIcon: _searchQuery.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear, size: 18),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  setState(() => _searchQuery = '');
+                                },
+                              )
+                            : null,
+                      ),
+                    ),
+                  ),
+                ),
               ),
-            ),
-          ),
+            );
+          },
         ),
+        const SizedBox(height: 16),
         // ✅ FIX #3: Category filter uses English key internally
         SizedBox(
           height: 50,
@@ -325,19 +352,17 @@ class MarketplaceItemCard extends StatelessWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(locale == 'ar' ? 'حذف العرض' : 'Delete Offer'),
-        content: Text(locale == 'ar'
-            ? 'هل أنت متأكد من حذف هذا العرض نهائياً؟'
-            : 'Are you sure you want to delete this offer permanently?'),
+        title: Text(AppLocalizations.of(context)!.deleteOffer),
+        content: Text(AppLocalizations.of(context)!.areYouSureYouWantTo4),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text(locale == 'ar' ? 'إلغاء' : 'Cancel'),
+            child: Text(AppLocalizations.of(context)!.cancel),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: Text(locale == 'ar' ? 'حذف' : 'Delete',
+            child: Text(AppLocalizations.of(context)!.delete,
                 style: const TextStyle(color: Colors.white)),
           ),
         ],
@@ -350,7 +375,7 @@ class MarketplaceItemCard extends StatelessWidget {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(locale == 'ar' ? 'تم الحذف بنجاح' : 'Deleted successfully'),
+              content: Text(AppLocalizations.of(context)!.deletedSuccessfully),
               backgroundColor: AppColors.success,
             ),
           );
@@ -530,7 +555,7 @@ class MarketplaceItemCard extends StatelessWidget {
                             borderRadius: BorderRadius.circular(16),
                             color: AppColors.primary,
                             child: Text(
-                              locale == 'ar' ? 'التفاصيل' : 'Details',
+                              AppLocalizations.of(context)!.details,
                               style: const TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold,

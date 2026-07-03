@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/constants/app_colors.dart';
+import '../../utils/animation_utils.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -8,61 +11,16 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen>
-    with TickerProviderStateMixin {
-  late AnimationController _entryController;
-  late AnimationController _shakeController;
-  late AnimationController _breathingController;
-
-  late Animation<double> _opacityAnimation;
-
+class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-
-    // Breathing background (10 seconds)
-    _breathingController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 10),
-    )..repeat(reverse: true);
-
-    // Entry animation
-    _entryController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1400),
-    );
-
-    // Shake (Handshake) animation
-    _shakeController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 500),
-    );
-
-    // Animations kept for potential future use in HandPainter
-    // Right hand, left hand, vibration, glow, and shake animations
-    // are defined but only _opacityAnimation is used in current build.
-
-    _opacityAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-          parent: _entryController,
-          curve: const Interval(0.0, 0.5, curve: Curves.easeIn)),
-    );
-
     _startAnimationSequence();
   }
 
   Future<void> _startAnimationSequence() async {
-    await _entryController.forward();
-    // Simulate loading completion handshake squeeze
-    _shakeController.repeat(reverse: true);
-  }
-
-  @override
-  void dispose() {
-    _entryController.dispose();
-    _shakeController.dispose();
-    _breathingController.dispose();
-    super.dispose();
+    await Future.delayed(const Duration(milliseconds: 1400));
+    HapticFeedback.lightImpact();
   }
 
   @override
@@ -73,15 +31,15 @@ class _SplashScreenState extends State<SplashScreen>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            FadeTransition(
-              opacity: _opacityAnimation,
-              child: Image.asset(
-                'assets/images/static_handshake.png',
-                width: 150,
-                height: 150,
-                color: Colors.white,
-              ),
-            ),
+            Image.asset(
+              'assets/images/static_handshake.png',
+              width: 150,
+              height: 150,
+              color: Colors.white,
+            ).animate()
+              .fade(duration: const Duration(milliseconds: 800))
+              .scale(begin: const Offset(0.8, 0.8), curve: AnimationUtils.springCurve)
+              .shake(hz: 2, curve: Curves.easeInOut, delay: const Duration(milliseconds: 800)),
             const SizedBox(height: 40),
             const Text(
               'سودان فري',
@@ -97,9 +55,9 @@ class _SplashScreenState extends State<SplashScreen>
                       blurRadius: 10),
                 ],
               ),
-            ),
+            ).animate().fade(delay: const Duration(milliseconds: 400)).slideY(begin: 0.2),
             const SizedBox(height: 8),
-            Text(
+            const Text(
               'SUDAN FREE',
               style: TextStyle(
                 fontSize: 16,
@@ -107,7 +65,7 @@ class _SplashScreenState extends State<SplashScreen>
                 color: Colors.white70,
                 letterSpacing: 4.0,
               ),
-            ),
+            ).animate().fade(delay: const Duration(milliseconds: 600)).slideY(begin: 0.2),
           ],
         ),
       ),

@@ -144,16 +144,7 @@ class JobProvider extends ChangeNotifier {
         status: JobStatus.inProgress,
         assignedFreelancerId: freelancerId,
         assignedFreelancerName: freelancerName,
-        milestones: [
-          MilestoneModel(
-            id: DateTime.now().millisecondsSinceEpoch.toString(),
-            title: 'الدفعة الأولى (مقدم الاتفاق)',
-            amount: price,
-            isPaid: false,
-            isCompleted: false,
-            isConfirmed: false,
-          )
-        ],
+        milestones: const [],
         createdAt: now,
         updatedAt: now,
       );

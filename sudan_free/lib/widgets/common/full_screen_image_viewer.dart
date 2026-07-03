@@ -5,11 +5,13 @@ import '../../services/cloudinary_service.dart';
 class FullScreenImageViewer extends StatefulWidget {
   final List<String> imageUrls;
   final int initialIndex;
+  final String? heroTagPrefix;
 
   const FullScreenImageViewer({
     super.key,
     required this.imageUrls,
     this.initialIndex = 0,
+    this.heroTagPrefix,
   });
 
   @override
@@ -61,9 +63,11 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
                 minScale: 0.5,
                 maxScale: 4.0,
                 child: Hero(
-                  tag: index == widget.initialIndex
-                      ? 'hero_image_$index'
-                      : 'no_hero_$index',
+                  tag: widget.heroTagPrefix != null
+                      ? '${widget.heroTagPrefix}_$index'
+                      : (index == widget.initialIndex
+                          ? 'hero_image_$index'
+                          : 'no_hero_$index'),
                   child: CachedNetworkImage(
                     imageUrl: CloudinaryService.getOptimizedUrl(
                         widget.imageUrls[index],

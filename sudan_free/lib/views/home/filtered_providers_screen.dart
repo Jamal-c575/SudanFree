@@ -6,6 +6,7 @@ import '../../providers/locale_provider.dart';
 import '../../models/user_model.dart';
 import '../../core/constants/app_colors.dart';
 import '../../widgets/cards/freelancer_card.dart';
+import 'package:sudan_free/l10n/generated/app_localizations.dart';
 
 enum FilterType {
   nearYou,
@@ -171,7 +172,9 @@ class _FilteredProvidersScreenState extends State<FilteredProvidersScreen> {
             if (u.state == currentUser!.state) score += 1;
             if (u.locality != null &&
                 currentUser.locality != null &&
-                u.locality == currentUser.locality) score += 2;
+                u.locality == currentUser.locality) {
+              score += 2;
+            }
             if (u.neighborhood != null && currentUser.neighborhood != null) {
               final uNeigh = u.neighborhood!.toLowerCase().replaceAll(' ', '');
               final cNeigh =
@@ -345,7 +348,9 @@ class _FilteredProvidersScreenState extends State<FilteredProvidersScreen> {
                 if (u.state == currentUser!.state) score += 1;
                 if (u.locality != null &&
                     currentUser.locality != null &&
-                    u.locality == currentUser.locality) score += 2;
+                    u.locality == currentUser.locality) {
+                  score += 2;
+                }
                 if (u.neighborhood != null &&
                     currentUser.neighborhood != null) {
                   final uNeigh =
@@ -410,7 +415,7 @@ class _FilteredProvidersScreenState extends State<FilteredProvidersScreen> {
           : _displayList.isEmpty
               ? Center(
                   child: Text(
-                    locale == 'ar' ? 'لا توجد نتائج' : 'No results found',
+                    AppLocalizations.of(context)!.noResultsFound,
                     style: TextStyle(color: AppColors.softGrey, fontSize: 16),
                   ),
                 )

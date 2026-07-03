@@ -189,6 +189,40 @@ class CacheService {
 
   // ==================== USER PROFILE CACHE ====================
 
+  // ==================== RECOMMENDATIONS CACHE ====================
+
+  Future<void> cacheRecommendations(List<Map<String, dynamic>> data) async {
+    await _ensureReady();
+    await _dataBox?.put('recommendations_list', data);
+    await _dataBox?.put('recommendations_cached_at', DateTime.now().toIso8601String());
+  }
+
+  List<Map<String, dynamic>>? getCachedRecommendations() {
+    final data = _dataBox?.get('recommendations_list');
+    if (data == null) return null;
+    if (data is List) {
+      try {
+        return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  bool isRecommendationsCacheValid([Duration duration = const Duration(minutes: 30)]) {
+    final cachedAtString = _dataBox?.get('recommendations_cached_at');
+    if (cachedAtString == null) return false;
+    try {
+      final cachedAt = DateTime.parse(cachedAtString);
+      return DateTime.now().difference(cachedAt) < duration;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // ==================== USER PROFILE CACHE ====================
+
   Future<void> cacheUserProfile(
       String userId, Map<String, dynamic> user) async {
     await _ensureReady();

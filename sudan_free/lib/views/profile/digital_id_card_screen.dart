@@ -16,6 +16,7 @@ import 'package:provider/provider.dart';
 import '../../core/utils/job_titles_utils.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'dart:math' as math;
+import 'package:sudan_free/l10n/generated/app_localizations.dart';
 
 /// شاشة بطاقة الهوية الرقمية للحرفي/المتجر
 class DigitalIdCardScreen extends StatefulWidget {
@@ -76,7 +77,7 @@ class _DigitalIdCardScreenState extends State<DigitalIdCardScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFF0B1120),
       appBar: AppBar(
-        title: Text(isAr ? 'بطاقة الهوية الرقمية' : 'Digital ID Card'),
+        title: Text(AppLocalizations.of(context)!.digitalIdCard),
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
@@ -89,7 +90,7 @@ class _DigitalIdCardScreenState extends State<DigitalIdCardScreen> {
                     child: CircularProgressIndicator(
                         strokeWidth: 2, color: Colors.white))
                 : const Icon(Icons.share),
-            tooltip: isAr ? 'مشاركة البطاقة' : 'Share Card',
+            tooltip: AppLocalizations.of(context)!.shareCard,
           ),
         ],
       ),
@@ -191,7 +192,7 @@ class _DigitalIdCardScreenState extends State<DigitalIdCardScreen> {
                 ),
                 const Spacer(),
                 Text(
-                  isAr ? 'هوية رقمية' : 'DIGITAL ID',
+                  AppLocalizations.of(context)!.digitalId,
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.5),
                     fontSize: 10,
@@ -270,7 +271,7 @@ class _DigitalIdCardScreenState extends State<DigitalIdCardScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        user.getRoleDisplayName(isAr ? 'ar' : 'en'),
+                        user.getRoleDisplayName(AppLocalizations.of(context)!.en),
                         style: TextStyle(
                           color: AppColors.sudanGold.withValues(alpha: 0.8),
                           fontSize: 13,
@@ -281,7 +282,7 @@ class _DigitalIdCardScreenState extends State<DigitalIdCardScreen> {
                         const SizedBox(height: 2),
                         Text(
                           JobTitlesUtils.getLocalizedTitle(
-                              user.jobTitle!, isAr ? 'ar' : 'en'),
+                              user.jobTitle!, AppLocalizations.of(context)!.en),
                           style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.6),
                             fontSize: 12,
@@ -311,21 +312,21 @@ class _DigitalIdCardScreenState extends State<DigitalIdCardScreen> {
                 _buildStat(
                   icon: Icons.star_rounded,
                   value: user.rating.toStringAsFixed(1),
-                  label: isAr ? 'التقييم' : 'Rating',
+                  label: AppLocalizations.of(context)!.rating,
                   color: Colors.amber,
                 ),
                 _buildStatDivider(),
                 _buildStat(
                   icon: Icons.work_history,
                   value: '${user.completedJobs}',
-                  label: isAr ? 'أعمال' : 'Jobs',
+                  label: AppLocalizations.of(context)!.jobs,
                   color: Colors.blue,
                 ),
                 _buildStatDivider(),
                 _buildStat(
                   icon: Icons.reviews,
                   value: '${user.reviewsCount}',
-                  label: isAr ? 'تقييمات' : 'Reviews',
+                  label: AppLocalizations.of(context)!.reviews,
                   color: Colors.green,
                 ),
               ],
@@ -340,7 +341,7 @@ class _DigitalIdCardScreenState extends State<DigitalIdCardScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    isAr ? 'تصنيف المتجر' : 'Shop Category',
+                    AppLocalizations.of(context)!.shopCategory1,
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.5),
                       fontSize: 10,
@@ -359,7 +360,7 @@ class _DigitalIdCardScreenState extends State<DigitalIdCardScreen> {
                           color: AppColors.primary.withValues(alpha: 0.4)),
                     ),
                     child: Text(
-                      user.getShopCategoryName(isAr ? 'ar' : 'en'),
+                      user.getShopCategoryName(AppLocalizations.of(context)!.en),
                       style: TextStyle(
                           color: AppColors.primaryLight,
                           fontSize: 12,
@@ -376,7 +377,7 @@ class _DigitalIdCardScreenState extends State<DigitalIdCardScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    isAr ? 'المهارات الأساسية' : 'Core Skills',
+                    AppLocalizations.of(context)!.coreSkills,
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.5),
                       fontSize: 10,
@@ -402,7 +403,7 @@ class _DigitalIdCardScreenState extends State<DigitalIdCardScreen> {
                               ),
                               child: Text(
                                 JobTitlesUtils.getLocalizedTitle(
-                                    skill, isAr ? 'ar' : 'en'),
+                                    skill, AppLocalizations.of(context)!.en),
                                 style: TextStyle(
                                     color: AppColors.primaryLight,
                                     fontSize: 11,
@@ -498,15 +499,13 @@ class _DigitalIdCardScreenState extends State<DigitalIdCardScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
-            isAr ? 'امسح الرمز للتواصل معي' : 'Scan to connect with me',
+            AppLocalizations.of(context)!.scanToConnectWithMe,
             style: const TextStyle(
                 color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Text(
-            isAr
-                ? 'إذا لم يكن لديك التطبيق، سيتم توجيهك لتحميله!'
-                : 'If you do not have the app, you will be redirected to download it!',
+            AppLocalizations.of(context)!.ifYouDoNotHaveThe,
             textAlign: TextAlign.center,
             style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.6), fontSize: 12),
@@ -534,7 +533,7 @@ class _DigitalIdCardScreenState extends State<DigitalIdCardScreen> {
                   color: Colors.white.withValues(alpha: 0.5), size: 16),
               const SizedBox(width: 8),
               Text(
-                isAr ? 'اضغط للعودة للهوية' : 'Tap to return to ID',
+                AppLocalizations.of(context)!.tapToReturnToId,
                 style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.5), fontSize: 12),
               ),

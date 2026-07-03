@@ -19,6 +19,9 @@ import 'squad_dashboard_screen.dart';
 import '../../widgets/common/glass_container.dart';
 import '../../../core/utils/job_titles_utils.dart';
 
+import "package:sudan_free/providers/favorites_provider.dart";
+import 'package:sudan_free/l10n/generated/app_localizations.dart';
+
 class SquadProfileScreen extends StatefulWidget {
   final SquadModel squad;
 
@@ -106,9 +109,9 @@ class _SquadProfileScreenState extends State<SquadProfileScreen>
                               color: isFavorite ? Colors.red : Colors.white,
                             ),
                             tooltip:
-                                isAr ? 'إضافة للمفضلة' : 'Add to Favorites',
+                                AppLocalizations.of(context)!.addToFavorites,
                             onPressed: () {
-                              auth.toggleFavoriteSquad(widget.squad.id);
+                              context.read<FavoritesProvider>().toggleFavoriteSquad(widget.squad.id);
                             },
                           ),
 
@@ -123,9 +126,7 @@ class _SquadProfileScreenState extends State<SquadProfileScreen>
                             child: IconButton(
                               icon: const Icon(Icons.dashboard,
                                   color: Colors.white),
-                              tooltip: isAr
-                                  ? 'لوحة تحكم المجموعة'
-                                  : 'Squad Dashboard',
+                              tooltip: AppLocalizations.of(context)!.squadDashboard,
                               onPressed: () {
                                 Navigator.push(
                                     context,
@@ -212,8 +213,8 @@ class _SquadProfileScreenState extends State<SquadProfileScreen>
                   tabs: [
                     Tab(
                         height: 28,
-                        text: isAr ? 'معلومات المجموعة' : 'Squad Info'),
-                    Tab(height: 28, text: isAr ? 'معرض الأعمال' : 'Portfolio'),
+                        text: AppLocalizations.of(context)!.squadInfo),
+                    Tab(height: 28, text: AppLocalizations.of(context)!.portfolio),
                   ],
                 ),
               ),
@@ -237,15 +238,15 @@ class _SquadProfileScreenState extends State<SquadProfileScreen>
                         _buildStatColumn(
                             Icons.group,
                             widget.squad.memberIds.length.toString(),
-                            isAr ? 'أعضاء' : 'Members'),
+                            AppLocalizations.of(context)!.members),
                         _buildStatColumn(
                             Icons.star,
                             widget.squad.rating.toStringAsFixed(1),
-                            isAr ? 'التقييم' : 'Rating'),
+                            AppLocalizations.of(context)!.rating),
                         _buildStatColumn(
                             Icons.task_alt,
                             widget.squad.completedJobs.toString(),
-                            isAr ? 'مشاريع' : 'Jobs'),
+                            AppLocalizations.of(context)!.jobs),
                       ],
                     ),
                     const SizedBox(height: 24),
@@ -310,7 +311,7 @@ class _SquadProfileScreenState extends State<SquadProfileScreen>
 
                     // Squad Bio/Description
                     Text(
-                      isAr ? 'عن الفريق' : 'About Squad',
+                      AppLocalizations.of(context)!.aboutSquad,
                       style: const TextStyle(
                           fontSize: 18, fontWeight: FontWeight.bold),
                     ),
@@ -323,7 +324,7 @@ class _SquadProfileScreenState extends State<SquadProfileScreen>
 
                     // Combined Skills
                     Text(
-                      isAr ? 'الخدمات والتخصصات' : 'Services & Skills',
+                      AppLocalizations.of(context)!.servicesSkills,
                       style: const TextStyle(
                           fontSize: 18, fontWeight: FontWeight.bold),
                     ),
@@ -364,9 +365,7 @@ class _SquadProfileScreenState extends State<SquadProfileScreen>
 
                           if (memberSkills.isEmpty) {
                             return Text(
-                                isAr
-                                    ? 'لم يتم تحديد مهارات بعد'
-                                    : 'No skills defined yet',
+                                AppLocalizations.of(context)!.noSkillsDefinedYet,
                                 style: TextStyle(color: Colors.grey[600]));
                           }
 
@@ -397,7 +396,7 @@ class _SquadProfileScreenState extends State<SquadProfileScreen>
                             color: AppColors.primary),
                         const SizedBox(width: 8),
                         Text(
-                          isAr ? 'أعضاء الفريق' : 'Team Members',
+                          AppLocalizations.of(context)!.teamMembers,
                           style: const TextStyle(
                               fontSize: 18, fontWeight: FontWeight.bold),
                         ),
@@ -425,24 +424,20 @@ class _SquadProfileScreenState extends State<SquadProfileScreen>
                                     final confirm = await showDialog<bool>(
                                       context: context,
                                       builder: (ctx) => AlertDialog(
-                                        title: Text(isAr
-                                            ? 'طرد العضو'
-                                            : 'Remove Member'),
-                                        content: Text(isAr
-                                            ? 'هل أنت متأكد من طرد هذا العضو من المجموعة؟'
-                                            : 'Are you sure you want to remove this member?'),
+                                        title: Text(AppLocalizations.of(context)!.removeMember),
+                                        content: Text(AppLocalizations.of(context)!.areYouSureYouWantTo1),
                                         actions: [
                                           TextButton(
                                               onPressed: () =>
                                                   Navigator.pop(ctx, false),
                                               child: Text(
-                                                  isAr ? 'إلغاء' : 'Cancel')),
+                                                  AppLocalizations.of(context)!.cancel)),
                                           ElevatedButton(
                                             onPressed: () =>
                                                 Navigator.pop(ctx, true),
                                             style: ElevatedButton.styleFrom(
                                                 backgroundColor: Colors.red),
-                                            child: Text(isAr ? 'طرد' : 'Remove',
+                                            child: Text(AppLocalizations.of(context)!.remove,
                                                 style: const TextStyle(
                                                     color: Colors.white)),
                                           ),
@@ -457,12 +452,21 @@ class _SquadProfileScreenState extends State<SquadProfileScreen>
                                         'memberIds':
                                             FieldValue.arrayRemove([memberId])
                                       });
+
+                                      // Send notification to the removed member
+                                      await FirebaseFirestore.instance.collection('notifications').add({
+                                        'userId': memberId,
+                                        'title': isAr ? 'تم إزالتك من المجموعة' : 'Removed from Group',
+                                        'message': isAr ? 'تم إزالتك من المجموعة ${widget.squad.name} بواسطة القائد.' : 'You have been removed from the group ${widget.squad.name} by the leader.',
+                                        'type': 'squad_kick',
+                                        'relatedId': widget.squad.id,
+                                        'isRead': false,
+                                        'createdAt': FieldValue.serverTimestamp(),
+                                      });
                                       if (context.mounted) {
                                         ScaffoldMessenger.of(context)
                                             .showSnackBar(SnackBar(
-                                                content: Text(isAr
-                                                    ? 'تم طرد العضو بنجاح'
-                                                    : 'Member removed successfully'),
+                                                content: Text(AppLocalizations.of(context)!.memberRemovedSuccessfully),
                                                 backgroundColor: Colors.green));
                                       }
                                     }
@@ -501,7 +505,7 @@ class _SquadProfileScreenState extends State<SquadProfileScreen>
                 child: ElevatedButton.icon(
                   icon: const Icon(Icons.handshake),
                   label: Text(
-                    isAr ? 'طلب تعاقد مع الفريق' : 'Hire Squad',
+                    AppLocalizations.of(context)!.hireSquad,
                     style: const TextStyle(
                         fontSize: 16, fontWeight: FontWeight.bold),
                   ),
@@ -518,9 +522,7 @@ class _SquadProfileScreenState extends State<SquadProfileScreen>
 
                     if (widget.squad.leaderId == currentUser.id) {
                       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                          content: Text(isAr
-                              ? 'أنت قائد هذه المجموعة'
-                              : 'You are the leader of this squad')));
+                          content: Text(AppLocalizations.of(context)!.youAreTheLeaderOfThis)));
                       return;
                     }
 
@@ -668,8 +670,8 @@ class _SquadProfileScreenState extends State<SquadProfileScreen>
                 const SizedBox(height: 2),
                 Text(
                   isLeader
-                      ? (isAr ? 'القائد' : 'Leader')
-                      : (isAr ? 'عضو' : 'Member'),
+                      ? (AppLocalizations.of(context)!.leader)
+                      : (AppLocalizations.of(context)!.member),
                   style: TextStyle(
                     color: isLeader ? AppColors.sudanGold : Colors.grey[700],
                     fontSize: 11,
@@ -702,9 +704,7 @@ class _SquadProfileScreenState extends State<SquadProfileScreen>
                       size: 64, color: Colors.grey[400]),
                   const SizedBox(height: 16),
                   Text(
-                    locale == 'ar'
-                        ? 'لا توجد مشاريع في المعرض بعد'
-                        : 'No portfolio projects yet',
+                    AppLocalizations.of(context)!.noPortfolioProjectsYet,
                     style: TextStyle(color: Colors.grey[600]),
                   ),
                 ],
@@ -715,17 +715,16 @@ class _SquadProfileScreenState extends State<SquadProfileScreen>
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Text(
-                locale == 'ar'
-                    ? 'خطأ في تحميل المعرض المهني.'
-                    : 'Error loading portfolio.',
+                AppLocalizations.of(context)!.errorLoadingPortfolio,
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: Colors.red),
               ),
             ),
           );
         }
-        if (snapshot.connectionState == ConnectionState.waiting)
+        if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
+        }
         final projects = snapshot.data ?? [];
 
         if (projects.isEmpty) {
@@ -737,9 +736,7 @@ class _SquadProfileScreenState extends State<SquadProfileScreen>
                     size: 64, color: Colors.grey[400]),
                 const SizedBox(height: 16),
                 Text(
-                  locale == 'ar'
-                      ? 'لا توجد مشاريع في المعرض بعد'
-                      : 'No portfolio projects yet',
+                  AppLocalizations.of(context)!.noPortfolioProjectsYet,
                   style: TextStyle(color: Colors.grey[600]),
                 ),
               ],
@@ -888,7 +885,7 @@ class _SquadProfileScreenState extends State<SquadProfileScreen>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    isAr ? 'إدارة الأعضاء' : 'Manage Members',
+                    AppLocalizations.of(context)!.manageMembers,
                     style: const TextStyle(
                         fontSize: 20, fontWeight: FontWeight.bold),
                   ),
@@ -896,9 +893,7 @@ class _SquadProfileScreenState extends State<SquadProfileScreen>
                   if (members.isEmpty)
                     Padding(
                       padding: const EdgeInsets.all(16.0),
-                      child: Text(isAr
-                          ? 'لا يوجد أعضاء في المجموعة'
-                          : 'No members in the squad'),
+                      child: Text(AppLocalizations.of(context)!.noMembersInTheSquad),
                     )
                   else
                     FutureBuilder<List<UserModel>>(
@@ -911,7 +906,7 @@ class _SquadProfileScreenState extends State<SquadProfileScreen>
                         }
                         if (!snapshot.hasData || snapshot.data!.isEmpty) {
                           return Text(
-                              isAr ? 'لا يوجد أعضاء' : 'No members found');
+                              AppLocalizations.of(context)!.noMembersFound);
                         }
                         final users = snapshot.data!;
                         return ListView.builder(
@@ -930,7 +925,7 @@ class _SquadProfileScreenState extends State<SquadProfileScreen>
                                     : null,
                               ),
                               title: Text(u.name),
-                              subtitle: Text(u.jobTitle != null ? JobTitlesUtils.getLocalizedTitle(u.jobTitle!, isAr ? 'ar' : 'en') : ''),
+                              subtitle: Text(u.jobTitle != null ? JobTitlesUtils.getLocalizedTitle(u.jobTitle!, AppLocalizations.of(context)!.en) : ''),
                               trailing: PopupMenuButton<String>(
                                 onSelected: (action) async {
                                   if (action == 'kick') {
@@ -938,7 +933,7 @@ class _SquadProfileScreenState extends State<SquadProfileScreen>
                                       context: context,
                                       builder: (c) => AlertDialog(
                                         title: Text(
-                                            isAr ? 'طرد العضو' : 'Kick Member'),
+                                            AppLocalizations.of(context)!.kickMember),
                                         content: Text(isAr
                                             ? 'هل أنت متأكد من طرد ${u.name}؟'
                                             : 'Are you sure you want to kick ${u.name}?'),
@@ -947,13 +942,13 @@ class _SquadProfileScreenState extends State<SquadProfileScreen>
                                               onPressed: () =>
                                                   Navigator.pop(c, false),
                                               child: Text(
-                                                  isAr ? 'إلغاء' : 'Cancel')),
+                                                  AppLocalizations.of(context)!.cancel)),
                                           ElevatedButton(
                                             onPressed: () =>
                                                 Navigator.pop(c, true),
                                             style: ElevatedButton.styleFrom(
                                                 backgroundColor: Colors.red),
-                                            child: Text(isAr ? 'طرد' : 'Kick',
+                                            child: Text(AppLocalizations.of(context)!.kick,
                                                 style: const TextStyle(
                                                     color: Colors.white)),
                                           ),
@@ -976,26 +971,23 @@ class _SquadProfileScreenState extends State<SquadProfileScreen>
                                           setModalState(() {});
                                           ScaffoldMessenger.of(context)
                                               .showSnackBar(SnackBar(
-                                                  content: Text(isAr
-                                                      ? 'تم طرد العضو بنجاح'
-                                                      : 'Member kicked successfully')));
+                                                  content: Text(AppLocalizations.of(context)!.memberKickedSuccessfully)));
                                         }
                                       } catch (e) {
-                                        if (mounted)
+                                        if (mounted) {
                                           ScaffoldMessenger.of(context)
                                               .showSnackBar(SnackBar(
                                                   content: Text(isAr
                                                       ? 'خطأ: $e'
                                                       : 'Error: $e')));
+                                        }
                                       }
                                     }
                                   } else if (action == 'promote') {
                                     final confirm = await showDialog<bool>(
                                       context: context,
                                       builder: (c) => AlertDialog(
-                                        title: Text(isAr
-                                            ? 'ترقية لقائد'
-                                            : 'Promote to Leader'),
+                                        title: Text(AppLocalizations.of(context)!.promoteToLeader),
                                         content: Text(isAr
                                             ? 'سيصبح ${u.name} قائد المجموعة ولن تكون أنت القائد. هل توافق؟'
                                             : '${u.name} will become the leader and you will lose leadership. Agree?'),
@@ -1004,12 +996,12 @@ class _SquadProfileScreenState extends State<SquadProfileScreen>
                                               onPressed: () =>
                                                   Navigator.pop(c, false),
                                               child: Text(
-                                                  isAr ? 'إلغاء' : 'Cancel')),
+                                                  AppLocalizations.of(context)!.cancel)),
                                           ElevatedButton(
                                             onPressed: () =>
                                                 Navigator.pop(c, true),
                                             child: Text(
-                                                isAr ? 'تأكيد' : 'Confirm'),
+                                                AppLocalizations.of(context)!.confirm),
                                           ),
                                         ],
                                       ),
@@ -1025,17 +1017,16 @@ class _SquadProfileScreenState extends State<SquadProfileScreen>
                                               ctx); // Close bottom sheet
                                           ScaffoldMessenger.of(context)
                                               .showSnackBar(SnackBar(
-                                                  content: Text(isAr
-                                                      ? 'تم نقل القيادة بنجاح'
-                                                      : 'Leadership transferred')));
+                                                  content: Text(AppLocalizations.of(context)!.leadershipTransferred)));
                                         }
                                       } catch (e) {
-                                        if (mounted)
+                                        if (mounted) {
                                           ScaffoldMessenger.of(context)
                                               .showSnackBar(SnackBar(
                                                   content: Text(isAr
                                                       ? 'خطأ: $e'
                                                       : 'Error: $e')));
+                                        }
                                       }
                                     }
                                   }
@@ -1047,9 +1038,7 @@ class _SquadProfileScreenState extends State<SquadProfileScreen>
                                       const Icon(Icons.star,
                                           color: AppColors.sudanGold, size: 20),
                                       const SizedBox(width: 8),
-                                      Text(isAr
-                                          ? 'تعيين كقائد'
-                                          : 'Set as Leader')
+                                      Text(AppLocalizations.of(context)!.setAsLeader)
                                     ]),
                                   ),
                                   PopupMenuItem(
@@ -1058,7 +1047,7 @@ class _SquadProfileScreenState extends State<SquadProfileScreen>
                                       const Icon(Icons.person_remove,
                                           color: Colors.red, size: 20),
                                       const SizedBox(width: 8),
-                                      Text(isAr ? 'طرد العضو' : 'Kick Member',
+                                      Text(AppLocalizations.of(context)!.kickMember,
                                           style: const TextStyle(
                                               color: Colors.red))
                                     ]),

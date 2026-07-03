@@ -51,10 +51,12 @@ class _InternalLinkPreviewWidgetState extends State<InternalLinkPreviewWidget> {
       return FutureBuilder<UserModel?>(
         future: _firestoreService.getUser(_profileId!),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting)
+          if (snapshot.connectionState == ConnectionState.waiting) {
             return _buildLoading();
-          if (!snapshot.hasData || snapshot.data == null)
+          }
+          if (!snapshot.hasData || snapshot.data == null) {
             return const SizedBox.shrink();
+          }
           return _buildProfileCard(snapshot.data!);
         },
       );
@@ -62,10 +64,12 @@ class _InternalLinkPreviewWidgetState extends State<InternalLinkPreviewWidget> {
       return FutureBuilder<PostModel?>(
         future: _firestoreService.getPost(_postId!),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting)
+          if (snapshot.connectionState == ConnectionState.waiting) {
             return _buildLoading();
-          if (!snapshot.hasData || snapshot.data == null)
+          }
+          if (!snapshot.hasData || snapshot.data == null) {
             return const SizedBox.shrink();
+          }
           return _buildPostCard(snapshot.data!, false);
         },
       );
@@ -73,10 +77,12 @@ class _InternalLinkPreviewWidgetState extends State<InternalLinkPreviewWidget> {
       return FutureBuilder<PostModel?>(
         future: _firestoreService.getPost(_productId!),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting)
+          if (snapshot.connectionState == ConnectionState.waiting) {
             return _buildLoading();
-          if (!snapshot.hasData || snapshot.data == null)
+          }
+          if (!snapshot.hasData || snapshot.data == null) {
             return const SizedBox.shrink();
+          }
           return _buildPostCard(snapshot.data!, true);
         },
       );

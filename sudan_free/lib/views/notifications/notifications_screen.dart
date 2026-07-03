@@ -1,15 +1,18 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:animations/animations.dart';
 import '../../core/constants/app_colors.dart';
 import '../../providers/locale_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/partners_provider.dart';
 import '../../models/notification_model.dart';
 import '../../models/user_model.dart';
 import '../../models/squad_model.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/firestore_service.dart';
+import 'package:uuid/uuid.dart';
 import '../posts/post_details_screen.dart';
 import '../posts/comments_sheet.dart';
 import '../profile/freelancer_profile_screen.dart';
@@ -21,12 +24,15 @@ import '../safety/safety_tips_screen.dart';
 import '../requests/request_details_screen.dart';
 import '../jobs/active_job_tracking_screen.dart';
 import '../chat/chats_list_screen.dart';
+import '../../widgets/common/verification_badge.dart';
 import '../../providers/chat_provider.dart';
 import '../../core/routes/premium_page_route.dart';
 import '../../services/smart_guide_service.dart';
 import '../../widgets/common/glass_container.dart';
 import '../../services/firestore/ad_service.dart';
 import '../home/ad_details_screen.dart';
+import 'package:sudan_free/l10n/generated/app_localizations.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -39,7 +45,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      try {
+        await FlutterLocalNotificationsPlugin().cancelAll();
+      } catch (e) {
+        debugPrint('Failed to clear system notifications: $e');
+      }
+      
+      if (!mounted) return;
       SmartGuideService.showMicroTip(
         context,
         messageAr:
@@ -63,19 +76,24 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(locale == 'ar' ? 'التنبيهات' : 'Notifications'),
+        title: Text(AppLocalizations.of(context)!.notifications),
         centerTitle: true,
         actions: [
           // Chat List Button (For ALL users)
           Stack(
             alignment: Alignment.center,
             children: [
-              IconButton(
-                icon: const Icon(Icons.support_agent),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    PremiumPageRoute(page: const ChatsListScreen()),
+              OpenContainer(
+                transitionDuration: const Duration(milliseconds: 700),
+                transitionType: ContainerTransitionType.fadeThrough,
+                closedElevation: 0,
+                closedColor: Colors.transparent,
+                middleColor: Colors.transparent,
+                openBuilder: (context, _) => const ChatsListScreen(),
+                closedBuilder: (context, openContainer) {
+                  return IconButton(
+                    icon: const Icon(Icons.support_agent),
+                    onPressed: openContainer,
                   );
                 },
               ),
@@ -148,7 +166,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   await FirestoreService().markAllNotificationsAsRead(user.id);
                 },
                 child: Text(
-                  locale == 'ar' ? 'قراءة الكل' : 'Read all',
+                  AppLocalizations.of(context)!.readAll,
                   style: const TextStyle(fontSize: 12),
                 ),
               );
@@ -172,12 +190,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           if (notifications.isEmpty) {
             return EmptyStateWidget(
               icon: Icons.notifications_off_rounded,
-              title: locale == 'ar' ? 'لا توجد تنبيهات' : 'No notifications',
-              subtitle: locale == 'ar'
-                  ? 'ابق على اطلاع! تصفح المجتمع وتفاعل الآن.'
-                  : 'Stay updated! Browse the community now.',
+              title: AppLocalizations.of(context)!.noNotifications,
+              subtitle: AppLocalizations.of(context)!.stayUpdatedBrowseTheCommunityNow,
               actionLabel:
-                  locale == 'ar' ? 'تصفح المجتمع' : 'Explore Community',
+                  AppLocalizations.of(context)!.exploreCommunity,
               actionIcon: Icons.explore_rounded,
               onAction: () {
                 Navigator.popUntil(context, (route) => route.isFirst);
@@ -193,22 +209,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               itemCount: notifications.length,
               itemBuilder: (context, index) {
                 final notif = notifications[index];
-                return TweenAnimationBuilder<double>(
+                return _SimpleNotificationTile(
                   key: ValueKey(notif.id),
-                  tween: Tween(begin: 0.0, end: 1.0),
-                  duration:
-                      Duration(milliseconds: 300 + (index.clamp(0, 10) * 50)),
-                  curve: Curves.easeOutCubic,
-                  builder: (context, value, child) {
-                    return Transform.translate(
-                      offset: Offset((1 - value) * 30, 0),
-                      child: Opacity(opacity: value, child: child),
-                    );
-                  },
-                  child: _SimpleNotificationTile(
-                    notification: notif,
-                    locale: locale,
-                  ),
+                  notification: notif,
+                  locale: locale,
                 );
               },
             ),
@@ -234,6 +238,7 @@ class _SimpleNotificationTile extends StatefulWidget {
   final String locale;
 
   const _SimpleNotificationTile({
+    super.key,
     required this.notification,
     required this.locale,
   });
@@ -315,29 +320,29 @@ class _SimpleNotificationTileState extends State<_SimpleNotificationTile> {
 
     switch (notification.type) {
       case NotificationType.like:
-        return locale == 'ar' ? 'تفاعل جديد' : 'New Reaction';
+        return AppLocalizations.of(context)!.newReaction;
       case NotificationType.comment:
-        return locale == 'ar' ? 'تعليق جديد 💬' : 'New Comment';
+        return AppLocalizations.of(context)!.newComment;
       case NotificationType.mention:
-        return locale == 'ar' ? 'تم ذكرك 📢' : 'You were mentioned';
+        return AppLocalizations.of(context)!.youWereMentioned;
       case NotificationType.rating:
-        return locale == 'ar' ? 'تقييم جديد ⭐' : 'New Rating';
+        return AppLocalizations.of(context)!.newRating;
       case NotificationType.offer:
-        return locale == 'ar' ? 'عرض جديد 📩' : 'New Offer';
+        return AppLocalizations.of(context)!.newOffer;
       case NotificationType.partnerRequest:
-        return locale == 'ar' ? 'طلب زمالة 🤝' : 'Partner Request';
+        return AppLocalizations.of(context)!.partnerRequest;
       case NotificationType.message:
-        return locale == 'ar' ? 'رسالة جديدة' : 'New Message';
+        return AppLocalizations.of(context)!.newMessage;
       case NotificationType.follow:
-        return locale == 'ar' ? 'متابعة جديدة' : 'New Follower';
+        return AppLocalizations.of(context)!.newFollower;
       case NotificationType.fraudWarning:
-        return locale == 'ar' ? 'تحذير ⚠️' : 'Warning';
+        return AppLocalizations.of(context)!.warning1;
       case NotificationType.reviewRequest:
-        return locale == 'ar' ? 'كيف كانت تجربتك؟' : 'Rate your experience';
+        return AppLocalizations.of(context)!.rateYourExperience;
       case NotificationType.system:
-        return locale == 'ar' ? 'سودان فري' : 'SudanFree';
+        return AppLocalizations.of(context)!.sudanfree;
       case NotificationType.assignment:
-        return locale == 'ar' ? 'مهمة جديدة' : 'New Assignment';
+        return AppLocalizations.of(context)!.newAssignment;
     }
   }
 
@@ -345,7 +350,7 @@ class _SimpleNotificationTileState extends State<_SimpleNotificationTile> {
   String _timeAgo(DateTime time) {
     final diff = DateTime.now().difference(time);
     if (diff.inMinutes < 1) {
-      return locale == 'ar' ? 'الآن' : 'now';
+      return AppLocalizations.of(context)!.now;
     } else if (diff.inMinutes < 60) {
       return locale == 'ar' ? 'منذ ${diff.inMinutes} د' : '${diff.inMinutes}m';
     } else if (diff.inHours < 24) {
@@ -361,16 +366,22 @@ class _SimpleNotificationTileState extends State<_SimpleNotificationTile> {
     final isDark = theme.brightness == Brightness.dark;
     final isFraud = notification.type == NotificationType.fraudWarning;
 
-    return GlassContainer(
+    return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      color: notification.isRead
-          ? theme.cardColor
-          : (isFraud
-              ? Colors.red.withValues(alpha: isDark ? 0.15 : 0.06)
-              : AppColors.primary.withValues(alpha: isDark ? 0.12 : 0.06)),
-      borderRadius: BorderRadius.circular(14),
-      blur: 15,
-      opacity: isDark ? 0.3 : 0.6,
+      decoration: BoxDecoration(
+        color: notification.isRead
+            ? theme.cardColor
+            : (isFraud
+                ? Colors.red.withValues(alpha: isDark ? 0.15 : 0.06)
+                : AppColors.primary.withValues(alpha: isDark ? 0.12 : 0.06)),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: notification.isRead
+              ? (isDark ? Colors.grey[800]! : Colors.grey[200]!)
+              : AppColors.primary.withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -543,13 +554,18 @@ class _SimpleNotificationTileState extends State<_SimpleNotificationTile> {
                     PremiumPageRoute(
                         page: ActiveJobTrackingScreen(jobId: job.id)));
               } else {
+                if (notification.relatedId == 'bulk_notification' || notification.relatedId!.isEmpty) {
+                  // This is a global system notification (e.g. from admin) that doesn't link to a specific item.
+                  // Do not attempt to route or delete it.
+                  return;
+                }
                 final ad = await AdService().getAd(notification.relatedId!);
                 if (mounted) {
-                  if (ad != null && ad.isValid) {
+                  if (ad != null) {
                     Navigator.push(context, MaterialPageRoute(builder: (_) => AdDetailsScreen(ad: ad)));
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(locale == 'ar' ? 'عذراً، لقد انتهت مدة الإعلان أو تم حذفه' : 'Sorry, the ad has expired or been deleted')),
+                      SnackBar(content: Text(AppLocalizations.of(context)!.sorryTheAdHasExpiredOr)),
                     );
                     await firestore.deleteNotification(notification.id);
                   }
@@ -576,18 +592,16 @@ class _SimpleNotificationTileState extends State<_SimpleNotificationTile> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(locale == 'ar' ? 'حذف الإشعار' : 'Delete Notification'),
-        content: Text(locale == 'ar'
-            ? 'هل أنت متأكد من حذف هذا الإشعار؟'
-            : 'Are you sure you want to delete this notification?'),
+        title: Text(AppLocalizations.of(context)!.deleteNotification),
+        content: Text(AppLocalizations.of(context)!.areYouSureYouWantTo6),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text(locale == 'ar' ? 'إلغاء' : 'Cancel'),
+            child: Text(AppLocalizations.of(context)!.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: Text(locale == 'ar' ? 'حذف' : 'Delete',
+            child: Text(AppLocalizations.of(context)!.delete,
                 style: const TextStyle(color: Colors.red)),
           ),
         ],
@@ -821,6 +835,21 @@ class _PendingRequestsSheetState extends State<_PendingRequestsSheet> {
         batch.update(squadRef, {
           'memberIds': FieldValue.arrayUnion([user.id])
         });
+
+        // Notify squad leader
+        final isAr = context.read<LocaleProvider>().isArabic;
+        final notification = NotificationModel(
+          id: const Uuid().v4(),
+          userId: squad.leaderId,
+          type: NotificationType.system,
+          title: isAr ? 'انضمام عضو جديد' : 'New Member Joined',
+          message: isAr
+              ? 'انضم ${user.name} إلى مجموعتك "${squad.name}"'
+              : '${user.name} joined your squad "${squad.name}"',
+          createdAt: Timestamp.now(),
+          relatedId: squad.id,
+        );
+        FirestoreService().sendNotification(notification);
       }
 
       await batch.commit();
@@ -833,12 +862,8 @@ class _PendingRequestsSheetState extends State<_PendingRequestsSheet> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(accept
-                ? (widget.locale == 'ar'
-                    ? 'تم الانضمام للمجموعة بنجاح ✅'
-                    : 'Joined squad successfully ✅')
-                : (widget.locale == 'ar'
-                    ? 'تم رفض دعوة المجموعة ❌'
-                    : 'Squad invite declined ❌')),
+                ? (AppLocalizations.of(context)!.joinedSquadSuccessfully)
+                : (AppLocalizations.of(context)!.squadInviteDeclined)),
             backgroundColor: accept ? Colors.green : Colors.red,
             duration: const Duration(seconds: 2),
           ),
@@ -852,9 +877,7 @@ class _PendingRequestsSheetState extends State<_PendingRequestsSheet> {
         });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text(widget.locale == 'ar'
-                  ? 'حدث خطأ، يرجى المحاولة'
-                  : 'An error occurred'),
+              content: Text(AppLocalizations.of(context)!.anErrorOccurred),
               backgroundColor: Colors.red),
         );
       }
@@ -875,7 +898,7 @@ class _PendingRequestsSheetState extends State<_PendingRequestsSheet> {
 
     try {
       final authProvider = context.read<AuthProvider>();
-      await authProvider.handlePartnerRequest(requesterId, accept,
+      await context.read<PartnersProvider>().handlePartnerRequest(requesterId, accept,
           requester: requester);
 
       if (mounted) {
@@ -887,12 +910,8 @@ class _PendingRequestsSheetState extends State<_PendingRequestsSheet> {
         scaffoldMessenger.showSnackBar(
           SnackBar(
             content: Text(accept
-                ? (widget.locale == 'ar'
-                    ? 'تم قبول طلب الزمالة ✅'
-                    : 'Partner request accepted ✅')
-                : (widget.locale == 'ar'
-                    ? 'تم رفض طلب الزمالة ❌'
-                    : 'Partner request declined ❌')),
+                ? (AppLocalizations.of(context)!.partnerRequestAccepted)
+                : (AppLocalizations.of(context)!.partnerRequestDeclined)),
             backgroundColor: accept ? Colors.green : Colors.red,
             duration: const Duration(seconds: 2),
           ),
@@ -907,9 +926,7 @@ class _PendingRequestsSheetState extends State<_PendingRequestsSheet> {
         final scaffoldMessenger = ScaffoldMessenger.of(context);
         scaffoldMessenger.showSnackBar(
           SnackBar(
-            content: Text(widget.locale == 'ar'
-                ? 'حدث خطأ، يرجى المحاولة'
-                : 'An error occurred'),
+            content: Text(AppLocalizations.of(context)!.anErrorOccurred),
             backgroundColor: Colors.red,
           ),
         );
@@ -1141,12 +1158,20 @@ class _PendingRequestsSheetState extends State<_PendingRequestsSheet> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    requester.name,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 16),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          requester.name,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 16),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      SmartVerificationBadgeAsync(userId: requester.id, size: 14),
+                    ],
                   ),
                   const SizedBox(height: 4),
                   Row(

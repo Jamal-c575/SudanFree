@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../providers/locale_provider.dart';
-import '../../widgets/common/glass_container.dart';
 import '../../widgets/common/glass_card.dart';
+import 'package:sudan_free/l10n/generated/app_localizations.dart';
 
 /// صفحة عن التطبيق - About Screen
 class AboutAppScreen extends StatelessWidget {
@@ -21,7 +21,7 @@ class AboutAppScreen extends StatelessWidget {
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: Text(
-          isAr ? 'عن التطبيق' : 'About',
+          AppLocalizations.of(context)!.about,
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
@@ -65,7 +65,7 @@ class AboutAppScreen extends StatelessWidget {
                 const Icon(Icons.handshake, size: 48, color: Colors.white),
                 const SizedBox(height: 12),
                 Text(
-                  isAr ? 'سودان فري' : 'Sudan Free',
+                  AppLocalizations.of(context)!.sudanFree,
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -74,9 +74,7 @@ class AboutAppScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  isAr
-                      ? '🇸🇩 منصة الحرفيين والمستقلين السودانيين الأولى'
-                      : '🇸🇩 The Premier Sudanese Freelance Platform',
+                  AppLocalizations.of(context)!.thePremierSudaneseFreelancePlatform,
                   style: const TextStyle(color: Colors.white70, fontSize: 14),
                 ),
               ],
@@ -88,16 +86,14 @@ class AboutAppScreen extends StatelessWidget {
           // What is Sudan Free
           _SectionTitle(
             icon: Icons.info_outline,
-            title: isAr ? 'عن التطبيق' : 'About the App',
+            title: AppLocalizations.of(context)!.aboutTheApp,
             color: AppColors.primary,
           ),
           const SizedBox(height: 12),
           _AboutCard(
             icon: Icons.connect_without_contact,
             iconColor: AppColors.primary,
-            text: isAr
-                ? 'سودان فري هي أول منصة سودانية متكاملة تربط بين الحرفيين، ومقدمي الخدمات المستقلين، والمحلات التجارية، والعملاء. نهدف إلى تنظيم وتسهيل الوصول للخدمات المهنية في جميع أنحاء السودان بكل موثوقية وأمان.'
-                : 'Sudan Free is the first integrated Sudanese platform connecting workers, freelancers, shops, and clients. We aim to organize and facilitate access to professional services across Sudan safely and reliably.',
+            text: AppLocalizations.of(context)!.sudanFreeIsTheFirstIntegrated,
           ),
 
           const SizedBox(height: 24),
@@ -105,18 +101,14 @@ class AboutAppScreen extends StatelessWidget {
           // For Workers
           _SectionTitle(
             icon: Icons.engineering,
-            title: isAr
-                ? '👷 لمقدمي الخدمات والحرفيين'
-                : '👷 For Service Providers',
+            title: AppLocalizations.of(context)!.forServiceProviders,
             color: Colors.blue,
           ),
           const SizedBox(height: 12),
           _AboutCard(
             icon: Icons.storefront,
             iconColor: Colors.blue,
-            text: isAr
-                ? '• مساحة مخصصة لعرض مهاراتك وخدماتك للآلاف.\n• توثيق حسابك للحصول على ثقة أكبر وشعار التصافح 🤝.\n• نظام تقييم احترافي يرفع من رتبتك (من مبتدئ إلى أسطورة).\n• استقبال الطلبات المباشرة والتفاوض بحرية.\n• إنشاء العقود داخلياً لضمان حقوقك.\n• معرض أعمال كامل لإظهار إنجازاتك السابقة.'
-                : '• Dedicated space to showcase your skills.\n• Account verification for higher trust 🤝.\n• Professional rating system upgrading your rank.\n• Direct job requests and free negotiation.\n• Create in-app contracts to secure rights.\n• Full portfolio to display past achievements.',
+            text: AppLocalizations.of(context)!.dedicatedSpaceToShowcaseYourSkillsn,
           ),
 
           const SizedBox(height: 24),
@@ -124,16 +116,14 @@ class AboutAppScreen extends StatelessWidget {
           // For Clients
           _SectionTitle(
             icon: Icons.person_search,
-            title: isAr ? '👤 للعملاء (الباحثين عن خدمات)' : '👤 For Clients',
+            title: AppLocalizations.of(context)!.forClients1,
             color: Colors.teal,
           ),
           const SizedBox(height: 12),
           _AboutCard(
             icon: Icons.search,
             iconColor: Colors.teal,
-            text: isAr
-                ? '• بحث ذكي للوصول للحرفي المناسب في منطقتك.\n• نظام تقييمات موثوق يعكس جودة الحرفي.\n• إمكانية نشر "طلب خدمة" ليتنافس عليه الحرفيون.\n• تواصل مباشر عبر التطبيق، أو الهاتف، أو إنشاء عقد رسمي لحفظ الحقوق.'
-                : '• Smart search for the right provider in your area.\n• Reliable review system reflecting quality.\n• Ability to post a "job request" for bids.\n• Direct communication via app, phone, or official contract.',
+            text: AppLocalizations.of(context)!.smartSearchForTheRightProvider,
           ),
 
           const SizedBox(height: 24),
@@ -141,23 +131,19 @@ class AboutAppScreen extends StatelessWidget {
           // Platform Features
           _SectionTitle(
             icon: Icons.star,
-            title: isAr ? '✨ ميزات المنصة المميزة' : '✨ Premium Features',
+            title: AppLocalizations.of(context)!.premiumFeatures,
             color: Colors.amber,
           ),
           const SizedBox(height: 12),
           _AboutCard(
             icon: Icons.map,
             iconColor: Colors.amber,
-            text: isAr
-                ? 'مستكشف الخريطة (Map Explorer): خريطة ذكية سريعة تعمل محلياً للبحث عن مقدمي الخدمات والمتاجر المحيطة بك دون استهلاك كبير للإنترنت.'
-                : 'Map Explorer: A fast, locally cached smart map to find nearby service providers and shops without consuming much data.',
+            text: AppLocalizations.of(context)!.mapExplorerAFastLocallyCached,
           ),
           _AboutCard(
             icon: Icons.favorite,
             iconColor: Colors.redAccent,
-            text: isAr
-                ? 'المفضلة الشاملة (Favorites): مكان واحد لحفظ المنتجات الرائعة من المتاجر، بالإضافة لحفظ الحرفيين والزملاء المفضلين للعودة إليهم بسرعة لاحقاً.'
-                : 'Unified Favorites: One place to save great products, as well as favorite freelancers and peers to quickly access them later.',
+            text: AppLocalizations.of(context)!.unifiedFavoritesOnePlaceToSave,
           ),
 
           const SizedBox(height: 24),
@@ -165,16 +151,14 @@ class AboutAppScreen extends StatelessWidget {
           // Community Vision
           _SectionTitle(
             icon: Icons.public,
-            title: isAr ? '🌍 رؤيتنا المجتمعية' : '🌍 Our Vision',
+            title: AppLocalizations.of(context)!.ourVision,
             color: Colors.orange,
           ),
           const SizedBox(height: 12),
           _AboutCard(
             icon: Icons.groups,
             iconColor: Colors.orange,
-            text: isAr
-                ? 'نسعى لخلق مجتمع مهني سوداني مترابط، يدعم الشباب ويسهل عليهم تسويق أنفسهم، ويحمي العملاء من خلال الشفافية والتقييم العادل والمستمر.'
-                : 'We strive to build a cohesive Sudanese professional community that supports youth in marketing themselves and protects clients through transparent and fair continuous ratings.',
+            text: AppLocalizations.of(context)!.weStriveToBuildACohesive,
           ),
 
           const SizedBox(height: 32),

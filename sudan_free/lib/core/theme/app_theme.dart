@@ -97,6 +97,12 @@ class AppTheme {
         color: AppColors.textLight,
       ),
     ),
+    pageTransitionsTheme: const PageTransitionsTheme(
+      builders: {
+        TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+        TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+      },
+    ),
     appBarTheme: const AppBarTheme(
       elevation: 0,
       centerTitle: true,
@@ -351,6 +357,12 @@ class AppTheme {
         fontWeight: FontWeight.w500,
         color: Color(0xFF94A3B8),
       ),
+    ),
+    pageTransitionsTheme: const PageTransitionsTheme(
+      builders: {
+        TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+        TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+      },
     ),
     appBarTheme: const AppBarTheme(
       elevation: 0,

@@ -1,0 +1,1720 @@
+[
+  {
+    "id": "TC001",
+    "title": "Sign in with email and reach the authenticated experience",
+    "description": "This verifies that a returning user can sign in with email and access the main authenticated area.",
+    "category": "Authentication",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the authenticated home or dashboard view is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC002",
+    "title": "Create a job and filter it in the job list",
+    "description": "This verifies that a client can create a job listing and then find it in the filtered job browse view.",
+    "category": "Job Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "action",
+        "description": "Open the job creation view"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the title field with a new job title"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the description field with a job description"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the budget field with a valid budget"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the category field with a valid category"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the location field with a valid location"
+      },
+      {
+        "type": "action",
+        "description": "Submit the job form"
+      },
+      {
+        "type": "action",
+        "description": "Open the job browse view"
+      },
+      {
+        "type": "action",
+        "description": "Apply a category filter"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the created job appears in the filtered results"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC003",
+    "title": "Accept a proposal and assign the freelancer",
+    "description": "This verifies that a client can accept a proposal and assign the freelancer to the job.",
+    "category": "Proposal Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the form"
+      },
+      {
+        "type": "action",
+        "description": "Open the client's posted job that has proposals"
+      },
+      {
+        "type": "action",
+        "description": "Open the proposal details for one freelancer"
+      },
+      {
+        "type": "action",
+        "description": "Accept the proposal"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the proposal is marked as accepted"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the freelancer is assigned to the job"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC004",
+    "title": "Create a new account with email and continue into setup",
+    "description": "This verifies that a new user can register with email and proceed to the profile setup experience.",
+    "category": "Authentication",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Open the account creation flow"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with a new valid email address"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with a valid password"
+      },
+      {
+        "type": "action",
+        "description": "Submit the registration form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the profile setup view is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC005",
+    "title": "Create a proposal for a job",
+    "description": "This verifies that a freelancer can submit a proposal for an available job and that the proposal is created successfully.",
+    "category": "Proposal Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the form"
+      },
+      {
+        "type": "action",
+        "description": "Open the job details for a job that can be proposed on"
+      },
+      {
+        "type": "action",
+        "description": "Start the proposal flow"
+      },
+      {
+        "type": "action",
+        "description": "Fill in a cover letter"
+      },
+      {
+        "type": "action",
+        "description": "Fill in a valid proposed budget"
+      },
+      {
+        "type": "action",
+        "description": "Fill in a timeline"
+      },
+      {
+        "type": "action",
+        "description": "Submit the proposal"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the proposal is created successfully"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC006",
+    "title": "Start a new chat with another user",
+    "description": "This verifies that a signed-in user can create a chat with another user and open the conversation successfully.",
+    "category": "Chat & Messaging",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "action",
+        "description": "Open the chat creation flow"
+      },
+      {
+        "type": "action",
+        "description": "Select another user to message"
+      },
+      {
+        "type": "action",
+        "description": "Start the conversation"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the chat conversation is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC007",
+    "title": "Update the user profile successfully",
+    "description": "This verifies that a signed-in user can update their profile details and see the saved information reflected in the profile view.",
+    "category": "User Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "action",
+        "description": "Open the profile editing view"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the name field with a new display name"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the bio field with a new bio"
+      },
+      {
+        "type": "action",
+        "description": "Save the profile changes"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the updated profile information is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC008",
+    "title": "Create a payment record for a completed job",
+    "description": "This verifies that a signed-in client can create a payment record tied to a job and view the resulting payment details.",
+    "category": "Payment System",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "action",
+        "description": "Open the job payment flow"
+      },
+      {
+        "type": "action",
+        "description": "Enter a valid payment amount"
+      },
+      {
+        "type": "action",
+        "description": "Select the freelancer for the job"
+      },
+      {
+        "type": "action",
+        "description": "Submit the payment record"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the payment details are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC009",
+    "title": "Sign out from the authenticated session",
+    "description": "This verifies that a signed-in user can end their session and return to the unauthenticated state.",
+    "category": "Authentication",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "action",
+        "description": "Open the account menu"
+      },
+      {
+        "type": "action",
+        "description": "Sign out of the application"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the login view is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC010",
+    "title": "Send a message in an existing chat",
+    "description": "This verifies that a signed-in user can open a chat and send a text message that appears in the conversation.",
+    "category": "Chat & Messaging",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "action",
+        "description": "Open an existing chat"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the message field with Hello from automation"
+      },
+      {
+        "type": "action",
+        "description": "Send the message"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the sent message appears in the conversation"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC011",
+    "title": "Mark a job as completed",
+    "description": "This verifies that a signed-in user can complete an in-progress job and see the completion state reflected in the UI.",
+    "category": "Job Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "action",
+        "description": "Open a job that is in progress"
+      },
+      {
+        "type": "action",
+        "description": "Mark the job as completed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the job is shown as completed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC012",
+    "title": "View proposals for a job as a client",
+    "description": "This verifies that a client can open a job and see the list of submitted proposals for that job.",
+    "category": "Proposal Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the form"
+      },
+      {
+        "type": "action",
+        "description": "Open the client's posted job that has proposals"
+      },
+      {
+        "type": "action",
+        "description": "Open the proposals view for the job"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify submitted proposals are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC013",
+    "title": "Delete the current account after recent sign in",
+    "description": "This verifies that a signed-in user can delete their account when the recent-login requirement is satisfied.",
+    "category": "Authentication",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "action",
+        "description": "Open the account settings"
+      },
+      {
+        "type": "action",
+        "description": "Start the account deletion flow"
+      },
+      {
+        "type": "action",
+        "description": "Confirm account deletion"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the account is no longer accessible"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC014",
+    "title": "View a job's details",
+    "description": "This verifies that a signed-in user can open an existing job and view its full details.",
+    "category": "Job Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "action",
+        "description": "Open the job browse view"
+      },
+      {
+        "type": "action",
+        "description": "Open a job from the list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the job detail view is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC015",
+    "title": "Update payment status to completed",
+    "description": "This verifies that a signed-in user can open an existing payment and change its status to completed.",
+    "category": "Payment System",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "action",
+        "description": "Open an existing payment record"
+      },
+      {
+        "type": "action",
+        "description": "Change the payment status to completed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the payment status is updated"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC016",
+    "title": "Create a post in the social feed",
+    "description": "This verifies that a signed-in user can publish a new social post and see it appear in the feed.",
+    "category": "Social Posts",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the form"
+      },
+      {
+        "type": "action",
+        "description": "Open the post creation flow"
+      },
+      {
+        "type": "action",
+        "description": "Fill in post content"
+      },
+      {
+        "type": "action",
+        "description": "Submit the post"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new post appears in the feed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC017",
+    "title": "View the chat list after signing in",
+    "description": "This verifies that a signed-in user can load their list of chats and see existing conversations.",
+    "category": "Chat & Messaging",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "action",
+        "description": "Open the chats screen"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the chat list is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC018",
+    "title": "Search for freelancers by query and type",
+    "description": "This verifies that a signed-in user can search for freelancers with a query and see matching results.",
+    "category": "Smart Search",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "action",
+        "description": "Open the search screen"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the search field with graphic designer"
+      },
+      {
+        "type": "action",
+        "description": "Select freelancers as the search type"
+      },
+      {
+        "type": "action",
+        "description": "Submit the search"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify freelancer search results are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC019",
+    "title": "Set up a shop profile and discover it in shop search",
+    "description": "This verifies that a shop owner can update their profile to a shop account and that the shop is discoverable in shop search.",
+    "category": "Shops & Products",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the form"
+      },
+      {
+        "type": "action",
+        "description": "Open the profile settings"
+      },
+      {
+        "type": "action",
+        "description": "Update the account type to shop"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the shop name"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the shop description"
+      },
+      {
+        "type": "action",
+        "description": "Save the profile changes"
+      },
+      {
+        "type": "action",
+        "description": "Open shop search"
+      },
+      {
+        "type": "action",
+        "description": "Apply a shop category filter"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the shop appears in search results"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC020",
+    "title": "Submit a review after job completion",
+    "description": "This verifies that a signed-in client can leave a review for a completed job and see it reflected in the freelancer's reviews.",
+    "category": "Reviews & Ratings",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "action",
+        "description": "Open a completed job"
+      },
+      {
+        "type": "action",
+        "description": "Open the review form for the freelancer"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid rating"
+      },
+      {
+        "type": "action",
+        "description": "Enter a review comment"
+      },
+      {
+        "type": "action",
+        "description": "Submit the review"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the review is displayed for the freelancer"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC021",
+    "title": "Search for jobs by query and type",
+    "description": "This verifies that a signed-in user can search for jobs with a query and see matching results.",
+    "category": "Smart Search",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "action",
+        "description": "Open the search screen"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the search field with remote work"
+      },
+      {
+        "type": "action",
+        "description": "Select jobs as the search type"
+      },
+      {
+        "type": "action",
+        "description": "Submit the search"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify job search results are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC022",
+    "title": "Reset a forgotten password",
+    "description": "This verifies that a user can request a password reset from the login flow and see confirmation that the request was started.",
+    "category": "Authentication",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Open the password reset flow"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the password reset request"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a password reset confirmation is visible"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC023",
+    "title": "Reject a proposal",
+    "description": "This verifies that a client can reject a proposal and the rejected state is shown in the app.",
+    "category": "Proposal Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the form"
+      },
+      {
+        "type": "action",
+        "description": "Open the client's posted job that has proposals"
+      },
+      {
+        "type": "action",
+        "description": "Open the proposal details for one freelancer"
+      },
+      {
+        "type": "action",
+        "description": "Reject the proposal"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the proposal is marked as rejected"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC024",
+    "title": "View a payment record",
+    "description": "This verifies that a signed-in user can open an existing payment and review its details.",
+    "category": "Payment System",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "action",
+        "description": "Open an existing payment record"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the payment details are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC025",
+    "title": "Search for shops by location or category",
+    "description": "This verifies that a signed-in user can find shops through search and filtering.",
+    "category": "Smart Search",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "action",
+        "description": "Open the search screen"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the search field with tailoring"
+      },
+      {
+        "type": "action",
+        "description": "Select shops as the search type"
+      },
+      {
+        "type": "action",
+        "description": "Submit the search"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify shop search results are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC026",
+    "title": "Comment on a social post",
+    "description": "This verifies that a user can add a comment to an existing post and see the comment in the thread.",
+    "category": "Social Posts",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the form"
+      },
+      {
+        "type": "action",
+        "description": "Open a post with an existing discussion"
+      },
+      {
+        "type": "action",
+        "description": "Open the comment composer"
+      },
+      {
+        "type": "action",
+        "description": "Fill in a comment"
+      },
+      {
+        "type": "action",
+        "description": "Submit the comment"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the comment is displayed in the thread"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC027",
+    "title": "Mark chat messages as read",
+    "description": "This verifies that opening a conversation updates the read state for messages in that chat.",
+    "category": "Chat & Messaging",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "action",
+        "description": "Open an existing chat with unread messages"
+      },
+      {
+        "type": "action",
+        "description": "Wait for the conversation to load"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the messages in the conversation are marked as read"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC028",
+    "title": "Browse freelancers using a skill filter",
+    "description": "This verifies that a signed-in user can discover freelancers and narrow the results by a skill filter.",
+    "category": "User Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "action",
+        "description": "Open the freelancer listing view"
+      },
+      {
+        "type": "action",
+        "description": "Apply a skill filter"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify matching freelancer results are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC029",
+    "title": "React to a social post",
+    "description": "This verifies that a user can react to a post and that the reaction state is reflected in the feed.",
+    "category": "Social Posts",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the form"
+      },
+      {
+        "type": "action",
+        "description": "Open a post in the feed"
+      },
+      {
+        "type": "action",
+        "description": "React to the post"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the reaction state is visible"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC030",
+    "title": "Search for posts with a query",
+    "description": "This verifies that a signed-in user can discover social posts through search.",
+    "category": "Smart Search",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "action",
+        "description": "Open the search screen"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the search field with branding"
+      },
+      {
+        "type": "action",
+        "description": "Select posts as the search type"
+      },
+      {
+        "type": "action",
+        "description": "Submit the search"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify post search results are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC031",
+    "title": "Reply to a comment on a post",
+    "description": "This verifies that a user can add a threaded reply under an existing comment and see it in the conversation.",
+    "category": "Social Posts",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the form"
+      },
+      {
+        "type": "action",
+        "description": "Open a post with an existing comment thread"
+      },
+      {
+        "type": "action",
+        "description": "Open the reply composer for a comment"
+      },
+      {
+        "type": "action",
+        "description": "Fill in a reply"
+      },
+      {
+        "type": "action",
+        "description": "Submit the reply"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the reply is displayed under the comment"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC032",
+    "title": "Continue viewing earlier chat messages",
+    "description": "This verifies that a user can scroll within a conversation and load earlier messages successfully.",
+    "category": "Chat & Messaging",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "action",
+        "description": "Open an existing chat with enough history to paginate"
+      },
+      {
+        "type": "action",
+        "description": "Scroll to the top of the message history"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify earlier messages are displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC033",
+    "title": "View reviews for a user",
+    "description": "This verifies that a signed-in user can open a profile and see the reviews associated with that user.",
+    "category": "Reviews & Ratings",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "action",
+        "description": "Open a freelancer profile"
+      },
+      {
+        "type": "action",
+        "description": "Open the reviews section"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the user's reviews are displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC034",
+    "title": "View another user's profile and toggle a partner relationship",
+    "description": "This verifies that a signed-in user can open another profile and create a partner relationship from that profile.",
+    "category": "User Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "action",
+        "description": "Open a freelancer or shop profile from a listing"
+      },
+      {
+        "type": "action",
+        "description": "Toggle the partner relationship state"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the partner relationship state is updated"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC035",
+    "title": "Submit a report from signed-in user",
+    "description": "This verifies that a signed-in user can submit a report successfully from the reporting flow.",
+    "category": "Report System",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "action",
+        "description": "Open the report dialog"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the reported item field with a valid item reference"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the report reason field with inappropriate content"
+      },
+      {
+        "type": "action",
+        "description": "Select a report type"
+      },
+      {
+        "type": "action",
+        "description": "Submit the report"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a report confirmation is visible"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC036",
+    "title": "Update a profile without being signed in",
+    "description": "This verifies that profile updates are not available without authentication.",
+    "category": "Shops & Products",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the profile settings page"
+      },
+      {
+        "type": "action",
+        "description": "Attempt to edit the account details"
+      },
+      {
+        "type": "action",
+        "description": "Attempt to save the profile changes"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify access is blocked"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC037",
+    "title": "See validation when search query is empty",
+    "description": "This verifies that submitting a search without a query shows validation feedback and does not return results.",
+    "category": "Smart Search",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "action",
+        "description": "Open the search screen"
+      },
+      {
+        "type": "action",
+        "description": "Leave the search field empty"
+      },
+      {
+        "type": "action",
+        "description": "Select jobs as the search type"
+      },
+      {
+        "type": "action",
+        "description": "Submit the search"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a search validation error is visible"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC038",
+    "title": "Prevent submitting a proposal for a missing job",
+    "description": "This verifies that submitting a proposal for a non-existent job is blocked with a validation error.",
+    "category": "Proposal Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the form"
+      },
+      {
+        "type": "action",
+        "description": "Start the proposal flow from a job search or proposal entry point"
+      },
+      {
+        "type": "action",
+        "description": "Choose a job that does not exist"
+      },
+      {
+        "type": "action",
+        "description": "Fill in a cover letter"
+      },
+      {
+        "type": "action",
+        "description": "Fill in a valid proposed budget"
+      },
+      {
+        "type": "action",
+        "description": "Fill in a timeline"
+      },
+      {
+        "type": "action",
+        "description": "Submit the proposal"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a validation error is visible"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC039",
+    "title": "Block report submission without signing in",
+    "description": "This verifies that an unauthenticated user cannot submit a report and is prevented from completing the flow.",
+    "category": "Report System",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the report screen"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the reported item field with a valid item reference"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the report reason field with inappropriate content"
+      },
+      {
+        "type": "action",
+        "description": "Select a report type"
+      },
+      {
+        "type": "action",
+        "description": "Submit the report"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an authentication requirement is visible"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC040",
+    "title": "Handle a malformed job lookup through the UI",
+    "description": "This verifies that opening an invalid or missing job from the interface shows an empty or not-found state instead of job details.",
+    "category": "Job Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "action",
+        "description": "Open the job browse view"
+      },
+      {
+        "type": "action",
+        "description": "Open a job entry that is no longer available"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a job not found or empty state is displayed"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC041",
+    "title": "See validation when rating is out of range",
+    "description": "This verifies that the review form rejects an invalid rating and shows a validation message instead of creating the review.",
+    "category": "Reviews & Ratings",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "action",
+        "description": "Open the review form for a completed job"
+      },
+      {
+        "type": "action",
+        "description": "Enter an invalid rating value"
+      },
+      {
+        "type": "action",
+        "description": "Submit the review"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a review validation error is visible"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC042",
+    "title": "Search shops with an unsupported filter",
+    "description": "This verifies that shop search still returns results or an empty state when an unsupported filter is used.",
+    "category": "Shops & Products",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the form"
+      },
+      {
+        "type": "action",
+        "description": "Open shop search"
+      },
+      {
+        "type": "action",
+        "description": "Apply an unsupported filter"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the search results or empty state is displayed"
+      }
+    ],
+    "priority": "Low"
+  }
+]

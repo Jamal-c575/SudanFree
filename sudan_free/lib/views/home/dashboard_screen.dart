@@ -1,17 +1,21 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../core/constants/app_colors.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:shimmer/shimmer.dart';
+import '../../widgets/common/verification_badge.dart';
+import '../../core/constants/app_colors.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../providers/locale_provider.dart';
-import '../../providers/posts_provider.dart';
+import '../../widgets/home/motivational_quotes_carousel.dart';
 import '../../models/user_model.dart';
 import '../../models/ad_model.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../../services/firestore/ad_service.dart';
-import '../../services/cloudinary_service.dart';
 import '../../services/notification_polling_service.dart';
+import '../../services/cloudinary_service.dart';
+import '../../widgets/common/morph_transition.dart';
 import '../profile/profile_screen.dart';
 import '../notifications/notifications_screen.dart';
 import '../../core/routes/premium_page_route.dart';
@@ -20,11 +24,18 @@ import '../settings/settings_screen.dart';
 import 'ad_details_screen.dart';
 import 'filtered_providers_screen.dart';
 import '../map/map_explorer_screen.dart';
+import '../home/home_screen.dart'; // To access BottomBarVisibilityProvider
+import '../../services/ai_guide_service.dart';
+import '../../widgets/home/ai_recommendations_widget.dart';
+import '../../widgets/home/recommended_users_widget.dart';
 import '../../widgets/common/glass_card.dart';
 import '../../widgets/common/optimized_network_image.dart';
 import '../../core/utils/job_titles_utils.dart';
 import '../../widgets/common/glass_container.dart';
-import 'dart:ui';
+import '../../widgets/home/sudanese_landmarks_carousel.dart';
+import 'package:animations/animations.dart';
+
+import "package:sudan_free/providers/partners_provider.dart";
 
 class DashboardScreen extends StatefulWidget {
   final void Function(int tabIndex)? onNavigateToTab;
@@ -33,7 +44,8 @@ class DashboardScreen extends StatefulWidget {
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> {
+class _DashboardScreenState extends State<DashboardScreen>
+    with AutomaticKeepAliveClientMixin {
   List<AdModel> _homeBannerAds = [];
   List<AdModel> _stripAds = [];
   int _currentBannerAdIndex = 0;
@@ -41,6 +53,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final AdService _adService = AdService();
   PageController? _bannerPageController;
   Timer? _bannerAutoScrollTimer;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -51,7 +66,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final authProvider = context.read<AuthProvider>();
       if (authProvider.user != null) {
         NotificationPollingService().setUserId(authProvider.user!.id);
-        authProvider.fetchPartners();
+        context.read<PartnersProvider>().fetchPartners();
+        AiGuideService.showPageGuide(context, 'الصفحة الرئيسية', authProvider.user!.name);
       }
     });
   }
@@ -60,8 +76,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _bannerAutoScrollTimer?.cancel();
     if (_homeBannerAds.length <= 1) return;
     _bannerAutoScrollTimer = Timer.periodic(const Duration(seconds: 5), (_) {
-      if (!mounted || _homeBannerAds.isEmpty || _bannerPageController == null)
+      if (!mounted || _homeBannerAds.isEmpty || _bannerPageController == null) {
         return;
+      }
       final nextPage = (_currentBannerAdIndex + 1) % _homeBannerAds.length;
       _bannerPageController!.animateToPage(
         nextPage,
@@ -103,18 +120,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   String _getStoreTypeDisplay(UserModel u, String locale) {
-    if (u.shopCategory == ShopCategory.beauty)
-      return locale == 'ar' ? 'تجميل' : 'Beauty';
+    if (u.shopCategory == ShopCategory.beauty) {
+      return AppLocalizations.of(context)!.beauty;
+    }
     // Since we don't have an explicit 'online'/'local' field in UserModel, we assume local by default,
     // or maybe based on if they have a physical address? Let's just use local unless online is specified in their bio/title
     final isOnline = u.bio?.toLowerCase().contains('online') == true ||
         u.jobTitle?.toLowerCase().contains('online') == true;
-    if (isOnline) return locale == 'ar' ? 'متجر إلكتروني' : 'Online Store';
-    return locale == 'ar' ? 'متجر محلي' : 'Local Store';
+    if (isOnline) return AppLocalizations.of(context)!.onlineStore;
+    return AppLocalizations.of(context)!.localStore;
   }
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // Required by AutomaticKeepAliveClientMixin
     final authProvider = context.watch<AuthProvider>();
     final userProvider = context.watch<UserProvider>();
     final currentUser = authProvider.user;
@@ -124,7 +143,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    final allPartners = authProvider.partners.take(15).toList();
+    final allPartners = context.watch<PartnersProvider>().partners.take(15).toList();
     final storyUsers = [
       ...allPartners.where((u) => u.isOnline),
       ...allPartners.where((u) => !u.isOnline),
@@ -165,127 +184,226 @@ class _DashboardScreenState extends State<DashboardScreen> {
             _fetchAds();
             userProvider.fetchFreelancers(forceRefresh: true);
             userProvider.fetchShops(forceRefresh: true);
-            authProvider.fetchPartners(forceRefresh: true);
+            context.read<PartnersProvider>().fetchPartners(forceRefresh: true);
           },
           child: CustomScrollView(
           slivers: [
             SliverAppBar(
+              stretch: true,
               pinned: true,
-              elevation: 0,
+              floating: false,
+              snap: false,
               backgroundColor: Colors.transparent,
-              flexibleSpace: ClipRRect(
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-                  child: Container(
-                    color: Theme.of(context).brightness == Brightness.dark
-                        ? Colors.black.withValues(alpha: 0.3)
-                        : Colors.white.withValues(alpha: 0.3),
-                    decoration: BoxDecoration(
-                      border: Border(
-                        bottom: BorderSide(
-                          color: Colors.white.withValues(alpha: 0.1),
-                          width: 1.0,
-                        ),
-                      ),
-                    ),
-                  ),
+              flexibleSpace: const FlexibleSpaceBar(
+                stretchModes: [StretchMode.zoomBackground],
+                background: SudaneseLandmarksCarousel(),
+              ),
+              leading: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: GlassContainer(
+                  borderRadius: BorderRadius.circular(12),
+                  padding: EdgeInsets.zero,
+                  enableBlur: true,
+                  blur: 10,
+                  color: Colors.black.withValues(alpha: 0.3),
+                  child: IconButton(
+                    icon: const Icon(Icons.menu, color: Colors.white),
+                    onPressed: () {
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Theme.of(context).colorScheme.surface,
+                      builder: (_) => const SettingsScreen(asBottomSheet: true),
+                    );
+                  },
                 ),
               ),
-              leading: IconButton(
-                icon: const Icon(Icons.menu),
-                onPressed: () {
-                  showModalBottomSheet(
-                    context: context,
-                    isScrollControlled: true,
-                    backgroundColor: Theme.of(context).colorScheme.surface,
-                    builder: (_) => const SettingsScreen(asBottomSheet: true),
-                  );
-                },
-              ),
-              title: Text(
-                locale == 'ar' ? 'سودان فري' : 'SudanFree',
-                style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            title: GlassContainer(
+                borderRadius: BorderRadius.circular(16),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                enableBlur: true,
+                blur: 10,
+                color: Colors.black.withValues(alpha: 0.3),
+                child: Text(
+                  AppLocalizations.of(context)!.sudanfree,
+                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                ),
               ),
               centerTitle: true,
               actions: [
-                IconButton(
-                  onPressed: () {
-                    Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => const MapExplorerScreen()));
-                  },
-                  icon: const Icon(Icons.map_outlined),
+                Padding(
+                  padding: const EdgeInsets.only(right: 8.0, top: 8.0, bottom: 8.0),
+                  child: GlassContainer(
+                    borderRadius: BorderRadius.circular(12),
+                    padding: EdgeInsets.zero,
+                    enableBlur: true,
+                    blur: 10,
+                    color: Colors.black.withValues(alpha: 0.3),
+                    child: OpenContainer(
+                      transitionDuration: const Duration(milliseconds: 700),
+                      transitionType: ContainerTransitionType.fadeThrough,
+                      closedElevation: 0,
+                      closedColor: Colors.transparent,
+                      middleColor: Colors.transparent,
+                      openBuilder: (context, _) => const MapExplorerScreen(),
+                      closedBuilder: (context, openContainer) {
+                        return IconButton(
+                          onPressed: openContainer,
+                          icon: const Icon(Icons.map_outlined, color: Colors.white),
+                        );
+                      },
+                    ),
+                  ),
                 ),
                 Consumer<NotificationPollingService>(
                   builder: (context, pollingService, _) {
                     final count = pollingService.unreadCount;
-                    return IconButton(
-                      onPressed: () => Navigator.push(context,
-                          PremiumPageRoute(page: const NotificationsScreen())),
-                      icon: Badge(
-                        isLabelVisible: count > 0,
-                        label: Text(count > 99 ? '99+' : count.toString()),
-                        child: const Icon(Icons.notifications_outlined),
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8.0, top: 8.0, bottom: 8.0),
+                      child: GlassContainer(
+                        borderRadius: BorderRadius.circular(12),
+                        padding: EdgeInsets.zero,
+                        enableBlur: true,
+                        blur: 10,
+                        color: Colors.black.withValues(alpha: 0.3),
+                        child: OpenContainer(
+                          transitionDuration: const Duration(milliseconds: 700),
+                          transitionType: ContainerTransitionType.fadeThrough,
+                          closedElevation: 0,
+                          closedColor: Colors.transparent,
+                          middleColor: Colors.transparent,
+                          openBuilder: (context, _) => const NotificationsScreen(),
+                          closedBuilder: (context, openContainer) {
+                            return IconButton(
+                              onPressed: openContainer,
+                              icon: Badge(
+                                isLabelVisible: count > 0,
+                                label: Text(count > 99 ? '99+' : count.toString()),
+                                child: const Icon(Icons.notifications_outlined, color: Colors.white),
+                              ),
+                            );
+                          },
+                        ),
                       ),
                     );
                   },
                 ),
-                GestureDetector(
-                  onTap: () => Navigator.push(
-                      context,
-                      PremiumPageRoute(
-                          page: ProfileScreen(userId: currentUser.id))),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: CircleAvatar(
-                      radius: 16,
-                      backgroundColor: Theme.of(context)
-                          .colorScheme
-                          .primary
-                          .withValues(alpha: 0.1),
-                      backgroundImage: currentUser.profileImageUrl != null
-                          ? CachedNetworkImageProvider(
-                              CloudinaryService.getOptimizedUrl(
-                                  currentUser.profileImageUrl!,
-                                  width: 100,
-                                  quality: 'auto'))
-                          : null,
-                      child: currentUser.profileImageUrl == null
-                          ? const Icon(Icons.person,
-                              size: 18) // ✅ Changed back to person
-                          : null,
+                Padding(
+                  padding: const EdgeInsets.only(right: 12.0, top: 8.0, bottom: 8.0),
+                  child: GlassContainer(
+                    borderRadius: BorderRadius.circular(30),
+                    padding: const EdgeInsets.all(2),
+                    enableBlur: true,
+                    blur: 10,
+                    color: Colors.black.withValues(alpha: 0.3),
+                    child: GestureDetector(
+                      onTap: () => Navigator.push(
+                          context,
+                          PremiumPageRoute(
+                              page: ProfileScreen(userId: currentUser.id))),
+                      child: CircleAvatar(
+                        radius: 18,
+                        backgroundColor: Colors.transparent,
+                        backgroundImage: currentUser.profileImageUrl != null
+                            ? CachedNetworkImageProvider(
+                                CloudinaryService.getOptimizedUrl(
+                                    currentUser.profileImageUrl!,
+                                    width: 100,
+                                    quality: 'auto'))
+                            : null,
+                        child: currentUser.profileImageUrl == null
+                            ? const Icon(Icons.person,
+                                size: 20, color: Colors.white)
+                            : null,
+                      ),
                     ),
                   ),
                 ),
               ],
+              bottom: PreferredSize(
+                preferredSize: const Size.fromHeight(70),
+                child: Consumer<BottomBarVisibilityProvider?>(
+                  builder: (context, visibilityProvider, child) {
+                    final isVisible = visibilityProvider?.isVisible ?? true;
+                    return SizedBox(
+                      height: 70,
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 400),
+                        transitionBuilder: (Widget child, Animation<double> animation) {
+                          return FadeTransition(opacity: animation, child: child);
+                        },
+                        child: isVisible
+                            ? SingleChildScrollView(
+                                key: const ValueKey('searchBar'),
+                                physics: const NeverScrollableScrollPhysics(),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 8),
+                                  child: GlassContainer(
+                                    borderRadius: BorderRadius.circular(30),
+                                    padding: EdgeInsets.zero,
+                                    enableBlur: true,
+                                    blur: 10,
+                                    child: TextField(
+                                      readOnly: true,
+                                      onTap: () => showSearch(
+                                          context: context,
+                                          delegate: SmartSearchDelegate()),
+                                      decoration: InputDecoration(
+                                        hintText: AppLocalizations.of(context)!.searchSudanfree,
+                                        prefixIcon: const Icon(Icons.search),
+                                        filled: true,
+                                        fillColor: Colors.transparent,
+                                        contentPadding: const EdgeInsets.symmetric(
+                                            vertical: 0, horizontal: 16),
+                                        border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(30),
+                                          borderSide: BorderSide.none,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              )
+                            : GestureDetector(
+                                key: const ValueKey('motivationalQuotes'),
+                                onTap: () => showSearch(
+                                    context: context,
+                                    delegate: SmartSearchDelegate()),
+                                child: const MotivationalQuotesCarousel(),
+                              ),
+                      ),
+                    );
+                  },
+                ),
+              ),
             ),
+            // AI Recommendations Section
             SliverToBoxAdapter(
               child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                 child: GlassContainer(
-                  borderRadius: BorderRadius.circular(30),
+                  borderRadius: BorderRadius.circular(16),
                   padding: EdgeInsets.zero,
-                  child: TextField(
-                    readOnly: true,
-                    onTap: () => showSearch(
-                        context: context, delegate: SmartSearchDelegate()),
-                    decoration: InputDecoration(
-                      hintText: locale == 'ar'
-                          ? 'ابحث في سودان فري...'
-                          : 'Search SudanFree...',
-                      prefixIcon: const Icon(Icons.search),
-                      filled: true,
-                      fillColor: Colors.transparent,
-                      contentPadding:
-                          const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(30),
-                        borderSide: BorderSide.none,
-                      ),
+                  child: Theme(
+                    data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                    child: ExpansionTile(
+                      initiallyExpanded: false,
+                      title: const Text('مقترح خصيصاً لك 🎯', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      children: const [
+                        AIRecommendationsWidget(title: ''),
+                      ],
                     ),
                   ),
+                ),
+              ),
+            ),
+            // Recommended Users Section
+            SliverToBoxAdapter(
+              child: Consumer<LocaleProvider>(
+                builder: (context, locale, _) => RecommendedUsersWidget(
+                  isAr: locale.isArabic,
                 ),
               ),
             ),
@@ -306,14 +424,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     itemCount: _homeBannerAds.length,
                     itemBuilder: (context, index) {
                       final ad = _homeBannerAds[index];
-                      return GestureDetector(
-                        onTap: () {
-                          _adService.recordImpression(ad.id);
-                          Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (_) => AdDetailsScreen(ad: ad)));
-                        },
+                      return MorphTransition(
+                        openScreen: AdDetailsScreen(ad: ad),
+                        closedBuilder: (context, openContainer) => GestureDetector(
+                          onTap: () {
+                            _adService.recordImpression(ad.id);
+                            openContainer();
+                          },
                         child: GlassCard(
                           margin: const EdgeInsets.symmetric(
                               horizontal: 16, vertical: 8),
@@ -341,46 +458,57 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     ),
                                   ),
                                 ),
-                              Positioned(
-                                bottom: 12,
-                                left: 12,
-                                right: 12,
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        ad.title,
-                                        style: const TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
+                                Positioned(
+                                  bottom: 12,
+                                  left: 12,
+                                  right: 12,
+                                  child: Text(
+                                    ad.title,
+                                    style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                Positioned(
+                                  top: 0,
+                                  right: 0,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: Colors.teal.shade700.withValues(alpha: 0.9),
+                                      borderRadius: const BorderRadius.only(
+                                        bottomLeft: Radius.circular(16),
                                       ),
                                     ),
-                                    GlassContainer(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 8, vertical: 4),
-                                      borderRadius: BorderRadius.circular(12),
-                                      color: Theme.of(context).colorScheme.primary,
-                                      child: Text(
-                                          locale == 'ar'
-                                              ? 'إعلان ممول'
-                                              : 'Sponsored',
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(Icons.campaign, color: Colors.white, size: 14),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          ad.advertiserName != null && ad.advertiserName!.isNotEmpty
+                                              ? 'إعلان من ${ad.advertiserName}'
+                                              : 'إعلان ممول',
                                           style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.bold)),
+                                            color: Colors.white,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ],
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
-                    },
+                              ],
+                           ), // Stack
+                         ), // ClipRRect
+                       ), // GlassCard
+                     ), // GestureDetector
+                   ); // MorphTransition
+                   },
                   ),
                 ),
               ),
@@ -392,77 +520,62 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: SizedBox(
                   height: 74,
-                  child: Row(
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
                     children: [
-                      Expanded(
+                      SizedBox(
+                        width: MediaQuery.of(context).size.width * 0.22,
                         child: _buildCompactActionCard(
                             context,
-                            locale == 'ar' ? 'خدمات' : 'Services',
+                            AppLocalizations.of(context)!.services,
                             Icons.handyman,
-                            () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (_) => FilteredProvidersScreen(
-                                        filterType: FilterType.freelancersNearYou,
-                                        title: locale == 'ar'
-                                            ? 'خدمات'
-                                            : 'Services')))),
+                            FilteredProvidersScreen(
+                                filterType: FilterType.freelancersNearYou,
+                                title: AppLocalizations.of(context)!.services)),
                       ),
                       const SizedBox(width: 8),
-                      Expanded(
+                      SizedBox(
+                        width: MediaQuery.of(context).size.width * 0.22,
                         child: _buildCompactActionCard(
                             context,
-                            locale == 'ar' ? 'متاجر' : 'Shops',
+                            AppLocalizations.of(context)!.shops,
                             Icons.storefront,
-                            () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (_) => FilteredProvidersScreen(
-                                        filterType: FilterType.shops,
-                                        title: locale == 'ar' ? 'متاجر' : 'Shops')))),
+                            FilteredProvidersScreen(
+                                filterType: FilterType.shops,
+                                title: AppLocalizations.of(context)!.shops)),
                       ),
                       const SizedBox(width: 8),
-                      Expanded(
+                      SizedBox(
+                        width: MediaQuery.of(context).size.width * 0.22,
                         child: _buildCompactActionCard(
                             context,
-                            locale == 'ar' ? 'الجديد' : 'New',
+                            AppLocalizations.of(context)!.strNew,
                             Icons.fiber_new,
-                            () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (_) => FilteredProvidersScreen(
-                                        filterType: FilterType.newest,
-                                        title: locale == 'ar' ? 'الجديد' : 'New')))),
+                            FilteredProvidersScreen(
+                                filterType: FilterType.newest,
+                                title: AppLocalizations.of(context)!.strNew)),
                       ),
                       const SizedBox(width: 8),
-                      Expanded(
+                      SizedBox(
+                        width: MediaQuery.of(context).size.width * 0.22,
                         child: _buildCompactActionCard(
                             context,
-                            locale == 'ar' ? 'الأعلى' : 'Top',
+                            AppLocalizations.of(context)!.top,
                             Icons.star,
-                            () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (_) => FilteredProvidersScreen(
-                                        filterType: FilterType.topRated,
-                                        title: locale == 'ar'
-                                            ? 'الأعلى تقييماً'
-                                            : 'Top Rated')))),
+                            FilteredProvidersScreen(
+                                filterType: FilterType.topRated,
+                                title: AppLocalizations.of(context)!.topRated)),
                       ),
                       const SizedBox(width: 8),
-                      Expanded(
+                      SizedBox(
+                        width: MediaQuery.of(context).size.width * 0.22,
                         child: _buildCompactActionCard(
                             context,
-                            locale == 'ar' ? 'الأقرب' : 'Nearest',
+                            AppLocalizations.of(context)!.nearest,
                             Icons.location_on,
-                            () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (_) => FilteredProvidersScreen(
-                                        filterType: FilterType.nearYou,
-                                        title: locale == 'ar'
-                                            ? 'الأقرب'
-                                            : 'Nearest')))),
+                            FilteredProvidersScreen(
+                                filterType: FilterType.nearYou,
+                                title: AppLocalizations.of(context)!.nearest)),
                       ),
                     ],
                   ),
@@ -471,15 +584,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
 
             _buildSectionHeader(
-                locale == 'ar' ? 'خدمات في منطقتك' : 'Services Near You',
+                AppLocalizations.of(context)!.servicesNearYou,
                 () => Navigator.push(
                     context,
                     MaterialPageRoute(
                         builder: (_) => FilteredProvidersScreen(
                             filterType: FilterType.freelancersNearYou,
-                            title: locale == 'ar'
-                                ? 'خدمات في منطقتك'
-                                : 'Services Near You')))),
+                            title: AppLocalizations.of(context)!.servicesNearYou)))),
             SliverToBoxAdapter(
               child: userProvider.isLoading
                   ? _buildShimmerList()
@@ -487,15 +598,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       context, nearbyFreelancers.take(10).toList(), locale),
             ),
             _buildSectionHeader(
-                locale == 'ar' ? 'متاجر في منطقتك' : 'Shops Near You',
+                AppLocalizations.of(context)!.shopsNearYou,
                 () => Navigator.push(
                     context,
                     MaterialPageRoute(
                         builder: (_) => FilteredProvidersScreen(
                             filterType: FilterType.shopsNearYou,
-                            title: locale == 'ar'
-                                ? 'متاجر في منطقتك'
-                                : 'Shops Near You')))),
+                            title: AppLocalizations.of(context)!.shopsNearYou)))),
             SliverToBoxAdapter(
               child: userProvider.isLoading
                   ? _buildShimmerList()
@@ -517,12 +626,47 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       borderRadius: BorderRadius.circular(16),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(16),
-                        child: CachedNetworkImage(
-                          imageUrl: _stripAds[0].mediaUrl,
-                          height: 100,
-                          width: double.infinity,
-                          fit: BoxFit.cover,
-                          placeholder: (context, url) => Container(color: Colors.grey[300]),
+                        child: Stack(
+                          fit: StackFit.passthrough,
+                          children: [
+                            CachedNetworkImage(
+                              imageUrl: _stripAds[0].mediaUrl,
+                              height: 150,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                              placeholder: (context, url) => Container(color: Colors.grey[300]),
+                            ),
+                            Positioned(
+                              top: 0,
+                              right: 0,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: Colors.teal.shade700.withValues(alpha: 0.9),
+                                  borderRadius: const BorderRadius.only(
+                                    bottomLeft: Radius.circular(16),
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.campaign, color: Colors.white, size: 14),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      _stripAds[0].advertiserName != null && _stripAds[0].advertiserName!.isNotEmpty
+                                          ? 'إعلان من ${_stripAds[0].advertiserName}'
+                                          : 'إعلان ممول',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -540,29 +684,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   // ✅ New Compact Action Card (70x70)
   Widget _buildCompactActionCard(
-      BuildContext context, String title, IconData icon, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: GlassContainer(
-        height: 70,
-        borderRadius: BorderRadius.circular(16),
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: Theme.of(context).colorScheme.primary, size: 24),
-            const SizedBox(height: 4),
-            Expanded(
-              child: Text(
-                title,
-                style:
-                    const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+      BuildContext context, String title, IconData icon, Widget openScreen) {
+    return MorphTransition(
+      openScreen: openScreen,
+      closedBuilder: (context, openContainer) => GestureDetector(
+        onTap: openContainer,
+        child: GlassContainer(
+          height: 70,
+          borderRadius: BorderRadius.circular(16),
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: Theme.of(context).colorScheme.primary, size: 24),
+              const SizedBox(height: 4),
+              Expanded(
+                child: Text(
+                  title,
+                  style:
+                      const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -580,10 +727,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             TextButton(
               onPressed: onSeeAll,
-              child: Text(
-                  context.read<LocaleProvider>().locale.languageCode == 'ar'
-                      ? 'عرض الكل'
-                      : 'See All'),
+              child: Text(AppLocalizations.of(context)!.seeAll),
             ),
           ],
         ),
@@ -593,16 +737,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildShimmerList() {
     return SizedBox(
-      height: 160,
+      height: 190,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         itemCount: 4,
         padding: const EdgeInsets.symmetric(horizontal: 12),
-        itemBuilder: (_, __) => GlassContainer(
-          width: 140,
-          margin: const EdgeInsets.symmetric(horizontal: 4),
-          borderRadius: BorderRadius.circular(12),
-          child: const SizedBox.shrink(),
+        itemBuilder: (_, __) => Shimmer.fromColors(
+          baseColor: Colors.grey[300]!,
+          highlightColor: Colors.grey[100]!,
+          child: Container(
+            width: MediaQuery.of(context).size.width * 0.35,
+            margin: const EdgeInsets.symmetric(horizontal: 4),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
         ),
       ),
     );
@@ -620,7 +770,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Icon(Icons.groups_outlined, size: 48, color: Colors.grey[300]),
               const SizedBox(height: 8),
               Text(
-                locale == 'ar' ? 'لا توجد بيانات حالياً' : 'No data available',
+                AppLocalizations.of(context)!.noDataAvailable,
                 style: TextStyle(color: Colors.grey[500], fontSize: 14),
               ),
             ],
@@ -629,7 +779,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       );
     }
     return SizedBox(
-      height: 170, // ✅ Increased height slightly to accommodate the distinctive layout
+      height: 200, // ✅ Increased height to look less square (more professional)
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -645,15 +795,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
           // ✅ FIX #4: RepaintBoundary isolates each card's GPU layer
           return RepaintBoundary(
-            child: GestureDetector(
-            onTap: () => Navigator.push(
-                context, PremiumPageRoute(page: ProfileScreen(userId: u.id))),
+            child: MorphTransition(
+              openScreen: ProfileScreen(userId: u.id),
+              closedBuilder: (context, openContainer) => GestureDetector(
+                onTap: openContainer,
             child: GlassCard(
               margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
               borderRadius: 16,
               padding: EdgeInsets.zero,
               child: SizedBox(
-                width: u.isShop ? 150 : 130, // Shops are slightly wider
+                width: MediaQuery.of(context).size.width * (u.isShop ? 0.38 : 0.35),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -662,23 +813,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       child: Stack(
                         fit: StackFit.expand,
                         children: [
-                          ClipRRect(
-                            borderRadius: const BorderRadius.vertical(
-                                top: Radius.circular(16)),
-                            child: u.profileImageUrl != null
-                                ? OptimizedNetworkImage(
-                                    imageUrl: u.profileImageUrl!,
-                                    quality: ImageQuality.thumbnail,
-                                    fit: BoxFit.cover,
-                                  )
-                                : Container(
-                                    color: AppColors.primary.withValues(alpha: 0.1),
-                                    child: Icon(
-                                      u.isShop ? Icons.storefront : Icons.person,
-                                      size: 40,
-                                      color: AppColors.primary,
+                          Hero(
+                            tag: '${u.id}_profile',
+                            child: ClipRRect(
+                              borderRadius: const BorderRadius.vertical(
+                                  top: Radius.circular(16)),
+                              child: u.profileImageUrl != null
+                                  ? OptimizedNetworkImage(
+                                      imageUrl: u.profileImageUrl!,
+                                      quality: ImageQuality.thumbnail,
+                                      fit: BoxFit.cover,
+                                    )
+                                  : Container(
+                                      color: AppColors.primary.withValues(alpha: 0.1),
+                                      child: Icon(
+                                        u.isShop ? Icons.storefront : Icons.person,
+                                        size: 40,
+                                        color: AppColors.primary,
+                                      ),
                                     ),
-                                  ),
+                            ),
                           ),
                           // Badge Overlay
                           Positioned(
@@ -694,7 +848,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   Icon(u.isShop ? Icons.store : Icons.handyman, size: 10, color: Colors.white),
                                   const SizedBox(width: 4),
                                   Text(
-                                    u.isShop ? (locale == 'ar' ? 'متجر' : 'Shop') : (locale == 'ar' ? 'حرفي' : 'Artisan'),
+                                    u.isShop ? (AppLocalizations.of(context)!.shop) : (AppLocalizations.of(context)!.artisan),
                                     style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
                                   ),
                                 ],
@@ -713,11 +867,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Text(u.name,
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.bold, fontSize: 13),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis),
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: Text(u.name,
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.bold, fontSize: 13),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis),
+                                ),
+                                SmartVerificationBadge(user: u, size: 12),
+                              ],
+                            ),
                             const SizedBox(height: 2),
                             Text(
                               u.isShop
@@ -764,8 +925,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ],
                 ),
               ),
-            ),
-            ), // Close GestureDetector
+                ),
+              ), // Close GestureDetector
+            ), // Close MorphTransition
           ); // Close RepaintBoundary
         },
       ),

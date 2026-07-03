@@ -9,10 +9,12 @@ import '../../providers/auth_provider.dart';
 import '../../providers/locale_provider.dart';
 import '../../models/user_model.dart';
 import '../../services/storage_service.dart';
-import '../../widgets/buttons/primary_button.dart';
+import '../../widgets/common/premium_button.dart';
 import '../../widgets/inputs/custom_text_field.dart';
 import '../../core/utils/app_error_handler.dart';
-import '../../widgets/common/glass_container.dart';
+import '../../widgets/common/premium_glass_card.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import '../../utils/animation_utils.dart';
 
 class IdentityVerificationScreen extends StatefulWidget {
   const IdentityVerificationScreen({super.key});
@@ -195,9 +197,10 @@ class _IdentityVerificationScreenState
         _showSuccessDialog();
       }
     } catch (e, stack) {
-      if (context.mounted)
+      if (context.mounted) {
         AppErrorHandler.show(context, e, stack,
             logContext: 'IdentityVerification.submit');
+      }
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
@@ -225,9 +228,10 @@ class _IdentityVerificationScreenState
         ),
         actions: [
           Center(
-            child: PrimaryButton(
-              text: isArabic ? 'حسناً' : 'OK',
+            child: PremiumButton(
+              label: isArabic ? 'حسناً' : 'OK',
               onPressed: () {
+                HapticFeedback.lightImpact();
                 Navigator.pop(ctx); // close dialog
                 if (context.mounted) Navigator.pop(context); // close screen
               },
@@ -288,13 +292,12 @@ class _IdentityVerificationScreenState
           child: Column(
             children: [
           // Coming soon notice
-          GlassContainer(
-            width: double.infinity,
+          PremiumGlassCard(
             margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
             padding: const EdgeInsets.all(14),
             borderRadius: BorderRadius.circular(12),
             color: Colors.orange.withValues(alpha: 0.1),
-            border: Border.all(color: Colors.orange.withValues(alpha: 0.4)),
+            border: true,
             child: Row(
               children: [
                 const Icon(Icons.construction_rounded,
@@ -370,12 +373,15 @@ class _IdentityVerificationScreenState
                       if (_currentStep == 3) {
                         return Container(
                           margin: const EdgeInsets.only(top: 16),
-                          child: PrimaryButton(
-                            text: isArabic
+                          child: PremiumButton(
+                            label: isArabic
                                 ? 'تأكيد وتقديم الطلب'
                                 : 'Confirm & Submit',
                             isLoading: _isSubmitting,
-                            onPressed: _submitVerification,
+                            onPressed: () {
+                              HapticFeedback.lightImpact();
+                              _submitVerification();
+                            },
                           ),
                         );
                       }
@@ -383,13 +389,13 @@ class _IdentityVerificationScreenState
                         margin: const EdgeInsets.only(top: 16),
                         child: Row(
                           children: [
-                            ElevatedButton(
-                              onPressed: details.onStepContinue,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.primary,
-                                foregroundColor: Colors.white,
-                              ),
-                              child: Text(isArabic ? 'متابعة' : 'Continue'),
+                            PremiumButton(
+                              width: 120,
+                              label: isArabic ? 'متابعة' : 'Continue',
+                              onPressed: () {
+                                HapticFeedback.lightImpact();
+                                details.onStepContinue?.call();
+                              },
                             ),
                             const SizedBox(width: 8),
                             if (_currentStep > 0)
@@ -408,7 +414,7 @@ class _IdentityVerificationScreenState
                       _buildSubmitStep(isArabic, theme),
                     ],
                   ),
-          ),
+          ).animate().fade(duration: const Duration(milliseconds: 600)).slideY(begin: 0.1, curve: AnimationUtils.smoothCurve),
         ],
       ),
         ),
@@ -484,13 +490,11 @@ class _IdentityVerificationScreenState
               children: [
                 if (!_codeSent) ...[
                   // OTP Method Selection
-                  GlassContainer(
+                  PremiumGlassCard(
                     padding: const EdgeInsets.all(16),
                     borderRadius: BorderRadius.circular(12),
                     color: theme.colorScheme.surface,
-                    border: Border.all(
-                        color:
-                            theme.colorScheme.outline.withValues(alpha: 0.3)),
+                    border: true,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -546,10 +550,13 @@ class _IdentityVerificationScreenState
                     prefixIcon: Icons.phone_android,
                   ),
                   const SizedBox(height: 16),
-                  PrimaryButton(
-                    text: isArabic ? 'إرسال الرمز' : 'Send Code',
+                  PremiumButton(
+                    label: isArabic ? 'إرسال الرمز' : 'Send Code',
                     isLoading: _isLoading,
-                    onPressed: _sendCode,
+                    onPressed: () {
+                      HapticFeedback.lightImpact();
+                      _sendCode();
+                    },
                   ),
                 ] else ...[
                   Text(
@@ -582,10 +589,13 @@ class _IdentityVerificationScreenState
                     ),
                   ),
                   const SizedBox(height: 16),
-                  PrimaryButton(
-                    text: isArabic ? 'تحقق الآن' : 'Verify Now',
+                  PremiumButton(
+                    label: isArabic ? 'تحقق الآن' : 'Verify Now',
                     isLoading: _isLoading,
-                    onPressed: _verifyOtp,
+                    onPressed: () {
+                      HapticFeedback.lightImpact();
+                      _verifyOtp();
+                    },
                   ),
                   TextButton(
                     onPressed: () => setState(() => _codeSent = false),
@@ -686,11 +696,11 @@ class _IdentityVerificationScreenState
     return Step(
       title: Text(isArabic ? 'تأكيد وتقديم الطلب' : 'Confirm & Submit Request'),
       isActive: _currentStep >= 3,
-      content: GlassContainer(
+      content: PremiumGlassCard(
         padding: const EdgeInsets.all(16),
         borderRadius: BorderRadius.circular(12),
         color: Colors.blue.withValues(alpha: 0.05),
-        border: Border.all(color: Colors.blue.withValues(alpha: 0.2)),
+        border: true,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

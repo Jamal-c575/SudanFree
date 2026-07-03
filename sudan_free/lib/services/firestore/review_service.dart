@@ -33,15 +33,60 @@ class ReviewFirestoreService {
       return uniqueDocId;
     }
 
+    final uids = [review.reviewerId, review.freelancerId]..sort();
+    final relationId = '${uids[0]}_${uids[1]}';
+    final relationRef = _firestore.collection('contract_relations').doc(relationId);
+
     // ✅ Phase 2: Atomic transaction — writes only (no stat calculation here)
-    await _firestore.runTransaction((tx) async {
+    final result = await _firestore.runTransaction((tx) async {
       // Double-check inside transaction for simultaneous submissions
       final ratingSnap = await tx.get(ratingRef);
       if (ratingSnap.exists) {
         debugPrint(
             'ReviewService: Rating already exists for $uniqueDocId — skipping (in-tx check)');
-        return;
+        return uniqueDocId;
       }
+
+      // Anti-manipulation check
+      final relationSnap = await tx.get(relationRef);
+      int ratedContractsCount = 0;
+      Timestamp? lastRatingTime;
+      bool isBanned = false;
+
+      if (relationSnap.exists) {
+        final data = relationSnap.data()!;
+        ratedContractsCount = data['ratedContractsCount'] ?? 0;
+        lastRatingTime = data['lastRatingTime'] as Timestamp?;
+        isBanned = data['isBanned'] == true;
+      }
+
+      if (isBanned) {
+        return 'MANIPULATION_BANNED';
+      }
+
+      if (lastRatingTime != null) {
+        final diffMinutes = DateTime.now().difference(lastRatingTime.toDate()).inMinutes;
+        if (ratedContractsCount == 1 && diffMinutes < 60) {
+          return 'MANIPULATION_COOLDOWN_1H';
+        } else if (ratedContractsCount >= 2) {
+          if (diffMinutes < 120) {
+            return 'MANIPULATION_COOLDOWN_2H';
+          } else {
+            // Ban the users
+            tx.set(relationRef, {
+              'isBanned': true,
+              'bannedAt': FieldValue.serverTimestamp(),
+            }, SetOptions(merge: true));
+            return 'MANIPULATION_BANNED_NOW';
+          }
+        }
+      }
+
+      // If allowed, update relation
+      tx.set(relationRef, {
+        'ratedContractsCount': ratedContractsCount + 1,
+        'lastRatingTime': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
 
       // Write anti-duplicate guard document in `ratings/`
       tx.set(ratingRef, {
@@ -81,7 +126,18 @@ class ReviewFirestoreService {
         'createdAt': FieldValue.serverTimestamp(),
         'relatedId': reviewRef.id,
       });
+      return uniqueDocId;
     });
+
+    if (result is String && result.startsWith('MANIPULATION_')) {
+      if (result == 'MANIPULATION_COOLDOWN_1H') {
+        throw Exception('لا يمكن التقييم مرة أخرى قبل مرور 60 دقيقة من آخر تقييم.');
+      } else if (result == 'MANIPULATION_COOLDOWN_2H') {
+        throw Exception('لا يمكن التقييم مرة أخرى قبل مرور ساعتين من آخر تقييم.');
+      } else if (result == 'MANIPULATION_BANNED_NOW' || result == 'MANIPULATION_BANNED') {
+        throw Exception('تم اكتشاف تلاعب بالتقييمات. لقد تم حظرك من إنشاء عقود مع هذا المستخدم نهائياً.');
+      }
+    }
 
     debugPrint(
         'ReviewService: Completed createReview — CF will update stats for $uniqueDocId');

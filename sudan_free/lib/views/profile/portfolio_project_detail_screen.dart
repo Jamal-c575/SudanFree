@@ -13,6 +13,7 @@ import '../../models/squad_model.dart';
 import 'squad_profile_screen.dart';
 import '../../providers/auth_provider.dart';
 import 'create_portfolio_project_screen.dart';
+import 'package:sudan_free/l10n/generated/app_localizations.dart';
 
 class PortfolioProjectDetailScreen extends StatefulWidget {
   final PortfolioProjectModel project;
@@ -75,7 +76,7 @@ class _PortfolioProjectDetailScreenState
   }
 
   String _getCategoryName(String? categoryKey, bool isAr) {
-    if (categoryKey == null) return isAr ? 'أخرى' : 'Other';
+    if (categoryKey == null) return AppLocalizations.of(context)!.other;
     const categories = {
       'design': {'ar': 'تصميم', 'en': 'Design'},
       'programming': {'ar': 'برمجة', 'en': 'Programming'},
@@ -87,21 +88,21 @@ class _PortfolioProjectDetailScreenState
       'carpentry': {'ar': 'نجارة', 'en': 'Carpentry'},
       'other': {'ar': 'أخرى', 'en': 'Other'},
     };
-    return categories[categoryKey]?[isAr ? 'ar' : 'en'] ??
-        (isAr ? 'أخرى' : 'Other');
+    return categories[categoryKey]?[AppLocalizations.of(context)!.en] ??
+        (AppLocalizations.of(context)!.other);
   }
 
   String _getStatusName(String? status, bool isAr) {
-    if (status == 'completed') return isAr ? 'مكتمل' : 'Completed';
-    if (status == 'ongoing') return isAr ? 'قيد التنفيذ' : 'Ongoing';
-    return isAr ? 'غير محدد' : 'Not specified';
+    if (status == 'completed') return AppLocalizations.of(context)!.completed;
+    if (status == 'ongoing') return AppLocalizations.of(context)!.ongoing;
+    return AppLocalizations.of(context)!.notSpecified;
   }
 
   String _getTypeName(String? type, bool isAr) {
-    if (type == 'personal') return isAr ? 'شخصي' : 'Personal';
-    if (type == 'client') return isAr ? 'لعميل' : 'Client';
-    if (type == 'startup') return isAr ? 'شركة ناشئة' : 'Startup';
-    return isAr ? 'أخرى' : 'Other';
+    if (type == 'personal') return AppLocalizations.of(context)!.personal;
+    if (type == 'client') return AppLocalizations.of(context)!.client;
+    if (type == 'startup') return AppLocalizations.of(context)!.startup;
+    return AppLocalizations.of(context)!.other;
   }
 
   @override
@@ -115,13 +116,13 @@ class _PortfolioProjectDetailScreenState
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isAr ? 'تفاصيل المشروع' : 'Project Details'),
+        title: Text(AppLocalizations.of(context)!.projectDetails),
         centerTitle: true,
         actions: [
           if (isOwner)
             IconButton(
               icon: const Icon(Icons.edit_outlined),
-              tooltip: isAr ? 'تعديل المشروع' : 'Edit Project',
+              tooltip: AppLocalizations.of(context)!.editProject,
               onPressed: () {
                 Navigator.push(
                   context,
@@ -169,7 +170,7 @@ class _PortfolioProjectDetailScreenState
                       const Spacer(),
                       Text(
                         timeago.format(widget.project.createdAt,
-                            locale: isAr ? 'ar' : 'en'),
+                            locale: AppLocalizations.of(context)!.en),
                         style: TextStyle(color: Colors.grey[500], fontSize: 13),
                       ),
                     ],
@@ -186,7 +187,7 @@ class _PortfolioProjectDetailScreenState
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(isAr ? 'منفذي المشروع' : 'Project Executors',
+                      Text(AppLocalizations.of(context)!.projectExecutors,
                           style: TextStyle(
                               color: Colors.grey[600],
                               fontSize: 13,
@@ -231,7 +232,7 @@ class _PortfolioProjectDetailScreenState
                           Expanded(
                             child: _InfoTile(
                               icon: Icons.task_alt,
-                              title: isAr ? 'حالة المشروع' : 'Status',
+                              title: AppLocalizations.of(context)!.status,
                               value:
                                   _getStatusName(widget.project.status, isAr),
                               color: widget.project.status == 'completed'
@@ -246,7 +247,7 @@ class _PortfolioProjectDetailScreenState
                           Expanded(
                             child: _InfoTile(
                               icon: Icons.work_outline,
-                              title: isAr ? 'نوع المشروع' : 'Type',
+                              title: AppLocalizations.of(context)!.type,
                               value: _getTypeName(
                                   widget.project.projectType, isAr),
                               color: Colors.blue,
@@ -259,7 +260,7 @@ class _PortfolioProjectDetailScreenState
 
                   // ─── Description ───
                   Text(
-                    isAr ? 'تفاصيل المشروع' : 'Project Details',
+                    AppLocalizations.of(context)!.projectDetails,
                     style: const TextStyle(
                         fontWeight: FontWeight.bold, fontSize: 18),
                   ),
@@ -275,7 +276,7 @@ class _PortfolioProjectDetailScreenState
                   if (widget.project.purpose != null &&
                       widget.project.purpose!.isNotEmpty) ...[
                     Text(
-                      isAr ? 'ما يهدف إليه المشروع' : 'Project Purpose',
+                      AppLocalizations.of(context)!.projectPurpose,
                       style: const TextStyle(
                           fontWeight: FontWeight.bold, fontSize: 18),
                     ),
@@ -310,7 +311,7 @@ class _PortfolioProjectDetailScreenState
                             _launchUrl(widget.project.externalLink!),
                         icon: const Icon(Icons.open_in_new),
                         label: Text(
-                            isAr ? 'زيارة رابط المشروع' : 'Visit Project Link',
+                            AppLocalizations.of(context)!.visitProjectLink,
                             style: const TextStyle(
                                 fontWeight: FontWeight.bold, fontSize: 16)),
                         style: ElevatedButton.styleFrom(

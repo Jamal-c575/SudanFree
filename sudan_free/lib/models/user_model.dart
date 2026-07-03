@@ -1,29 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../utils/safe_parse.dart';
 
-enum UserRole { freelancer, techService, privateService, client, shop, admin }
-
-enum ShopCategory {
-  electronics, // إلكترونيات
-  clothing, // ملابس
-  furniture, // أثاث
-  food, // مواد غذائية
-  restaurant, // مطعم
-  supermarket, // سوبرماركت
-  pharmacy, // صيدلية
-  beauty, // تجميل ومستحضرات
-  automotive, // قطع غيار سيارات
-  building, // مواد بناء
-  jewelry, // مجوهرات
-  mobile, // جوالات وإكسسوارات
-  bookstore, // مكتبة
-  sports, // رياضة
-  toys, // ألعاب أطفال
-  home, // أدوات منزلية
-  other, // أخرى
-}
-
-enum VerificationStatus { none, pending, verified, rejected }
+import 'enums/user_enums.dart';
+export 'enums/user_enums.dart';
 
 class UserModel {
   final String id;
@@ -63,6 +42,7 @@ class UserModel {
   final double rating;
   final int reviewsCount;
   final Map<String, int> ratingCounts; // Key: '1', '2', '3', '4', '5'
+  final String? aiReviewSummary; // AI Summary of reviews
   final int negativeReports; // Reports for fraud/scam
   final int totalJobs;
   final int completedJobs;
@@ -134,6 +114,7 @@ class UserModel {
     this.rating = 0.0,
     this.reviewsCount = 0,
     this.ratingCounts = const {},
+    this.aiReviewSummary,
     this.negativeReports = 0,
     this.totalJobs = 0,
     this.completedJobs = 0,
@@ -236,6 +217,7 @@ class UserModel {
           return <String, int>{};
         }
       })(),
+      aiReviewSummary: data['aiReviewSummary'] as String?,
       negativeReports: (data['negativeReports'] as num?)?.toInt() ?? 0,
       totalJobs: (data['totalJobs'] as num?)?.toInt() ?? 0,
       completedJobs: (data['completedJobs'] as num?)?.toInt() ?? 0,
@@ -280,13 +262,14 @@ class UserModel {
       notificationSettings: (() {
         try {
           final raw = data['notificationSettings'];
-          if (raw == null)
+          if (raw == null) {
             return {
               'chat': true,
               'mentions': true,
               'milestones': true,
               'marketing': false
             };
+          }
           return (raw as Map).map((k, v) => MapEntry(k.toString(), v == true));
         } catch (_) {
           return {
@@ -402,6 +385,7 @@ class UserModel {
       'rating': rating,
       'reviewsCount': reviewsCount,
       'ratingCounts': ratingCounts,
+      'aiReviewSummary': aiReviewSummary,
       'totalJobs': totalJobs,
       'completedJobs': completedJobs,
       'createdAt': Timestamp.fromDate(createdAt),
@@ -506,6 +490,7 @@ class UserModel {
     double? rating,
     int? reviewsCount,
     Map<String, int>? ratingCounts,
+    String? aiReviewSummary,
     int? negativeReports,
     int? totalJobs,
     int? completedJobs,
@@ -574,6 +559,8 @@ class UserModel {
       whatsappNumber: whatsappNumber ?? this.whatsappNumber,
       rating: rating ?? this.rating,
       reviewsCount: reviewsCount ?? this.reviewsCount,
+      ratingCounts: ratingCounts ?? this.ratingCounts,
+      aiReviewSummary: aiReviewSummary ?? this.aiReviewSummary,
       negativeReports: negativeReports ?? this.negativeReports,
       totalJobs: totalJobs ?? this.totalJobs,
       completedJobs: completedJobs ?? this.completedJobs,

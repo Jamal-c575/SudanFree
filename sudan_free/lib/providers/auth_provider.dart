@@ -36,8 +36,6 @@ class AuthProvider extends ChangeNotifier {
   StreamSubscription<UserModel?>? _userSubscription;
   StreamSubscription<bool>? _networkSubscription;
 
-  // Partners
-  List<UserModel> _partners = [];
 
   AuthStatus get status => _status;
   UserModel? get user => _user;
@@ -45,7 +43,6 @@ class AuthProvider extends ChangeNotifier {
   bool get isAuthenticated => _status == AuthStatus.authenticated;
   bool get isNewUser => _isNewUser;
   String? get userId => _authService.currentUserId;
-  List<UserModel> get partners => _partners; // Added getter
   bool get isManualSignIn => _isManualSignIn; // Added for smooth UI transitions
 
 
@@ -58,177 +55,6 @@ class AuthProvider extends ChangeNotifier {
     super.dispose();
   }
 
-  // Toggle Partner (Add/Remove Colleague)
-  Future<void> sendPartnerRequest(String targetId) async {
-    if (_user == null) return;
-
-    // Prevent if already partner or already pending
-    if (_user!.partnerIds.contains(targetId) ||
-        _user!.pendingPartnerIds.contains(targetId)) {
-      return;
-    }
-
-    try {
-      await _firestoreService.sendPartnerRequest(
-          _user!.id, _user!.name, targetId);
-      // Wait for stream update instead of optimistic
-    } catch (e) {
-      debugPrint('Error sending partner request: $e');
-    }
-  }
-
-  // Handle Partner Request (Accept/Decline)
-  Future<void> handlePartnerRequest(String requesterId, bool accept,
-      {UserModel? requester}) async {
-    if (_user == null) return;
-
-    try {
-      await _firestoreService.handlePartnerRequest(
-          _user!.id, _user!.name, requesterId, accept);
-
-      final updatedPending = List<String>.from(_user!.pendingPartnerIds);
-      updatedPending.remove(requesterId);
-
-      final updatedPartners = List<String>.from(_user!.partnerIds);
-      if (accept && !updatedPartners.contains(requesterId)) {
-        updatedPartners.add(requesterId);
-      }
-
-      _user = _user!.copyWith(
-        pendingPartnerIds: updatedPending,
-        partnerIds: updatedPartners,
-      );
-
-      if (accept && requester != null) {
-        final existing =
-            _partners.where((user) => user.id == requester.id).isNotEmpty;
-        if (!existing) {
-          _partners.add(requester);
-        }
-      }
-
-      notifyListeners();
-    } catch (e) {
-      debugPrint('Error handling partner request: $e');
-      rethrow;
-    }
-  }
-
-  // Remove Partner (Cancel Request / Remove Colleague)
-  Future<void> removePartner(String targetId) async {
-    if (_user == null) return;
-    try {
-      await _firestoreService.removePartner(_user!.id, targetId);
-
-      final updatedPartners = List<String>.from(_user!.partnerIds);
-      updatedPartners.remove(targetId);
-      
-      final updatedPending = List<String>.from(_user!.pendingPartnerIds);
-      updatedPending.remove(targetId);
-
-      _user = _user!.copyWith(
-        partnerIds: updatedPartners,
-        pendingPartnerIds: updatedPending,
-      );
-
-      _partners.removeWhere((p) => p.id == targetId);
-      
-      notifyListeners();
-    } catch (e) {
-      debugPrint('Error removing partner: $e');
-      rethrow;
-    }
-  }
-
-  // Toggle Favorite User
-  Future<void> toggleFavoriteUser(String targetUserId) async {
-    if (_user == null) return;
-    try {
-      final updatedFavorites = List<String>.from(_user!.favoriteUserIds);
-      if (updatedFavorites.contains(targetUserId)) {
-        updatedFavorites.remove(targetUserId);
-      } else {
-        updatedFavorites.add(targetUserId);
-      }
-      
-      _user = _user!.copyWith(favoriteUserIds: updatedFavorites);
-      await _firestoreService.updateUserProfile(_user!.id, {'favoriteUserIds': updatedFavorites});
-      notifyListeners();
-    } catch (e) {
-      debugPrint('Error toggling favorite user: $e');
-      refreshUserProfile(); // rollback on error
-    }
-  }
-
-  // Toggle Favorite Product
-  Future<void> toggleFavoriteProduct(String productId) async {
-    if (_user == null) return;
-    try {
-      final updatedFavorites = List<String>.from(_user!.favoriteProductIds);
-      if (updatedFavorites.contains(productId)) {
-        updatedFavorites.remove(productId);
-      } else {
-        updatedFavorites.add(productId);
-      }
-      
-      _user = _user!.copyWith(favoriteProductIds: updatedFavorites);
-      await _firestoreService.updateUserProfile(_user!.id, {'favoriteProductIds': updatedFavorites});
-      notifyListeners();
-    } catch (e) {
-      debugPrint('Error toggling favorite product: $e');
-      refreshUserProfile(); // rollback on error
-    }
-  }
-
-  // Toggle Favorite Squad
-  Future<void> toggleFavoriteSquad(String squadId) async {
-    if (_user == null) return;
-    try {
-      final updatedFavorites = List<String>.from(_user!.favoriteSquadIds);
-      if (updatedFavorites.contains(squadId)) {
-        updatedFavorites.remove(squadId);
-      } else {
-        updatedFavorites.add(squadId);
-      }
-      
-      _user = _user!.copyWith(favoriteSquadIds: updatedFavorites);
-      await _firestoreService.updateUserProfile(_user!.id, {'favoriteSquadIds': updatedFavorites});
-      notifyListeners();
-    } catch (e) {
-      debugPrint('Error toggling favorite squad: $e');
-      refreshUserProfile(); // rollback on error
-    }
-  }
-
-  // Fetch My Partners & Followed Shops
-  Future<void> fetchPartners({bool forceRefresh = false}) async {
-    if (_user == null) {
-      _partners = [];
-      notifyListeners();
-      return;
-    }
-
-    // Merge partners and followed shops
-    final Set<String> combinedIds = {..._user!.partnerIds, ..._user!.following};
-
-    if (combinedIds.isEmpty) {
-      _partners = [];
-      notifyListeners();
-      return;
-    }
-
-    if (!forceRefresh && _partners.isNotEmpty) {
-      // If we already have them and it's not a forced refresh, just return
-      return;
-    }
-
-    try {
-      _partners = await _firestoreService.getUsersByIds(combinedIds.toList());
-      notifyListeners();
-    } catch (e) {
-      debugPrint('Error fetching partners/following: $e');
-    }
-  }
 
   // Initialize auth state
   Future<void> initialize() async {
@@ -994,7 +820,6 @@ class AuthProvider extends ChangeNotifier {
     await _cacheService.clearAllData();
     _user = null;
     _isNewUser = false;
-    _partners = [];
     _status = AuthStatus.unauthenticated;
     notifyListeners();
   }

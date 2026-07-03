@@ -11,12 +11,19 @@ import 'product_detail_screen.dart';
 import '../posts/post_details_screen.dart';
 import '../../models/post_model.dart';
 import 'apprentices_dashboard_screen.dart';
+import '../../models/squad_model.dart';
+import 'squad_profile_screen.dart';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../services/smart_guide_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../services/firestore/user_service.dart';
+
+import "package:sudan_free/providers/favorites_provider.dart";
+import "package:sudan_free/providers/partners_provider.dart";
+import 'package:sudan_free/l10n/generated/app_localizations.dart';
+import '../../services/cloudinary_service.dart';
 
 class FavoritesScreen extends StatefulWidget {
   const FavoritesScreen({super.key});
@@ -72,7 +79,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
 
     if (user == null) {
       return Scaffold(
-        appBar: AppBar(title: Text(locale == 'ar' ? 'المفضلة' : 'Favorites')),
+        appBar: AppBar(title: Text(AppLocalizations.of(context)!.favorites)),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
@@ -96,12 +103,12 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
             labelColor: AppColors.primary,
             isScrollable: true,
             tabs: [
-              Tab(text: locale == 'ar' ? 'الزملاء' : 'Partners'),
+              Tab(text: AppLocalizations.of(context)!.partners),
               Tab(
                   text:
-                      locale == 'ar' ? 'الحسابات المحفوظة' : 'Saved Accounts'),
-              Tab(text: locale == 'ar' ? 'المجموعات' : 'Squads'),
-              Tab(text: locale == 'ar' ? 'المنشورات المحفوظة' : 'Saved Posts'),
+                      AppLocalizations.of(context)!.savedAccounts),
+              Tab(text: AppLocalizations.of(context)!.squads),
+              Tab(text: AppLocalizations.of(context)!.savedPosts),
             ],
           ),
         ),
@@ -200,39 +207,35 @@ class _UsersTabState extends State<_UsersTab>
       final confirm = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: Text(isAr ? 'إلغاء الزمالة' : 'Remove Partner'),
+          title: Text(AppLocalizations.of(context)!.removePartner),
           content: Text(isAr
               ? 'هل أنت متأكد من إلغاء زمالة ${targetUser.name}؟'
               : 'Are you sure you want to remove ${targetUser.name}?'),
           actions: [
             TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
-                child: Text(isAr ? 'تراجع' : 'Cancel')),
+                child: Text(AppLocalizations.of(context)!.cancel)),
             TextButton(
                 onPressed: () => Navigator.pop(ctx, true),
-                child: Text(isAr ? 'حذف' : 'Remove',
+                child: Text(AppLocalizations.of(context)!.remove,
                     style: const TextStyle(color: Colors.red))),
           ],
         ),
       );
       if (confirm == true) {
-        await context.read<AuthProvider>().removePartner(targetUser.id);
+        await context.read<PartnersProvider>().removePartner(targetUser.id);
         if (!mounted) return;
-        context.read<AuthProvider>().fetchPartners(forceRefresh: true);
+        context.read<PartnersProvider>().fetchPartners(forceRefresh: true);
       }
     } else if (action == 'vouch') {
       try {
         await UserFirestoreService().vouchForUser(targetUser.id, currentUser);
         scaffoldMessenger.showSnackBar(SnackBar(
-            content: Text(isAr
-                ? 'تم إرسال التزكية بنجاح!'
-                : 'Recommendation sent successfully!'),
+            content: Text(AppLocalizations.of(context)!.recommendationSentSuccessfully),
             backgroundColor: Colors.green));
       } catch (e) {
         scaffoldMessenger.showSnackBar(SnackBar(
-            content: Text(isAr
-                ? 'حدث خطأ أثناء التزكية، قد تكون زكيته مسبقاً.'
-                : 'Error sending recommendation, you may have already vouched.'),
+            content: Text(AppLocalizations.of(context)!.errorSendingRecommendationYouMayHave),
             backgroundColor: Colors.red));
       }
     } else if (action == 'request_apprenticeship') {
@@ -240,31 +243,27 @@ class _UsersTabState extends State<_UsersTab>
         await UserFirestoreService()
             .sendApprenticeshipRequest(currentUser.id, targetUser.id);
         scaffoldMessenger.showSnackBar(SnackBar(
-            content: Text(isAr
-                ? 'تم إرسال طلب التتلمذ بنجاح!'
-                : 'Apprenticeship request sent!'),
+            content: Text(AppLocalizations.of(context)!.apprenticeshipRequestSent),
             backgroundColor: Colors.green));
       } catch (e) {
         scaffoldMessenger.showSnackBar(SnackBar(
             content: Text(
-                isAr ? 'حدث خطأ أثناء إرسال الطلب' : 'Error sending request'),
+                AppLocalizations.of(context)!.errorSendingRequest),
             backgroundColor: Colors.red));
       }
     } else if (action == 'cancel_apprenticeship') {
       final confirm = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: Text(isAr ? 'إلغاء التتلمذ' : 'Cancel Apprenticeship'),
-          content: Text(isAr
-              ? 'هل أنت متأكد من فك الارتباط؟ إذا كنت الصبي، سيتم إرسال طلب للموافقة.'
-              : 'Are you sure you want to cancel? If you are the apprentice, a request will be sent for approval.'),
+          title: Text(AppLocalizations.of(context)!.cancelApprenticeship),
+          content: Text(AppLocalizations.of(context)!.areYouSureYouWantTo3),
           actions: [
             TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
-                child: Text(isAr ? 'تراجع' : 'Cancel')),
+                child: Text(AppLocalizations.of(context)!.cancel)),
             TextButton(
                 onPressed: () => Navigator.pop(ctx, true),
-                child: Text(isAr ? 'تأكيد' : 'Confirm',
+                child: Text(AppLocalizations.of(context)!.confirm,
                     style: const TextStyle(color: Colors.red))),
           ],
         ),
@@ -275,22 +274,18 @@ class _UsersTabState extends State<_UsersTab>
             await UserFirestoreService()
                 .terminateApprentice(currentUser.id, targetUser.id);
             scaffoldMessenger.showSnackBar(SnackBar(
-                content: Text(isAr
-                    ? 'تم إلغاء التتلمذ بنجاح'
-                    : 'Apprenticeship canceled'),
+                content: Text(AppLocalizations.of(context)!.apprenticeshipCanceled),
                 backgroundColor: Colors.green));
           } else if (currentUser.masterId == targetUser.id) {
             await UserFirestoreService()
                 .sendLeaveRequest(currentUser.id, targetUser.id);
             scaffoldMessenger.showSnackBar(SnackBar(
-                content: Text(isAr
-                    ? 'تم إرسال طلب الموافقة على ترك التتلمذ'
-                    : 'Leave request sent to master'),
+                content: Text(AppLocalizations.of(context)!.leaveRequestSentToMaster),
                 backgroundColor: Colors.green));
           }
         } catch (e) {
           scaffoldMessenger.showSnackBar(SnackBar(
-              content: Text(isAr ? 'حدث خطأ' : 'Error occurred'),
+              content: Text(AppLocalizations.of(context)!.errorOccurred),
               backgroundColor: Colors.red));
         }
       }
@@ -361,9 +356,7 @@ class _UsersTabState extends State<_UsersTab>
             ),
             const SizedBox(height: 8),
             Text(
-                widget.locale == 'ar'
-                    ? 'قم بإضافة حسابات من ملفاتهم الشخصية'
-                    : 'Add accounts from their profiles',
+                AppLocalizations.of(context)!.addAccountsFromTheirProfiles,
                 style: TextStyle(color: Colors.grey[400], fontSize: 13)),
           ],
         ),
@@ -372,12 +365,14 @@ class _UsersTabState extends State<_UsersTab>
       content = FutureBuilder<List<UserModel>>(
         future: _usersFuture,
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting)
+          if (snapshot.connectionState == ConnectionState.waiting) {
             return _buildShimmer(isDark);
-          if (snapshot.hasError)
+          }
+          if (snapshot.hasError) {
             return Center(
                 child: Text(
-                    widget.locale == 'ar' ? 'حدث خطأ' : 'An error occurred'));
+                    AppLocalizations.of(context)!.anErrorOccurred));
+          }
 
           final users = snapshot.data ?? [];
           if (users.isEmpty) return const SizedBox.shrink();
@@ -430,7 +425,14 @@ class _UsersTabState extends State<_UsersTab>
                           backgroundColor:
                               AppColors.primary.withValues(alpha: 0.1),
                           backgroundImage: targetUser.profileImageUrl != null
-                              ? NetworkImage(targetUser.profileImageUrl!)
+                              ? CachedNetworkImageProvider(
+                                  CloudinaryService.getOptimizedUrl(
+                                      targetUser.profileImageUrl!,
+                                      width: 100,
+                                      quality: 'auto'),
+                                  maxWidth: 150,
+                                  maxHeight: 150,
+                                )
                               : null,
                           child: targetUser.profileImageUrl == null
                               ? Icon(
@@ -446,9 +448,7 @@ class _UsersTabState extends State<_UsersTab>
                               fontWeight: FontWeight.bold, fontSize: 16)),
                       subtitle: Text(
                           targetUser.jobTitle != null ? JobTitlesUtils.getLocalizedTitle(targetUser.jobTitle!, widget.locale) :
-                              (widget.locale == 'ar'
-                                  ? 'حساب في سودان فري'
-                                  : 'SudanFree Account'),
+                              (AppLocalizations.of(context)!.sudanfreeAccount),
                           style:
                               TextStyle(color: Colors.grey[500], fontSize: 13)),
                       trailing: !widget.isPartnerList
@@ -462,7 +462,7 @@ class _UsersTabState extends State<_UsersTab>
                                       : Colors.grey[400]),
                               onPressed: () {
                                 context
-                                    .read<AuthProvider>()
+                                    .read<FavoritesProvider>()
                                     .toggleFavoriteUser(targetUser.id);
                               },
                             )
@@ -482,7 +482,7 @@ class _UsersTabState extends State<_UsersTab>
                           alignment: WrapAlignment.start,
                           children: [
                             _buildExpressiveActionButton(
-                                widget.locale == 'ar' ? 'تزكية' : 'Vouch',
+                                AppLocalizations.of(context)!.vouch,
                                 Icons.verified,
                                 AppColors.sudanGold,
                                 () => _handleMenuAction('vouch', targetUser,
@@ -490,9 +490,7 @@ class _UsersTabState extends State<_UsersTab>
                                 isDark),
                             if (canRequestApprenticeship)
                               _buildExpressiveActionButton(
-                                  widget.locale == 'ar'
-                                      ? 'طلب تتلمذ'
-                                      : 'Request Apprenticeship',
+                                  AppLocalizations.of(context)!.requestApprenticeship,
                                   Icons.engineering,
                                   Colors.teal,
                                   () => _handleMenuAction(
@@ -503,9 +501,7 @@ class _UsersTabState extends State<_UsersTab>
                                   isDark),
                             if (canCancelApprenticeship)
                               _buildExpressiveActionButton(
-                                  widget.locale == 'ar'
-                                      ? 'إلغاء التتلمذ'
-                                      : 'Cancel Apprenticeship',
+                                  AppLocalizations.of(context)!.cancelApprenticeship,
                                   Icons.handshake_rounded,
                                   Colors.redAccent,
                                   () => _handleMenuAction(
@@ -516,9 +512,7 @@ class _UsersTabState extends State<_UsersTab>
                                   isDark),
                             if (widget.isPartnerList)
                               _buildExpressiveActionButton(
-                                  widget.locale == 'ar'
-                                      ? 'إلغاء الزمالة'
-                                      : 'Remove Partner',
+                                  AppLocalizations.of(context)!.removePartner,
                                   Icons.person_remove_rounded,
                                   Colors.redAccent,
                                   () => _handleMenuAction('remove_partner',
@@ -579,9 +573,7 @@ class _UsersTabState extends State<_UsersTab>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                              widget.locale == 'ar'
-                                  ? 'لوحة تحكم المعلم'
-                                  : 'Master Dashboard',
+                              AppLocalizations.of(context)!.masterDashboard,
                               style: const TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold,
@@ -713,12 +705,14 @@ class _SquadsTabState extends State<_SquadsTab>
     return FutureBuilder<List<DocumentSnapshot>>(
       future: _squadsFuture,
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting)
+        if (snapshot.connectionState == ConnectionState.waiting) {
           return _buildShimmer(isDark);
-        if (snapshot.hasError)
+        }
+        if (snapshot.hasError) {
           return Center(
               child: Text(
-                  widget.locale == 'ar' ? 'حدث خطأ' : 'An error occurred'));
+                  AppLocalizations.of(context)!.anErrorOccurred));
+        }
 
         final docs = snapshot.data ?? [];
         
@@ -730,9 +724,7 @@ class _SquadsTabState extends State<_SquadsTab>
                 const Icon(Icons.groups, size: 60, color: Colors.grey),
                 const SizedBox(height: 16),
                 Text(
-                    widget.locale == 'ar'
-                        ? 'لا توجد مجموعات مفضلة بعد'
-                        : 'No favorite squads yet',
+                    AppLocalizations.of(context)!.noFavoriteSquadsYet,
                     style: TextStyle(color: Colors.grey[600])),
               ],
             ),
@@ -745,42 +737,80 @@ class _SquadsTabState extends State<_SquadsTab>
           separatorBuilder: (_, __) => const SizedBox(height: 12),
           itemBuilder: (context, index) {
             final doc = docs[index];
-            final data = doc.data() as Map<String, dynamic>;
-            final squadName = data['squadName'] ?? '';
-            final bio = data['bio'] ?? '';
+            final squad = SquadModel.fromFirestore(doc);
 
             return Card(
-              elevation: 4,
-              shadowColor: Colors.black26,
+              elevation: 0,
+              color: isDark ? Colors.grey[900] : Colors.white,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16)),
+                  borderRadius: BorderRadius.circular(20),
+                  side: BorderSide(
+                      color: isDark ? Colors.grey[800]! : Colors.grey[200]!)),
               child: ListTile(
                 contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                onTap: () {},
-                leading: CircleAvatar(
-                  radius: 28,
-                  backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                  child: const Icon(Icons.groups, color: AppColors.primary),
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                onTap: () {
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => SquadProfileScreen(squad: squad)));
+                },
+                leading: Container(
+                  decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                          color: AppColors.primary.withValues(alpha: 0.2),
+                          width: 2)),
+                  child: CircleAvatar(
+                    radius: 26,
+                    backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                    backgroundImage: squad.squadImageUrl != null
+                        ? CachedNetworkImageProvider(
+                            CloudinaryService.getOptimizedUrl(
+                                squad.squadImageUrl!,
+                                width: 100,
+                                quality: 'auto'),
+                            maxWidth: 150,
+                            maxHeight: 150,
+                          )
+                        : null,
+                    child: squad.squadImageUrl == null
+                        ? const Icon(Icons.groups, color: AppColors.primary)
+                        : null,
+                  ),
                 ),
-                title: Text(squadName,
+                title: Text(squad.name,
                     style: const TextStyle(
                         fontWeight: FontWeight.bold, fontSize: 16)),
-                subtitle: Text(bio,
-                    style: TextStyle(color: Colors.grey[600]),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 4),
+                    Text(squad.description,
+                        style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${squad.memberIds.length} ${AppLocalizations.of(context)!.members}',
+                      style: TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
                 trailing: IconButton(
                   icon: Icon(
-                    widget.favoriteSquadIds.contains(doc.id)
+                    widget.favoriteSquadIds.contains(squad.id)
                         ? Icons.favorite
                         : Icons.favorite_border,
-                    color: widget.favoriteSquadIds.contains(doc.id)
+                    color: widget.favoriteSquadIds.contains(squad.id)
                         ? Colors.red
-                        : Colors.grey,
+                        : Colors.grey[400],
                   ),
                   onPressed: () =>
-                      context.read<AuthProvider>().toggleFavoriteSquad(doc.id),
+                      context.read<FavoritesProvider>().toggleFavoriteSquad(squad.id),
                 ),
               ),
             );
@@ -824,13 +854,14 @@ class _ProductsTabState extends State<_ProductsTab>
     _productsFuture = Future.wait(widget.favoriteProductIds.map((id) async {
       try {
         final post = await FirestoreService().getPost(id);
-        if (post == null)
+        if (post == null) {
           WidgetsBinding.instance.addPostFrameCallback(
-              (_) => context.read<AuthProvider>().toggleFavoriteProduct(id));
+              (_) => context.read<FavoritesProvider>().toggleFavoriteProduct(id));
+        }
         return post;
       } catch (e) {
         WidgetsBinding.instance.addPostFrameCallback(
-            (_) => context.read<AuthProvider>().toggleFavoriteProduct(id));
+            (_) => context.read<FavoritesProvider>().toggleFavoriteProduct(id));
         return null;
       }
     }));
@@ -879,9 +910,7 @@ class _ProductsTabState extends State<_ProductsTab>
             const Icon(Icons.bookmark_border, size: 60, color: Colors.grey),
             const SizedBox(height: 16),
             Text(
-                widget.locale == 'ar'
-                    ? 'لا توجد منشورات أو منتجات محفوظة'
-                    : 'No saved posts or products',
+                AppLocalizations.of(context)!.noSavedPostsOrProducts,
                 style: TextStyle(color: Colors.grey[600])),
           ],
         ),
@@ -891,12 +920,14 @@ class _ProductsTabState extends State<_ProductsTab>
     return FutureBuilder<List<PostModel?>>(
       future: _productsFuture,
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting)
+        if (snapshot.connectionState == ConnectionState.waiting) {
           return _buildShimmer(isDark);
-        if (snapshot.hasError)
+        }
+        if (snapshot.hasError) {
           return Center(
               child: Text(
-                  widget.locale == 'ar' ? 'حدث خطأ' : 'An error occurred'));
+                  AppLocalizations.of(context)!.anErrorOccurred));
+        }
 
         final products = snapshot.data
                 ?.whereType<PostModel>()
@@ -906,9 +937,7 @@ class _ProductsTabState extends State<_ProductsTab>
         if (products.isEmpty) {
           return Center(
               child: Text(
-                  widget.locale == 'ar'
-                      ? 'لا توجد منشورات أو منتجات محفوظة'
-                      : 'No saved posts or products',
+                  AppLocalizations.of(context)!.noSavedPostsOrProducts,
                   style: TextStyle(color: Colors.grey[600])));
         }
 
@@ -978,7 +1007,7 @@ class _ProductsTabState extends State<_ProductsTab>
                                   icon: const Icon(Icons.favorite,
                                       color: Colors.red, size: 20),
                                   onPressed: () => context
-                                      .read<AuthProvider>()
+                                      .read<FavoritesProvider>()
                                       .toggleFavoriteProduct(product.id)),
                             ),
                           ),
@@ -1000,7 +1029,7 @@ class _ProductsTabState extends State<_ProductsTab>
                                     fontWeight: FontWeight.bold, fontSize: 13)),
                             if (product.price != null && product.price! > 0)
                               Text(
-                                  '${product.price} ${widget.locale == 'ar' ? 'ج.س' : 'SDG'}',
+                                  '${product.price} ${AppLocalizations.of(context)!.sdg}',
                                   style: const TextStyle(
                                       color: AppColors.primary,
                                       fontWeight: FontWeight.w900,

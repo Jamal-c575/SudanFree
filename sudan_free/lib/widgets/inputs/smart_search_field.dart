@@ -215,46 +215,60 @@ class _SmartSearchFieldState extends State<SmartSearchField> {
   IconData _getSuggestionIcon(String suggestion) {
     final lower = suggestion.toLowerCase();
     // حرف وخدمات
-    if (lower.contains('سباك') || lower.contains('سباكه'))
+    if (lower.contains('سباك') || lower.contains('سباكه')) {
       return Icons.plumbing;
+    }
     if (lower.contains('كهرب')) return Icons.electrical_services;
     if (lower.contains('نجار')) return Icons.carpenter;
-    if (lower.contains('دهان') || lower.contains('نقاش'))
+    if (lower.contains('دهان') || lower.contains('نقاش')) {
       return Icons.format_paint;
+    }
     if (lower.contains('ميكانيك')) return Icons.build;
-    if (lower.contains('مصمم') || lower.contains('تصميم'))
+    if (lower.contains('مصمم') || lower.contains('تصميم')) {
       return Icons.design_services;
+    }
     if (lower.contains('مبرمج') || lower.contains('مطور')) return Icons.code;
     if (lower.contains('مدرس') ||
         lower.contains('معلم') ||
-        lower.contains('تدريس')) return Icons.school;
+        lower.contains('تدريس')) {
+      return Icons.school;
+    }
     if (lower.contains('سائق') ||
         lower.contains('نقل') ||
-        lower.contains('توصيل')) return Icons.local_shipping;
-    if (lower.contains('طباخ') || lower.contains('شيف'))
+        lower.contains('توصيل')) {
+      return Icons.local_shipping;
+    }
+    if (lower.contains('طباخ') || lower.contains('شيف')) {
       return Icons.restaurant;
-    if (lower.contains('تنظيف') || lower.contains('نظافه'))
+    }
+    if (lower.contains('تنظيف') || lower.contains('نظافه')) {
       return Icons.cleaning_services;
+    }
     if (lower.contains('تكييف') || lower.contains('مكيف')) return Icons.ac_unit;
     if (lower.contains('تصوير')) return Icons.camera_alt;
     if (lower.contains('خياط')) return Icons.checkroom;
     if (lower.contains('محامي')) return Icons.gavel;
-    if (lower.contains('صيانه') || lower.contains('صيانة'))
+    if (lower.contains('صيانه') || lower.contains('صيانة')) {
       return Icons.build_circle;
+    }
     // متاجر
-    if (lower.contains('إلكتروني') || lower.contains('الكتروني'))
+    if (lower.contains('إلكتروني') || lower.contains('الكتروني')) {
       return Icons.devices;
+    }
     if (lower.contains('ملابس')) return Icons.checkroom;
     if (lower.contains('مطعم')) return Icons.restaurant;
     if (lower.contains('صيدلي')) return Icons.local_pharmacy;
     if (lower.contains('سوبرماركت')) return Icons.store;
     if (lower.contains('أثاث') || lower.contains('اثاث')) return Icons.chair;
-    if (lower.contains('جوال') || lower.contains('موبايل'))
+    if (lower.contains('جوال') || lower.contains('موبايل')) {
       return Icons.phone_android;
+    }
     if (lower.contains('مجوهرات')) return Icons.diamond;
     if (lower.contains('متجر') ||
         lower.contains('معرض') ||
-        lower.contains('محل')) return Icons.storefront;
+        lower.contains('محل')) {
+      return Icons.storefront;
+    }
     // مواقع
     if (lower.contains('في ') ||
         lower.contains('الخرطوم') ||

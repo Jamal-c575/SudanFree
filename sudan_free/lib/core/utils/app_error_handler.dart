@@ -37,6 +37,14 @@ class AppErrorHandler {
     if (msg.contains('storage') || msg.contains('upload')) {
       return 'فشل رفع الملف. تحقق من حجم الملف واتصالك بالإنترنت.';
     }
+
+    // Preserve custom Arabic exceptions
+    final originalError = error.toString();
+    final RegExp arabicRegex = RegExp(r'[\u0600-\u06FF]');
+    if (arabicRegex.hasMatch(originalError)) {
+      return originalError.replaceFirst('Exception: ', '').trim();
+    }
+
     return 'حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى.';
   }
 
@@ -109,5 +117,42 @@ class AppErrorHandler {
         duration: const Duration(seconds: 3),
       ),
     );
+  }
+
+  /// تنفيذ عملية مع إعادة محاولة ذكية (Exponential Backoff)
+  /// مفيد جداً في حالات ضعف الإنترنت
+  static Future<T> executeWithRetry<T>(
+    Future<T> Function() operation, {
+    int maxRetries = 3,
+    Duration initialDelay = const Duration(seconds: 2),
+    String context = 'RetryOperation',
+  }) async {
+    int attempt = 0;
+    while (true) {
+      try {
+        return await operation();
+      } catch (e, stack) {
+        attempt++;
+        if (attempt >= maxRetries) {
+          await log(e, stack, context: '$context (Failed after $maxRetries attempts)');
+          rethrow;
+        }
+        
+        final isNetworkError = e.toString().toLowerCase().contains('network') || 
+                               e.toString().toLowerCase().contains('timeout') ||
+                               e.toString().toLowerCase().contains('unavailable');
+                               
+        if (!isNetworkError) {
+          // Do not retry non-network errors (e.g. invalid argument, permission denied)
+          await log(e, stack, context: '$context (Non-retriable error)');
+          rethrow;
+        }
+
+        // Exponential backoff
+        final delay = initialDelay * attempt;
+        debugPrint('[$context] Attempt $attempt failed, retrying in ${delay.inSeconds}s...');
+        await Future.delayed(delay);
+      }
+    }
   }
 }

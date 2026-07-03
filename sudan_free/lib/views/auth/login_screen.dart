@@ -3,11 +3,14 @@ import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/locale_provider.dart';
-import '../../widgets/buttons/primary_button.dart';
+import '../../widgets/common/premium_button.dart';
 import '../../widgets/inputs/custom_text_field.dart';
 import 'register_screen.dart';
 import '../settings/privacy_policy_screen.dart';
-import '../../widgets/common/glass_container.dart';
+import '../../widgets/common/premium_glass_card.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter/services.dart';
+import '../../utils/animation_utils.dart';
 
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -74,7 +77,7 @@ class _LoginScreenState extends State<LoginScreen> {
             const Icon(Icons.lock_reset, color: AppColors.primary),
             const SizedBox(width: 8),
             Text(
-              locale == 'ar' ? 'استعادة كلمة المرور' : 'Reset Password',
+              AppLocalizations.of(context)!.resetPassword,
               style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
             ),
           ],
@@ -84,9 +87,7 @@ class _LoginScreenState extends State<LoginScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              locale == 'ar'
-                  ? 'أدخل بريدك الإلكتروني وسنرسل لك رابط إعادة تعيين كلمة المرور.'
-                  : 'Enter your email and we will send you a password reset link.',
+              AppLocalizations.of(context)!.enterYourEmailAndWeWill,
               style: TextStyle(fontSize: 13, color: Colors.grey[600]),
             ),
             const SizedBox(height: 16),
@@ -95,7 +96,7 @@ class _LoginScreenState extends State<LoginScreen> {
               autofocus: true,
               keyboardType: TextInputType.emailAddress,
               decoration: InputDecoration(
-                labelText: locale == 'ar' ? 'البريد الإلكتروني' : 'Email',
+                labelText: AppLocalizations.of(context)!.email,
                 hintText: 'example@email.com',
                 prefixIcon: const Icon(Icons.email_outlined),
                 border:
@@ -107,11 +108,11 @@ class _LoginScreenState extends State<LoginScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text(locale == 'ar' ? 'إلغاء' : 'Cancel'),
+            child: Text(AppLocalizations.of(context)!.cancel),
           ),
           ElevatedButton.icon(
             icon: const Icon(Icons.send, size: 18),
-            label: Text(locale == 'ar' ? 'إرسال' : 'Send'),
+            label: Text(AppLocalizations.of(context)!.send),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
@@ -130,9 +131,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   SnackBar(
                     content: Text(
                       success
-                          ? (locale == 'ar'
-                              ? 'تم إرسال رابط الاستعادة إلى بريدك ✉️'
-                              : 'Reset link sent to your email ✉️')
+                          ? (AppLocalizations.of(context)!
+                              .resetLinkSentToYourEmail)
                           : (authProvider.errorMessage ?? 'Failed'),
                     ),
                     backgroundColor:
@@ -233,6 +233,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final locale = context.watch<LocaleProvider>().locale.languageCode;
     final authProvider = context.watch<AuthProvider>();
     final isLoading = authProvider.status == AuthStatus.loading;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     // Check if user was kicked out in real-time
     if (authProvider.status == AuthStatus.error &&
@@ -251,273 +252,306 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     return Scaffold(
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Language Toggle (Top Right)
-                Align(
-                  alignment: locale == 'ar'
-                      ? Alignment.centerLeft
-                      : Alignment.centerRight,
-                  child: TextButton.icon(
-                    onPressed: () =>
-                        context.read<LocaleProvider>().toggleLocale(),
-                    icon: const Icon(Icons.language, size: 20),
-                    label: Text(locale == 'ar' ? 'English' : 'العربية'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: AppColors.primary,
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 24),
-
-                // Logo and Title
-                Center(
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: isDark
+                ? [
+                    const Color(0xFF0F172A),
+                    const Color(0xFF1E293B),
+                    AppColors.primary.withValues(alpha: 0.2)
+                  ]
+                : [
+                    const Color(0xFFF8FAFC),
+                    const Color(0xFFE2E8F0),
+                    AppColors.primary.withValues(alpha: 0.1)
+                  ],
+          ),
+        ),
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: PremiumGlassCard(
+                blur: 30,
+                borderRadius: BorderRadius.circular(24),
+                padding: const EdgeInsets.all(24),
+                child: Form(
+                  key: _formKey,
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(20),
-                        child: Image.asset(
-                          'assets/images/app_logo.jpg',
-                          width: 120,
-                          height: 120,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      Text(
-                        l10n.appName,
-                        style:
-                            Theme.of(context).textTheme.displaySmall?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.primary,
-                                ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        l10n.platformSubtitle,
-                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                              color: AppColors.textSecondary,
-                            ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 48),
-
-                // Login Form
-                Text(
-                  l10n.login,
-                  style: Theme.of(context).textTheme.headlineMedium,
-                ),
-
-                const SizedBox(height: 24),
-
-                // Email Field
-                CustomTextField(
-                  label: l10n.email,
-                  hint: 'example@email.com',
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  prefixIcon: Icons.email_outlined,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return locale == 'ar'
-                          ? 'البريد الإلكتروني مطلوب'
-                          : 'Email is required';
-                    }
-                    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
-                        .hasMatch(value)) {
-                      return locale == 'ar'
-                          ? 'بريد إلكتروني غير صالح'
-                          : 'Invalid email';
-                    }
-                    return null;
-                  },
-                ),
-
-                const SizedBox(height: 16),
-
-                // Password Field
-                PasswordTextField(
-                  label: l10n.password,
-                  hint: '********',
-                  controller: _passwordController,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return locale == 'ar'
-                          ? 'كلمة المرور مطلوبة'
-                          : 'Password is required';
-                    }
-                    if (value.length < 6) {
-                      return locale == 'ar'
-                          ? 'كلمة المرور قصيرة جداً'
-                          : 'Password too short';
-                    }
-                    return null;
-                  },
-                ),
-
-                const SizedBox(height: 8),
-
-                // Forgot Password
-                Align(
-                  alignment: locale == 'ar'
-                      ? Alignment.centerLeft
-                      : Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () => _showForgotPasswordDialog(locale),
-                    child: Text(l10n.forgotPassword),
-                  ),
-                ),
-
-                const SizedBox(height: 24),
-
-                // Login Button
-                GradientButton(
-                  text: l10n.login,
-                  isLoading: isLoading,
-                  onPressed: _handleLogin,
-                ),
-
-                const SizedBox(height: 24),
-
-                // Divider
-                Row(
-                  children: [
-                    const Expanded(child: Divider()),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Text(
-                        'أو',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: AppColors.textSecondary,
-                            ),
-                      ),
-                    ),
-                    const Expanded(child: Divider()),
-                  ],
-                ),
-
-                const SizedBox(height: 24),
-
-                // Google Login Button
-                _GoogleSignInButton(
-                  isLoading: isLoading,
-                  locale: locale,
-                  onPressed: () async {
-                    final authProvider = context.read<AuthProvider>();
-                    final scaffoldMessenger = ScaffoldMessenger.of(context);
-                    final success = await authProvider.signInWithGoogle();
-
-                    if (success && context.mounted) {
-                      // مسح كل الـ navigation stack بالكامل
-                      Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
-                    } else if (authProvider.errorMessage != null &&
-                        context.mounted) {
-                      final error = authProvider.errorMessage!;
-                      if (error.startsWith('DEVICE_BANNED:')) {
-                        _showBanDialog(
-                            error.replaceFirst('DEVICE_BANNED:', ''));
-                      } else {
-                        String friendlyError = error;
-                        if (error.contains('network_error') ||
-                            error.contains('ApiException: 7')) {
-                          friendlyError = locale == 'ar'
-                              ? 'عذراً، لا يوجد اتصال بالإنترنت. يرجى التحقق من الشبكة والمحاولة مرة أخرى.'
-                              : 'No internet connection. Please check your network and try again.';
-                        } else if (error.contains('sign_in_canceled') ||
-                            error.contains('canceled')) {
-                          friendlyError = locale == 'ar'
-                              ? 'تم إلغاء تسجيل الدخول'
-                              : 'Sign in canceled';
-                        }
-                        scaffoldMessenger.showSnackBar(
-                          SnackBar(
-                            content: Text(friendlyError),
-                            backgroundColor: AppColors.error,
+                      // Language Toggle (Top Right)
+                      Align(
+                        alignment: locale == 'ar'
+                            ? Alignment.centerLeft
+                            : Alignment.centerRight,
+                        child: TextButton.icon(
+                          onPressed: () =>
+                              context.read<LocaleProvider>().toggleLocale(),
+                          icon: const Icon(Icons.language, size: 20),
+                          label:
+                              Text(AppLocalizations.of(context)!.dynamicString),
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppColors.primary,
                           ),
-                        );
-                      }
-                    }
-                  },
-                ),
-
-                const SizedBox(height: 16),
-
-                // Facebook Login Button
-                _FacebookSignInButton(
-                  isLoading: isLoading,
-                  locale: locale,
-                  onPressed: () {
-                    final scaffoldMessenger = ScaffoldMessenger.of(context);
-                    scaffoldMessenger.showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          locale == 'ar'
-                              ? 'قريباً سيتم تفعيل المصادقة عبر فيسبوك'
-                              : 'Facebook authentication will be activated soon',
                         ),
-                        backgroundColor: Colors.orange,
-                        behavior: SnackBarBehavior.floating,
                       ),
-                    );
-                  },
-                ),
 
-                const SizedBox(height: 24),
+                      const SizedBox(height: 24),
 
-                // Terms and Conditions Link
-                Center(
-                  child: TextButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => const PrivacyPolicyScreen()),
-                      );
-                    },
-                    child: Text(
-                      l10n.privacyPolicy,
-                      style: const TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 12,
-                        decoration: TextDecoration.underline,
+                      // Logo and Title
+                      Center(
+                        child: Column(
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(20),
+                              child: Image.asset(
+                                'assets/images/app_logo.jpg',
+                                width: 120,
+                                height: 120,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            Text(
+                              l10n.appName,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .displaySmall
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.primary,
+                                  ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              l10n.platformSubtitle,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyLarge
+                                  ?.copyWith(
+                                    color: AppColors.textSecondary,
+                                  ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ),
-                ),
 
-                // Register Link
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      l10n.noAccount,
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (_) => const RegisterScreen()),
-                        );
-                      },
-                      child: Text(l10n.signup),
-                    ),
-                  ],
-                ),
+                      const SizedBox(height: 48),
 
-                const SizedBox(height: 12),
-              ],
+                      // Login Form
+                      Text(
+                        l10n.login,
+                        style: Theme.of(context).textTheme.headlineMedium,
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // Email Field
+                      CustomTextField(
+                        label: l10n.email,
+                        hint: 'example@email.com',
+                        controller: _emailController,
+                        keyboardType: TextInputType.emailAddress,
+                        prefixIcon: Icons.email_outlined,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return AppLocalizations.of(context)!
+                                .emailIsRequired;
+                          }
+                          if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
+                              .hasMatch(value)) {
+                            return AppLocalizations.of(context)!.invalidEmail;
+                          }
+                          return null;
+                        },
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Password Field
+                      PasswordTextField(
+                        label: l10n.password,
+                        hint: '********',
+                        controller: _passwordController,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return AppLocalizations.of(context)!
+                                .passwordIsRequired;
+                          }
+                          if (value.length < 6) {
+                            return AppLocalizations.of(context)!
+                                .passwordTooShort;
+                          }
+                          return null;
+                        },
+                      ),
+
+                      const SizedBox(height: 8),
+
+                      // Forgot Password
+                      Align(
+                        alignment: locale == 'ar'
+                            ? Alignment.centerLeft
+                            : Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: () => _showForgotPasswordDialog(locale),
+                          child: Text(l10n.forgotPassword),
+                        ),
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // Login Button
+                      PremiumButton(
+                        label: l10n.login,
+                        isLoading: isLoading,
+                        onPressed: () {
+                          HapticFeedback.lightImpact();
+                          _handleLogin();
+                        },
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // Divider
+                      Row(
+                        children: [
+                          const Expanded(child: Divider()),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Text(
+                              'أو',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(
+                                    color: AppColors.textSecondary,
+                                  ),
+                            ),
+                          ),
+                          const Expanded(child: Divider()),
+                        ],
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // Google Login Button
+                      _GoogleSignInButton(
+                        isLoading: isLoading,
+                        locale: locale,
+                        onPressed: () async {
+                          final authProvider = context.read<AuthProvider>();
+                          final scaffoldMessenger =
+                              ScaffoldMessenger.of(context);
+                          final success = await authProvider.signInWithGoogle();
+
+                          if (success && context.mounted) {
+                            // مسح كل الـ navigation stack بالكامل
+                            Navigator.of(context)
+                                .pushNamedAndRemoveUntil('/', (route) => false);
+                          } else if (authProvider.errorMessage != null &&
+                              context.mounted) {
+                            final error = authProvider.errorMessage!;
+                            if (error.startsWith('DEVICE_BANNED:')) {
+                              _showBanDialog(
+                                  error.replaceFirst('DEVICE_BANNED:', ''));
+                            } else {
+                              String friendlyError = error;
+                              if (error.contains('network_error') ||
+                                  error.contains('ApiException: 7')) {
+                                friendlyError = AppLocalizations.of(context)!
+                                    .noInternetConnectionPleaseCheckYour;
+                              } else if (error.contains('sign_in_canceled') ||
+                                  error.contains('canceled')) {
+                                friendlyError = AppLocalizations.of(context)!
+                                    .signInCanceled;
+                              }
+                              scaffoldMessenger.showSnackBar(
+                                SnackBar(
+                                  content: Text(friendlyError),
+                                  backgroundColor: AppColors.error,
+                                ),
+                              );
+                            }
+                          }
+                        },
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Facebook Login Button
+                      _FacebookSignInButton(
+                        isLoading: isLoading,
+                        locale: locale,
+                        onPressed: () {
+                          final scaffoldMessenger =
+                              ScaffoldMessenger.of(context);
+                          scaffoldMessenger.showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                AppLocalizations.of(context)!
+                                    .facebookAuthenticationWillBeActivatedSoon,
+                              ),
+                              backgroundColor: Colors.orange,
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        },
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // Terms and Conditions Link
+                      Center(
+                        child: TextButton(
+                          onPressed: () {
+                            HapticFeedback.lightImpact();
+                            Navigator.push(
+                              context,
+                              AnimationUtils.createPremiumRoute(const PrivacyPolicyScreen()),
+                            );
+                          },
+                          child: Text(
+                            l10n.privacyPolicy,
+                            style: const TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 12,
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      // Register Link
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            l10n.noAccount,
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              HapticFeedback.lightImpact();
+                              Navigator.push(
+                                context,
+                                AnimationUtils.createPremiumRoute(const RegisterScreen()),
+                              );
+                            },
+                            child: Text(l10n.signup),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 12),
+                    ],
+                  ).animate().fade(duration: const Duration(milliseconds: 600)).slideY(begin: 0.1, curve: AnimationUtils.smoothCurve),
+                ),
+              ),
             ),
           ),
         ),
@@ -541,18 +575,19 @@ class _GoogleSignInButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return GlassContainer(
+    return PremiumGlassCard(
       blur: 15,
       opacity: isDark ? 0.2 : 0.05,
       color: isDark ? const Color(0xFF2D2D2D) : Colors.white,
       borderRadius: BorderRadius.circular(12),
-      border: Border.all(
-        color: isDark ? Colors.white12 : Colors.grey.shade300,
-      ),
+      border: true,
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: isLoading ? null : onPressed,
+          onTap: isLoading ? null : () {
+            HapticFeedback.lightImpact();
+            onPressed();
+          },
           borderRadius: BorderRadius.circular(12),
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 13),
@@ -567,9 +602,7 @@ class _GoogleSignInButton extends StatelessWidget {
                 ),
                 const SizedBox(width: 10),
                 Text(
-                  locale == 'ar'
-                      ? 'المتابعة باستخدام Google'
-                      : 'Continue with Google',
+                  AppLocalizations.of(context)!.continueWithGoogle,
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                         fontWeight: FontWeight.w600,
                         fontSize: 15,
@@ -654,18 +687,19 @@ class _FacebookSignInButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Opacity(
       opacity: 0.7,
-      child: GlassContainer(
+      child: PremiumGlassCard(
         blur: 15,
         opacity: 0.2,
         color: const Color(0xFF1877F2), // Facebook Blue
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: const Color(0xFF1877F2).withValues(alpha: 0.5),
-        ),
+        border: true,
         child: Material(
           color: Colors.transparent,
           child: InkWell(
-            onTap: isLoading ? null : onPressed,
+            onTap: isLoading ? null : () {
+              HapticFeedback.lightImpact();
+              onPressed();
+            },
             borderRadius: BorderRadius.circular(12),
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 13),
@@ -675,9 +709,7 @@ class _FacebookSignInButton extends StatelessWidget {
                   const Icon(Icons.facebook, color: Colors.white, size: 24),
                   const SizedBox(width: 10),
                   Text(
-                    locale == 'ar'
-                        ? 'المتابعة باستخدام Facebook'
-                        : 'Continue with Facebook',
+                    AppLocalizations.of(context)!.continueWithFacebook,
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                           fontWeight: FontWeight.w600,
                           fontSize: 15,

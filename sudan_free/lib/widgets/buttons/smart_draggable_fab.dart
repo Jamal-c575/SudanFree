@@ -3,11 +3,12 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:animations/animations.dart';
 import '../../providers/theme_provider.dart';
 import '../../core/constants/app_colors.dart';
 
 class SmartDraggableFab extends StatefulWidget {
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
   final IconData icon;
   final String? label;
   final String heroTag;
@@ -15,10 +16,11 @@ class SmartDraggableFab extends StatefulWidget {
   final double? initialRight;
   final double? initialLeft;
   final String locale;
+  final Widget Function(BuildContext, void Function({Object? returnValue}))? openBuilder;
 
   const SmartDraggableFab({
     super.key,
-    required this.onPressed,
+    this.onPressed,
     required this.icon,
     this.label,
     required this.heroTag,
@@ -26,6 +28,7 @@ class SmartDraggableFab extends StatefulWidget {
     this.initialRight,
     this.initialLeft,
     required this.locale,
+    this.openBuilder,
   });
 
   @override
@@ -211,65 +214,104 @@ class _SmartDraggableFabState extends State<SmartDraggableFab>
     final isGlassEnabled =
         context.watch<ThemeProvider>().isGlassmorphismEnabled;
 
-    Widget fabContent = Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () {
-          if (_isDocked) {
-            HapticFeedback.lightImpact();
-            _restoreFromDock();
-          } else {
-            HapticFeedback.mediumImpact();
-            widget.onPressed();
-          }
-        },
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 200),
-          child: _isDocked
-              ? BackdropFilter(
-                  key: const ValueKey('docked'),
-                  filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
-                  child: const Center(
-                    child: Icon(Icons.add, color: Colors.white, size: 16),
+    final size = MediaQuery.of(context).size;
+    final isLeft = _x < size.width / 2;
+
+    Widget buildInnerContent(VoidCallback onTapAction) {
+      return Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            if (_isDocked) {
+              HapticFeedback.lightImpact();
+              _restoreFromDock();
+            } else {
+              HapticFeedback.mediumImpact();
+              onTapAction();
+            }
+          },
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 200),
+            child: _isDocked
+                ? BackdropFilter(
+                    key: const ValueKey('docked'),
+                    filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
+                    child: const Center(
+                      child: Icon(Icons.add, color: Colors.white, size: 16),
+                    ),
+                  )
+                : SingleChildScrollView(
+                    child: Directionality(
+                      textDirection: TextDirection.ltr,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const SizedBox(width: 16),
+                          if (!isLeft &&
+                              widget.label != null &&
+                              !_isDragging &&
+                              !_springController.isAnimating) ...[
+                            Text(
+                              widget.label!,
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(width: 8),
+                          ],
+                          SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: Icon(widget.icon, color: Colors.white),
+                          ),
+                          if (isLeft &&
+                              widget.label != null &&
+                              !_isDragging &&
+                              !_springController.isAnimating) ...[
+                            const SizedBox(width: 8),
+                            Text(
+                              widget.label!,
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                          const SizedBox(width: 16),
+                        ],
+                      ),
+                    ),
                   ),
-                )
-              : SingleChildScrollView(
-                  key: const ValueKey('expanded'),
-                  scrollDirection: Axis.horizontal,
-                  physics: const NeverScrollableScrollPhysics(),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      if (widget.label != null &&
-                          !_isDragging &&
-                          !_springController.isAnimating) ...[
-                        const SizedBox(width: 16),
-                        Icon(widget.icon, color: Colors.white),
-                        const SizedBox(width: 8),
-                        Text(
-                          widget.label!,
-                          style: const TextStyle(
-                              color: Colors.white, fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(width: 16),
-                      ] else ...[
-                        SizedBox(
-                          width: 56,
-                          height: 56,
-                          child: Center(
-                              child: Icon(widget.icon, color: Colors.white)),
-                        ),
-                      ]
-                    ],
-                  ),
-                ),
+          ),
         ),
-      ),
-    );
+      );
+    }
+
+    Widget fabContent = widget.openBuilder != null
+        ? OpenContainer(
+            transitionDuration: const Duration(milliseconds: 700),
+            transitionType: ContainerTransitionType.fadeThrough,
+            openBuilder: widget.openBuilder!,
+            closedElevation: 0.0,
+            closedColor: Colors.transparent,
+            middleColor: Colors.transparent,
+            closedShape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(_isDocked ? 12 : 28),
+            ),
+            closedBuilder: (context, openContainer) {
+              return buildInnerContent(openContainer);
+            },
+          )
+        : buildInnerContent(() => widget.onPressed?.call());
+
+    // Pin to right edge if resting on the right side, so it expands inwards (to the left)
+    final bool pinRight = !isLeft && !_isDragging && !_springController.isAnimating;
+    final double baseWidth = _isDocked ? 32.0 : 56.0;
+    final double rightPos = size.width - _x - baseWidth;
 
     return Positioned(
-      left: _x,
+      left: pinRight ? null : _x,
+      right: pinRight ? rightPos : null,
       top: _y,
       child: GestureDetector(
         onPanStart: _onPanStart,

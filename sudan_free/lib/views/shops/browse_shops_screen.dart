@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../l10n/generated/app_localizations.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/sudan_locations.dart';
@@ -15,6 +16,7 @@ import '../../widgets/inputs/smart_search_field.dart';
 import '../../services/smart_guide_service.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../widgets/common/premium_animations.dart';
+import '../../widgets/common/glass_container.dart';
 
 class BrowseShopsScreen extends StatefulWidget {
   const BrowseShopsScreen({super.key});
@@ -89,8 +91,9 @@ class _BrowseShopsScreenState extends State<BrowseShopsScreen>
       if (_selectedState != null && s.state != _selectedState) return false;
 
       // Category filter
-      if (_selectedCategory != null && s.shopCategory != _selectedCategory)
+      if (_selectedCategory != null && s.shopCategory != _selectedCategory) {
         return false;
+      }
 
       return true;
     }).toList();
@@ -153,9 +156,7 @@ class _BrowseShopsScreenState extends State<BrowseShopsScreen>
                   Expanded(
                     child: SmartSearchField(
                       controller: _searchController,
-                      hintText: locale == 'ar'
-                          ? 'ابحث عن متجر، معرض، مطعم...'
-                          : 'Search for shop, showroom...',
+                      hintText: AppLocalizations.of(context)!.searchForShopShowroom,
                       searchContext: SearchContext.shops,
                       accentColor: AppColors.secondary,
                       onSearch: (val) => setState(() => _searchQuery = val),
@@ -206,17 +207,13 @@ class _BrowseShopsScreenState extends State<BrowseShopsScreen>
                                 const Icon(Icons.location_on_outlined,
                                     size: 18, color: AppColors.textSecondary),
                                 const SizedBox(width: 8),
-                                Text(locale == 'ar'
-                                    ? 'اختر الولاية'
-                                    : 'Select Location'),
+                                Text(AppLocalizations.of(context)!.selectLocation),
                               ],
                             ),
                             items: [
                               DropdownMenuItem<String>(
                                 value: null,
-                                child: Text(locale == 'ar'
-                                    ? 'كل الولايات'
-                                    : 'All States'),
+                                child: Text(AppLocalizations.of(context)!.allStates),
                               ),
                               ...SudanLocations.states.map((s) =>
                                   DropdownMenuItem(
@@ -233,7 +230,7 @@ class _BrowseShopsScreenState extends State<BrowseShopsScreen>
                       const SizedBox(height: 12),
 
                       // Sort By Chips
-                      Text(locale == 'ar' ? 'ترتيب حسب' : 'Sort by',
+                      Text(AppLocalizations.of(context)!.sortBy,
                           style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 13,
@@ -246,30 +243,26 @@ class _BrowseShopsScreenState extends State<BrowseShopsScreen>
                           children: [
                             _FilterChip(
                               label:
-                                  locale == 'ar' ? 'مقترح لك' : 'Recommended',
+                                  AppLocalizations.of(context)!.recommended,
                               isSelected: _sortBy == 'recommended',
                               onTap: () =>
                                   setState(() => _sortBy = 'recommended'),
                             ),
                             _FilterChip(
-                              label: locale == 'ar'
-                                  ? 'الأعلى تقييماً'
-                                  : 'Top Rated',
+                              label: AppLocalizations.of(context)!.topRated,
                               isSelected: _sortBy == 'top_rated',
                               onTap: () =>
                                   setState(() => _sortBy = 'top_rated'),
                             ),
                             _FilterChip(
                               label:
-                                  locale == 'ar' ? 'الأقرب مسافة' : 'Nearest',
+                                  AppLocalizations.of(context)!.nearest,
                               isSelected: _sortBy == 'nearest',
                               onTap: () {
                                 final user = context.read<AuthProvider>().user;
                                 if (user?.latitude == null) {
                                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                      content: Text(locale == 'ar'
-                                          ? 'يجب تفعيل موقعك في ملفك الشخصي أولاً'
-                                          : 'Enable location in your profile first'),
+                                      content: Text(AppLocalizations.of(context)!.enableLocationInYourProfileFirst),
                                       backgroundColor: Colors.orange));
                                   return;
                                 }
@@ -289,7 +282,7 @@ class _BrowseShopsScreenState extends State<BrowseShopsScreen>
                           scrollDirection: Axis.horizontal,
                           children: [
                             _FilterChip(
-                              label: locale == 'ar' ? 'الكل' : 'All',
+                              label: AppLocalizations.of(context)!.all,
                               isSelected: _selectedCategory == null,
                               onTap: () =>
                                   setState(() => _selectedCategory = null),
@@ -316,7 +309,7 @@ class _BrowseShopsScreenState extends State<BrowseShopsScreen>
                             _sortBy = 'recommended';
                           }),
                           icon: const Icon(Icons.clear, size: 16),
-                          label: Text(locale == 'ar' ? 'مسح الفلاتر' : 'Clear'),
+                          label: Text(AppLocalizations.of(context)!.clear),
                           style: TextButton.styleFrom(padding: EdgeInsets.zero),
                         ),
                     ],
@@ -409,9 +402,7 @@ class _BrowseShopsScreenState extends State<BrowseShopsScreen>
           ),
           const SizedBox(height: 8),
           Text(
-            locale == 'ar'
-                ? 'جرّب كلمات أخرى أو تحقق من الإملاء'
-                : 'Try different keywords or check spelling',
+            AppLocalizations.of(context)!.tryDifferentKeywordsOrCheckSpelling,
             style: TextStyle(color: Colors.grey[400], fontSize: 13),
           ),
         ],
@@ -429,9 +420,7 @@ class _BrowseShopsScreenState extends State<BrowseShopsScreen>
             const Icon(Icons.error_outline, size: 80, color: AppColors.error),
             const SizedBox(height: 16),
             Text(
-              locale == 'ar'
-                  ? 'حدث خطأ في جلب البيانات'
-                  : 'Error fetching data',
+              AppLocalizations.of(context)!.errorFetchingData,
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 12),
@@ -447,7 +436,7 @@ class _BrowseShopsScreenState extends State<BrowseShopsScreen>
             ElevatedButton(
               onPressed: () =>
                   context.read<UserProvider>().fetchShops(forceRefresh: true),
-              child: Text(locale == 'ar' ? 'إعادة المحاولة' : 'Retry'),
+              child: Text(AppLocalizations.of(context)!.retry),
             ),
           ],
         ),
@@ -519,25 +508,17 @@ class ShopCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return PressableCard(
       onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(16),
-          border: isPromoted
-              ? Border.all(
-                  color: AppColors.sudanGold.withValues(alpha: 0.8), width: 2)
-              : null,
-          boxShadow: [
-            BoxShadow(
-              color: isPromoted
-                  ? AppColors.sudanGold.withValues(alpha: 0.2)
-                  : Colors.black.withValues(alpha: 0.12),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
-              spreadRadius: 1,
-            ),
-          ],
-        ),
+      child: GlassContainer(
+        blur: 15,
+        opacity: isPromoted
+            ? 0.15
+            : (Theme.of(context).brightness == Brightness.dark ? 0.08 : 0.25),
+        color: isPromoted ? AppColors.sudanGold : Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: isPromoted
+            ? Border.all(
+                color: AppColors.sudanGold.withValues(alpha: 0.8), width: 2)
+            : null,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -548,7 +529,7 @@ class ShopCard extends StatelessWidget {
               child: Stack(
                 children: [
                   SizedBox(
-                    height: 100,
+                    height: 120,
                     width: double.infinity,
                     child: shop.coverImageUrl != null
                         ? CachedNetworkImage(
@@ -618,8 +599,8 @@ class ShopCard extends StatelessWidget {
                         ),
                         child: Text(
                           shop.isShopCurrentlyOpen
-                              ? (locale == 'ar' ? 'مفتوح' : 'Open')
-                              : (locale == 'ar' ? 'مغلق' : 'Closed'),
+                              ? (AppLocalizations.of(context)!.open)
+                              : (AppLocalizations.of(context)!.closed),
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 10,

@@ -10,6 +10,8 @@ import '../../models/user_model.dart';
 import '../../widgets/mentions/mention_overlay.dart';
 import '../../services/cloudinary_service.dart';
 import '../../widgets/common/full_screen_image_viewer.dart';
+import '../../providers/favorites_provider.dart';
+import '../../providers/partners_provider.dart';
 import '../../services/firestore_service.dart';
 import '../../providers/posts_provider.dart';
 import '../../views/posts/comments_sheet.dart';
@@ -17,6 +19,7 @@ import '../profile/profile_screen.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../profile/product_detail_screen.dart';
+import 'package:sudan_free/l10n/generated/app_localizations.dart';
 
 /// شاشة تفاصيل المنشور/المنتج مع إمكانية التعليق والتفاعل
 class PostDetailsScreen extends StatefulWidget {
@@ -60,7 +63,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
     super.initState();
     // Fetch partners when screen loads
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<AuthProvider>().fetchPartners();
+      context.read<PartnersProvider>().fetchPartners();
     });
     _commentController.addListener(_onTextChanged);
   }
@@ -93,7 +96,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
         return;
       }
 
-      final partners = context.read<AuthProvider>().partners;
+      final partners = context.read<PartnersProvider>().partners;
       final matches = partners
           .where((p) => p.name.toLowerCase().contains(query.toLowerCase()))
           .toList();
@@ -139,7 +142,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
   void _selectAllPartners() {
     if (_mentionStart < 0) return;
 
-    final partners = context.read<AuthProvider>().partners;
+    final partners = context.read<PartnersProvider>().partners;
     if (partners.isEmpty) return;
 
     final text = _commentController.text;
@@ -168,14 +171,13 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isArabic = context.read<LocaleProvider>().locale.languageCode == 'ar';
 
     return Scaffold(
       resizeToAvoidBottomInset: false,
       appBar: AppBar(
         title: Row(
           children: [
-            Expanded(child: Text(isArabic ? 'التفاصيل' : 'Details')),
+            Expanded(child: Text(AppLocalizations.of(context)!.detailsTitle)),
             Text(
               _getTimeAgo(widget.post.createdAt, context),
               style: const TextStyle(fontSize: 12, color: Colors.grey),
@@ -198,8 +200,8 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
                   isFavorite ? Icons.favorite : Icons.favorite_border,
                   color: isFavorite ? Colors.red : null,
                 ),
-                tooltip: isArabic ? 'حفظ للمفضلة' : 'Save to Favorites',
-                onPressed: () => auth.toggleFavoriteProduct(widget.post.id),
+                tooltip: AppLocalizations.of(context)!.saveToFavorites,
+                onPressed: () => context.read<FavoritesProvider>().toggleFavoriteProduct(widget.post.id),
               );
             },
           ),
@@ -240,6 +242,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
                                           builder: (_) => FullScreenImageViewer(
                                             imageUrls: widget.post.allImageUrls,
                                             initialIndex: index,
+                                            heroTagPrefix: widget.post.id,
                                           ),
                                         ),
                                       );
@@ -262,14 +265,10 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
                                     ),
                                   );
 
-                                  // Only first image gets the hero tag to match the feed
-                                  if (index == 0) {
-                                    return Hero(
-                                      tag: widget.post.id,
-                                      child: widgetContent,
-                                    );
-                                  }
-                                  return widgetContent;
+                                  return Hero(
+                                    tag: '${widget.post.id}_$index',
+                                    child: widgetContent,
+                                  );
                                 },
                               ),
                             ),
@@ -564,8 +563,6 @@ class _LinkedProductBannerState extends State<_LinkedProductBanner> {
 
   @override
   Widget build(BuildContext context) {
-    final isArabic = context.read<LocaleProvider>().locale.languageCode == 'ar';
-
     if (_loading) {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -583,7 +580,7 @@ class _LinkedProductBannerState extends State<_LinkedProductBanner> {
     // Use snapshot data from the post itself if Firestore fetch failed
     final productName = _product?.caption?.split('\n').first ??
         widget.post.linkedProductName ??
-        (isArabic ? 'منتج' : 'Product');
+        AppLocalizations.of(context)!.productType;
     final imageUrl =
         _product?.allImageUrls.firstOrNull ?? widget.post.linkedProductImage;
     final price = _product?.price ?? widget.post.linkedProductPrice;
@@ -675,7 +672,7 @@ class _LinkedProductBannerState extends State<_LinkedProductBanner> {
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
-                            isArabic ? '🛍️ منتج مرتبط' : '🛍️ Linked Product',
+                            AppLocalizations.of(context)!.linkedProduct,
                             style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 10,
@@ -713,7 +710,7 @@ class _LinkedProductBannerState extends State<_LinkedProductBanner> {
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
-                    isArabic
+                    context.read<LocaleProvider>().locale.languageCode == 'ar'
                         ? Icons.arrow_back_ios_new_rounded
                         : Icons.arrow_forward_ios_rounded,
                     color: Colors.white,
