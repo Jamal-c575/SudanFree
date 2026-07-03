@@ -28,7 +28,7 @@ class _SuccessStorySubmissionScreenState extends State<SuccessStorySubmissionScr
     if (!_formKey.currentState!.validate()) return;
     
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final user = authProvider.currentUser;
+    final user = authProvider.user;
     if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('يجب تسجيل الدخول أولاً')));
       return;

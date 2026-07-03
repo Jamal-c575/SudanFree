@@ -273,7 +273,7 @@ class SmartSearchDelegate extends SearchDelegate<UserModel?> {
                     HapticFeedback.lightImpact();
                     Navigator.push(
                       context,
-                      AnimationUtils.createPremiumRoute(page: const BrowseFreelancersScreen())
+                      AnimationUtils.createPremiumRoute(const BrowseFreelancersScreen())
                     );
                   },
                   borderRadius: BorderRadius.circular(12),
@@ -311,7 +311,7 @@ class SmartSearchDelegate extends SearchDelegate<UserModel?> {
                     HapticFeedback.lightImpact();
                     Navigator.push(
                       context,
-                      AnimationUtils.createPremiumRoute(page: const BrowseShopsScreen())
+                      AnimationUtils.createPremiumRoute(const BrowseShopsScreen())
                     );
                   },
                   borderRadius: BorderRadius.circular(12),

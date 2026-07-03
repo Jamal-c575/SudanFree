@@ -1,0 +1,283 @@
+project:
+  name: SudanFree
+  description: >
+    A freelance marketplace and social platform for Sudan, connecting freelancers
+    with clients. Includes social feed, job postings, real-time chat, map features,
+    squads (communities), shops, and safety alerts.
+  version: "2.0.0+4"
+  type: mobile + backend
+  platforms:
+    - Android
+    - iOS
+    - Web (Flutter Web)
+
+tech_stack:
+  frontend:
+    framework: Flutter
+    language: Dart
+    sdk: ">=3.6.0"
+    state_management: Provider
+    routing: Named Routes (Navigator 2.0)
+    localization:
+      - flutter_localizations
+      - intl (ARB files - Arabic & English)
+    fonts:
+      - Tajawal (Regular, Medium, Bold)
+    ui_libraries:
+      - animations
+      - shimmer
+      - flutter_local_notifications
+      - flutter_map (with flutter_map_marker_cluster)
+      - photo_view
+      - pinput
+      - qr_flutter
+      - flutter_linkify
+      - any_link_preview
+
+  backend:
+    platform: Firebase
+    services:
+      - Firebase Auth (Email/Password, Google Sign-In, Facebook Auth)
+      - Cloud Firestore (primary database)
+      - Firebase Storage (media files)
+      - Firebase Messaging (FCM push notifications)
+      - Firebase Crashlytics
+      - Firebase Performance Monitoring
+      - Firebase Analytics
+      - Cloud Functions (Node.js 20)
+    cloud_functions:
+      runtime: Node.js 20
+      dependencies:
+        - firebase-admin ^13.10.0
+        - firebase-functions ^7.2.5
+        - twilio ^4.23.0
+      modules:
+        - ads.js (ad management)
+        - jobs.js (job operations)
+        - media.js (media processing)
+        - notifications.js (push notification dispatch)
+        - users.js (user management)
+        - utils.js (shared utilities)
+
+  external_services:
+    - Cloudinary (image/media CDN)
+    - OneSignal (push notifications - alternative)
+    - Twilio (SMS/communication)
+    - Geolocator + Geocoding (location services)
+
+  local_storage:
+    - Hive (local NoSQL cache)
+    - SharedPreferences
+
+  media:
+    - image_picker
+    - video_player
+    - record (audio recording)
+    - audioplayers
+    - file_picker
+    - flutter_image_compress
+    - cached_network_image
+    - flutter_cache_manager
+
+features:
+  authentication:
+    - Email/Password registration and login
+    - Google Sign-In (OAuth)
+    - Facebook Sign-In (OAuth)
+    - Phone OTP verification (Twilio)
+    - Identity verification / KYC requests
+
+  social_feed:
+    - Create/edit/delete posts (text, images, videos, audio, files)
+    - Like, comment, share posts
+    - Stories (ephemeral content)
+    - Mentions and link previews
+    - Trending and algorithmic feed
+
+  freelance_marketplace:
+    - Post and browse job listings
+    - Submit proposals/bids
+    - Job offers and acceptance flow
+    - Freelancer profiles with portfolios
+    - Reviews and ratings system
+    - Endorsements between users
+    - Payment tracking and records
+
+  chat:
+    - Real-time one-on-one messaging
+    - Text, image, audio, file messages
+    - Message reactions and replies
+    - Online/offline presence indicators
+    - Contact logs
+
+  map:
+    - Interactive flutter_map with marker clustering
+    - Location-based services and freelancer discovery
+    - Region detection
+    - Geolocation support
+
+  squads:
+    - Community groups (public/private)
+    - Squad posts and discussions
+    - Member management
+
+  shops:
+    - Business/shop listings
+    - Product/service showcasing
+
+  notifications:
+    - Firebase Cloud Messaging (FCM) push notifications
+    - OneSignal push notifications
+    - In-app notification polling service
+    - Local notifications
+
+  search:
+    - Smart search service (35KB - advanced)
+    - Search provider with Firestore queries
+    - Search across users, jobs, posts, shops, squads
+
+  safety:
+    - Safety alerts module
+    - Content reporting system
+
+  settings:
+    - Theme switching (dark/light)
+    - Language switching (Arabic/English - RTL support)
+    - Lite mode (low-data mode)
+    - App update service
+    - Account management
+
+  onboarding:
+    - Multi-step onboarding flow
+    - User profile setup
+
+  admin:
+    - Admin panel (Flutter web - separate build)
+    - Admin dashboard (generated)
+
+architecture:
+  pattern: Layered Architecture
+  layers:
+    - core/ (core utilities)
+    - data/ (data sources and repositories)
+    - domain/ (business logic)
+    - models/ (data models)
+    - providers/ (state management - Provider)
+    - services/ (external service integrations)
+    - views/ (UI screens)
+    - widgets/ (reusable UI components)
+    - utils/ (helper utilities)
+    - l10n/ (localization)
+
+  key_models:
+    - user_model.dart (31KB - comprehensive user profile)
+    - job_model.dart (15KB)
+    - post_model.dart (10KB)
+    - message_model.dart (8KB)
+    - payment_model.dart
+    - squad_model.dart
+    - ad_model.dart
+    - proposal_model.dart
+    - review_model.dart
+    - notification_model.dart
+    - story_model.dart
+    - report_model.dart
+    - request_model.dart
+    - offer_model.dart
+    - endorsement_model.dart
+    - portfolio_project_model.dart
+
+  key_providers:
+    - auth_provider.dart (25KB - authentication state)
+    - posts_provider.dart (25KB - social feed state)
+    - user_provider.dart (16KB - user profile state)
+    - chat_provider.dart (16KB - messaging state)
+    - job_provider.dart (15KB - jobs/marketplace state)
+    - search_provider.dart (11KB - search state)
+    - payment_provider.dart
+    - partners_provider.dart
+    - favorites_provider.dart
+    - theme_provider.dart
+    - locale_provider.dart
+    - location_provider.dart
+    - story_provider.dart
+
+  key_services:
+    - smart_search_service.dart (35KB - search engine)
+    - firestore_service.dart (15KB - database operations)
+    - auth_service.dart (8KB)
+    - notification_service.dart (9KB)
+    - cloudinary_service.dart (7KB)
+    - cache_service.dart (7KB)
+    - region_detection_service.dart (7KB)
+    - file_download_service.dart (7KB)
+    - analytics_service.dart (7KB)
+    - update_service.dart (5KB)
+    - storage_service.dart (5KB)
+    - notification_polling_service.dart (4KB)
+    - performance_service.dart (2KB)
+    - network_service.dart (2KB)
+    - location_service.dart (1KB)
+    - lite_mode_service.dart (1KB)
+
+screens:
+  - auth/ (login, register, OTP)
+  - home/ (main feed/dashboard)
+  - profile/ (user profile, edit profile)
+  - jobs/ (job listings, job detail, post job)
+  - freelancers/ (freelancer discovery)
+  - chat/ (conversations, chat screen)
+  - posts/ (post detail, create post)
+  - map/ (map view)
+  - squads/ (communities)
+  - shops/ (shop listings)
+  - notifications/ (notification center)
+  - search/ (search results)
+  - requests/ (service requests)
+  - settings/ (app settings)
+  - onboarding/ (first-time setup)
+  - about/ (about app)
+  - safety/ (safety alerts)
+  - common/ (shared screens)
+  - widgets/ (shared widget library)
+
+database:
+  primary: Cloud Firestore (NoSQL)
+  security_rules: firestore.rules (23KB)
+  indexes: firestore.indexes.json (16KB - optimized)
+  collections:
+    - users
+    - jobs
+    - posts
+    - messages / chats
+    - notifications
+    - squads
+    - shops
+    - ads
+    - proposals
+    - reviews
+    - requests
+    - reports
+    - stories
+    - payments
+
+storage:
+  primary: Firebase Storage
+  cdn: Cloudinary
+  rules: storage.rules (4KB)
+
+deployment:
+  mobile:
+    android: Google Play Store (APK/AAB)
+    ios: Apple App Store
+  backend: Firebase (Cloud Functions, Firestore, Storage, Hosting)
+  web_admin: Firebase Hosting
+
+testing:
+  existing:
+    - test/ directory (Flutter unit tests)
+    - test_db.js (Firebase DB tests)
+    - test_regex.dart
+    - test_users.dart
+    - test_search.dart
+  framework: flutter_test

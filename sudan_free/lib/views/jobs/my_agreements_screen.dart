@@ -200,7 +200,7 @@ class _MyAgreementsScreenState extends State<MyAgreementsScreen>
               HapticFeedback.lightImpact();
               Navigator.push(
                 context,
-                AnimationUtils.createPremiumRoute(page: ActiveJobTrackingScreen(jobId: job.id)),
+                AnimationUtils.createPremiumRoute(ActiveJobTrackingScreen(jobId: job.id)),
               );
             },
             child: Column(

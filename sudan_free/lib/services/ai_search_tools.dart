@@ -518,7 +518,7 @@ class AiSearchTools {
 
       final postsList = finalFiltered.map((doc) {
         try {
-          return PostModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+          return PostModel.fromMap(doc.data() as Map<String, dynamic>..["id"] = doc.id);
         } catch (_) {
           return null;
         }

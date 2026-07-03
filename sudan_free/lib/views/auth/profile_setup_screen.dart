@@ -1063,7 +1063,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                   ),
                                 );
                               }
-                            : details.onStepContinue,
+                            : details.onStepContinue ?? () {},
                       ),
                     ),
                     if (_currentStep > 0) ...[

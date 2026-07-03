@@ -647,7 +647,7 @@ class _MapExplorerScreenState extends State<MapExplorerScreen>
                   if (context.mounted) Navigator.pop(context);
                   Navigator.push(
                     context,
-                    AnimationUtils.createPremiumRoute(page: ProfileScreen(userId: user.id)),
+                    AnimationUtils.createPremiumRoute(ProfileScreen(userId: user.id)),
                   );
                 },
                 label: AppLocalizations.of(context)!.viewProfile,
@@ -794,22 +794,24 @@ class _MapExplorerScreenState extends State<MapExplorerScreen>
                       _applyFilters();
                     });
                   },
-                  child: PremiumGlassCard(
-                    blur: 15,
+                  child: SizedBox(
                     width: 50,
                     height: 50,
-                    opacity: _showOnlyAvailable
-                        ? 0.9
-                        : (Theme.of(context).brightness == Brightness.dark
-                            ? 0.7
-                            : 0.85),
-                    color: _showOnlyAvailable ? AppColors.primary : null,
-                    borderRadius: BorderRadius.circular(25),
-                    child: Icon(
+                    child: PremiumGlassCard(
+                      blur: 15,
+                      opacity: _showOnlyAvailable
+                          ? 0.9
+                          : (Theme.of(context).brightness == Brightness.dark
+                              ? 0.7
+                              : 0.85),
+                      color: _showOnlyAvailable ? AppColors.primary : null,
+                      borderRadius: BorderRadius.circular(25),
+                      child: Icon(
                       Icons.bolt,
                       color:
                           _showOnlyAvailable ? Colors.white : AppColors.primary,
                       size: 28,
+                    ),
                     ),
                   ),
                 ).animate().fade().scale(),

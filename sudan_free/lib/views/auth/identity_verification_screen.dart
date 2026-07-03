@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -293,7 +294,7 @@ class _IdentityVerificationScreenState
             children: [
           // Coming soon notice
           PremiumGlassCard(
-            margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            
             padding: const EdgeInsets.all(14),
             borderRadius: BorderRadius.circular(12),
             color: Colors.orange.withValues(alpha: 0.1),

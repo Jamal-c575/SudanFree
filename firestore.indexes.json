@@ -335,6 +335,20 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
+          "fieldPath": "isFulfilled",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "expiresAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "requests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
           "fieldPath": "clientId",
           "order": "ASCENDING"
         },
@@ -438,20 +452,6 @@
     },
     {
       "collectionGroup": "contactLogs",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "contacterId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "freelancerId",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "contact_logs",
       "queryScope": "COLLECTION",
       "fields": [
         {
@@ -781,6 +781,12 @@
           "queryScope": "COLLECTION_GROUP"
         }
       ]
+    },
+    {
+      "collectionGroup": "requests",
+      "fieldPath": "expiresAt",
+      "ttl": true,
+      "indexes": []
     }
   ]
 }
