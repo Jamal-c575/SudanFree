@@ -105,6 +105,13 @@ service firebase.storage {
         isImageFile();
     }
 
+    match /receipts/{userId}/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(userId) && 
+        request.resource.size < 5 * 1024 * 1024 &&
+        isImageFile();
+    }
+
     // Ads images
     match /ads/{userId}/{fileName} {
       allow read: if true;
