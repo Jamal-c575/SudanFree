@@ -42,6 +42,16 @@ class _ProAccountScreenState extends State<ProAccountScreen> {
       'features_ar': ['ظهور مميز في نتائج البحث', 'شارة PRO في الملف الشخصي', 'إحصائيات متقدمة', '20 طلب يومياً', 'دعم فني مخصص', 'الظهور أولاً في اقتراحات الذكاء الاصطناعي'],
       'features_en': ['Featured in search results', 'PRO badge on profile', 'Advanced analytics', '20 daily requests', 'Dedicated support', 'First in AI suggestions'],
     },
+    {
+      'name_ar': 'برو ماكس',
+      'name_en': 'Pro Max',
+      'price': 'قريباً',
+      'price_en': 'Coming Soon',
+      'color': const Color(0xFFC0A040),
+      'features_ar': ['كل مميزات المحترف', 'دعم فوري على الواتساب', 'إدارة حساب متكاملة', 'تقارير مبيعات مفصلة'],
+      'features_en': ['All Pro features', 'Instant WhatsApp support', 'Full account management', 'Detailed sales reports'],
+      'is_coming_soon': true,
+    },
   ];
 
   @override
@@ -334,7 +344,16 @@ class _ProAccountScreenState extends State<ProAccountScreen> {
                   final color = plan['color'] as Color;
 
                   return GestureDetector(
-                    onTap: () => setState(() => _selectedPlan = index),
+                    onTap: () {
+                      if (plan['is_coming_soon'] == true) {
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: Text(isAr ? 'قريباً إن شاء الله!' : 'Coming Soon!'),
+                          backgroundColor: const Color(0xFFC0A040),
+                        ));
+                        return;
+                      }
+                      setState(() => _selectedPlan = index);
+                    },
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       margin: const EdgeInsets.only(bottom: 16),
