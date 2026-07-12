@@ -17,6 +17,7 @@ import '../../widgets/common/premium_glass_card.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../utils/animation_utils.dart';
 import 'package:sudan_free/utils/app_haptics.dart';
+import '../../services/subscription_service.dart';
 
 class IdentityVerificationScreen extends StatefulWidget {
   const IdentityVerificationScreen({super.key});
@@ -39,12 +40,16 @@ class _IdentityVerificationScreenState
 
   File? _personalPhoto;
   File? _idCardPhoto;
+  File? _receiptPhoto;
 
   bool _isSubmitting = false;
-
+  bool _isLoadingMethods = false;
+  List<dynamic> _paymentMethods = [];
+  dynamic _selectedPaymentMethod;
   @override
   void initState() {
     super.initState();
+    _loadPaymentMethods();
     final user = context.read<AuthProvider>().user;
     if (user != null) {
       if (user.phoneNumber != null) {
@@ -54,6 +59,22 @@ class _IdentityVerificationScreenState
       if (_isPhoneVerified) {
         _currentStep = 1;
       }
+    }
+  }
+
+  Future<void> _loadPaymentMethods() async {
+    setState(() => _isLoadingMethods = true);
+    try {
+      final methods = await SubscriptionService().getPaymentMethods();
+      if (mounted) {
+        setState(() {
+          _paymentMethods = methods;
+          _isLoadingMethods = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLoadingMethods = false);
+      debugPrint('Error loading payment methods: $e');
     }
   }
 
@@ -145,8 +166,16 @@ class _IdentityVerificationScreenState
     }
   }
 
+  Future<void> _pickReceiptPhoto() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.gallery, maxWidth: 800);
+    if (picked != null) {
+      setState(() => _receiptPhoto = File(picked.path));
+    }
+  }
+
   Future<void> _submitVerification() async {
-    if (!_isPhoneVerified || _personalPhoto == null || _idCardPhoto == null) {
+    if (!_isPhoneVerified || _personalPhoto == null || _idCardPhoto == null || _receiptPhoto == null) {
       return;
     }
 
@@ -174,7 +203,16 @@ class _IdentityVerificationScreenState
         throw Exception('فشل رفع صورة الهوية');
       }
 
-      // 3. Create verification request
+      // 3. Upload Receipt
+      String receiptUrl;
+      try {
+        receiptUrl = await StorageService().uploadVerificationReceipt(userId, _receiptPhoto!);
+      } catch (e) {
+        debugPrint('Receipt upload error: $e');
+        throw Exception('فشل رفع صورة الإيصال');
+      }
+
+      // 4. Create verification request
       await FirebaseFirestore.instance.collection('verification_requests').add({
         'userId': userId,
         'status': 'pending',
@@ -183,6 +221,7 @@ class _IdentityVerificationScreenState
           'phoneNumber': _phoneController.text.trim(),
           'selfieUrl': selfieUrl,
           'idCardUrl': idCardUrl,
+          'receiptUrl': receiptUrl,
           'notes': '', // Optional notes field
         },
         'createdAt': Timestamp.now(),
@@ -359,7 +398,17 @@ class _IdentityVerificationScreenState
                         );
                         return;
                       }
-                      if (_currentStep < 3) {
+                      if (_currentStep == 3 && _receiptPhoto == null) {
+                        final scaffoldMessenger = ScaffoldMessenger.of(context);
+                        scaffoldMessenger.showSnackBar(
+                          SnackBar(
+                              content: Text(isArabic
+                                  ? 'يرجى رفع صورة إيصال الدفع'
+                                  : 'Please upload payment receipt')),
+                        );
+                        return;
+                      }
+                      if (_currentStep < 4) {
                         setState(() => _currentStep += 1);
                       }
                     },
@@ -372,7 +421,7 @@ class _IdentityVerificationScreenState
                       if (_currentStep == 0 && !_isPhoneVerified) {
                         return const SizedBox.shrink();
                       }
-                      if (_currentStep == 3) {
+                      if (_currentStep == 4) {
                         return Container(
                           margin: const EdgeInsets.only(top: 16),
                           child: PremiumButton(
@@ -413,6 +462,7 @@ class _IdentityVerificationScreenState
                       _buildPhoneStep(isArabic),
                       _buildPersonalPhotoStep(isArabic),
                       _buildIdCardStep(isArabic),
+                      _buildPaymentStep(isArabic),
                       _buildSubmitStep(isArabic, theme),
                     ],
                   ),
@@ -715,6 +765,102 @@ class _IdentityVerificationScreenState
               foregroundColor: AppColors.primary,
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Step _buildPaymentStep(bool isArabic) {
+    final theme = Theme.of(context);
+    return Step(
+      title: Text(isArabic ? 'رسوم التوثيق (5,000 ج.س)' : 'Verification Fee (5,000 SDG)'),
+      isActive: _currentStep >= 3,
+      state: _receiptPhoto != null ? StepState.complete : StepState.indexed,
+      content: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            isArabic
+                ? 'يرجى تحويل رسوم التوثيق (5,000 جنيه) إلى أحد الحسابات التالية، ثم إرفاق صورة الإيصال:'
+                : 'Please transfer the verification fee (5,000 SDG) to one of the following accounts, then attach the receipt:',
+            style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+          ),
+          const SizedBox(height: 16),
+          if (_isLoadingMethods)
+            const Center(child: CircularProgressIndicator())
+          else if (_paymentMethods.isEmpty)
+            Text(isArabic ? 'لا توجد حسابات متاحة حالياً.' : 'No accounts available currently.', style: const TextStyle(color: Colors.red))
+          else ...[
+            if (_selectedPaymentMethod == null) ...[
+              ..._paymentMethods.map((m) => ListTile(
+                    leading: const Icon(Icons.account_balance_wallet, color: AppColors.primary),
+                    title: Text(m.bankName),
+                    subtitle: Text('${m.accountName}\n${m.accountNumber}'),
+                    onTap: () {
+                      setState(() {
+                        _selectedPaymentMethod = m;
+                      });
+                    },
+                  )),
+            ] else ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(isArabic ? 'تفاصيل الحساب:' : 'Account Details:', style: const TextStyle(fontWeight: FontWeight.bold)),
+                        TextButton(
+                          onPressed: () => setState(() => _selectedPaymentMethod = null),
+                          child: Text(isArabic ? 'تغيير' : 'Change'),
+                        )
+                      ],
+                    ),
+                    Text('${isArabic ? 'البنك' : 'Bank'}: ${_selectedPaymentMethod.bankName}'),
+                    Text('${isArabic ? 'الاسم' : 'Name'}: ${_selectedPaymentMethod.accountName}'),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            '${isArabic ? 'رقم الحساب' : 'Account No'}: ${_selectedPaymentMethod.accountNumber}',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.copy, size: 20, color: AppColors.primary),
+                          onPressed: () {
+                            Clipboard.setData(ClipboardData(text: _selectedPaymentMethod.accountNumber));
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(isArabic ? 'تم النسخ!' : 'Copied!')));
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              if (_receiptPhoto != null)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.file(_receiptPhoto!, height: 150, width: double.infinity, fit: BoxFit.cover),
+                ),
+              const SizedBox(height: 12),
+              ElevatedButton.icon(
+                onPressed: _pickReceiptPhoto,
+                icon: const Icon(Icons.receipt),
+                label: Text(isArabic
+                    ? (_receiptPhoto == null ? 'إرفاق الإيصال' : 'تغيير الإيصال')
+                    : 'Attach Receipt'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                  foregroundColor: AppColors.primary,
+                ),
+              ),
+            ],
+          ]
         ],
       ),
     );

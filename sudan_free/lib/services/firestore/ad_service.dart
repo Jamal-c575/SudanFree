@@ -180,20 +180,20 @@ class AdService {
 
   /// Fetch multiple ads for a placement (e.g., carousel on home)
   Future<List<AdModel>> getAdsForPlacement(
-      UserModel currentUser, AdPlacement placement,
+      UserModel? currentUser, AdPlacement placement,
       {int limit = 5}) async {
     try {
       final cacheKey = 'placement_${placement.name}';
       if (_isCacheValid(cacheKey)) {
         final cachedAds = _placementAdCache[cacheKey];
         if (cachedAds != null && cachedAds.isNotEmpty) {
-          return _filterByFrequency(cachedAds, currentUser.id);
+          return _filterByFrequency(cachedAds, currentUser?.id);
         }
       }
 
       final now = Timestamp.now();
 
-      final snap = await _firestore
+      var snap = await _firestore
           .collection('ads')
           .where('isActive', isEqualTo: true)
           .where('placement', isEqualTo: placement.name)
@@ -201,6 +201,17 @@ class AdService {
           .orderBy('expiryDate')
           .limit(limit)
           .get();
+
+      // Legacy fallback for homeBanner if no strict placement match is found
+      if (snap.docs.isEmpty && placement == AdPlacement.homeBanner) {
+        snap = await _firestore
+            .collection('ads')
+            .where('isActive', isEqualTo: true)
+            .where('expiryDate', isGreaterThan: now)
+            .orderBy('expiryDate')
+            .limit(limit)
+            .get();
+      }
 
       if (snap.docs.isEmpty) return [];
 
@@ -211,7 +222,7 @@ class AdService {
       _cacheTimestamps[cacheKey] = DateTime.now();
 
       // Apply frequency control for multiple ads
-      return _filterByFrequency(ads, currentUser.id);
+      return _filterByFrequency(ads, currentUser?.id);
     } catch (e) {
       debugPrint('Error fetching ads for placement: $e');
       return [];
@@ -240,7 +251,7 @@ class AdService {
   }
 
   /// Filter ads based on frequency control to avoid showing the same ad repeatedly
-  List<AdModel> _filterByFrequency(List<AdModel> ads, String userId) {
+  List<AdModel> _filterByFrequency(List<AdModel> ads, String? userId) {
     // For now, simple implementation: limit to showing each ad max 3 times per session
     // In production, this could be stored in SharedPreferences or backend
     final shownAds = <String, int>{};

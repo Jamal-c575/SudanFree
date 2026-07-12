@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class ThemeProvider extends ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.system;
 
-  bool _isGlassmorphismEnabled = true;
+  bool _isGlassmorphismEnabled = false;
 
   ThemeMode get themeMode => _themeMode;
   bool get isGlassmorphismEnabled => _isGlassmorphismEnabled;
@@ -26,7 +26,7 @@ class ThemeProvider extends ChangeNotifier {
         orElse: () => ThemeMode.system,
       );
     }
-    _isGlassmorphismEnabled = prefs.getBool('isGlassmorphismEnabled') ?? true;
+    _isGlassmorphismEnabled = prefs.getBool('isGlassmorphismEnabled') ?? false;
     notifyListeners();
   }
 

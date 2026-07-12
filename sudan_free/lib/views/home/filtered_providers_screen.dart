@@ -400,7 +400,6 @@ class _FilteredProvidersScreenState extends State<FilteredProvidersScreen> {
   @override
   Widget build(BuildContext context) {
     final locale = context.watch<LocaleProvider>().locale.languageCode;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(

@@ -447,14 +447,14 @@ class _BrowseFreelancersScreenState extends State<BrowseFreelancersScreen>
                             controller: _scrollController,
                             physics: const BouncingScrollPhysics(),
                             padding: const EdgeInsets.only(bottom: 96),
+                            cacheExtent: 1500,
                             itemCount: freelancers.length +
                                 (userProvider.isLoadingMoreFreelancers ? 1 : 0),
                             itemBuilder: (context, index) {
                               if (index == freelancers.length) {
                                 return const Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 20),
-                                  child: Center(
-                                      child: CircularProgressIndicator()),
+                                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                  child: FreelancerCardShimmer(),
                                 );
                               }
                               final freelancer = freelancers[index];

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 
@@ -12,7 +13,7 @@ class RouteData {
 class OSRMService {
   static Future<RouteData?> getRoute(LatLng start, LatLng end) async {
     try {
-      final url = 'http://router.project-osrm.org/route/v1/driving/${start.longitude},${start.latitude};${end.longitude},${end.latitude}?overview=full&geometries=geojson';
+      final url = 'https://router.project-osrm.org/route/v1/driving/${start.longitude},${start.latitude};${end.longitude},${end.latitude}?overview=full&geometries=geojson';
       final response = await http.get(Uri.parse(url));
 
       if (response.statusCode == 200) {
@@ -29,7 +30,7 @@ class OSRMService {
         }
       }
     } catch (e) {
-      print('Error getting route: $e');
+      debugPrint('Error getting route: $e');
     }
     return null;
   }

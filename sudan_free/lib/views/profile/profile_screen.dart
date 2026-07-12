@@ -218,7 +218,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildClientProfile(BuildContext context, UserModel user, bool isMe) {
-    final locale = Localizations.localeOf(context).languageCode;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
@@ -329,7 +328,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.verified_user,
+                  Icon(Icons.handshake_rounded,
                       size: 16, color: isDark ? Colors.white60 : Colors.grey),
                   const SizedBox(width: 6),
                   Text(

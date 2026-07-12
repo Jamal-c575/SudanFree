@@ -24,9 +24,7 @@ class RequestsScreen extends StatefulWidget {
   State<RequestsScreen> createState() => _RequestsScreenState();
 }
 
-// ✅ FIX #2: Use SingleTickerProviderStateMixin for a SHARED clock
-// instead of one Timer.periodic per card (which caused CPU overload)
-class _RequestsScreenState extends State<RequestsScreen> {
+class _RequestsScreenState extends State<RequestsScreen> with SingleTickerProviderStateMixin {
   // ✅ FIX #3: Category uses English key for consistent filtering across languages
   String _selectedCategoryKey = 'All';
   final List<Map<String, String>> _categories = [
@@ -41,8 +39,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
     {'ar': 'تجميل',        'en': 'Beauty'},
   ];
 
-  // ✅ FIX: Use a 1-second Timer instead of a 60FPS Ticker to prevent CPU overload
-  Timer? _timer;
+  AnimationController? _timerController;
   DateTime _now = DateTime.now();
   late Stream<List<RequestModel>> _requestsStream;
 
@@ -54,12 +51,16 @@ class _RequestsScreenState extends State<RequestsScreen> {
   void initState() {
     super.initState();
     _requestsStream = FirestoreService().getRequests();
-    // One timer for the whole screen — updates every second
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) {
-        setState(() => _now = DateTime.now());
-      }
-    });
+    // One timer for the whole screen — updates every second, automatically pauses when offstage!
+    _timerController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 1),
+    )..addListener(() {
+        if (mounted) {
+          setState(() => _now = DateTime.now());
+        }
+      });
+    _timerController?.repeat();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final authProvider = context.read<AuthProvider>();
@@ -75,7 +76,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
 
   @override
   void dispose() {
-    _timer?.cancel();
+    _timerController?.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -124,15 +125,114 @@ class _RequestsScreenState extends State<RequestsScreen> {
                 floatHeaderSlivers: true,
                 headerSliverBuilder: (context, innerBoxIsScrolled) {
                   return [
-                    SliverAppBar(
-                      floating: true,
-                      snap: true, // Appears instantly when scrolling up
-                      backgroundColor: Colors.transparent,
-                      elevation: 0,
-                      automaticallyImplyLeading: false,
-                      toolbarHeight: 125, // Height of _buildTopSection
-                      flexibleSpace: FlexibleSpaceBar(
-                        background: _buildTopSection(isDark, locale),
+                    SliverToBoxAdapter(
+                      child: Consumer<BottomBarVisibilityProvider?>(
+                        builder: (context, visibilityProvider, child) {
+                          final isVisible = visibilityProvider?.isVisible ?? true;
+                          return AnimatedContainer(
+                            duration: const Duration(milliseconds: 300),
+                            height: isVisible ? 70 : 0,
+                            curve: Curves.easeOutCubic,
+                            clipBehavior: Clip.hardEdge,
+                            decoration: const BoxDecoration(),
+                            child: SingleChildScrollView(
+                              physics: const NeverScrollableScrollPhysics(),
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                                child: GlassContainer(
+                                  borderRadius: BorderRadius.circular(12),
+                                  blur: 15,
+                                  opacity: isDark ? 0.3 : 0.6,
+                                  color: Theme.of(context).cardColor,
+                                  child: TextField(
+                                    controller: _searchController,
+                                    decoration: InputDecoration(
+                                      hintText: AppLocalizations.of(context)!.searchOffers,
+                                      prefixIcon: const Icon(Icons.search),
+                                      suffixIcon: _searchQuery.isNotEmpty
+                                          ? IconButton(
+                                              icon: const Icon(Icons.clear),
+                                              onPressed: () {
+                                                _searchController.clear();
+                                                setState(() => _searchQuery = '');
+                                              },
+                                            )
+                                          : null,
+                                      border: InputBorder.none,
+                                      filled: true,
+                                      fillColor: Colors.transparent,
+                                    ),
+                                    onChanged: (value) {
+                                      setState(() => _searchQuery = value.trim());
+                                    },
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    SliverToBoxAdapter(
+                      child: Column(
+                        children: [
+                          const SizedBox(height: 16),
+                          SizedBox(
+                            height: 50,
+                            child: ListView.builder(
+                              scrollDirection: Axis.horizontal,
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              itemCount: _categories.length,
+                              itemBuilder: (context, index) {
+                                final cat = _categories[index];
+                                final key = cat['en']!;
+                                final label = locale == 'ar' ? cat['ar']! : cat['en']!;
+                                final isSelected = _selectedCategoryKey == key;
+                                return Padding(
+                                  padding: const EdgeInsets.only(right: 8),
+                                  child: GestureDetector(
+                                    onTap: () => setState(() => _selectedCategoryKey = key),
+                                    child: GlassContainer(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 16, vertical: 8),
+                                      borderRadius: BorderRadius.circular(16),
+                                      blur: 15,
+                                      opacity: isSelected
+                                          ? (isDark ? 0.3 : 0.4)
+                                          : (isDark ? 0.1 : 0.2),
+                                      color: isSelected
+                                          ? AppColors.primary
+                                          : Theme.of(context).cardColor,
+                                      border: Border.all(
+                                          color: AppColors.primary
+                                              .withValues(alpha: isSelected ? 0.5 : 0.1)),
+                                      child: AnimatedDefaultTextStyle(
+                                        duration: const Duration(milliseconds: 200),
+                                        style: TextStyle(
+                                          fontSize: isSelected ? 14 : 13,
+                                          fontWeight: isSelected
+                                              ? FontWeight.w700
+                                              : FontWeight.w500,
+                                          color: isSelected
+                                              ? Colors.white
+                                              : Theme.of(context)
+                                                      .textTheme
+                                                      .bodyMedium
+                                                      ?.color
+                                                      ?.withValues(alpha: 0.6) ??
+                                                  Colors.grey,
+                                          fontFamily: 'Cairo',
+                                        ),
+                                        child: Center(child: Text(label)),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
                       ),
                     ),
                   ];
@@ -218,92 +318,6 @@ class _RequestsScreenState extends State<RequestsScreen> {
             ),
         ],
       ),
-    );
-  }
-
-  Widget _buildTopSection(bool isDark, String locale) {
-    return Column(
-      children: [
-        // ✅ FIX #3: Fully working search field with visibility animation
-        Consumer<BottomBarVisibilityProvider?>(
-          builder: (context, visibilityProvider, child) {
-            final isVisible = visibilityProvider?.isVisible ?? true;
-            return AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              height: isVisible ? 64 : 0,
-              curve: Curves.easeOutCubic,
-              clipBehavior: Clip.hardEdge,
-              decoration: const BoxDecoration(),
-              child: SingleChildScrollView(
-                physics: const NeverScrollableScrollPhysics(),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16.0, vertical: 8.0),
-                  child: GlassContainer(
-                    borderRadius: BorderRadius.circular(24),
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    blur: 10,
-                    color: isDark ? Colors.black26 : Colors.white54,
-                    child: TextField(
-                      controller: _searchController,
-                      onChanged: (val) =>
-                          setState(() => _searchQuery = val.trim()),
-                      decoration: InputDecoration(
-                        border: InputBorder.none,
-                        hintText: AppLocalizations.of(context)!.searchOffers,
-                        icon:
-                            const Icon(Icons.search, color: AppColors.primary),
-                        suffixIcon: _searchQuery.isNotEmpty
-                            ? IconButton(
-                                icon: const Icon(Icons.clear, size: 18),
-                                onPressed: () {
-                                  _searchController.clear();
-                                  setState(() => _searchQuery = '');
-                                },
-                              )
-                            : null,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            );
-          },
-        ),
-        const SizedBox(height: 16),
-        // ✅ FIX #3: Category filter uses English key internally
-        SizedBox(
-          height: 50,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            itemCount: _categories.length,
-            itemBuilder: (context, index) {
-              final cat = _categories[index];
-              final key = cat['en']!;
-              final label = locale == 'ar' ? cat['ar']! : cat['en']!;
-              final isSelected = key == _selectedCategoryKey;
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                child: ChoiceChip(
-                  label: Text(label, style: TextStyle(
-                    color: isSelected ? Colors.white : (isDark ? Colors.grey[300] : Colors.grey[800]),
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  )),
-                  selected: isSelected,
-                  selectedColor: AppColors.primary,
-                  backgroundColor: isDark ? Colors.white12 : Colors.white,
-                  onSelected: (val) {
-                    if (val) setState(() => _selectedCategoryKey = key);
-                  },
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                ),
-              );
-            },
-          ),
-        ),
-        const SizedBox(height: 8),
-      ],
     );
   }
 

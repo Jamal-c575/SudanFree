@@ -28,9 +28,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'post_details_screen.dart';
 import '../../services/smart_guide_service.dart';
+import '../../services/ai_guide_service.dart';
 import '../../widgets/buttons/smart_draggable_fab.dart';
 import '../../widgets/common/glass_container.dart';
 import '../../widgets/home/ai_recommendations_widget.dart';
+import 'package:sudan_free/utils/app_haptics.dart';
 
 class PostsFeedScreen extends StatefulWidget {
   const PostsFeedScreen({super.key});
@@ -95,6 +97,12 @@ class _PostsFeedScreenState extends State<PostsFeedScreen>
         tipId: 'community_first_visit',
         icon: Icons.forum_rounded,
       );
+
+      AiGuideService.showPageGuide(
+        context,
+        'المجتمع',
+        user?.name ?? 'عزيزي',
+      );
     });
 
     // Infinite scroll is now handled via NotificationListener in the build method
@@ -121,10 +129,10 @@ class _PostsFeedScreenState extends State<PostsFeedScreen>
     final prefs = await SharedPreferences.getInstance();
     if (group == null) {
       await prefs.remove('pinned_category_group');
-      HapticFeedback.lightImpact();
+      AppHaptics.lightImpact();
     } else {
       await prefs.setString('pinned_category_group', group.name);
-      HapticFeedback.mediumImpact();
+      AppHaptics.mediumImpact();
     }
 
     if (!mounted) return;
@@ -523,16 +531,8 @@ class _PostsFeedScreenState extends State<PostsFeedScreen>
                                       return postsProvider.isLoadingMore
                                           ? const Padding(
                                               padding: EdgeInsets.symmetric(
-                                                  vertical: 24),
-                                              child: Center(
-                                                child: SizedBox(
-                                                  width: 28,
-                                                  height: 28,
-                                                  child:
-                                                      CircularProgressIndicator(
-                                                          strokeWidth: 2.5),
-                                                ),
-                                              ),
+                                                  horizontal: 16, vertical: 8),
+                                              child: PostCardShimmer(),
                                             )
                                           : postsProvider.hasMore
                                               ? const SizedBox(height: 8)

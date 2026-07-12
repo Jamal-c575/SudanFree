@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../core/constants/app_colors.dart';
@@ -11,7 +12,10 @@ import '../../models/post_model.dart';
 import '../../services/cloudinary_service.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../services/smart_guide_service.dart';
+import '../../services/ai_service.dart';
+import '../../widgets/common/smart_ai_input_button.dart';
 import 'package:sudan_free/l10n/generated/app_localizations.dart';
+import 'package:sudan_free/utils/app_haptics.dart';
 
 class CreateProductScreen extends StatefulWidget {
   final PostModel? product; // for editing
@@ -36,6 +40,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
   String? _ageGroup; // 'baby' | 'child' | 'youth' | 'adult' | 'elderly'
   bool _hasShipping = false;
   bool _isPosting = false;
+  bool _isEnhancing = false;
 
   static const _predefinedSizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'];
   static const _predefinedColors = [
@@ -92,6 +97,36 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
     super.dispose();
   }
 
+  Future<void> _enhanceWithAi() async {
+    final currentText = _descController.text.trim();
+    if (currentText.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppLocalizations.of(context)!.localeName == 'ar' ? 'الرجاء كتابة وصف مبدئي أولاً' : 'Please write an initial description first')),
+      );
+      return;
+    }
+
+    setState(() => _isEnhancing = true);
+    try {
+      final enhanced = await AiService().enhanceProductDescription(currentText);
+      if (mounted) {
+        setState(() {
+          _descController.text = enhanced;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(AppLocalizations.of(context)!.localeName == 'ar' ? 'فشل تحسين النص: $e' : 'Failed to enhance text: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isEnhancing = false);
+      }
+    }
+  }
+
   Future<void> _pickImages() async {
     final remaining = 7 - _selectedImages.length;
     if (remaining <= 0) return;
@@ -105,7 +140,8 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
   }
 
   Future<void> _handleSubmit() async {
-    final isAr = context.read<LocaleProvider>().isArabic;
+    AppHaptics.lightImpact();
+
     if (_nameController.text.trim().isEmpty) {
       final scaffoldMessenger = ScaffoldMessenger.of(context);
       scaffoldMessenger.showSnackBar(SnackBar(
@@ -335,10 +371,19 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
             const SizedBox(height: 8),
             TextField(
               controller: _descController,
-              maxLines: 3,
+              maxLines: 4,
               decoration: _inputDeco(
                   AppLocalizations.of(context)!.writeADetailedDescription,
                   Icons.description_outlined),
+            ),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: SmartAiInputButton(
+                controller: _descController,
+                onEnhance: _enhanceWithAi,
+                isEnhancing: _isEnhancing,
+                isArabic: isAr,
+              ),
             ),
 
             const SizedBox(height: 16),

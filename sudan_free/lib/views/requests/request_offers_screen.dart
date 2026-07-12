@@ -27,7 +27,6 @@ class RequestOffersScreen extends StatelessWidget {
     final authProvider = context.watch<AuthProvider>();
     final currentUser = authProvider.user;
     final locale = context.watch<LocaleProvider>().locale.languageCode;
-    final isAr = locale == 'ar';
 
     return Scaffold(
       appBar: AppBar(

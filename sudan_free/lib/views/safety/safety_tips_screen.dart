@@ -193,7 +193,7 @@ class _SafetyTipsScreenState extends State<SafetyTipsScreen> {
           ),
 
           _SafetyTip(
-            icon: Icons.verified_user,
+            icon: Icons.handshake_rounded,
             iconColor: Colors.green,
             title: Localizations.localeOf(context).languageCode == 'ar'
                 ? 'حفظ الحقوق بالعقود'

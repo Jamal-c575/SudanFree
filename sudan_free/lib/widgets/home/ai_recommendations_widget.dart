@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
-import '../../providers/location_provider.dart';
 import '../../providers/recommendations_provider.dart';
 import '../../core/utils/navigation_utils.dart';
 import '../../views/profile/profile_screen.dart';
@@ -22,7 +21,6 @@ class _AIRecommendationsWidgetState extends State<AIRecommendationsWidget> {
       final provider = context.read<RecommendationsProvider>();
       if (provider.recommendations.isEmpty && !provider.isLoading) {
         final auth = context.read<AuthProvider>();
-        final loc = context.read<LocationProvider>();
         if (auth.user != null) {
           provider.fetchRecommendations(
             userId: auth.user!.id,
@@ -90,7 +88,7 @@ class _AIRecommendationsWidgetState extends State<AIRecommendationsWidget> {
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
+                            color: Colors.black.withValues(alpha: 0.05),
                             blurRadius: 4,
                             offset: const Offset(0, 2),
                           ),

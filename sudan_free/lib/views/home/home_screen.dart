@@ -8,6 +8,7 @@ import '../../providers/locale_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../providers/chat_provider.dart';
 import '../../providers/recommendations_provider.dart';
+import '../../providers/partners_provider.dart';
 
 import '../../providers/posts_provider.dart';
 import '../../providers/job_provider.dart';
@@ -21,9 +22,11 @@ import '../../services/firestore_service.dart';
 import '../../widgets/common/glass_container.dart';
 import '../profile/profile_screen.dart';
 import '../ai/ai_assistant_screen.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'dashboard_screen.dart';
 import '../../core/utils/navigation_utils.dart';
 import '../../services/smart_welcome_service.dart';
+import 'package:sudan_free/utils/app_haptics.dart';
 
 class BottomBarVisibilityProvider extends ChangeNotifier {
   bool _isVisible = true;
@@ -45,7 +48,8 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
-  int _currentIndex = 0; // Dashboard is home now
+  int _uiIndex = 0;
+  int _stackIndex = 0;
   final List<int> _history = [0];
   final BottomBarVisibilityProvider _visibilityProvider =
       BottomBarVisibilityProvider();
@@ -65,7 +69,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _initializeData();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       NavigationUtils.onHomeScreenReady(context);
-      SmartWelcomeService.checkAndShow(context);
+      // نؤخر الـ WelcomeDialog حتى تُجلب بيانات الشاشة الرئيسية أولاً
+      Future.delayed(const Duration(milliseconds: 800), () {
+        if (mounted) SmartWelcomeService.checkAndShow(context);
+      });
     });
   }
 
@@ -83,17 +90,28 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     final userProvider = context.read<UserProvider>();
     userProvider.setUserState(user.state); // Region-priority: 75% local
-    
-    // Load data concurrently for better cold start but prioritize UI rendering
-    Future.microtask(() {
+
+    // ═══ المرحلة الأولى: بيانات الشاشة الرئيسية (أولوية قصوى) ═══
+    // تُجلب فوراً قبل أي شيء آخر لأن الـ Dashboard يعتمد عليها
+    Future.microtask(() async {
       if (!mounted) return;
+      // نجلب الثلاثة معاً بشكل متوازٍ للسرعة
+      await Future.wait([
+        userProvider.fetchFreelancers(),
+        userProvider.fetchShops(),
+        context.read<PartnersProvider>().fetchPartners(),
+      ]);
+
+      // ═══ المرحلة الثانية: بيانات ثانوية (بعد اكتمال الشاشة الرئيسية) ═══
+      // نؤجلها 300ms لإعطاء الـ UI فرصة للعرض أولاً
+      await Future.delayed(const Duration(milliseconds: 300));
+      if (!mounted) return;
+
       context.read<PostsProvider>().fetchPosts();
       context.read<ChatProvider>().fetchChats(user.id);
-      userProvider.fetchFreelancers();
-      userProvider.fetchShops();
       context.read<JobProvider>().fetchJobs();
 
-      // Preload AI recommendations in background (cache-first, no UI block)
+      // الاقتراحات في الخلفية — لا تحجب أي شيء
       context.read<RecommendationsProvider>().fetchRecommendations(
         userId: user.id,
         lat: user.latitude ?? 15.5,
@@ -192,10 +210,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void _navigateToTab(int index) {
     if (index >= 0 && index <= 3) {
       setState(() {
-        _currentIndex = index;
+        _uiIndex = index;
         _history.remove(index);
         _history.add(index);
         _initializedTabs[index] = true; // Mark as initialized
+      });
+      Future.delayed(const Duration(milliseconds: 150), () {
+        if (mounted) {
+          setState(() {
+            _stackIndex = index;
+          });
+        }
       });
     }
   }
@@ -211,7 +236,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
 
     final l10n = AppLocalizations.of(context)!;
-    final locale = context.watch<LocaleProvider>().locale.languageCode;
 
     final screens = [
       DashboardScreen(
@@ -229,18 +253,21 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
 
     return PopScope(
-      canPop: _currentIndex == 0 && _history.length <= 1,
-      onPopInvoked: (didPop) {
+      canPop: _uiIndex == 0 && _history.length <= 1,
+      onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
 
         if (_history.length > 1) {
           setState(() {
             _history.removeLast();
-            _currentIndex = _history.last;
+            final newIndex = _history.last;
+            _uiIndex = newIndex;
+            _stackIndex = newIndex;
           });
-        } else if (_currentIndex != 0) {
+        } else if (_uiIndex != 0) {
           setState(() {
-            _currentIndex = 0;
+            _uiIndex = 0;
+            _stackIndex = 0;
             _history.clear();
             _history.add(0);
           });
@@ -263,7 +290,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           child: ChangeNotifierProvider<BottomBarVisibilityProvider>.value(
             value: _visibilityProvider,
             child: IndexedStack(
-              index: _currentIndex,
+              index: _stackIndex,
               children: [
                 screens[0],
                 screens[1],
@@ -277,20 +304,43 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             ),
           ),
         ),
-        floatingActionButton: AnimatedOpacity(
-          opacity: _visibilityProvider.isVisible ? 1.0 : 0.0,
-          duration: const Duration(milliseconds: 300),
-          child: _visibilityProvider.isVisible
-              ? FloatingActionButton(
-                  onPressed: () {
-                    NavigationUtils.navigateSafely(
-                        context, const AiAssistantScreen());
-                  },
-                  backgroundColor: Colors.amber,
-                  child: const Icon(Icons.handshake, color: Colors.white),
-                )
-              : const SizedBox(),
-        ),
+        floatingActionButton: Container(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.amber.withValues(alpha: 0.4),
+                blurRadius: 15,
+                spreadRadius: 2,
+              ),
+            ],
+            gradient: const LinearGradient(
+              colors: [Color(0xFFFFC107), Color(0xFFFF9800)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          child: FloatingActionButton(
+            onPressed: () {
+              NavigationUtils.navigateSafely(context, const AiAssistantScreen());
+            },
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                const Icon(Icons.home_filled, color: Colors.white, size: 28),
+                Positioned(
+                  top: 2,
+                  right: 2,
+                  child: const Icon(Icons.auto_awesome, color: Colors.white, size: 12),
+                ),
+              ],
+            ),
+          ),
+        ).animate(onPlay: (controller) => controller.repeat(reverse: true))
+         .scaleXY(begin: 1.0, end: 1.05, duration: const Duration(milliseconds: 1200))
+         .shimmer(color: Colors.white30, duration: const Duration(milliseconds: 2400)),
         floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
         extendBody: true, // Crucial for floating nav bar
         bottomNavigationBar: AnimatedBuilder(
@@ -347,19 +397,27 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Widget _buildNavItem(
       int index, IconData icon, IconData activeIcon, String label,
       {bool hasBadge = false}) {
-    final isActive = _currentIndex == index;
+    final isActive = _uiIndex == index;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return GestureDetector(
       onTap: () {
-        if (_currentIndex != index) {
-          HapticFeedback.selectionClick();
+        if (_uiIndex != index) {
+          AppHaptics.selectionClick();
           setState(() {
-            _currentIndex = index;
+            _uiIndex = index;
             _history.remove(index);
             _history.add(index);
             if (index < _initializedTabs.length) {
               _initializedTabs[index] = true;
+            }
+          });
+          
+          Future.delayed(const Duration(milliseconds: 150), () {
+            if (mounted) {
+              setState(() {
+                _stackIndex = index;
+              });
             }
           });
         } else {

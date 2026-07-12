@@ -49,3 +49,41 @@ class AnimationUtils {
     );
   }
 }
+
+class TelegramPageTransitionsBuilder extends PageTransitionsBuilder {
+  const TelegramPageTransitionsBuilder();
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    var tween = Tween(begin: const Offset(1.0, 0.0), end: Offset.zero)
+        .chain(CurveTween(curve: AnimationUtils.smoothCurve));
+        
+    var scaleTween = Tween(begin: 0.95, end: 1.0)
+        .chain(CurveTween(curve: AnimationUtils.smoothCurve));
+
+    return SlideTransition(
+      position: animation.drive(tween),
+      child: ScaleTransition(
+        scale: animation.drive(scaleTween),
+        child: child,
+      ),
+    );
+  }
+}
+
+class TelegramScrollBehavior extends ScrollBehavior {
+  const TelegramScrollBehavior();
+
+  @override
+  ScrollPhysics getScrollPhysics(BuildContext context) {
+    return const BouncingScrollPhysics(
+      parent: AlwaysScrollableScrollPhysics(),
+    );
+  }
+}

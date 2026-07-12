@@ -5,13 +5,14 @@ import 'package:google_sign_in/google_sign_in.dart';
 import '../models/user_model.dart';
 import 'firestore_service.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
+import '../firebase_options.dart';
 
 class AuthService {
   FirebaseAuth get _auth => FirebaseAuth.instance;
   FirebaseFirestore get _firestore => FirebaseFirestore.instance;
   
   final GoogleSignIn _googleSignIn = GoogleSignIn(
-    serverClientId: '233114260-kht4nnnsp9icmnmbsb87pp7fjvf93ike.apps.googleusercontent.com',
+    serverClientId: DefaultFirebaseOptions.googleServerClientId,
   );
 
   // Sign in with Google

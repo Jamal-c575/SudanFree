@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'smooth_route.dart';
 
 class NavigationUtils {
   static Widget? pendingScreen;
@@ -9,7 +8,7 @@ class NavigationUtils {
   /// If it is not ready, queues the screen to be shown once the Home Screen is built.
   static void navigateSafely(BuildContext? context, Widget screen) {
     if (context != null && context.mounted && isHomeScreenReady) {
-      Navigator.push(context, SmoothRoute(page: screen));
+      Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
     } else {
       pendingScreen = screen;
     }
@@ -23,7 +22,7 @@ class NavigationUtils {
       pendingScreen = null;
       Future.delayed(const Duration(milliseconds: 300), () {
         if (context.mounted) {
-          Navigator.push(context, SmoothRoute(page: screen));
+          Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
         }
       });
     }

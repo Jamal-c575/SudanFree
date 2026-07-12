@@ -1,6 +1,4 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
-import '../common/glass_container.dart';
 
 class SudaneseLandmarksCarousel extends StatefulWidget {
   const SudaneseLandmarksCarousel({super.key});

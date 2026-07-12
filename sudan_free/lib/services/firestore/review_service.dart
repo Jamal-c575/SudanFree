@@ -129,7 +129,7 @@ class ReviewFirestoreService {
       return uniqueDocId;
     });
 
-    if (result is String && result.startsWith('MANIPULATION_')) {
+    if (result.startsWith('MANIPULATION_')) {
       if (result == 'MANIPULATION_COOLDOWN_1H') {
         throw Exception('لا يمكن التقييم مرة أخرى قبل مرور 60 دقيقة من آخر تقييم.');
       } else if (result == 'MANIPULATION_COOLDOWN_2H') {

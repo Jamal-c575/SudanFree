@@ -3,6 +3,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../../models/user_model.dart';
 import '../../../services/cloudinary_service.dart';
 import '../../../widgets/common/full_screen_image_viewer.dart';
+import '../../../utils/top_bouncing_scroll_physics.dart';
 
 class ShopGalleryTab extends StatelessWidget {
   final UserModel user;
@@ -40,6 +41,7 @@ class ShopGalleryTab extends StatelessWidget {
       );
     }
     return GridView.builder(
+      physics: const TopBouncingScrollPhysics(),
       padding: const EdgeInsets.all(8),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
@@ -59,13 +61,31 @@ class ShopGalleryTab extends StatelessWidget {
           },
           child: Hero(
             tag: 'shop_gallery_${images[index]}',
-            child: CachedNetworkImage(
-              imageUrl: CloudinaryService.getOptimizedUrl(images[index],
-                  width: 300, quality: 'auto'),
-              fit: BoxFit.cover,
-              memCacheWidth: 300,
-              placeholder: (_, __) => Container(color: Colors.grey[200]),
-              errorWidget: (_, __, ___) => const Icon(Icons.broken_image),
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.1),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  )
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: CachedNetworkImage(
+                  imageUrl: CloudinaryService.getOptimizedUrl(images[index],
+                      width: 300, quality: 'auto'),
+                  fit: BoxFit.cover,
+                  memCacheWidth: 300,
+                  placeholder: (_, __) => Container(color: Colors.grey.withValues(alpha: 0.2)),
+                  errorWidget: (_, __, ___) => Container(
+                    color: Colors.grey.withValues(alpha: 0.1),
+                    child: const Icon(Icons.broken_image, color: Colors.grey),
+                  ),
+                ),
+              ),
             ),
           ),
         );

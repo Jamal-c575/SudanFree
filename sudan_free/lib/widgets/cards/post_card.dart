@@ -20,8 +20,8 @@ import '../../views/search/search_screen.dart';
 import 'package:any_link_preview/any_link_preview.dart';
 import '../common/internal_link_preview.dart';
 import '../common/glass_container.dart';
-import '../common/full_screen_image_viewer.dart';
 import '../common/verification_badge.dart';
+import 'package:sudan_free/utils/app_haptics.dart';
 
 class PostCard extends StatefulWidget {
   final PostModel post;
@@ -63,7 +63,6 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
   late Animation<double> _heartOverlayScale;
 
   // Track precached URLs to avoid redundant calls
-  static final Set<String> _precachedUrls = {};
 
   @override
   void initState() {
@@ -121,7 +120,7 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
 
     if (forceLike && isLiked) return; // Already liked
 
-    HapticFeedback.lightImpact();
+    AppHaptics.lightImpact();
     _likeAnimController.forward(from: 0);
 
     if (forceLike) {
@@ -155,8 +154,9 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
     final diff = now.difference(time);
 
     if (diff.inMinutes < 60) {
-      if (diff.inMinutes <= 0)
+      if (diff.inMinutes <= 0) {
         return widget.locale == 'ar' ? 'الآن' : 'Just now';
+      }
       return widget.locale == 'ar'
           ? 'قبل ${diff.inMinutes} دقيقة'
           : '${diff.inMinutes}m ago';
@@ -198,12 +198,7 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
       );
     } else {
       // Network file
-      final detailUrl =
-          CloudinaryService.getOptimizedUrl(url, width: 1200, quality: 'auto');
-      if (!_precachedUrls.contains(detailUrl)) {
-        _precachedUrls.add(detailUrl);
-        precacheImage(CachedNetworkImageProvider(detailUrl), context);
-      }
+      // Removed manual precaching of high-res images to prevent scroll jank
 
       image = CachedNetworkImage(
         imageUrl:
@@ -240,9 +235,10 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
 
   Widget _buildImageCarousel(List<String> urls) {
     if (urls.length == 1) {
-      return ConstrainedBox(
-        constraints: const BoxConstraints(maxHeight: 500, minHeight: 250),
-        child: _buildGridImage(urls[0], 0, urls, isHero: true),
+      return SizedBox(
+        height: 400,
+        width: double.infinity,
+        child: _buildGridImage(urls[0], 0, urls, isHero: true, height: 400),
       );
     }
 
@@ -419,9 +415,9 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
                                 ),
                               ),
                               if (widget.post.isUserVerified || (widget.post.userId == widget.currentUserId && (context.watch<AuthProvider>().user?.isVerified ?? false)))
-                                const Padding(
-                                  padding: EdgeInsets.symmetric(horizontal: 4.0),
-                                  child: VerificationBadge(isVerified: true, size: 14),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                                  child: SmartVerificationBadgeAsync(userId: widget.post.userId, size: 14),
                                 ),
                               if (widget.isPromoted)
                                 const Padding(
@@ -674,7 +670,7 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
   void _handleExternalShare(BuildContext context) async {
     if (_isSharing) return;
 
-    HapticFeedback.lightImpact();
+    AppHaptics.lightImpact();
     setState(() => _isSharing = true);
 
     final String text = widget.post.caption ?? '';

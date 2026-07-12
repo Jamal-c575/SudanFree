@@ -36,14 +36,12 @@ class _SquadProfileScreenState extends State<SquadProfileScreen>
   // Mock data for members since we don't have a direct user list yet
   // In a real scenario, we would fetch UserModels using widget.squad.memberIds
 
-  late bool _isAvailable;
   late TabController _tabController;
   late Stream<List<PortfolioProjectModel>> _portfolioStream;
 
   @override
   void initState() {
     super.initState();
-    _isAvailable = widget.squad.isAvailable;
     _tabController = TabController(length: 2, vsync: this);
     _portfolioStream = FirestoreService().getUserPortfolio(widget.squad.id);
   }
@@ -52,19 +50,6 @@ class _SquadProfileScreenState extends State<SquadProfileScreen>
   void dispose() {
     _tabController.dispose();
     super.dispose();
-  }
-
-  Future<void> _toggleAvailability() async {
-    final newValue = !_isAvailable;
-    setState(() => _isAvailable = newValue);
-    try {
-      await FirebaseFirestore.instance
-          .collection('squads')
-          .doc(widget.squad.id)
-          .update({'isAvailable': newValue});
-    } catch (e) {
-      if (mounted) setState(() => _isAvailable = !newValue);
-    }
   }
 
   @override
@@ -359,7 +344,7 @@ class _SquadProfileScreenState extends State<SquadProfileScreen>
                           final users = snapshot.data ?? [];
                           // استخراج مهارات جميع الأعضاء وحذف المكرر
                           final memberSkills = users
-                              .expand((u) => u.skills ?? <String>[])
+                              .expand((u) => u.skills)
                               .toSet()
                               .toList();
 
@@ -757,7 +742,6 @@ class _SquadProfileScreenState extends State<SquadProfileScreen>
   }
 
   Widget _buildProjectCard(PortfolioProjectModel project, String locale) {
-    final isAr = locale == 'ar';
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -862,209 +846,6 @@ class _SquadProfileScreenState extends State<SquadProfileScreen>
           ],
         ),
       ),
-    );
-  }
-
-  void _showManageMembersBottomSheet(BuildContext context, bool isAr) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (BuildContext ctx, StateSetter setModalState) {
-            final members = widget.squad.memberIds
-                .where((id) => id != widget.squad.leaderId)
-                .toList();
-
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    AppLocalizations.of(context)!.manageMembers,
-                    style: const TextStyle(
-                        fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 16),
-                  if (members.isEmpty)
-                    Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Text(AppLocalizations.of(context)!.noMembersInTheSquad),
-                    )
-                  else
-                    FutureBuilder<List<UserModel>>(
-                      future: FirestoreService().getUsersByIds(members),
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState ==
-                            ConnectionState.waiting) {
-                          return const Center(
-                              child: CircularProgressIndicator());
-                        }
-                        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                          return Text(
-                              AppLocalizations.of(context)!.noMembersFound);
-                        }
-                        final users = snapshot.data!;
-                        return ListView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: users.length,
-                          itemBuilder: (context, index) {
-                            final u = users[index];
-                            return ListTile(
-                              leading: CircleAvatar(
-                                backgroundImage: u.profileImageUrl != null
-                                    ? NetworkImage(u.profileImageUrl!)
-                                    : null,
-                                child: u.profileImageUrl == null
-                                    ? const Icon(Icons.person)
-                                    : null,
-                              ),
-                              title: Text(u.name),
-                              subtitle: Text(u.jobTitle != null ? JobTitlesUtils.getLocalizedTitle(u.jobTitle!, AppLocalizations.of(context)!.en) : ''),
-                              trailing: PopupMenuButton<String>(
-                                onSelected: (action) async {
-                                  if (action == 'kick') {
-                                    final confirm = await showDialog<bool>(
-                                      context: context,
-                                      builder: (c) => AlertDialog(
-                                        title: Text(
-                                            AppLocalizations.of(context)!.kickMember),
-                                        content: Text(isAr
-                                            ? 'هل أنت متأكد من طرد ${u.name}؟'
-                                            : 'Are you sure you want to kick ${u.name}?'),
-                                        actions: [
-                                          TextButton(
-                                              onPressed: () =>
-                                                  Navigator.pop(c, false),
-                                              child: Text(
-                                                  AppLocalizations.of(context)!.cancel)),
-                                          ElevatedButton(
-                                            onPressed: () =>
-                                                Navigator.pop(c, true),
-                                            style: ElevatedButton.styleFrom(
-                                                backgroundColor: Colors.red),
-                                            child: Text(AppLocalizations.of(context)!.kick,
-                                                style: const TextStyle(
-                                                    color: Colors.white)),
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                    if (confirm == true) {
-                                      try {
-                                        await FirebaseFirestore.instance
-                                            .collection('squads')
-                                            .doc(widget.squad.id)
-                                            .update({
-                                          'memberIds':
-                                              FieldValue.arrayRemove([u.id])
-                                        });
-                                        if (mounted) {
-                                          setState(() {
-                                            widget.squad.memberIds.remove(u.id);
-                                          });
-                                          setModalState(() {});
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(SnackBar(
-                                                  content: Text(AppLocalizations.of(context)!.memberKickedSuccessfully)));
-                                        }
-                                      } catch (e) {
-                                        if (mounted) {
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(SnackBar(
-                                                  content: Text(isAr
-                                                      ? 'خطأ: $e'
-                                                      : 'Error: $e')));
-                                        }
-                                      }
-                                    }
-                                  } else if (action == 'promote') {
-                                    final confirm = await showDialog<bool>(
-                                      context: context,
-                                      builder: (c) => AlertDialog(
-                                        title: Text(AppLocalizations.of(context)!.promoteToLeader),
-                                        content: Text(isAr
-                                            ? 'سيصبح ${u.name} قائد المجموعة ولن تكون أنت القائد. هل توافق؟'
-                                            : '${u.name} will become the leader and you will lose leadership. Agree?'),
-                                        actions: [
-                                          TextButton(
-                                              onPressed: () =>
-                                                  Navigator.pop(c, false),
-                                              child: Text(
-                                                  AppLocalizations.of(context)!.cancel)),
-                                          ElevatedButton(
-                                            onPressed: () =>
-                                                Navigator.pop(c, true),
-                                            child: Text(
-                                                AppLocalizations.of(context)!.confirm),
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                    if (confirm == true) {
-                                      try {
-                                        await FirebaseFirestore.instance
-                                            .collection('squads')
-                                            .doc(widget.squad.id)
-                                            .update({'leaderId': u.id});
-                                        if (mounted) {
-                                          Navigator.pop(
-                                              ctx); // Close bottom sheet
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(SnackBar(
-                                                  content: Text(AppLocalizations.of(context)!.leadershipTransferred)));
-                                        }
-                                      } catch (e) {
-                                        if (mounted) {
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(SnackBar(
-                                                  content: Text(isAr
-                                                      ? 'خطأ: $e'
-                                                      : 'Error: $e')));
-                                        }
-                                      }
-                                    }
-                                  }
-                                },
-                                itemBuilder: (context) => [
-                                  PopupMenuItem(
-                                    value: 'promote',
-                                    child: Row(children: [
-                                      const Icon(Icons.star,
-                                          color: AppColors.sudanGold, size: 20),
-                                      const SizedBox(width: 8),
-                                      Text(AppLocalizations.of(context)!.setAsLeader)
-                                    ]),
-                                  ),
-                                  PopupMenuItem(
-                                    value: 'kick',
-                                    child: Row(children: [
-                                      const Icon(Icons.person_remove,
-                                          color: Colors.red, size: 20),
-                                      const SizedBox(width: 8),
-                                      Text(AppLocalizations.of(context)!.kickMember,
-                                          style: const TextStyle(
-                                              color: Colors.red))
-                                    ]),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                        );
-                      },
-                    ),
-                ],
-              ),
-            );
-          },
-        );
-      },
     );
   }
 }

@@ -92,7 +92,7 @@ class _VoiceRecordButtonState extends State<VoiceRecordButton> {
           color: _isRecording ? Colors.red : Theme.of(context).primaryColor,
           shape: BoxShape.circle,
           boxShadow: _isRecording
-              ? [BoxShadow(color: Colors.red.withOpacity(0.5), blurRadius: 10, spreadRadius: 2)]
+              ? [BoxShadow(color: Colors.red.withValues(alpha: 0.5), blurRadius: 10, spreadRadius: 2)]
               : null,
         ),
         child: const Icon(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/constants/app_colors.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:sudan_free/utils/app_haptics.dart';
 
 class PremiumButton extends StatelessWidget {
   final VoidCallback onPressed;
@@ -30,7 +31,7 @@ class PremiumButton extends StatelessWidget {
       height: 56,
       child: ElevatedButton(
         onPressed: isLoading ? null : () {
-          HapticFeedback.lightImpact();
+          AppHaptics.lightImpact();
           onPressed();
         },
         style: ElevatedButton.styleFrom(

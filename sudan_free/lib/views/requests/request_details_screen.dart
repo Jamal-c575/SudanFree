@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../models/request_model.dart';
@@ -14,6 +15,7 @@ import '../../widgets/common/linkable_text.dart';
 import 'request_offers_screen.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:sudan_free/l10n/generated/app_localizations.dart';
+import 'package:sudan_free/utils/app_haptics.dart';
 
 class RequestDetailsScreen extends StatefulWidget {
   final RequestModel request;
@@ -31,6 +33,7 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
   bool _isApplying = false;
   late final PageController _imagePageController = PageController();
   int _currentImageIndex = 0;
+  bool _isExplaining = false;
 
   @override
   void dispose() {
@@ -117,7 +120,7 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
                           icon: const Icon(Icons.auto_awesome, color: Colors.amber),
                           tooltip: 'تسعير ذكي',
                           style: IconButton.styleFrom(
-                            backgroundColor: Colors.amber.withOpacity(0.1),
+                            backgroundColor: Colors.amber.withValues(alpha: 0.1),
                           ),
                         ),
                       ],
@@ -151,6 +154,8 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
                                 final messenger = ScaffoldMessenger.of(context);
 
                                 try {
+                                  AppHaptics.lightImpact();
+
                                   // Server-side bid limit check
                                   final existingCount = await FirestoreService()
                                       .getUserOfferCount(
@@ -245,6 +250,50 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
         },
       ),
     );
+  }
+
+  void _explainRequest(BuildContext context, String text) async {
+    setState(() => _isExplaining = true);
+    try {
+      final explanation = await AiService().sendIsolatedMessage(
+        'أنت مساعد ذكي. اشرح هذا الطلب الخاص بالخدمات المهنية باختصار وببساطة في سطرين أو ثلاثة لتوضيح المطلوب بدقة للمحترف أو المستقل.',
+        text,
+      );
+      if (mounted) {
+        showModalBottomSheet(
+          context: context,
+          backgroundColor: Colors.transparent,
+          builder: (ctx) => Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Theme.of(context).cardColor,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.auto_awesome, color: Colors.blue),
+                    const SizedBox(width: 8),
+                    const Text('توضيح الذكاء الاصطناعي', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  explanation.isNotEmpty ? explanation : 'عذراً، لم أتمكن من شرح الطلب حالياً.',
+                  style: const TextStyle(fontSize: 15, height: 1.6),
+                ),
+                const SizedBox(height: 24),
+              ],
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isExplaining = false);
+    }
   }
 
   @override
@@ -415,6 +464,32 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
                   LinkableText(
                     text: widget.request.text,
                     style: const TextStyle(fontSize: 16, height: 1.6),
+                  ),
+
+                  // زر شرح الطلب بالذكاء الاصطناعي
+                  const SizedBox(height: 16),
+                  InkWell(
+                    onTap: _isExplaining ? null : () => _explainRequest(context, widget.request.text),
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (_isExplaining)
+                            const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.blue))
+                          else
+                            const Icon(Icons.auto_awesome, color: Colors.blue, size: 20),
+                          const SizedBox(width: 8),
+                          const Text('اشرح لي هذا الطلب', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 13)),
+                        ],
+                      ),
+                    ),
                   ),
 
                   // ═══ Voice Recording Player ═══
@@ -700,7 +775,6 @@ class _RequestDetailsScreenState extends State<RequestDetailsScreen> {
   }
 
   Future<void> _confirmDelete(BuildContext context) async {
-    final locale = context.read<LocaleProvider>().locale.languageCode;
     final nav = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
 

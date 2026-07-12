@@ -171,7 +171,6 @@ class _CreateSquadScreenState extends State<CreateSquadScreen> {
   @override
   Widget build(BuildContext context) {
     final locale = context.watch<LocaleProvider>().locale.languageCode;
-    final isAr = locale == 'ar';
     final isEditing = widget.squadToEdit != null;
 
     return Scaffold(

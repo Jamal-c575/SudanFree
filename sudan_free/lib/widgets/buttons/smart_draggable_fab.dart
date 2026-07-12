@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:animations/animations.dart';
 import '../../providers/theme_provider.dart';
 import '../../core/constants/app_colors.dart';
+import 'package:sudan_free/utils/app_haptics.dart';
 
 class SmartDraggableFab extends StatefulWidget {
   final VoidCallback? onPressed;
@@ -68,7 +69,7 @@ class _SmartDraggableFabState extends State<SmartDraggableFab>
     });
     _springController.addStatusListener((status) {
       if (status == AnimationStatus.completed) {
-        HapticFeedback.lightImpact(); // Water drop hits the edge
+        AppHaptics.lightImpact(); // Water drop hits the edge
         setState(() {
           _rotation = 0.0; // Reset rotation when it settles
         });
@@ -104,7 +105,7 @@ class _SmartDraggableFabState extends State<SmartDraggableFab>
 
   void _onPanStart(DragStartDetails details) {
     if (_isDocked) return;
-    HapticFeedback.heavyImpact(); // Heavy vibration on touch
+    AppHaptics.heavyImpact(); // Heavy vibration on touch
     setState(() {
       _isDragging = true;
       _scale = 1.1; // Enlarge slightly
@@ -136,7 +137,7 @@ class _SmartDraggableFabState extends State<SmartDraggableFab>
 
   void _onPanEnd(DragEndDetails details) {
     if (_isDocked) return;
-    HapticFeedback.selectionClick();
+    AppHaptics.selectionClick();
     setState(() {
       _isDragging = false;
       _scale = 1.0;
@@ -223,10 +224,10 @@ class _SmartDraggableFabState extends State<SmartDraggableFab>
         child: InkWell(
           onTap: () {
             if (_isDocked) {
-              HapticFeedback.lightImpact();
+              AppHaptics.lightImpact();
               _restoreFromDock();
             } else {
-              HapticFeedback.mediumImpact();
+              AppHaptics.mediumImpact();
               onTapAction();
             }
           },
@@ -319,7 +320,7 @@ class _SmartDraggableFabState extends State<SmartDraggableFab>
         onPanEnd: _onPanEnd,
         onLongPress: () {
           if (!_isDocked) {
-            HapticFeedback.heavyImpact();
+            AppHaptics.heavyImpact();
             _dockToNearestEdge();
           }
         },
@@ -328,12 +329,10 @@ class _SmartDraggableFabState extends State<SmartDraggableFab>
               const Duration(milliseconds: 150), // Smooth recovery from stretch
           curve: Curves.easeOutBack,
           // Apply Water Drop Transform: Scale + Rotate + Stretch
-          transform: Matrix4.identity()
-            ..scale(_scale)
+          transform: (Matrix4.diagonal3Values(_scale, _scale, 1.0)
             ..rotateZ(_rotation)
-            ..scale(1.0 + _stretch,
-                1.0 - (_stretch * 0.5)) // Stretch in direction of movement
-            ..rotateZ(-_rotation), // Inverse rotate so content stays upright
+            ..multiply(Matrix4.diagonal3Values(1.0 + _stretch, 1.0 - (_stretch * 0.5), 1.0))
+            ..rotateZ(-_rotation)), // Inverse rotate so content stays upright
           transformAlignment: Alignment.center,
           width: _isDocked
               ? 32

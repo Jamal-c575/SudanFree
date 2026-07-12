@@ -221,10 +221,8 @@ service cloud.firestore {
         request.resource.data.leaderId == request.auth.uid;
       allow update: if isAuthenticated() && (
         isOwner(resource.data.leaderId) || 
-        // أعضاء الفريق يمكنهم تحديث الحقول المحدودة
-        (request.auth.uid in resource.data.memberIds && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds', 'completedJobs', 'rating'])) ||
-        // أي مستخدم يمكنه الانضمام
-        (!isOwner(resource.data.leaderId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds', 'completedJobs', 'rating'])) ||
+        // أعضاء الفريق يمكنهم تحديث الحقول المحدودة (ليس memberIds)
+        (request.auth.uid in resource.data.memberIds && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['completedJobs', 'rating'])) ||
         isAdmin()
       );
       allow delete: if isOwner(resource.data.leaderId) || isAdmin();

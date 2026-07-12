@@ -231,7 +231,6 @@ class _SquadDashboardScreenState extends State<SquadDashboardScreen> {
   }
 
   Future<void> _showInviteColleaguesBottomSheet() async {
-    final isAr = context.read<LocaleProvider>().isArabic;
     final currentUser = context.read<AuthProvider>().user;
     if (currentUser == null) return;
 
@@ -626,8 +625,9 @@ class _SquadDashboardScreenState extends State<SquadDashboardScreen> {
                                         onSelected: (value) {
                                           if (value == 'kick') {
                                             _kickMember(member.id);
-                                          } else if (value == 'transfer')
+                                          } else if (value == 'transfer') {
                                             _transferLeadership(member.id);
+                                          }
                                         },
                                         itemBuilder: (context) => [
                                           PopupMenuItem(

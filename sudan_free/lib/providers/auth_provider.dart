@@ -8,7 +8,6 @@ import '../models/notification_model.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/device_service.dart';
-import 'package:onesignal_flutter/onesignal_flutter.dart';
 import '../services/cache_service.dart';
 import 'user_provider.dart';
 import 'posts_provider.dart';
@@ -153,17 +152,6 @@ class AuthProvider extends ChangeNotifier {
 
         _user = profile;
         _isNewUser = false;
-
-        // OneSignal User Tagging (modern API)
-        try {
-          await OneSignal.login(uid);
-          await OneSignal.User.addTags({
-            "state": profile.state ?? '',
-            "role": profile.role.name,
-          });
-        } catch (e) {
-          debugPrint('OneSignal tagging failed: $e');
-        }
 
         _subscribeToUserStream(uid);
       } else {
@@ -727,15 +715,6 @@ class AuthProvider extends ChangeNotifier {
 
       await updateUserProfile({'notificationSettings': updatedSettings});
 
-      try {
-        if (enabled) {
-          await OneSignal.User.pushSubscription.optIn();
-        } else {
-          await OneSignal.User.pushSubscription.optOut();
-        }
-      } catch (e) {
-        debugPrint('OneSignal toggle push failed: $e');
-      }
       return true;
     } catch (e) {
       debugPrint('Error toggling push notifications: $e');
@@ -812,11 +791,6 @@ class AuthProvider extends ChangeNotifier {
     NotificationPollingService().reset();
 
     await _authService.signOut();
-    try {
-      await OneSignal.logout();
-    } catch (e) {
-      debugPrint('OneSignal logout failed: $e');
-    }
     await _cacheService.clearAllData();
     _user = null;
     _isNewUser = false;

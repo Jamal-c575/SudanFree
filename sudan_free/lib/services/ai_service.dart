@@ -1,18 +1,49 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_remote_config/firebase_remote_config.dart';
 
 class AiService {
   static final AiService _instance = AiService._internal();
   factory AiService() => _instance;
 
-  final String _baseUrl = 'https://api.groq.com/openai/v1/chat/completions';
-  final String _audioUrl = 'https://api.groq.com/openai/v1/audio/transcriptions';
-  final String _model = 'llama-3.3-70b-versatile';
-  late String _apiKey;
+  String get _baseUrl {
+    try {
+      final url = FirebaseRemoteConfig.instance.getString('ai_base_url');
+      if (url.isNotEmpty) return url;
+    } catch (_) {}
+    return 'https://api.groq.com/openai/v1/chat/completions';
+  }
+
+  String get _audioUrl {
+    try {
+      final url = FirebaseRemoteConfig.instance.getString('ai_audio_url');
+      if (url.isNotEmpty) return url;
+    } catch (_) {}
+    return 'https://api.groq.com/openai/v1/audio/transcriptions';
+  }
+
+  String get _model {
+    try {
+      final model = FirebaseRemoteConfig.instance.getString('ai_model');
+      if (model.isNotEmpty) return model;
+    } catch (_) {}
+    return 'llama-3.3-70b-versatile';
+  }
+
+  late String _fallbackApiKey;
+
+  String get _apiKey {
+    try {
+      final key = FirebaseRemoteConfig.instance.getString('ai_api_key');
+      if (key.isNotEmpty) return key;
+    } catch (_) {}
+    return _fallbackApiKey;
+  }
   
-  final List<Map<String, String>> _chatHistory = [];
+  final List<Map<String, dynamic>> _chatHistory = [];
   
   // Rate Limiting
   final List<DateTime> _messageTimestamps = [];
@@ -20,26 +51,100 @@ class AiService {
 
   SharedPreferences? _prefs;
 
+  // ═══ بيانات المستخدم الحالي ═══
+  String _currentUserName    = '';
+  String _currentUserJobTitle = '';
+  String _currentUserRole    = '';
+
+  // ═══ حالة المحادثة الحالية (Conversation State) ═══
+  final Map<String, dynamic> _conversationState = {
+    'currentIntent': null,
+    'lastIntent': null,
+    'previousIntent': null,
+    'lastTool': null,
+    'activeEntity': null, 
+    'entityId': null,
+    'entityType': null,
+    'entityName': null,
+    'lastViewedEntity': null,
+    'selectedResult': null,
+    'summary': null,
+    'conversationSummary': null,
+    'conversationGoal': null,
+    'activeSearch': null,
+    'lastResults': null,
+    'lastFilters': null,
+    'currentCategory': null,
+    'currentCollection': null,
+  };
+
+  void setCurrentUser({required String name, required String jobTitle, required String role}) {
+    _currentUserName = name;
+    _currentUserJobTitle = jobTitle;
+    _currentUserRole = role;
+  }
+
+  static String sanitize(String text) {
+    return text.replaceAll(RegExp(r'<[^>]*>'), '').trim();
+  }
+
+  void updateConversationState(String key, dynamic value) {
+    _conversationState[key] = value;
+  }
+
+  Map<String, dynamic> get conversationState => _conversationState;
+
+  Map<String, dynamic> get _userContext => {
+    'name':     _currentUserName,
+    'jobTitle': _currentUserJobTitle,
+    'role':     _currentUserRole,
+    'conversationState': _conversationState,
+  };
+
   AiService._internal() {
     final apiKey = dotenv.env['GROQ_API_KEY'];
-    if (apiKey == null) {
-      throw Exception('GROQ_API_KEY is missing from .env file.');
+    if (apiKey == null || apiKey.isEmpty) {
+      _fallbackApiKey = '';
+      print('WARNING: GROQ_API_KEY is missing from .env file.');
+    } else {
+      _fallbackApiKey = apiKey;
     }
-    _apiKey = apiKey;
     
     // Default synchronous init so history is never totally null.
     // Real load happens via loadSavedHistory()
     _initHistory();
+    
+    // Asynchronously fetch remote config to keep it updated for future calls
+    _initRemoteConfig();
+  }
+
+  Future<void> _initRemoteConfig() async {
+    try {
+      final remoteConfig = FirebaseRemoteConfig.instance;
+      await remoteConfig.setConfigSettings(RemoteConfigSettings(
+        fetchTimeout: const Duration(minutes: 1),
+        minimumFetchInterval: const Duration(hours: 1),
+      ));
+      await remoteConfig.setDefaults(const {
+        'ai_base_url': '',
+        'ai_audio_url': '',
+        'ai_model': '',
+        'ai_api_key': '',
+      });
+      await remoteConfig.fetchAndActivate();
+    } catch (e) {
+      print('Failed to initialize Remote Config: $e');
+    }
   }
 
   void _initHistory() {
     _chatHistory.clear();
-    _chatHistory.add(_buildSystemPrompt());
+    _chatHistory.add({'role': 'system', 'content': 'Init'});
   }
 
   void clearHistory() {
     _chatHistory.clear();
-    _chatHistory.add(_buildSystemPrompt());
+    _chatHistory.add({'role': 'system', 'content': 'Init'});
     _saveHistory();
   }
 
@@ -51,7 +156,7 @@ class AiService {
 
   /// Loads history from shared preferences, checking if it's the same day.
   /// Returns only the 'user' and 'assistant' messages for UI building.
-  Future<List<Map<String, String>>> loadSavedHistory() async {
+  Future<List<Map<String, dynamic>>> loadSavedHistory() async {
     _prefs ??= await SharedPreferences.getInstance();
     final lastDateStr = _prefs!.getString('ai_chat_last_date');
     bool shouldReset = true;
@@ -84,7 +189,7 @@ class AiService {
           final List<dynamic> decoded = jsonDecode(historyStr);
           _chatHistory.clear();
           for (var item in decoded) {
-            _chatHistory.add(Map<String, String>.from(item));
+            _chatHistory.add(Map<String, dynamic>.from(item));
           }
         } catch (_) {
           clearHistory();
@@ -92,66 +197,17 @@ class AiService {
         }
       }
       
-      return _chatHistory.where((msg) => msg['role'] == 'user' || msg['role'] == 'assistant').toList();
+      return _chatHistory.where((msg) {
+        if (msg['role'] != 'user' && msg['role'] != 'assistant') return false;
+        if ((msg['content'] ?? '').contains('SYSTEM_MEMORY')) return false;
+        return true;
+      }).toList();
     }
   }
 
   Map<String, String> _buildSystemPrompt() => {
     'role': 'system',
-    'content': '''
-أنت "Home" - المساعد الذكي الرسمي لتطبيق سودان فري (SudanFree).
-تحدث دائماً بعربية فصحى مبسطة وسليمة.
-
-═══ معلومات التطبيق ═══
-- المؤسسة: Jhome
-- المؤسس: جمال أحمد
-- الموقع الرسمي: www.sudanfree.com
-- الهدف: ربط العملاء بالحرفيين ومقدمي الخدمات في السودان.
-
-═══ الموضوعات المسموح بها ═══
-١. البحث عن حرفيين، متاجر، مجموعات خدمية، وظائف، وطلبات خدمة داخل التطبيق.
-٢. تفاصيل ملفات الحرفيين: الاسم، التقييم، النبذة، المهارات، الموقع، الحالة.
-٣. النصائح العامة عن سوق العمل الحر في السودان (الأسعار التقريبية للمهن، كيفية اختيار حرفي جيد، نصائح لكتابة طلب خدمة، نصائح للحرفيين لتحسين ملفاتهم).
-٤. كيفية استخدام ميزات التطبيق المختلفة.
-٥. معلومات مؤسسة Jhome والمؤسس جمال أحمد.
-
-═══ المحظورات وكيفية التعامل معها ═══
-المحظورات: السياسة، الأخبار، الدين والفتاوى، الرياضة، التعليم (حل واجبات أو جداول دراسية)، الطبخ والوصفات العامة، الترفيه.
-عند السؤال عن أي محظور:
-- قل فقط: "هذا خارج نطاق عملي."
-- ثم حوّل مباشرة: "هل تحتاج مساعدة في البحث عن خدمة ما؟"
-- لا تشرح، لا تعتذر، لا تذكر كلمة محظور.
-
-═══ أدوات البحث ═══
-عندما يطلب المستخدم بيانات من التطبيق، ضع في السطر الأول من ردك:
-[TOOL: اسم_الأداة | الاستعلام]
-
-الأدوات المتاحة:
-- [TOOL: searchFreelancers | كلمة] — بحث عن حرفيين بالاسم أو التخصص
-- [TOOL: searchShops | كلمة] — بحث عن متاجر
-- [TOOL: searchJobs | كلمة] — بحث عن وظائف مفتوحة
-- [TOOL: getTopRated | تخصص] — أعلى الحرفيين تقييماً
-- [TOOL: getUserProfile | userId] — ملف شخص بمعرّفه
-- [TOOL: searchSquads | كلمة] — بحث عن مجموعات خدمية
-- [TOOL: getSquadProfile | squadId] — عرض بيانات ملف المجموعة الكاملة
-- [TOOL: getSquadMembers | squadId] — استخراج قائمة أسماء أعضاء المجموعة الخدمية
-- [TOOL: searchRequests | كلمة] — بحث عن طلبات خدمة نشطة
-
-أمثلة:
-- "أريد مبرمج" → [TOOL: searchFreelancers | برمجة]
-- "ابحث عن تاج السر" → [TOOL: searchFreelancers | تاج السر]
-- "من أفضل نجار؟" → [TOOL: getTopRated | نجارة]
-- "هل هناك طلبات تنظيف؟" → [TOOL: searchRequests | تنظيف]
-- "ابحث عن فريق مقاولات" → [TOOL: searchSquads | مقاولات]
-- "ما فرص العمل في التصميم؟" → [TOOL: searchJobs | تصميم]
-
-النظام سيُرسل لك البيانات الحقيقية من Firestore. قدّمها بشكل منظم: الاسم، التقييم، الحالة (متاح/مشغول)، الموقع، والنبذة إن وُجدت.
-
-تحذير هام جداً وقاعدة صارمة: 
-يُمنع منعاً باتاً اختلاق أو تأليف أي معلومات أو أسماء لأشخاص، متاجر، خدمات، أو مجموعات غير موجودة في البيانات التي يُرسلها لك النظام.
-إذا طلب المستخدم شخصاً معيناً أو خدمة ولم يُرجع النظام أي بيانات حقيقية حوله، يجب أن تخبر المستخدم بوضوح: "عذراً، لم أتمكن من العثور على [الاسم/الخدمة] في قاعدة البيانات الحالية."
-وظيفتك هي فقط صياغة وتحسين عرض البيانات المرجعة لك، ولا يحق لك إضافة أي بيانات من خارج التطبيق.
-'''
+    'content': 'Init'
   };
 
   bool _isRateLimited() {
@@ -164,101 +220,191 @@ class AiService {
     return false;
   }
 
+
   Future<String> sendMessage(String text) async {
     if (_isRateLimited()) {
-      return 'عذراً، لقد تجاوزت الحد المسموح به من الرسائل (5 رسائل كل دقيقة). يرجى الانتظار قليلاً لحماية استقرار النظام. 🛡️';
+      return 'عذراً، تجاوزت الحد (5 رسائل/دقيقة). انتظر شوية. 🛡️';
     }
 
     _chatHistory.add({'role': 'user', 'content': text});
     _saveHistory();
 
     try {
-      final response = await http.post(
-        Uri.parse(_baseUrl),
-        headers: {
-          'Authorization': 'Bearer $_apiKey',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
-          'model': _model,
-          'messages': _chatHistory,
-        }),
-      );
+      final cleanHistory = _chatHistory.map((e) => {
+        'role': e['role'],
+        'content': e['content']
+      }).toList();
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(utf8.decode(response.bodyBytes));
-        final responseText = data['choices'][0]['message']['content'] as String;
-        final filtered = _filterResponse(responseText);
+      final callable = FirebaseFunctions.instance.httpsCallable('ai_chatWithHome');
+      final result = await callable.call({
+        'messages': cleanHistory,
+        'userContext': _userContext,
+        'useTools': true,
+      });
+
+      final data = result.data as Map<String, dynamic>;
+      
+      // ─── CLARIFY ───
+      if (data['type'] == 'clarify') {
+        final question = data['question'] as String? ?? '';
+        final options = List<String>.from(data['options'] as List? ?? []);
+        final intro = data['intro'] as String? ?? '';
         
-        // If it's a tool call, we don't save it to history immediately
-        // The subsequent context response will be saved instead.
-        if (!filtered.contains('[TOOL:')) {
-          _chatHistory.add({'role': 'assistant', 'content': filtered});
-          _saveHistory();
+        _chatHistory.add({'role': 'assistant', 'content': '[CLARIFY]\n$intro'});
+        _saveHistory();
+        return '[CLARIFY: $question | ${options.join(" | ")}]';
+      }
+      
+      // ─── TOOL_CALL ───
+      if (data['type'] == 'tool_call') {
+        final toolName = data['toolName'] as String? ?? '';
+        final arguments = data['arguments'] as Map? ?? {};
+        
+        String argValue = '';
+        if (arguments.containsKey('query')) {
+          argValue = arguments['query'].toString();
+        } else if (arguments.containsKey('category')) {
+          argValue = arguments['category'].toString();
+        }
+
+        if (arguments.containsKey('intent')) {
+          String newIntent = arguments['intent'].toString();
+          String oldIntent = _conversationState['currentIntent']?.toString() ?? '';
+          
+          if (oldIntent.isNotEmpty && oldIntent != newIntent) {
+            // Rule 8 & 17: Change of topic
+            _conversationState['previousIntent'] = oldIntent;
+            _conversationState['activeEntity'] = null; // Reset entity when topic changes
+            _conversationState['entityId'] = null;
+            _conversationState['entityType'] = null;
+            _conversationState['entityName'] = null;
+            _conversationState['selectedResult'] = null;
+            _conversationState['summary'] = null;
+          }
+          _conversationState['currentIntent'] = newIntent;
         }
         
-        return filtered;
-      } else {
-        return 'حدث خطأ في النظام الذكي. رمز الخطأ: ${response.statusCode}';
+        return '[TOOL: $toolName | $argValue]';
       }
+      
+      // ─── TEXT ───
+      final responseText = data['content'] as String? ?? '';
+      final filtered = _filterResponse(responseText);
+      
+      _chatHistory.add({'role': 'assistant', 'content': filtered});
+      _saveHistory();
+      return filtered;
     } catch (e) {
-      return 'عذراً، حدث خطأ أثناء الاتصال بالمساعد الذكي: $e';
+      if (e is FirebaseFunctionsException) {
+        return e.message ?? 'عذراً، حدث خطأ. حاول مجدداً.';
+      }
+      if (e.toString().contains('SocketException')) {
+        return 'عذراً، مشكلة في الاتصال. تأكد من الإنترنت.';
+      }
+      return 'عذراً، حدث خطأ. حاول مجدداً.';
     }
   }
 
+  void appendAssistantMessage(String text, {List<Map<String, String>>? cards, Map<String, String>? explanations}) {
+    final msg = <String, dynamic>{'role': 'assistant', 'content': text};
+    if (cards != null) msg['cards'] = cards;
+    if (explanations != null) msg['explanations'] = explanations;
+    _chatHistory.add(msg);
+    _saveHistory();
+  }
 
-  /// Sends a hidden context message to the AI (with real DB data) and gets a formatted response.
-  /// The context is injected as a "tool" message — invisible to the user but seen by the model.
-  /// The AI response is added to history normally.
-  Future<String> sendContextMessage(String contextData) async {
+  Future<String> sendContextMessageJson(String contextData) async {
     final messagesWithContext = [
-      ..._chatHistory,
+      ..._chatHistory.map((e) => {
+        'role': e['role'],
+        'content': e['content']
+      }),
       {'role': 'user', 'content': contextData},
     ];
 
     try {
-      final response = await http.post(
-        Uri.parse(_baseUrl),
-        headers: {
-          'Authorization': 'Bearer $_apiKey',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
-          'model': _model,
-          'messages': messagesWithContext,
-        }),
-      );
+      final callable = FirebaseFunctions.instance.httpsCallable('ai_chatWithHome');
+      final result = await callable.call({
+        'messages': messagesWithContext,
+        'userContext': _userContext,
+        'forceJson': true,
+      });
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(utf8.decode(response.bodyBytes));
-        final responseText = data['choices'][0]['message']['content'] as String;
-        // Add the polished assistant response to history
-        _chatHistory.add({'role': 'assistant', 'content': responseText});
+      final data = result.data;
+      
+      if (_conversationState['activeSearch'] != null) {
+        // Compress data to reduce token usage
+        Map<String, dynamic> compressedData = {};
+        if (_conversationState['activeSearch'] is List) {
+           final items = _conversationState['activeSearch'] as List;
+           compressedData['count'] = items.length;
+           compressedData['top_items'] = items.take(3).map((e) {
+             if (e is Map) {
+               return {
+                 'id': e['id'],
+                 'name': e['name'] ?? e['title'],
+                 'jobTitle': e['jobTitle'] ?? e['category'],
+               };
+             }
+             return e;
+           }).toList();
+        } else {
+           compressedData = _conversationState['activeSearch'];
+        }
+
+        final structuredMemory = {
+          "SYSTEM_MEMORY": {
+            "type": "search_results",
+            "summary": "This is a compressed summary. Do NOT search again for this.",
+            "data": compressedData
+          }
+        };
+        _chatHistory.add({
+          'role': 'assistant',
+          'content': jsonEncode(structuredMemory)
+        });
         _saveHistory();
-        return responseText;
-      } else {
-        return 'حدث خطأ في النظام. رمز الخطأ: ${response.statusCode}';
       }
+
+      return data['content'] as String;
     } catch (e) {
-      return 'عذراً، حدث خطأ في الاتصال: $e';
+      if (e is FirebaseFunctionsException) {
+        return e.message ?? 'عذراً، حدث خطأ. حاول مجدداً.';
+      }
+      if (e.toString().contains('SocketException')) {
+        return 'عذراً، مشكلة في الاتصال. تأكد من الإنترنت.';
+      }
+      return 'عذراً، حدث خطأ. حاول مجدداً.';
     }
   }
 
-  /// Dart-side safety filter — last line of defense.
-  /// If the model's response contains off-topic content, replace with a redirect.
+
   String _filterResponse(String response) {
-    const offTopicKeywords = [
-      'صلاة', 'صيام', 'حكومة', 'سياسة', 'انتخاب', 'حزب',
-      'مباراة', 'كرة القدم', 'دوري', 'واجب', 'جدول دراسي',
-      'وصفة طبخ', 'أغنية', 'فيلم', 'مسلسل',
-    ];
-    final lower = response.toLowerCase();
+    String filtered = response;
+    
+    // Hide tool schemas hallucinated by the model
+    if (filtered.contains('<function/>') || filtered.contains("{'name':") || filtered.contains('{"name":') || filtered.contains('searchFreelancers')) {
+      int index = filtered.indexOf('{');
+      if (index > 0) {
+        String safeText = filtered.substring(0, index).trim();
+        if (safeText.isNotEmpty) {
+           filtered = safeText;
+        } else {
+           filtered = 'عذراً، أواجه مشكلة تقنية حالياً في معالجة طلبك.';
+        }
+      } else if (filtered.contains('<function/>')) {
+        filtered = filtered.replaceAll('<function/>', '').trim();
+      }
+    }
+
+    final lower = filtered.toLowerCase();
+    final offTopicKeywords = ['برمجة', 'كود', 'html', 'css', 'javascript', 'python', 'اكتب لي كود', 'قواعد بيانات'];
     for (final keyword in offTopicKeywords) {
       if (lower.contains(keyword)) {
         return 'هذا خارج نطاق عملي.\nهل تحتاج مساعدة في البحث عن خدمة ما؟';
       }
     }
-    return response;
+    return filtered;
   }
 
   /// Sends a fully isolated message — no shared history, custom system prompt.
@@ -301,10 +447,11 @@ class AiService {
         },
         body: jsonEncode({
           'model': _model,
+          'response_format': {"type": "json_object"},
           'messages': [
             {
               'role': 'system',
-              'content': 'الرجاء إعادة صياغة النص التالي ليكون أكثر احترافية، تسويقياً وجذاباً لخدمات العمل الحر. صحح الأخطاء وأرجع النص النهائي فقط بدون أي مقدمات.'
+              'content': 'الرجاء إعادة صياغة النص التالي ليكون احترافياً، واضحاً ومصاغاً بلغة سليمة ومناسبة لطلبات العمل. قم بتصحيح الأخطاء الإملائية واللغوية. قم بالرد بـ JSON حصراً بالشكل التالي: {"enhanced_text": "النص المحسن هنا"}'
             },
             {'role': 'user', 'content': originalText}
           ],
@@ -313,7 +460,45 @@ class AiService {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
-        return data['choices'][0]['message']['content']?.trim() ?? originalText;
+        final textResponse = data['choices'][0]['message']['content'] ?? '';
+        final cleanJson = textResponse.replaceAll('```json', '').replaceAll('```', '').trim();
+        final Map<String, dynamic> parsed = jsonDecode(cleanJson);
+        return parsed['enhanced_text']?.toString().trim() ?? originalText;
+      }
+      return originalText;
+    } catch (e) {
+      return originalText;
+    }
+  }
+
+  Future<String> enhanceProductDescription(String originalText) async {
+    if (originalText.trim().isEmpty) return originalText;
+
+    try {
+      final response = await http.post(
+        Uri.parse(_baseUrl),
+        headers: {
+          'Authorization': 'Bearer $_apiKey',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'model': _model,
+          'response_format': {"type": "json_object"},
+          'messages': [
+            {
+              'role': 'system',
+              'content': 'أنت مسوق إلكتروني محترف ومبدع. الرجاء إعادة كتابة الوصف التالي للمنتج ليكون جذاباً جداً، تسويقياً، ويشجع الزبون على الشراء فوراً. استخدم الإيموجيز المناسبة، ورتب النص بشكل مريح للعين (نقاط، مميزات). قم بالرد بـ JSON حصراً بالشكل التالي: {"enhanced_text": "النص التسويقي هنا"}'
+            },
+            {'role': 'user', 'content': originalText}
+          ],
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+        final content = decoded['choices'][0]['message']['content'];
+        final jsonContent = jsonDecode(content);
+        return jsonContent['enhanced_text'] ?? originalText;
       }
       return originalText;
     } catch (e) {
@@ -370,8 +555,7 @@ class AiService {
       if (response.statusCode == 200) {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
         final transcribedText = data['text'] ?? '';
-        // Enhance it
-        return await enhanceText(transcribedText);
+        return transcribedText;
       } else {
         return 'لم أتمكن من تحويل الصوت. تأكد من جودة التسجيل.';
       }

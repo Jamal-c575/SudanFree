@@ -45,7 +45,7 @@ class RankUtils {
       return RankInfo(
         title: AppLocalizations.of(context)!.expert,
         color: const Color(0xFF4CAF50), // Green
-        icon: Icons.verified,
+        icon: Icons.handshake_rounded,
         level: 3,
         nextMilestone: 500,
         progress: (totalStars - 300) / 200,

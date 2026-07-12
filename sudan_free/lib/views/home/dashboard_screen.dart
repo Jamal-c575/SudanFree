@@ -28,13 +28,14 @@ import '../home/home_screen.dart'; // To access BottomBarVisibilityProvider
 import '../../services/ai_guide_service.dart';
 import '../../widgets/home/ai_recommendations_widget.dart';
 import '../../widgets/home/recommended_users_widget.dart';
+import 'package:sudan_free/utils/app_haptics.dart';
 import '../../widgets/common/glass_card.dart';
 import '../../widgets/common/optimized_network_image.dart';
 import '../../core/utils/job_titles_utils.dart';
 import '../../widgets/common/glass_container.dart';
 import '../../widgets/home/sudanese_landmarks_carousel.dart';
 import 'package:animations/animations.dart';
-
+import 'package:flutter_animate/flutter_animate.dart';
 import "package:sudan_free/providers/partners_provider.dart";
 
 class DashboardScreen extends StatefulWidget {
@@ -67,7 +68,11 @@ class _DashboardScreenState extends State<DashboardScreen>
       if (authProvider.user != null) {
         NotificationPollingService().setUserId(authProvider.user!.id);
         context.read<PartnersProvider>().fetchPartners();
-        AiGuideService.showPageGuide(context, 'الصفحة الرئيسية', authProvider.user!.name);
+        AiGuideService.showPageGuide(
+          context, 
+          'الصفحة الرئيسية', 
+          authProvider.user!.name,
+        );
       }
     });
   }
@@ -90,7 +95,6 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   Future<void> _fetchAds() async {
     final currentUser = context.read<AuthProvider>().user;
-    if (currentUser == null) return;
     setState(() => _isLoadingAds = true);
     final homeBannerAds = await _adService
         .getAdsForPlacement(currentUser, AdPlacement.homeBanner, limit: 4);
@@ -120,15 +124,16 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   String _getStoreTypeDisplay(UserModel u, String locale) {
+    final loc = AppLocalizations.of(context);
     if (u.shopCategory == ShopCategory.beauty) {
-      return AppLocalizations.of(context)!.beauty;
+      return loc?.beauty ?? 'Beauty';
     }
     // Since we don't have an explicit 'online'/'local' field in UserModel, we assume local by default,
     // or maybe based on if they have a physical address? Let's just use local unless online is specified in their bio/title
     final isOnline = u.bio?.toLowerCase().contains('online') == true ||
         u.jobTitle?.toLowerCase().contains('online') == true;
-    if (isOnline) return AppLocalizations.of(context)!.onlineStore;
-    return AppLocalizations.of(context)!.localStore;
+    if (isOnline) return loc?.onlineStore ?? 'Online Store';
+    return loc?.localStore ?? 'Local Store';
   }
 
   @override
@@ -140,14 +145,8 @@ class _DashboardScreenState extends State<DashboardScreen>
     final locale = context.watch<LocaleProvider>().locale.languageCode;
 
     if (currentUser == null) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return _buildDashboardShimmer();
     }
-
-    final allPartners = context.watch<PartnersProvider>().partners.take(15).toList();
-    final storyUsers = [
-      ...allPartners.where((u) => u.isOnline),
-      ...allPartners.where((u) => !u.isOnline),
-    ];
 
     final nearbyShops = userProvider.shops
         .where((s) => currentUser.state == null || s.state == currentUser.state)
@@ -267,23 +266,18 @@ class _DashboardScreenState extends State<DashboardScreen>
                         enableBlur: true,
                         blur: 10,
                         color: Colors.black.withValues(alpha: 0.3),
-                        child: OpenContainer(
-                          transitionDuration: const Duration(milliseconds: 700),
-                          transitionType: ContainerTransitionType.fadeThrough,
-                          closedElevation: 0,
-                          closedColor: Colors.transparent,
-                          middleColor: Colors.transparent,
-                          openBuilder: (context, _) => const NotificationsScreen(),
-                          closedBuilder: (context, openContainer) {
-                            return IconButton(
-                              onPressed: openContainer,
-                              icon: Badge(
-                                isLabelVisible: count > 0,
-                                label: Text(count > 99 ? '99+' : count.toString()),
-                                child: const Icon(Icons.notifications_outlined, color: Colors.white),
-                              ),
+                        child: IconButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              PremiumPageRoute(page: const NotificationsScreen()),
                             );
                           },
+                          icon: Badge(
+                            isLabelVisible: count > 0,
+                            label: Text(count > 99 ? '99+' : count.toString()),
+                            child: const Icon(Icons.notifications_outlined, color: Colors.white),
+                          ),
                         ),
                       ),
                     );
@@ -347,9 +341,12 @@ class _DashboardScreenState extends State<DashboardScreen>
                                     blur: 10,
                                     child: TextField(
                                       readOnly: true,
-                                      onTap: () => showSearch(
-                                          context: context,
-                                          delegate: SmartSearchDelegate()),
+                                      onTap: () {
+                                        AppHaptics.lightImpact();
+                                        showSearch(
+                                            context: context,
+                                            delegate: SmartSearchDelegate());
+                                      },
                                       decoration: InputDecoration(
                                         hintText: AppLocalizations.of(context)!.searchSudanfree,
                                         prefixIcon: const Icon(Icons.search),
@@ -368,9 +365,12 @@ class _DashboardScreenState extends State<DashboardScreen>
                               )
                             : GestureDetector(
                                 key: const ValueKey('motivationalQuotes'),
-                                onTap: () => showSearch(
-                                    context: context,
-                                    delegate: SmartSearchDelegate()),
+                                onTap: () {
+                                  AppHaptics.lightImpact();
+                                  showSearch(
+                                      context: context,
+                                      delegate: SmartSearchDelegate());
+                                },
                                 child: const MotivationalQuotesCarousel(),
                               ),
                       ),
@@ -391,27 +391,36 @@ class _DashboardScreenState extends State<DashboardScreen>
                     child: ExpansionTile(
                       initiallyExpanded: false,
                       title: const Text('مقترح خصيصاً لك 🎯', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                      children: const [
-                        AIRecommendationsWidget(title: ''),
+                      children: [
+                        const AIRecommendationsWidget(title: ''),
+                        Consumer<LocaleProvider>(
+                          builder: (context, locale, _) => RecommendedUsersWidget(
+                            isAr: locale.isArabic,
+                            showTitle: false,
+                          ),
+                        ),
                       ],
                     ),
                   ),
                 ),
-              ),
-            ),
-            // Recommended Users Section
-            SliverToBoxAdapter(
-              child: Consumer<LocaleProvider>(
-                builder: (context, locale, _) => RecommendedUsersWidget(
-                  isAr: locale.isArabic,
-                ),
-              ),
+              ).animate().fade(duration: 600.ms).slideY(begin: 0.1),
             ),
             if (_isLoadingAds)
-              const SliverToBoxAdapter(
+              SliverToBoxAdapter(
                 child: SizedBox(
-                    height: 180,
-                    child: Center(child: CircularProgressIndicator())),
+                  height: 180,
+                  child: Shimmer.fromColors(
+                    baseColor: Theme.of(context).brightness == Brightness.dark ? Colors.grey[800]! : Colors.grey[300]!,
+                    highlightColor: Theme.of(context).brightness == Brightness.dark ? Colors.grey[700]! : Colors.grey[100]!,
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                  ),
+                ),
               )
             else if (_homeBannerAds.isNotEmpty)
               SliverToBoxAdapter(
@@ -428,6 +437,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                         openScreen: AdDetailsScreen(ad: ad),
                         closedBuilder: (context, openContainer) => GestureDetector(
                           onTap: () {
+                            AppHaptics.lightImpact();
                             _adService.recordImpression(ad.id);
                             openContainer();
                           },
@@ -580,7 +590,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                     ],
                   ),
                 ),
-              ),
+              ).animate().fade(duration: 600.ms, delay: 100.ms).slideY(begin: 0.1),
             ),
 
             _buildSectionHeader(
@@ -617,6 +627,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                   padding: const EdgeInsets.only(left: 16, right: 16, top: 24, bottom: 16),
                   child: GestureDetector(
                     onTap: () {
+                      AppHaptics.lightImpact();
                       _adService.recordClick(_stripAds[0].id);
                       Navigator.push(context, MaterialPageRoute(builder: (_) => AdDetailsScreen(ad: _stripAds[0])));
                     },
@@ -726,7 +737,10 @@ class _DashboardScreenState extends State<DashboardScreen>
                 style:
                     const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             TextButton(
-              onPressed: onSeeAll,
+              onPressed: () {
+                AppHaptics.lightImpact();
+                onSeeAll();
+              },
               child: Text(AppLocalizations.of(context)!.seeAll),
             ),
           ],
@@ -736,6 +750,7 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   Widget _buildShimmerList() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return SizedBox(
       height: 190,
       child: ListView.builder(
@@ -743,8 +758,8 @@ class _DashboardScreenState extends State<DashboardScreen>
         itemCount: 4,
         padding: const EdgeInsets.symmetric(horizontal: 12),
         itemBuilder: (_, __) => Shimmer.fromColors(
-          baseColor: Colors.grey[300]!,
-          highlightColor: Colors.grey[100]!,
+          baseColor: isDark ? Colors.grey[800]! : Colors.grey[300]!,
+          highlightColor: isDark ? Colors.grey[700]! : Colors.grey[100]!,
           child: Container(
             width: MediaQuery.of(context).size.width * 0.35,
             margin: const EdgeInsets.symmetric(horizontal: 4),
@@ -752,6 +767,64 @@ class _DashboardScreenState extends State<DashboardScreen>
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDashboardShimmer() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final baseColor = isDark ? Colors.grey[800]! : Colors.grey[300]!;
+    final highlightColor = isDark ? Colors.grey[700]! : Colors.grey[100]!;
+    return Scaffold(
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Shimmer.fromColors(
+                    baseColor: baseColor,
+                    highlightColor: highlightColor,
+                    child: const CircleAvatar(radius: 25, backgroundColor: Colors.white),
+                  ),
+                  const SizedBox(width: 12),
+                  Shimmer.fromColors(
+                    baseColor: baseColor,
+                    highlightColor: highlightColor,
+                    child: Container(width: 120, height: 20, color: Colors.white),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              Shimmer.fromColors(
+                baseColor: baseColor,
+                highlightColor: highlightColor,
+                child: Container(
+                  height: 50,
+                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(30)),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Shimmer.fromColors(
+                baseColor: baseColor,
+                highlightColor: highlightColor,
+                child: Container(width: 100, height: 20, color: Colors.white),
+              ),
+              const SizedBox(height: 12),
+              _buildShimmerList(),
+              const SizedBox(height: 24),
+              Shimmer.fromColors(
+                baseColor: baseColor,
+                highlightColor: highlightColor,
+                child: Container(width: 100, height: 20, color: Colors.white),
+              ),
+              const SizedBox(height: 12),
+              _buildShimmerList(),
+            ],
           ),
         ),
       ),
@@ -798,7 +871,10 @@ class _DashboardScreenState extends State<DashboardScreen>
             child: MorphTransition(
               openScreen: ProfileScreen(userId: u.id),
               closedBuilder: (context, openContainer) => GestureDetector(
-                onTap: openContainer,
+                onTap: () {
+                  AppHaptics.lightImpact();
+                  openContainer();
+                },
             child: GlassCard(
               margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
               borderRadius: 16,

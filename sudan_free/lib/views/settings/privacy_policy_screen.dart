@@ -9,7 +9,6 @@ class PrivacyPolicyScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isAr = Localizations.localeOf(context).languageCode == 'ar';
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
 

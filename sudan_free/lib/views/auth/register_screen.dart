@@ -13,6 +13,7 @@ import '../../widgets/common/loading_widget.dart';
 import '../../widgets/inputs/custom_text_field.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../settings/privacy_policy_screen.dart';
+import 'package:sudan_free/utils/app_haptics.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -38,7 +39,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Future<void> _handleRegister() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final locale = context.read<LocaleProvider>().locale.languageCode;
     final authProvider = context.read<AuthProvider>();
 
     showDialog(
@@ -242,7 +242,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   label: AppStrings.get(AppStrings.signup, locale),
                   isLoading: isLoading,
                   onPressed: () {
-                    HapticFeedback.lightImpact();
+                    AppHaptics.lightImpact();
                     _handleRegister();
                   },
                 ),
@@ -252,7 +252,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 // Terms and Conditions
                 GestureDetector(
                   onTap: () {
-                    HapticFeedback.lightImpact();
+                    AppHaptics.lightImpact();
                     Navigator.push(
                       context,
                       AnimationUtils.createPremiumRoute(const PrivacyPolicyScreen()),
@@ -280,7 +280,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     TextButton(
                       onPressed: () {
-                        HapticFeedback.lightImpact();
+                        AppHaptics.lightImpact();
                         Navigator.pop(context);
                       },
                       child: Text(AppStrings.get(AppStrings.login, locale)),

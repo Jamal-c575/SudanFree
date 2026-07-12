@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/constants/app_colors.dart';
 import '../../utils/animation_utils.dart';
+import 'package:sudan_free/utils/app_haptics.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -20,7 +21,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
   Future<void> _startAnimationSequence() async {
     await Future.delayed(const Duration(milliseconds: 1400));
-    HapticFeedback.lightImpact();
+    AppHaptics.lightImpact();
   }
 
   @override

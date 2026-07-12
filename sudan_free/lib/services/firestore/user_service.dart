@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'dart:async';
 import '../../models/user_model.dart';
 import '../../models/notification_model.dart';
@@ -17,27 +18,28 @@ class UserFirestoreService {
           return UserModel.fromFirestore(doc);
         } catch (parseError) {
           // الخطأ الحقيقي - حقل بيانات غير متوافق في وثيقة المستخدم
-          print('=== USER PARSE ERROR for $userId ===');
-          print('Error: $parseError');
-          print('Doc data keys: ${doc.data()?.keys.toList()}');
+          debugPrint('=== USER PARSE ERROR for $userId ===');
+          debugPrint('Error: $parseError');
+          debugPrint('Doc data keys: ${doc.data()?.keys.toList()}');
           rethrow; // نعيد رمي الخطأ ليظهر في شاشة الخطأ
         }
       }
       return null;
     } catch (e) {
-      print('getUser($userId) error: $e');
+      debugPrint('getUser($userId) error: $e');
       rethrow;
     }
   }
 
   // Get user stream
   Stream<UserModel?> getUserStream(String userId) {
+    if (userId.isEmpty) return const Stream.empty();
     return _firestore.collection('users').doc(userId).snapshots().map((doc) {
       if (doc.exists) {
         try {
           return UserModel.fromFirestore(doc);
         } catch (e) {
-          print('getUserStream parse error for $userId: $e');
+          debugPrint('getUserStream parse error for $userId: $e');
           return null;
         }
       }
@@ -98,7 +100,7 @@ class UserFirestoreService {
       updates['searchKeywords'] = newKeywords;
     } catch (e) {
       // If anything fails here, we still proceed with the provided updates
-      print(
+      debugPrint(
           'UserFirestoreService.updateUserProfile: failed to regenerate keywords: $e');
     }
 
@@ -518,7 +520,7 @@ class UserFirestoreService {
       try {
         users.add(UserModel.fromFirestore(doc));
       } catch (e) {
-        print('Error mapping freelancer ${doc.id}: $e');
+        debugPrint('Error mapping freelancer ${doc.id}: $e');
       }
     }
 
@@ -564,7 +566,7 @@ class UserFirestoreService {
       try {
         shops.add(UserModel.fromFirestore(doc));
       } catch (e) {
-        print('Error mapping shop ${doc.id}: $e');
+        debugPrint('Error mapping shop ${doc.id}: $e');
       }
     }
 
@@ -610,7 +612,7 @@ class UserFirestoreService {
       try {
         users.add(UserModel.fromFirestore(doc));
       } catch (e) {
-        print('Error mapping provider ${doc.id}: $e');
+        debugPrint('Error mapping provider ${doc.id}: $e');
       }
     }
 
@@ -965,7 +967,7 @@ class UserFirestoreService {
       
       return recommended;
     } catch (e) {
-      print('getRecommendedFreelancers error: $e');
+      debugPrint('getRecommendedFreelancers error: $e');
       return [];
     }
   }

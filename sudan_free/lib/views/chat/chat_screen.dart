@@ -33,11 +33,7 @@ import '../../widgets/common/glass_container.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../core/utils/app_error_handler.dart';
 import '../../widgets/common/premium_button.dart';
-import '../../widgets/common/premium_glass_card.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import '../../utils/animation_utils.dart';
-import '../../providers/user_provider.dart';
+import 'package:sudan_free/utils/app_haptics.dart';
 
 class ChatScreen extends StatefulWidget {
   final ChatModel chat;
@@ -122,6 +118,8 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<void> _sendMessage() async {
     final text = _messageController.text.trim();
     if (text.isEmpty) return;
+
+    AppHaptics.lightImpact();
 
     final auth = context.read<AuthProvider>();
     final user = auth.user;
@@ -703,6 +701,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget _buildOnlineStatus(String otherId) {
+    if (otherId.isEmpty) return const SizedBox.shrink();
     return StreamBuilder<UserModel?>(
       stream: FirestoreService().getUserStream(otherId),
       builder: (context, snapshot) {
@@ -733,18 +732,16 @@ class _ChatScreenState extends State<ChatScreen> {
     if (currentUserId == null) return;
     final otherUserId = widget.chat.getOtherParticipantId(currentUserId);
 
-    if (otherUserId != null) {
-      final isBanned = await chatProv.checkIfBannedFromContracts(currentUserId, otherUserId);
-      if (isBanned && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('تنبيه بالتلاعب: تم حظرك نهائياً من إنشاء عقود مع هذا المستخدم بسبب التلاعب بالتقييمات.'),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 5),
-          ),
-        );
-        return;
-      }
+    final isBanned = await chatProv.checkIfBannedFromContracts(currentUserId, otherUserId);
+    if (isBanned && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('تنبيه بالتلاعب: تم حظرك نهائياً من إنشاء عقود مع هذا المستخدم بسبب التلاعب بالتقييمات.'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 5),
+        ),
+      );
+      return;
     }
 
     if (!mounted) return;
@@ -1024,7 +1021,6 @@ class _MessageBubbleState extends State<MessageBubble> {
         : (Theme.of(context).brightness == Brightness.dark
             ? Colors.white
             : Colors.black87);
-    final alignment = isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start;
     final isRtl = Directionality.of(context) == TextDirection.rtl;
     final borderRadius = BorderRadius.only(
       topLeft: const Radius.circular(16),

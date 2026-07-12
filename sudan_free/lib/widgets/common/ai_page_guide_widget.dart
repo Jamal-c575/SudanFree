@@ -76,7 +76,7 @@ class _AiPageGuideWidgetState extends State<AiPageGuideWidget> with SingleTicker
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.2),
+                        color: AppColors.primary.withValues(alpha: 0.2),
                         shape: BoxShape.circle,
                       ),
                       child: const Text(
@@ -101,7 +101,7 @@ class _AiPageGuideWidgetState extends State<AiPageGuideWidget> with SingleTicker
                                 ),
                               ),
                               const SizedBox(width: 4),
-                              const Icon(Icons.verified, color: AppColors.primary, size: 12),
+                              const Icon(Icons.handshake_rounded, color: AppColors.primary, size: 12),
                             ],
                           ),
                           const SizedBox(height: 4),

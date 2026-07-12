@@ -3,7 +3,6 @@ import '../../models/user_model.dart';
 import '../../core/constants/app_colors.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../services/trust_service.dart';
-import 'package:provider/provider.dart';
 import '../../services/firestore_service.dart';
 
 /// شارة تحقق متعددة المستويات — تعرض مستوى ثقة المستخدم بصرياً
@@ -22,7 +21,6 @@ class VerificationBadge extends StatelessWidget {
     this.size = 16.0,
   });
 
-  @override
   Widget build(BuildContext context) {
     if (!isVerified) return const SizedBox.shrink();
 
@@ -72,7 +70,7 @@ class SmartVerificationBadge extends StatelessWidget {
 
     if (!showTooltip) return badge;
 
-    final isAr = Localizations.localeOf(context).languageCode == 'ar';
+
 
     return Tooltip(
       message: _getTooltipText(level, context),
@@ -84,9 +82,9 @@ class SmartVerificationBadge extends StatelessWidget {
   Widget _buildBadge(_BadgeLevel level) {
     switch (level) {
       case _BadgeLevel.premium:
-        return _PremiumBadge(size: size);
+        return _GoldHandshakeBadge(size: size);
       case _BadgeLevel.topPro:
-        return _TopProBadge(size: size);
+        return _GoldHandshakeBadge(size: size);
       case _BadgeLevel.identityVerified:
         return _IdentityBadge(size: size);
       case _BadgeLevel.phoneVerified:
@@ -119,102 +117,7 @@ class SmartVerificationBadge extends StatelessWidget {
   }
 }
 
-/// شارة Top Pro مع تأثير نبض ذهبي متحرك
-class _TopProBadge extends StatefulWidget {
-  final double size;
-  const _TopProBadge({required this.size});
-
-  @override
-  State<_TopProBadge> createState() => _TopProBadgeState();
-}
-
-class _TopProBadgeState extends State<_TopProBadge>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _glowAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 2000),
-    )..repeat(reverse: true);
-
-    _glowAnimation = Tween<double>(begin: 0.4, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _glowAnimation,
-      builder: (context, child) {
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 3.0),
-          child: Container(
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.sudanGold
-                      .withValues(alpha: _glowAnimation.value * 0.5),
-                  blurRadius: widget.size * 0.6,
-                  spreadRadius: 0.5,
-                ),
-              ],
-            ),
-            child: Icon(
-              Icons.verified,
-              color: AppColors.sudanGold,
-              size: widget.size,
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-/// شارة حساب مميز - شكل ملكي وتاج
-class _PremiumBadge extends StatelessWidget {
-  final double size;
-  const _PremiumBadge({required this.size});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4.0),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Icon(
-            Icons.verified,
-            color: const Color(0xFFFFD700), // Gold
-            size: size,
-          ),
-          Positioned(
-            bottom: size * 0.1,
-            child: Icon(
-              Icons.star,
-              color: Colors.white,
-              size: size * 0.4,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// شارة توثيق الهوية - تصميم زجاجي لامع وفريد
+/// شارة توثيق الهوية - تصميم زجاجي لامع وفريد باللون الأزرق
 class _IdentityBadge extends StatelessWidget {
   final double size;
   const _IdentityBadge({required this.size});
@@ -241,6 +144,68 @@ class _IdentityBadge extends StatelessWidget {
           boxShadow: [
             BoxShadow(
               color: const Color(0xFF007AFF).withValues(alpha: 0.4),
+              blurRadius: size * 0.5,
+              spreadRadius: 1,
+              offset: const Offset(0, 2),
+            ),
+            BoxShadow(
+              color: Colors.white.withValues(alpha: 0.6),
+              blurRadius: 2,
+              spreadRadius: -1,
+              offset: const Offset(-1, -1),
+            ),
+          ],
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.8),
+            width: 1.2,
+          ),
+        ),
+        child: Center(
+          child: Icon(
+            Icons.handshake_rounded,
+            color: Colors.white,
+            size: size * 0.7,
+            shadows: [
+              Shadow(
+                color: Colors.black.withValues(alpha: 0.3),
+                blurRadius: 2,
+                offset: const Offset(0, 1),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// شارة توثيق المصافحة الذهبية - تصميم زجاجي لامع وفريد
+class _GoldHandshakeBadge extends StatelessWidget {
+  final double size;
+  const _GoldHandshakeBadge({required this.size});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2.0),
+      child: Container(
+        width: size * 1.15,
+        height: size * 1.15,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFFFFDF70), // Light Gold
+              Color(0xFFFFC600), // Pure Gold
+              Color(0xFFE5A900), // Deep Gold
+            ],
+            stops: [0.0, 0.5, 1.0],
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFE5A900).withValues(alpha: 0.4),
               blurRadius: size * 0.5,
               spreadRadius: 1,
               offset: const Offset(0, 2),

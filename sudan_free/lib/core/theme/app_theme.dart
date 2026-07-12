@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../constants/app_colors.dart';
+import '../../utils/animation_utils.dart';
 
 class AppTheme {
   // Light Theme
@@ -99,8 +100,8 @@ class AppTheme {
     ),
     pageTransitionsTheme: const PageTransitionsTheme(
       builders: {
-        TargetPlatform.android: CupertinoPageTransitionsBuilder(),
-        TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+        TargetPlatform.android: TelegramPageTransitionsBuilder(),
+        TargetPlatform.iOS: TelegramPageTransitionsBuilder(),
       },
     ),
     appBarTheme: const AppBarTheme(
@@ -360,8 +361,8 @@ class AppTheme {
     ),
     pageTransitionsTheme: const PageTransitionsTheme(
       builders: {
-        TargetPlatform.android: CupertinoPageTransitionsBuilder(),
-        TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+        TargetPlatform.android: TelegramPageTransitionsBuilder(),
+        TargetPlatform.iOS: TelegramPageTransitionsBuilder(),
       },
     ),
     appBarTheme: const AppBarTheme(

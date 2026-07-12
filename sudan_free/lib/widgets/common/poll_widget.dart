@@ -4,6 +4,7 @@ import '../../core/constants/app_colors.dart';
 import '../../models/post_model.dart';
 import 'package:provider/provider.dart';
 import '../../providers/posts_provider.dart';
+import 'package:sudan_free/utils/app_haptics.dart';
 
 class PollWidget extends StatelessWidget {
   final PostModel post;
@@ -95,7 +96,7 @@ class PollWidget extends StatelessWidget {
                   color: Colors.transparent,
                   child: InkWell(
                     onTap: () {
-                      HapticFeedback.lightImpact();
+                      AppHaptics.lightImpact();
                       if (isExpired ||
                           (isOwner &&
                               !hasVoted &&

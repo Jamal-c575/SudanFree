@@ -9,6 +9,7 @@ import '../../../l10n/generated/app_localizations.dart';
 import '../../../widgets/reviews/review_widgets.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/app_error_handler.dart';
+import '../../../utils/top_bouncing_scroll_physics.dart';
 
 class ShopReviewsTab extends StatelessWidget {
   final UserModel user;
@@ -26,6 +27,7 @@ class ShopReviewsTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     return ListView(
+      physics: const TopBouncingScrollPhysics(),
       padding: const EdgeInsets.all(16),
       children: [
         Row(

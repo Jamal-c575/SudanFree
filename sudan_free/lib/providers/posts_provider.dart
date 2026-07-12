@@ -6,14 +6,12 @@ import '../models/post_model.dart';
 import '../models/comment_model.dart';
 import '../models/notification_model.dart';
 import '../services/firestore_service.dart';
-import '../services/cache_service.dart';
 import '../services/storage_service.dart';
 import '../services/analytics_service.dart';
 import '../services/network_service.dart';
 
 class PostsProvider extends ChangeNotifier {
   final FirestoreService _firestoreService = FirestoreService();
-  final CacheService _cacheService = CacheService();
   final AnalyticsService _analytics = AnalyticsService();
 
   List<PostModel> _posts = [];

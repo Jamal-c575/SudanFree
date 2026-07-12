@@ -148,10 +148,6 @@ class JobTitlesUtils {
       // Fallback to static map
       final searchTitle = title.trim().toLowerCase();
       // Handle camel case keys to match space-separated user input
-      final String noSpaceSearch = searchTitle
-          .replaceAll(' ', '')
-          .replaceAll('-', '')
-          .replaceAll('/', '');
       if (locale == 'ar') {
         final Map<String, String> lowerEnToAr = {};
         enToAr.forEach((k, v) {

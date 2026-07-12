@@ -16,6 +16,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../l10n/generated/app_localizations.dart';
+import 'package:sudan_free/utils/app_haptics.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -410,7 +411,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         label: l10n.login,
                         isLoading: isLoading,
                         onPressed: () {
-                          HapticFeedback.lightImpact();
+                          AppHaptics.lightImpact();
                           _handleLogin();
                         },
                       ),
@@ -509,7 +510,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       Center(
                         child: TextButton(
                           onPressed: () {
-                            HapticFeedback.lightImpact();
+                            AppHaptics.lightImpact();
                             Navigator.push(
                               context,
                               AnimationUtils.createPremiumRoute(const PrivacyPolicyScreen()),
@@ -536,7 +537,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           TextButton(
                             onPressed: () {
-                              HapticFeedback.lightImpact();
+                              AppHaptics.lightImpact();
                               Navigator.push(
                                 context,
                                 AnimationUtils.createPremiumRoute(const RegisterScreen()),
@@ -585,7 +586,7 @@ class _GoogleSignInButton extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: isLoading ? null : () {
-            HapticFeedback.lightImpact();
+            AppHaptics.lightImpact();
             onPressed();
           },
           borderRadius: BorderRadius.circular(12),
@@ -697,7 +698,7 @@ class _FacebookSignInButton extends StatelessWidget {
           color: Colors.transparent,
           child: InkWell(
             onTap: isLoading ? null : () {
-              HapticFeedback.lightImpact();
+              AppHaptics.lightImpact();
               onPressed();
             },
             borderRadius: BorderRadius.circular(12),

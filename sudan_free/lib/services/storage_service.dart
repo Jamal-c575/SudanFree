@@ -104,6 +104,13 @@ class StorageService {
     return url;
   }
 
+  Future<String> uploadVerificationReceipt(String userId, File file) async {
+    final url =
+        await uploadImage(file, folder: 'users/verifications/$userId/receipt');
+    if (url == null) throw Exception('فشل رفع صورة الإيصال');
+    return url;
+  }
+
   Future<String> uploadChatAttachment(
       String chatId, File file, String type) async {
     final url = await uploadImage(file, folder: 'chats/$chatId');

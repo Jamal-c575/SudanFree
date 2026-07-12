@@ -7,6 +7,8 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:intl/intl.dart';
 
+import '../../utils/app_haptics.dart';
+import '../../utils/top_bouncing_scroll_physics.dart';
 import 'create_portfolio_project_screen.dart';
 import 'portfolio_project_detail_screen.dart';
 import '../../core/constants/app_colors.dart';
@@ -55,8 +57,6 @@ import '../../widgets/common/glass_container.dart';
 
 import "package:sudan_free/providers/favorites_provider.dart";
 import "package:sudan_free/providers/partners_provider.dart";
-import '../../services/trust_service.dart';
-import '../../widgets/common/trust_badge_widget.dart';
 
 class FreelancerProfileScreen extends StatefulWidget {
   final UserModel user;
@@ -84,6 +84,7 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   bool _isUploadingImage = false; // loading state for photo upload
+  bool _hasTriggeredCoverPop = false; // Prevents multiple popups on one pull
 
   late Stream<UserModel?> _userStream;
   late Stream<List<PostModel>> _postsStream;
@@ -162,12 +163,33 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen>
               builder: (context, snapshot) {
                 final user = snapshot.data ?? widget.user;
 
-                return NestedScrollView(
-                  headerSliverBuilder: (context, innerBoxIsScrolled) {
-                    return [
-                      SliverAppBar(
-                        expandedHeight: 200,
-                        pinned: false,
+                return NotificationListener<ScrollUpdateNotification>(
+                  onNotification: (notification) {
+                    // This allows both outer and inner (TopBouncingScrollPhysics) to trigger the cover popup
+                    if (!widget.isMe && notification.metrics.axis == Axis.vertical) {
+                      // Overscroll at the top is negative pixels
+                      if (notification.metrics.pixels < -100.0) {
+                        if (!_hasTriggeredCoverPop && user.coverImageUrl != null) {
+                          _hasTriggeredCoverPop = true;
+                          AppHaptics.heavyImpact(); // Forced vibration override
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            _openImage(user.coverImageUrl!, '${user.id}_cover');
+                          });
+                        }
+                      } else if (notification.metrics.pixels >= 0.0) {
+                        _hasTriggeredCoverPop = false;
+                      }
+                    }
+                    return false;
+                  },
+                  child: NestedScrollView(
+                    physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+                    headerSliverBuilder: (context, innerBoxIsScrolled) {
+                      return [
+                        SliverAppBar(
+                          expandedHeight: 200,
+                          stretch: true,
+                          pinned: false,
                         floating: false,
                         backgroundColor:
                             Theme.of(context).scaffoldBackgroundColor,
@@ -385,14 +407,20 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen>
                                 : 0.0;
                             final double scale =
                                 Curves.easeOut.transform(progress);
+                            final double zoomScale = currentHeight > expandedHeight
+                                ? currentHeight / expandedHeight
+                                : 1.0;
 
                             return Stack(
                               fit: StackFit.expand,
                               clipBehavior: Clip.none,
                               children: [
                                 // Cover Image with Curve
-                                ClipPath(
-                                  clipper: ProfileHeaderCurve(),
+                                Transform.scale(
+                                  scale: zoomScale,
+                                  alignment: Alignment.center,
+                                  child: ClipPath(
+                                    clipper: ProfileHeaderCurve(),
                                   child: Stack(
                                     fit: StackFit.expand,
                                     children: [
@@ -421,20 +449,21 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen>
                                                     begin: Alignment.topLeft,
                                                     end: Alignment.bottomRight,
                                                   ),
-                                                ),
-                                              ),
-                                      ),
-                                      // Glass overlay for the cover photo so it keeps the app identity
-                                      if (user.coverImageUrl != null)
+                                                  ), // Closes BoxDecoration
+                                                ), // Closes Container
+                                              ), // Closes GestureDetector
+                                // Glass overlay for the cover photo so it keeps the app identity
+                                if (user.coverImageUrl != null)
                                         IgnorePointer(
                                           child: Container(
                                             color: AppColors.primary
                                                 .withValues(alpha: 0.4),
                                           ),
-                                        ),
+                                        ), // Closes IgnorePointer
                                     ],
                                   ),
                                 ),
+                                ), // Closes Transform.scale
                                 // Avatar
                                 Positioned(
                                   bottom: -60,
@@ -780,9 +809,6 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen>
                                             onTap: () {
                                               final scaffoldMessenger =
                                                   ScaffoldMessenger.of(context);
-                                              final isAr = context
-                                                  .read<LocaleProvider>()
-                                                  .isArabic;
                                               if (isPartner || isPending) {
                                                 context
                                                     .read<PartnersProvider>()
@@ -1166,7 +1192,7 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen>
                       KeepAliveTabView(child: _buildReviewsSection()),
                     ],
                   ),
-                );
+                ));
               }),
           // Loading overlay while uploading image
           if (_isUploadingImage)
@@ -1218,7 +1244,6 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen>
       floatingActionButton: Consumer<ThemeProvider>(
         builder: (context, themeProvider, _) {
           final isGlass = themeProvider.isGlassmorphismEnabled;
-          final isAr = Localizations.localeOf(context).languageCode == 'ar';
 
           if (widget.isMe) {
             return const SizedBox.shrink();
@@ -1416,7 +1441,6 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen>
                     final chatProvider = context.read<ChatProvider>();
                     final navigator = Navigator.of(context);
                     final scaffoldMessenger = ScaffoldMessenger.of(context);
-                    final locale = Localizations.localeOf(context).languageCode;
 
                     // Show loading dialog
                     showDialog(
@@ -1544,6 +1568,7 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen>
           );
         }
         return ListView.separated(
+          physics: const TopBouncingScrollPhysics(),
           padding: const EdgeInsets.symmetric(vertical: 8),
           itemCount: portfolioPosts.length,
           separatorBuilder: (context, index) => const SizedBox(height: 8),
@@ -1569,6 +1594,7 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen>
   Widget _buildReviewsSection() {
     final l10n = AppLocalizations.of(context)!;
     return ListView(
+      physics: const TopBouncingScrollPhysics(),
       padding: const EdgeInsets.all(16),
       children: [
         Text(l10n.reviews,
@@ -1790,9 +1816,17 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen>
 
   void _openImage(String url, String tag) {
     Navigator.push(
-        context,
-        MaterialPageRoute(
-            builder: (_) => ImageViewerScreen(imageUrl: url, heroTag: tag)));
+      context,
+      PageRouteBuilder(
+        opaque: false,
+        transitionDuration: const Duration(milliseconds: 300),
+        pageBuilder: (BuildContext context, _, __) =>
+            ImageViewerScreen(imageUrl: url, heroTag: tag),
+        transitionsBuilder: (_, Animation<double> animation, __, Widget child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+      ),
+    );
   }
 
   void _handleImageTap(String? imageUrl, bool isCover) {
@@ -1983,6 +2017,7 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen>
         }
 
         return ListView.builder(
+          physics: const TopBouncingScrollPhysics(),
           padding: const EdgeInsets.all(16),
           itemCount: projects.length,
           itemBuilder: (context, index) {
@@ -2232,7 +2267,6 @@ class _FreelancerProfileScreenState extends State<FreelancerProfileScreen>
   void _showVouchersBottomSheet(
       BuildContext context, List<Map<String, dynamic>> vouchedBy) {
     if (vouchedBy.isEmpty) return;
-    final isAr = context.read<LocaleProvider>().isArabic;
 
     showModalBottomSheet(
       context: context,

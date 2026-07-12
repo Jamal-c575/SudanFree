@@ -3,6 +3,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:timeago/timeago.dart' as timeago;
+import '../../utils/app_haptics.dart';
 import '../../models/portfolio_project_model.dart';
 import '../../core/constants/app_colors.dart';
 import '../../providers/locale_provider.dart';
@@ -36,6 +37,7 @@ class _PortfolioProjectDetailScreenState
     extends State<PortfolioProjectDetailScreen> {
   late final PageController _imagePageController = PageController();
   int _currentImageIndex = 0;
+  bool _hasTriggeredCoverPop = false;
 
   @override
   void dispose() {
@@ -136,9 +138,27 @@ class _PortfolioProjectDetailScreenState
             ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.only(bottom: 40),
-        child: Column(
+      body: NotificationListener<ScrollUpdateNotification>(
+        onNotification: (notification) {
+          if (notification.metrics.axis == Axis.vertical) {
+            if (notification.metrics.pixels < -160.0) {
+              if (!_hasTriggeredCoverPop && widget.project.imageUrls.isNotEmpty) {
+                _hasTriggeredCoverPop = true;
+                AppHaptics.heavyImpact();
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  _showFullImage(context, widget.project.imageUrls, _currentImageIndex);
+                });
+              }
+            } else if (notification.metrics.pixels >= 0.0) {
+              _hasTriggeredCoverPop = false;
+            }
+          }
+          return false;
+        },
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+          padding: const EdgeInsets.only(bottom: 40),
+          child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // ─── Image Gallery Carousel ───
@@ -335,6 +355,7 @@ class _PortfolioProjectDetailScreenState
             ),
           ],
         ),
+      ),
       ),
     );
   }

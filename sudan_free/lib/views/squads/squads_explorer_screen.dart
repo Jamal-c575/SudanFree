@@ -36,7 +36,6 @@ class _SquadsExplorerScreenState extends State<SquadsExplorerScreen> {
   @override
   Widget build(BuildContext context) {
     final locale = context.watch<LocaleProvider>().locale.languageCode;
-    final isAr = locale == 'ar';
     final user = context.watch<AuthProvider>().user;
 
     return Scaffold(

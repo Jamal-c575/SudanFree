@@ -28,7 +28,6 @@ import '../../widgets/common/verification_badge.dart';
 import '../../providers/chat_provider.dart';
 import '../../core/routes/premium_page_route.dart';
 import '../../services/smart_guide_service.dart';
-import '../../widgets/common/glass_container.dart';
 import '../../services/firestore/ad_service.dart';
 import '../home/ad_details_screen.dart';
 import 'package:sudan_free/l10n/generated/app_localizations.dart';
@@ -83,17 +82,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           Stack(
             alignment: Alignment.center,
             children: [
-              OpenContainer(
-                transitionDuration: const Duration(milliseconds: 700),
-                transitionType: ContainerTransitionType.fadeThrough,
-                closedElevation: 0,
-                closedColor: Colors.transparent,
-                middleColor: Colors.transparent,
-                openBuilder: (context, _) => const ChatsListScreen(),
-                closedBuilder: (context, openContainer) {
-                  return IconButton(
-                    icon: const Icon(Icons.support_agent),
-                    onPressed: openContainer,
+              IconButton(
+                icon: const Icon(Icons.support_agent),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    PremiumPageRoute(page: const ChatsListScreen()),
                   );
                 },
               ),
@@ -897,7 +891,6 @@ class _PendingRequestsSheetState extends State<_PendingRequestsSheet> {
     });
 
     try {
-      final authProvider = context.read<AuthProvider>();
       await context.read<PartnersProvider>().handlePartnerRequest(requesterId, accept,
           requester: requester);
 

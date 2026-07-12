@@ -385,7 +385,6 @@ class _UsersTabState extends State<_UsersTab>
               final targetUser = users[index];
               final isFavorite =
                   widget.user.favoriteUserIds.contains(targetUser.id);
-              final isPartner = widget.user.partnerIds.contains(targetUser.id);
 
               final bool canCancelApprenticeship =
                   widget.user.masterId == targetUser.id ||
@@ -483,7 +482,7 @@ class _UsersTabState extends State<_UsersTab>
                           children: [
                             _buildExpressiveActionButton(
                                 AppLocalizations.of(context)!.vouch,
-                                Icons.verified,
+                                Icons.handshake_rounded,
                                 AppColors.sudanGold,
                                 () => _handleMenuAction('vouch', targetUser,
                                     widget.user, widget.locale),

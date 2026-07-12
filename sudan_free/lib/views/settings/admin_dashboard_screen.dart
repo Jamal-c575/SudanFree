@@ -28,7 +28,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   int _postsCount = 0;
   int _jobsCount = 0;
   int _adsCount = 0;
-  final int _notificationsSent = 0;
   Map<String, int> _rolesDistribution = {};
   Map<String, int> _statesDistribution = {};
 
@@ -130,7 +129,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               Tab(text: 'المستخدمون', icon: Icon(Icons.people)),
               Tab(text: 'التنبيهات', icon: Icon(Icons.notifications_active)),
               Tab(text: 'الإعلانات', icon: Icon(Icons.campaign)),
-              Tab(text: 'طلبات التوثيق', icon: Icon(Icons.verified_user)),
+              Tab(text: 'طلبات التوثيق', icon: Icon(Icons.handshake_rounded)),
               Tab(text: 'العقود', icon: Icon(Icons.handshake)),
               Tab(text: 'طلبات الحذف', icon: Icon(Icons.delete_sweep)),
               Tab(text: 'إعدادات التطبيق', icon: Icon(Icons.settings)),
@@ -179,7 +178,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               _buildStatCard('إجمالي المستخدمين', _usersCount.toString(),
                   Icons.people, Colors.blue),
               _buildStatCard('الموثقين', _verifiedCount.toString(),
-                  Icons.verified, Colors.green),
+                  Icons.handshake_rounded, Colors.green),
               _buildStatCard('المنشورات', _postsCount.toString(),
                   Icons.post_add, Colors.orange),
               _buildStatCard('المشاريع والطلبات', _jobsCount.toString(),
@@ -406,7 +405,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis)),
                           if (user.isVerified)
-                            const Icon(Icons.verified,
+                            const Icon(Icons.handshake_rounded,
                                 color: Colors.blue, size: 16),
                           if (user.isBanned)
                             const Icon(Icons.block,
@@ -576,10 +575,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   bool _isSendingNotif = false;
 
   Widget _buildNotificationsManager() {
-    List<String> localities = _notifTargetState == 'all'
-        ? []
-        : SudanLocations.getLocalities(_notifTargetState);
-
     return Column(
       children: [
         Card(
@@ -713,7 +708,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 itemBuilder: (context, index) {
                   final log = logs[index].data() as Map<String, dynamic>;
                   final logId = logs[index].id;
-                  final time = log['createdAt'] as Timestamp?;
 
                   return Card(
                     margin: const EdgeInsets.only(bottom: 8),
@@ -958,7 +952,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         labelText: 'الوصف', border: OutlineInputBorder())),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<AdPlacement>(
-                  value: selectedPlacement,
+                  initialValue: selectedPlacement,
                   decoration: const InputDecoration(
                       labelText: 'موقع عرض الإعلان',
                       border: OutlineInputBorder()),
@@ -1180,7 +1174,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         final users = snapshot.data ?? [];
         if (users.isEmpty) {
           return _buildEmptyState(
-              Icons.verified_user_outlined, 'لا توجد طلبات توثيق معلقة');
+              Icons.handshake_outlined, 'لا توجد طلبات توثيق معلقة');
         }
 
         return ListView.builder(

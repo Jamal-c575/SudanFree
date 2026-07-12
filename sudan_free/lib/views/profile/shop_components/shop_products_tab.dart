@@ -6,6 +6,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../services/cloudinary_service.dart';
 import '../product_detail_screen.dart';
 import '../../../widgets/common/linkable_text.dart';
+import '../../../utils/top_bouncing_scroll_physics.dart';
 
 class ShopProductsTab extends StatelessWidget {
   final Stream<List<PostModel>> postsStream;
@@ -54,6 +55,7 @@ class ShopProductsTab extends StatelessWidget {
         }
 
         return GridView.builder(
+          physics: const TopBouncingScrollPhysics(),
           padding: const EdgeInsets.all(8),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,

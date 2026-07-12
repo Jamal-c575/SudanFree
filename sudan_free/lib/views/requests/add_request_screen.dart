@@ -14,6 +14,8 @@ import '../../providers/locale_provider.dart';
 import '../../widgets/common/custom_text_field.dart';
 import '../../widgets/common/custom_dropdown.dart';
 import 'package:sudan_free/l10n/generated/app_localizations.dart';
+import '../../widgets/common/smart_ai_input_button.dart';
+import '../../services/ai_service.dart';
 
 class AddRequestBottomSheet extends StatefulWidget {
   final UserModel user;
@@ -42,6 +44,7 @@ class _AddRequestBottomSheetState extends State<AddRequestBottomSheet> {
   DateTime? _recordStartTime;
   String? _recordedAudioPath;
   int? _audioDuration;
+  bool _isEnhancing = false;
 
   @override
   void initState() {
@@ -168,6 +171,26 @@ class _AddRequestBottomSheetState extends State<AddRequestBottomSheet> {
       _recordedAudioPath = null;
       _audioDuration = null;
     });
+  }
+
+  Future<void> _enhanceWithAi() async {
+    if (_textController.text.trim().isEmpty) return;
+    setState(() => _isEnhancing = true);
+    try {
+      final aiService = AiService();
+      final enhanced = await aiService.enhanceText(_textController.text);
+      if (enhanced.isNotEmpty && mounted) {
+        _textController.text = enhanced;
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('فشل تحسين النص: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isEnhancing = false);
+    }
   }
 
   Future<void> _submitRequest() async {
@@ -515,6 +538,15 @@ class _AddRequestBottomSheetState extends State<AddRequestBottomSheet> {
                     hint: AppLocalizations.of(context)!.exampleINeedAPlumberTo,
                     maxLines: 5,
                     prefixIcon: Icons.description_outlined,
+                  ),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: SmartAiInputButton(
+                      controller: _textController,
+                      onEnhance: _enhanceWithAi,
+                      isEnhancing: _isEnhancing,
+                      isArabic: locale == 'ar',
+                    ),
                   ),
 
                   const SizedBox(height: 24),

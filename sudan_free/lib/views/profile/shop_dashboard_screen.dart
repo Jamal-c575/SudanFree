@@ -324,107 +324,6 @@ class ShopDashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildPremiumPromotionCard(
-      BuildContext context, AppLocalizations l10n, bool isDark) {
-    if (shop.isPremium) {
-      return Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFFD4AF37), Color(0xFFF9E596)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          children: [
-            const Icon(Icons.star, color: Colors.white, size: 40),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    l10n.localeName == 'ar'
-                        ? 'متجرك مميز! 👑'
-                        : 'Premium Store! 👑',
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    l10n.localeName == 'ar'
-                        ? 'أنت تستمتع الآن بكافة الميزات الملكية'
-                        : 'You are enjoying all royal features',
-                    style: const TextStyle(color: Colors.white70, fontSize: 13),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDark ? Colors.grey[850] : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-            color: const Color(0xFFD4AF37).withValues(alpha: 0.5), width: 1.5),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.workspace_premium,
-                  color: Color(0xFFD4AF37), size: 28),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  l10n.localeName == 'ar'
-                      ? 'قم بترقية متجرك (Premium)'
-                      : 'Upgrade to Premium Store',
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            l10n.localeName == 'ar'
-                ? 'احصل على الشارة الذهبية، مظهر ملكي، وظهور دائم في أعلى نتائج البحث!'
-                : 'Get the gold badge, royal UI, and always rank first in search results!',
-            style: const TextStyle(fontSize: 13, color: Colors.grey),
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFD4AF37),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-              ),
-              onPressed: () {
-                _showPremiumUpgradeBottomSheet(context, l10n);
-              },
-              child:
-                  Text(l10n.localeName == 'ar' ? 'ترقية الآن' : 'Upgrade Now'),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _showPremiumUpgradeBottomSheet(
       BuildContext context, AppLocalizations l10n) {
     showModalBottomSheet(
@@ -629,7 +528,6 @@ class ShopDashboardScreen extends StatelessWidget {
 
   Widget _buildProductManagementTile(BuildContext context, PostModel product,
       bool isDark, AppLocalizations l10n) {
-    final isAr = l10n.localeName == 'ar';
     final imageUrl =
         product.allImageUrls.isNotEmpty ? product.allImageUrls.first : null;
     final title =
@@ -973,9 +871,6 @@ class _ManageShopGalleryScreenState extends State<_ManageShopGalleryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    final isAr = l10n.localeName == 'ar';
-
     return Scaffold(
       appBar: AppBar(
         title: Text(AppLocalizations.of(context)!.manageShopGallery),

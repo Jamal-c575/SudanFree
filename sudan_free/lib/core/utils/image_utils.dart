@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import '../constants/app_colors.dart';
 
 /// Utility for optimized image loading with memory-aware caching
@@ -40,6 +41,12 @@ class ImageUtils {
         ),
       ),
       errorWidget: (context, url, error) {
+        // Handle empty cache file crash on Vivo devices
+        if (error.toString().contains('empty') || error.toString().contains('Bad state')) {
+          try {
+             DefaultCacheManager().removeFile(url);
+          } catch (_) {}
+        }
         onError?.call();
         return Container(
           color: AppColors.border.withValues(alpha: 0.1),
@@ -63,10 +70,17 @@ class ImageUtils {
       radius: radius,
       backgroundColor:
           backgroundColor ?? AppColors.border.withValues(alpha: 0.1),
-      backgroundImage: CachedNetworkImageProvider(imageUrl),
-      onBackgroundImageError: (exception, stackTrace) {
-        debugPrint('Error loading circular image: $exception');
-      },
+      backgroundImage: CachedNetworkImageProvider(
+        imageUrl,
+        errorListener: (exception) {
+          debugPrint('Error loading circular image: $exception');
+          if (exception.toString().contains('empty') || exception.toString().contains('Bad state')) {
+            try {
+               DefaultCacheManager().removeFile(imageUrl);
+            } catch (_) {}
+          }
+        },
+      ),
     );
   }
 

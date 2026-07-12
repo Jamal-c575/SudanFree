@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../core/constants/app_colors.dart';
@@ -15,6 +16,8 @@ import '../../services/firestore_service.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../services/cloudinary_service.dart';
 import '../../services/ai_service.dart';
+import '../../widgets/common/smart_ai_input_button.dart';
+import 'package:sudan_free/utils/app_haptics.dart';
 
 class CreatePostScreen extends StatefulWidget {
   final PostModel? post;
@@ -320,6 +323,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   }
 
   Future<void> _handleSubmit() async {
+    AppHaptics.lightImpact();
+
     final locale = context.read<LocaleProvider>().locale.languageCode;
 
     // Format Barter text before validation
@@ -797,35 +802,15 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                     ),
                   ],
 
-                  // AI Enhance Button
+                  // AI Enhance & Voice Button
                   if (!(_selectedCategory == PostCategory.barter))
                     Align(
                       alignment: Alignment.centerLeft,
-                      child: TextButton.icon(
-                        onPressed: _isEnhancing ? null : _enhanceWithAi,
-                        icon: _isEnhancing
-                            ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Icon(Icons.auto_awesome, color: Colors.amber, size: 20),
-                        label: Text(
-                          context.read<LocaleProvider>().isArabic
-                              ? 'تحسين بالذكاء الاصطناعي ✨'
-                              : 'AI Enhance ✨',
-                          style: TextStyle(
-                            color: _isEnhancing ? Colors.grey : Colors.amber,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          backgroundColor: Colors.amber.withOpacity(0.1),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                        ),
+                      child: SmartAiInputButton(
+                        controller: _captionController,
+                        onEnhance: _enhanceWithAi,
+                        isEnhancing: _isEnhancing,
+                        isArabic: context.read<LocaleProvider>().isArabic,
                       ),
                     ),
 

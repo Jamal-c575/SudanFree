@@ -11,23 +11,20 @@ import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/locale_provider.dart';
 import '../../services/firestore_service.dart';
-import '../../services/smart_guide_service.dart';
 import '../../services/ai_guide_service.dart';
 import '../../services/osrm_service.dart';
-import '../../models/job_model.dart';
 import '../../models/filter_model.dart';
 import '../profile/profile_screen.dart';
 import '../../core/utils/job_titles_utils.dart';
 import '../../widgets/common/premium_glass_card.dart';
 import '../../widgets/common/premium_button.dart';
-import '../../widgets/common/glass_container.dart';
 import '../../widgets/common/filter_bottom_sheet.dart';
-import '../../widgets/common/premium_animations.dart';
 import '../../widgets/common/pulsing_marker.dart';
 import 'package:sudan_free/l10n/generated/app_localizations.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../utils/animation_utils.dart';
+import 'package:sudan_free/utils/app_haptics.dart';
 
 class CachedTileProvider extends TileProvider {
   CachedTileProvider();
@@ -38,6 +35,9 @@ class CachedTileProvider extends TileProvider {
       getTileUrl(coordinates, options),
       headers: const {
         'User-Agent': 'com.sudan.free',
+      },
+      errorListener: (err) {
+        debugPrint('Tile Network Error: $err');
       },
     );
   }
@@ -378,7 +378,6 @@ class _MapExplorerScreenState extends State<MapExplorerScreen>
   void _showUserPopup(UserModel user) {
     final isAr = context.read<LocaleProvider>().locale.languageCode == 'ar';
     final profession = _getUserProfession(user, isAr);
-    final hasProfession = profession != null;
     final isActive = _getUserIsActive(user);
     final statusText = _getUserStatusText(user, isAr, isActive);
     final statusColor = isActive ? Colors.green : Colors.red;
@@ -398,124 +397,129 @@ class _MapExplorerScreenState extends State<MapExplorerScreen>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 50,
-                height: 5,
-                margin: const EdgeInsets.only(bottom: 20),
-                decoration: BoxDecoration(
-                  color: Colors.grey[400],
-                  borderRadius: BorderRadius.circular(10),
+              // Grab Handle (مؤشر السحب)
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[400],
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
               ),
+              
+              // Compact Layout: Header Block
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // صورة المستخدم
                   Container(
-                    width: 70,
-                    height: 70,
+                    width: 60,
+                    height: 60,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      border: Border.all(color: AppColors.primary, width: 2),
+                      border: Border.all(color: AppColors.primary, width: 1.5),
                     ),
                     child: ClipOval(
                       child: user.profileImageUrl != null
                           ? CachedNetworkImage(
                               imageUrl: user.profileImageUrl!,
                               fit: BoxFit.cover,
-                              memCacheWidth: 140,
+                              memCacheWidth: 120,
                               placeholder: (_, __) => Container(
                                 color: AppColors.primary.withValues(alpha: 0.1),
                                 child: Icon(
                                     user.isShop ? Icons.store : Icons.person,
-                                    size: 35,
+                                    size: 30,
                                     color: AppColors.primary),
                               ),
                               errorWidget: (_, __, ___) => Icon(
                                   user.isShop ? Icons.store : Icons.person,
-                                  size: 35,
+                                  size: 30,
                                   color: AppColors.primary),
                             )
                           : Icon(user.isShop ? Icons.store : Icons.person,
-                              size: 35, color: AppColors.primary),
+                              size: 30, color: AppColors.primary),
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // الاسم
-                        Text(
-                          user.name,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 20),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        if (profession != null) ...[
-                          const SizedBox(height: 4),
-                          // المسمى الوظيفي أو تصنيف المتجر
-                          Row(
-                            children: [
-                              Icon(
-                                user.isShop
-                                    ? Icons.storefront
-                                    : Icons.work_outline,
-                                size: 14,
-                                color: Colors.grey[600],
-                              ),
-                              const SizedBox(width: 4),
-                              Expanded(
-                                child: Text(
-                                  profession,
-                                  style: TextStyle(
-                                      color: Colors.grey[600], fontSize: 14),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                        const SizedBox(height: 4),
-                        // حالة التوفر/الفتح (دائماً يظهر)
+                        // الاسم وحالة العمل
                         Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Container(
-                              width: 8,
-                              height: 8,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: statusColor,
+                            Expanded(
+                              child: Text(
+                                user.name,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold, fontSize: 18),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                            const SizedBox(width: 4),
-                            Text(
-                              statusText,
-                              style: TextStyle(
-                                color: statusColor,
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: statusColor.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 6,
+                                    height: 6,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: statusColor,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    statusText,
+                                    style: TextStyle(
+                                      color: statusColor,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 6),
+                        if (profession != null) ...[
+                          const SizedBox(height: 2),
+                          // المسمى الوظيفي
+                          Text(
+                            profession,
+                            style: TextStyle(
+                                color: Colors.grey[600], fontSize: 13),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                        const SizedBox(height: 4),
                         // التقييم
                         Row(
                           children: [
                             Icon(Icons.star_rounded,
-                                size: 18, color: Colors.amber[600]),
-                            const SizedBox(width: 3),
+                                size: 16, color: Colors.amber[600]),
+                            const SizedBox(width: 2),
                             Text(
                               user.rating.toStringAsFixed(1),
                               style: const TextStyle(
-                                  fontSize: 14, fontWeight: FontWeight.bold),
+                                  fontSize: 12, fontWeight: FontWeight.bold),
                             ),
                             Text(
                               ' (${user.completedJobs} ${AppLocalizations.of(context)!.jobs1})',
                               style: TextStyle(
-                                  fontSize: 12, color: Colors.grey[600]),
+                                  fontSize: 11, color: Colors.grey[600]),
                             ),
                           ],
                         ),
@@ -524,135 +528,118 @@ class _MapExplorerScreenState extends State<MapExplorerScreen>
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
+
+              // Quick Action Icons: Location and Work Hours in one line
+              if ((user.state != null && user.state!.isNotEmpty) ||
+                  (user.locality != null && user.locality!.isNotEmpty) ||
+                  (user.openingHours != null && user.openingHours!.isNotEmpty))
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Row(
+                    children: [
+                      if ((user.state != null && user.state!.isNotEmpty) ||
+                          (user.locality != null && user.locality!.isNotEmpty)) ...[
+                        Icon(Icons.location_on_outlined, size: 14, color: Colors.grey[500]),
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            [user.state, user.locality]
+                                .where((e) => e != null && e.isNotEmpty)
+                                .join(' - '),
+                            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                      ],
+                      if (user.openingHours != null && user.openingHours!.isNotEmpty) ...[
+                        Icon(Icons.access_time_outlined, size: 14, color: Colors.grey[500]),
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            '${user.openingHours} - ${user.closingHours ?? ''}',
+                            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
 
               // Bio
               if (user.bio != null && user.bio!.isNotEmpty) ...[
                 Text(
                   user.bio!,
-                  maxLines: 3,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                      fontSize: 13, color: Colors.grey[700], height: 1.4),
+                      fontSize: 12, color: Colors.grey[700], height: 1.3),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
               ],
 
               // Skills / Tags
               if (user.skills.isNotEmpty) ...[
                 Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
+                  spacing: 4,
+                  runSpacing: 4,
                   children: user.skills.take(3).map((skill) {
                     return Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
+                          horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
+                        color: AppColors.primary.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
                         _getTranslatedSkill(skill, isAr),
                         style: const TextStyle(
                             color: AppColors.primary,
-                            fontSize: 11,
+                            fontSize: 10,
                             fontWeight: FontWeight.w600),
                       ),
                     );
                   }).toList(),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
+              ] else ...[
+                const SizedBox(height: 8),
               ],
 
-              // Location & Work Hours
-              if ((user.state != null && user.state!.isNotEmpty) ||
-                  (user.locality != null && user.locality!.isNotEmpty) ||
-                  (user.openingHours != null && user.openingHours!.isNotEmpty))
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  margin: const EdgeInsets.only(bottom: 20),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).cardColor,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey[300]!),
+              // Inline Actions: Buttons side by side
+              Row(
+                children: [
+                  if (_currentUserPosition != null && user.latitude != null && user.longitude != null) ...[
+                    Expanded(
+                      child: PremiumButton(
+                        onPressed: () => _calculateAndShowRoute(user),
+                        label: isAr ? 'الطريق' : 'Route',
+                        icon: Icons.directions_outlined,
+                        isPrimary: false,
+                        isLoading: _isLoadingRoute,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                  ],
+                  Expanded(
+                    child: PremiumButton(
+                      onPressed: () {
+                        if (context.mounted) Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          AnimationUtils.createPremiumRoute(ProfileScreen(userId: user.id)),
+                        );
+                      },
+                      label: isAr ? 'الملف' : 'Profile',
+                      icon: Icons.person_outline,
+                      isPrimary: true,
+                    ),
                   ),
-                  child: Column(
-                    children: [
-                      // Location
-                      if ((user.state != null && user.state!.isNotEmpty) ||
-                          (user.locality != null && user.locality!.isNotEmpty))
-                        Row(
-                          children: [
-                            Icon(Icons.location_on,
-                                size: 16, color: Colors.grey[600]),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                [user.state, user.locality]
-                                    .where((e) => e != null && e.isNotEmpty)
-                                    .join(' - '),
-                                style: TextStyle(
-                                    fontSize: 13, color: Colors.grey[800]),
-                              ),
-                            ),
-                          ],
-                        ),
-
-                      // Work Hours
-                      if (user.openingHours != null &&
-                          user.openingHours!.isNotEmpty) ...[
-                        if ((user.state != null && user.state!.isNotEmpty) ||
-                            (user.locality != null &&
-                                user.locality!.isNotEmpty))
-                          const Divider(height: 16),
-                        Row(
-                          children: [
-                            Icon(Icons.access_time,
-                                size: 16, color: Colors.grey[600]),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                isAr
-                                    ? 'زمن العمل: من ${user.openingHours} إلى ${user.closingHours ?? ''}'
-                                    : 'Working hours: ${user.openingHours} to ${user.closingHours ?? ''}',
-                                style: TextStyle(
-                                    fontSize: 13, color: Colors.grey[800]),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ],
-                  ),
-                )
-              else if (user.bio != null || user.skills.isNotEmpty)
-                const SizedBox(height: 8)
-              else
-                const SizedBox(height: 20),
-
-              // زر عرض الطريق
-              if (_currentUserPosition != null && user.latitude != null && user.longitude != null) ...[
-                PremiumButton(
-                  onPressed: () => _calculateAndShowRoute(user),
-                  label: isAr ? 'عرض الطريق' : 'Show Route',
-                  icon: Icons.directions,
-                  isPrimary: false,
-                  isLoading: _isLoadingRoute,
-                ),
-                const SizedBox(height: 12),
-              ],
-
-              PremiumButton(
-                onPressed: () {
-                  if (context.mounted) Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    AnimationUtils.createPremiumRoute(ProfileScreen(userId: user.id)),
-                  );
-                },
-                label: AppLocalizations.of(context)!.viewProfile,
-                icon: Icons.person,
-                isPrimary: true,
+                ],
               ),
             ],
           ),
@@ -702,11 +689,13 @@ class _MapExplorerScreenState extends State<MapExplorerScreen>
               children: [
                 Expanded(
                   child: PremiumGlassCard(
-                    blur: 15,
+                    blur: 12,
                     opacity: Theme.of(context).brightness == Brightness.dark
-                        ? 0.7
-                        : 0.85,
-                    borderRadius: BorderRadius.circular(30),
+                        ? 0.6
+                        : 0.75,
+                    borderRadius: BorderRadius.circular(14),
+                    border: false,
+                    padding: EdgeInsets.zero,
                     child: _currentRoute != null 
                         ? Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -715,7 +704,7 @@ class _MapExplorerScreenState extends State<MapExplorerScreen>
                               children: [
                                 Row(
                                   children: [
-                                    const Icon(Icons.directions_car, color: AppColors.primary),
+                                    Icon(Icons.directions_car, color: AppColors.primary, size: 22),
                                     const SizedBox(width: 8),
                                     Text(
                                       '${_currentRoute!.distanceKm.toStringAsFixed(1)} ${isAr ? 'كم' : 'km'}',
@@ -729,25 +718,7 @@ class _MapExplorerScreenState extends State<MapExplorerScreen>
                                       _currentRoute = null;
                                     });
                                   },
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                    decoration: BoxDecoration(
-                                      color: Colors.red.withOpacity(0.15),
-                                      borderRadius: BorderRadius.circular(20),
-                                      border: Border.all(color: Colors.red.withOpacity(0.3)),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        const Icon(Icons.close, color: Colors.red, size: 16),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          isAr ? 'إلغاء' : 'Cancel',
-                                          style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 14),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
+                                  child: Icon(Icons.close, color: Colors.red.shade300, size: 22),
                                 ),
                               ],
                             ),
@@ -784,33 +755,35 @@ class _MapExplorerScreenState extends State<MapExplorerScreen>
                           ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 10),
                 // Available Only Toggle
                 GestureDetector(
                   onTap: () {
-                    HapticFeedback.lightImpact();
+                    AppHaptics.lightImpact();
                     setState(() {
                       _showOnlyAvailable = !_showOnlyAvailable;
                       _applyFilters();
                     });
                   },
                   child: SizedBox(
-                    width: 50,
-                    height: 50,
+                    width: 44,
+                    height: 44,
                     child: PremiumGlassCard(
-                      blur: 15,
+                      blur: 12,
                       opacity: _showOnlyAvailable
-                          ? 0.9
+                          ? 0.85
                           : (Theme.of(context).brightness == Brightness.dark
-                              ? 0.7
-                              : 0.85),
+                              ? 0.6
+                              : 0.75),
                       color: _showOnlyAvailable ? AppColors.primary : null,
-                      borderRadius: BorderRadius.circular(25),
+                      borderRadius: BorderRadius.circular(14),
+                      border: false,
+                      padding: EdgeInsets.zero,
                       child: Icon(
-                      Icons.bolt,
+                      Icons.bolt_rounded,
                       color:
                           _showOnlyAvailable ? Colors.white : AppColors.primary,
-                      size: 28,
+                      size: 24,
                     ),
                     ),
                   ),
@@ -867,7 +840,7 @@ class _MapExplorerScreenState extends State<MapExplorerScreen>
                           style: TextStyle(color: Colors.grey[600]),
                         ),
                         onTap: () {
-                          HapticFeedback.lightImpact();
+                          AppHaptics.lightImpact();
                           FocusScope.of(context).unfocus();
                           setState(() {
                             _searchQuery = '';
@@ -931,7 +904,7 @@ class _MapExplorerScreenState extends State<MapExplorerScreen>
             child: IconButton(
               icon: const Icon(Icons.filter_list, color: Colors.white),
               onPressed: () {
-                HapticFeedback.lightImpact();
+                AppHaptics.lightImpact();
                 _showFilterSheet();
               },
             ),
@@ -952,29 +925,20 @@ class _MapExplorerScreenState extends State<MapExplorerScreen>
             ),
             children: [
               TileLayer(
-                urlTemplate: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+                urlTemplate: Theme.of(context).brightness == Brightness.dark
+                    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'
+                    : 'https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',
                 subdomains: const ['a', 'b', 'c', 'd'],
                 userAgentPackageName: 'com.sudan.free',
                 tileProvider: CachedTileProvider(),
-                tileBuilder: Theme.of(context).brightness == Brightness.dark
-                    ? (context, tileWidget, tile) => ColorFiltered(
-                          colorFilter: const ColorFilter.matrix([
-                            -1,  0,  0, 0, 255,
-                             0, -1,  0, 0, 255,
-                             0,  0, -1, 0, 255,
-                            0,  0,  0, 1,   0,
-                          ]),
-                          child: tileWidget,
-                        )
-                    : null,
               ),
               if (_currentRoute != null)
                 PolylineLayer(
                   polylines: [
                     Polyline(
                       points: _currentRoute!.points,
-                      color: Colors.blue,
-                      strokeWidth: 4.0,
+                      color: AppColors.accent,
+                      strokeWidth: 5.0,
                     ),
                   ],
                 ),
@@ -999,7 +963,7 @@ class _MapExplorerScreenState extends State<MapExplorerScreen>
                       child: RepaintBoundary(
                         child: GestureDetector(
                           onTap: () {
-                            HapticFeedback.lightImpact();
+                            AppHaptics.lightImpact();
                             _animatedMapMove(
                                 LatLng(user.latitude!, user.longitude!), 16.0);
                             _showUserPopup(user);
@@ -1019,7 +983,7 @@ class _MapExplorerScreenState extends State<MapExplorerScreen>
                                       Border.all(color: markerColor, width: 2.5),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: markerColor.withOpacity(0.5),
+                                      color: markerColor.withValues(alpha: 0.5),
                                       blurRadius: 8,
                                       spreadRadius: 1,
                                     ),
@@ -1140,7 +1104,7 @@ class _MapExplorerScreenState extends State<MapExplorerScreen>
               heroTag: 'myLocationBtn',
               backgroundColor: Theme.of(context).cardColor,
               onPressed: () {
-                HapticFeedback.lightImpact();
+                AppHaptics.lightImpact();
                 _locateUser();
               },
               child: const Icon(Icons.my_location, color: AppColors.primary, size: 20),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -17,6 +18,7 @@ import '../../widgets/mentions/mention_overlay.dart';
 
 import "package:sudan_free/providers/partners_provider.dart";
 import 'package:sudan_free/l10n/generated/app_localizations.dart';
+import 'package:sudan_free/utils/app_haptics.dart';
 
 class CommentsSheet extends StatefulWidget {
   final String postId;
@@ -74,7 +76,6 @@ class _CommentsSheetState extends State<CommentsSheet> {
   }
 
   void _fetchPartners() {
-    final authProvider = context.read<AuthProvider>();
     // Ensure partners are loaded
     context.read<PartnersProvider>().fetchPartners().then((_) {
       if (mounted) {
@@ -193,6 +194,8 @@ class _CommentsSheetState extends State<CommentsSheet> {
   Future<void> _submitComment() async {
     final text = _commentController.text.trim();
     if (text.isEmpty) return;
+
+    AppHaptics.lightImpact();
 
     final user = context.read<AuthProvider>().user;
     if (user == null) return;

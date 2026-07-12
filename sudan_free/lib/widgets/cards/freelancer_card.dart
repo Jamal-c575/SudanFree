@@ -219,7 +219,6 @@ class FreelancerCard extends StatelessWidget {
                   final chatProvider = context.read<ChatProvider>();
                   final navigator = Navigator.of(context);
                   final scaffoldMessenger = ScaffoldMessenger.of(context);
-                  final locale = Localizations.localeOf(context).languageCode;
 
                   // Show loading dialog
                   showDialog(

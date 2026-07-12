@@ -29,8 +29,11 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
     );
     if (picked != null) {
       setState(() {
-        if (isIdCard) _idCardImage = File(picked.path);
-        else _selfieImage = File(picked.path);
+        if (isIdCard) {
+          _idCardImage = File(picked.path);
+        } else {
+          _selfieImage = File(picked.path);
+        }
       });
     }
   }
@@ -123,7 +126,7 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
               ),
               child: Column(
                 children: [
-                  const Icon(Icons.verified_user, color: Colors.white, size: 48),
+                  const Icon(Icons.handshake_rounded, color: Colors.white, size: 48),
                   const SizedBox(height: 12),
                   Text(
                     isAr ? 'احصل على شارة "موثق ✓"' : 'Get the "Verified ✓" Badge',
@@ -189,7 +192,7 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
                       isAr
                           ? 'بياناتك محمية ولن تُشارك مع أي طرف ثالث. تُستخدم فقط للتحقق من هويتك.'
                           : 'Your data is protected and will not be shared with any third party.',
-                      style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withOpacity(0.7)),
+                      style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withValues(alpha: 0.7)),
                     ),
                   ),
                 ],
@@ -253,9 +256,9 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
                 width: 70,
                 height: 70,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1a6b6b).withOpacity(0.2),
+                  color: const Color(0xFF1a6b6b).withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFF1a6b6b).withOpacity(0.5), style: BorderStyle.solid),
+                  border: Border.all(color: const Color(0xFF1a6b6b).withValues(alpha: 0.5), style: BorderStyle.solid),
                 ),
                 child: Icon(icon, color: const Color(0xFF1a6b6b), size: 32),
               ),

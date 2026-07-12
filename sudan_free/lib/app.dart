@@ -22,8 +22,6 @@ import 'views/auth/profile_setup_screen.dart';
 import 'views/home/home_screen.dart';
 import 'widgets/common/loading_widget.dart';
 import 'widgets/common/connectivity_wrapper.dart';
-import 'services/update_service.dart';
-import 'services/smart_welcome_service.dart';
 import 'services/data_saver_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'views/common/splash_screen.dart';
@@ -36,6 +34,7 @@ import 'views/posts/post_details_screen.dart';
 import 'views/profile/product_detail_screen.dart';
 import 'services/firestore_service.dart';
 import 'core/utils/navigation_utils.dart';
+import 'utils/animation_utils.dart';
 
 class SudanFreeApp extends StatefulWidget {
   const SudanFreeApp({super.key});
@@ -167,6 +166,7 @@ class _SudanFreeAppState extends State<SudanFreeApp> with WidgetsBindingObserver
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,
             themeMode: themeProvider.themeMode,
+            scrollBehavior: const TelegramScrollBehavior(),
             themeAnimationDuration: const Duration(milliseconds: 500),
             themeAnimationCurve: Curves.easeInOutCubic,
             locale: localeProvider.locale,

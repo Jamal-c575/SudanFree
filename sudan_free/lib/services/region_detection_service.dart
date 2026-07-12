@@ -139,7 +139,7 @@ class RegionDetectionService {
     try {
       final response = await http
           .get(Uri.parse(
-              'http://ip-api.com/json/?fields=status,countryCode,country'))
+              'https://ip-api.com/json/?fields=status,countryCode,country'))
           .timeout(_apiTimeout);
 
       if (response.statusCode == 200) {

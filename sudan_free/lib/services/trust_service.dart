@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../models/user_model.dart';
-import '../core/constants/app_colors.dart';
 
 class TrustBadge {
   final String labelAr;
@@ -65,7 +64,7 @@ class TrustService {
       return const TrustBadge(
         labelAr: 'نخبة',
         labelEn: 'Elite',
-        icon: Icons.verified_user,
+        icon: Icons.handshake_rounded,
         color: Colors.amber, // لون ذهبي
       );
     } else if (user.isVerified && score >= 75) {

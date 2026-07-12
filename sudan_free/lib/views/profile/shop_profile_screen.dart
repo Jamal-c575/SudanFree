@@ -5,6 +5,9 @@ import '../../providers/theme_provider.dart';
 import '../../widgets/common/linkable_text.dart';
 
 // ignore: unused_import
+import 'package:share_plus/share_plus.dart';
+
+import '../../utils/app_haptics.dart';
 import '../../core/constants/app_colors.dart';
 import '../../models/user_model.dart';
 import '../../models/contact_log_model.dart';
@@ -65,6 +68,7 @@ class ShopProfileScreen extends StatefulWidget {
 class _ShopProfileScreenState extends State<ShopProfileScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  bool _hasTriggeredCoverPop = false; // Prevents multiple popups on one pull
 
   late Stream<UserModel?> _userStream;
   late Stream<List<PostModel>> _postsStream;
@@ -141,14 +145,35 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
               builder: (context, snapshot) {
                 final user = snapshot.data ?? widget.user;
 
-                return NestedScrollView(
-                  headerSliverBuilder: (context, innerBoxIsScrolled) {
-                    return [
-                      // 1. Store Header
-                      SliverAppBar(
-                        expandedHeight: 220, // Taller cover as requested
-                        pinned: false,
-                        floating: false,
+                return NotificationListener<ScrollUpdateNotification>(
+                  onNotification: (notification) {
+                    // This allows both outer and inner (TopBouncingScrollPhysics) to trigger the cover popup
+                    if (!widget.isMe && notification.metrics.axis == Axis.vertical) {
+                      // Overscroll at the top is negative pixels
+                      if (notification.metrics.pixels < -100.0) {
+                        if (!_hasTriggeredCoverPop && user.coverImageUrl != null) {
+                          _hasTriggeredCoverPop = true;
+                          AppHaptics.heavyImpact(); // Forced vibration override
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            _openImage(user.coverImageUrl!, '${user.id}_cover');
+                          });
+                        }
+                      } else if (notification.metrics.pixels >= 0.0) {
+                        _hasTriggeredCoverPop = false;
+                      }
+                    }
+                    return false;
+                  },
+                  child: NestedScrollView(
+                    physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+                    headerSliverBuilder: (context, innerBoxIsScrolled) {
+                      return [
+                        // 1. Store Header
+                        SliverAppBar(
+                          expandedHeight: 220, // Taller cover as requested
+                          stretch: true,
+                          pinned: false,
+                          floating: false,
                         backgroundColor:
                             Theme.of(context).scaffoldBackgroundColor,
                         systemOverlayStyle:
@@ -182,16 +207,23 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
                                 : 0.0;
                             final double scale =
                                 Curves.easeOut.transform(progress);
+                            final double zoomScale = currentHeight > expandedHeight
+                                ? currentHeight / expandedHeight
+                                : 1.0;
 
                             return Stack(
                               fit: StackFit.expand,
                               clipBehavior: Clip.none,
                               children: [
                                 // Cover Image with Curve
-                                // Cover Image without Curve
-                                Stack(
-                                  fit: StackFit.expand,
-                                  children: [
+                                Transform.scale(
+                                  scale: zoomScale,
+                                  alignment: Alignment.center,
+                                  child: ClipPath(
+                                    clipper: ShopProfileHeaderCurve(),
+                                    child: Stack(
+                                      fit: StackFit.expand,
+                                      children: [
                                     GestureDetector(
                                       onTap: () => _handleImageTap(
                                           user.coverImageUrl, true),
@@ -239,6 +271,8 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
 
                                   ],
                                 ),
+                                ), // Closes ClipPath
+                                ), // Closes Transform.scale
                                 // Avatar
                                 // Avatar
                                 Positioned.directional(
@@ -786,7 +820,7 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
                       KeepAliveTabView(child: ShopReviewsTab(user: user, isMe: widget.isMe, reviewsStream: _reviewsStream)),
                     ],
                   ),
-                );
+                ));
               }),
           if (widget.isMe)
             SmartDraggableFab(
@@ -1004,7 +1038,6 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
                   final chatProvider = context.read<ChatProvider>();
                   final navigator = Navigator.of(context);
                   final scaffoldMessenger = ScaffoldMessenger.of(context);
-                  final locale = Localizations.localeOf(context).languageCode;
 
                   // Show loading dialog
                   showDialog(
@@ -1280,9 +1313,17 @@ class _ShopProfileScreenState extends State<ShopProfileScreen>
 
   void _openImage(String url, String tag) {
     Navigator.push(
-        context,
-        MaterialPageRoute(
-            builder: (_) => ImageViewerScreen(imageUrl: url, heroTag: tag)));
+      context,
+      PageRouteBuilder(
+        opaque: false,
+        transitionDuration: const Duration(milliseconds: 300),
+        pageBuilder: (BuildContext context, _, __) =>
+            ImageViewerScreen(imageUrl: url, heroTag: tag),
+        transitionsBuilder: (_, Animation<double> animation, __, Widget child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+      ),
+    );
   }
 
   void _handleImageTap(String? imageUrl, bool isCover) {
@@ -1424,7 +1465,6 @@ class _SliverTabBarDelegate extends SliverPersistentHeaderDelegate {
   @override
   Widget build(
       BuildContext context, double shrinkOffset, bool overlapsContent) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       color: Theme.of(context).scaffoldBackgroundColor,
       child: Column(

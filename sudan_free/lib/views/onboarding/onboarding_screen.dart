@@ -29,7 +29,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             : 'Connect with clients and get projects that match your skills easily.',
       ),
       OnboardingItem(
-        icon: Icons.verified_user_outlined,
+        icon: Icons.handshake_outlined,
         title: isArabic ? 'بيئة موثوقة وآمنة' : 'Trusted & Safe Environment',
         description: isArabic
             ? 'نظام تقييم ومراجعات يضمن لك التعامل مع أشخاص حقيقيين وموثوقين.'
@@ -113,7 +113,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                 padding: const EdgeInsets.all(32),
                                 blur: 15,
                                 opacity: 0.1,
-                                color: AppColors.primary,
+                                color: AppColors.primary.withValues(alpha: 0.1),
                                 child: Icon(
                                   items[index].icon,
                                   size: 80,

@@ -10,6 +10,9 @@ class PartnersProvider extends ChangeNotifier {
   List<UserModel> _partners = [];
   List<UserModel> get partners => _partners;
 
+  DateTime? _lastFetch;
+  static const _cacheTtl = Duration(minutes: 5);
+
   void update(AuthProvider authProvider) {
     _authProvider = authProvider;
   }
@@ -53,12 +56,6 @@ class PartnersProvider extends ChangeNotifier {
       }
 
       // Update local auth provider user
-      final updatedUser = user.copyWith(
-        pendingPartnerIds: updatedPending,
-        partnerIds: updatedPartners,
-      );
-      
-      // Update the user locally to prevent UI lag. The stream will confirm it.
       await _authProvider!.updateUserProfile({
         'pendingPartnerIds': updatedPending,
         'partnerIds': updatedPartners,
@@ -98,6 +95,7 @@ class PartnersProvider extends ChangeNotifier {
       });
 
       _partners.removeWhere((p) => p.id == targetId);
+      _lastFetch = null; // بطل الكاش عند التعديل
       
       notifyListeners();
     } catch (e) {
@@ -106,7 +104,7 @@ class PartnersProvider extends ChangeNotifier {
     }
   }
 
-  // Fetch My Partners & Followed Shops
+  // Fetch My Partners & Followed Shops — مع كاش داخلي 5 دقائق
   Future<void> fetchPartners({bool forceRefresh = false}) async {
     final user = _authProvider?.user;
     if (user == null) {
@@ -115,22 +113,32 @@ class PartnersProvider extends ChangeNotifier {
       return;
     }
 
+    // الكاش صالح وليس forceRefresh: نرجع البيانات الموجودة فوراً
+    if (!forceRefresh &&
+        _partners.isNotEmpty &&
+        _lastFetch != null &&
+        DateTime.now().difference(_lastFetch!) < _cacheTtl) {
+      return;
+    }
+
+    // نعرض البيانات القديمة فوراً (إن وُجدت) ثم نحدّث في الخلفية
+    if (_partners.isNotEmpty && !forceRefresh) {
+      notifyListeners(); // عرض فوري للبيانات الموجودة
+    }
+
     // Merge partners and followed shops
     final Set<String> combinedIds = {...user.partnerIds, ...user.following};
 
     if (combinedIds.isEmpty) {
       _partners = [];
+      _lastFetch = DateTime.now();
       notifyListeners();
-      return;
-    }
-
-    if (!forceRefresh && _partners.isNotEmpty) {
-      // If we already have them and it's not a forced refresh, just return
       return;
     }
 
     try {
       _partners = await _firestoreService.getUsersByIds(combinedIds.toList());
+      _lastFetch = DateTime.now();
       notifyListeners();
     } catch (e) {
       debugPrint('Error fetching partners/following: $e');

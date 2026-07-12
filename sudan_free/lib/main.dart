@@ -3,7 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
-import 'package:onesignal_flutter/onesignal_flutter.dart'; // kept for auth_provider references
+// kept for auth_provider references
 import 'package:timeago/timeago.dart' as timeago;
 import 'dart:async';
 import 'dart:ui';

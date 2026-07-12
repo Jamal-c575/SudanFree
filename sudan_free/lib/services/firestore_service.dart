@@ -83,8 +83,10 @@ class FirestoreService {
 
   // ==================== USERS ====================
   Future<UserModel?> getUser(String userId) => _users.getUser(userId);
-  Stream<UserModel?> getUserStream(String userId) =>
-      _users.getUserStream(userId);
+  Stream<UserModel?> getUserStream(String userId) {
+    if (userId.isEmpty) return const Stream.empty();
+    return _users.getUserStream(userId);
+  }
   Future<void> updateUserProfile(String userId, Map<String, dynamic> data) =>
       _users.updateUserProfile(userId, data);
   Future<void> updateLastActive(String userId) =>

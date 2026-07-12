@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:sudan_free/utils/app_haptics.dart';
 
 /// Wrapper widget that adds a premium press animation to any child
 /// Scales down slightly on tap and bounces back with a spring effect
@@ -52,6 +53,7 @@ class _PressableCardState extends State<PressableCard>
   }
 
   void _onTapDown(TapDownDetails details) {
+    AppHaptics.lightImpact();
     _controller.forward();
   }
 
@@ -64,13 +66,18 @@ class _PressableCardState extends State<PressableCard>
     _controller.reverse();
   }
 
+  void _onLongPress() {
+    AppHaptics.mediumImpact();
+    widget.onLongPress?.call();
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTapDown: _onTapDown,
       onTapUp: _onTapUp,
       onTapCancel: _onTapCancel,
-      onLongPress: widget.onLongPress,
+      onLongPress: _onLongPress,
       child: AnimatedBuilder(
         animation: _scaleAnimation,
         builder: (context, child) {

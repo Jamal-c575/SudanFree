@@ -3,6 +3,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import '../../utils/app_haptics.dart';
+import '../../widgets/common/full_screen_image_viewer.dart';
 import '../../models/ad_model.dart';
 import '../../core/constants/app_colors.dart';
 import '../../services/firestore/ad_service.dart';
@@ -19,6 +21,7 @@ class AdDetailsScreen extends StatefulWidget {
 class _AdDetailsScreenState extends State<AdDetailsScreen> {
   int _selectedImageIndex = 0;
   List<String> _images = [];
+  bool _hasTriggeredCoverPop = false;
 
   // Video player state
   VideoPlayerController? _videoController;
@@ -81,9 +84,35 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
         iconTheme: IconThemeData(color: isDark ? Colors.white : Colors.black87),
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+        child: NotificationListener<ScrollUpdateNotification>(
+          onNotification: (notification) {
+            if (notification.metrics.axis == Axis.vertical) {
+              if (notification.metrics.pixels < -160.0) {
+                if (!_hasTriggeredCoverPop && _images.isNotEmpty && widget.ad.mediaType == AdMediaType.image) {
+                  _hasTriggeredCoverPop = true;
+                  AppHaptics.heavyImpact();
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => FullScreenImageViewer(
+                          imageUrls: _images,
+                          initialIndex: _selectedImageIndex,
+                        ),
+                      ),
+                    );
+                  });
+                }
+              } else if (notification.metrics.pixels >= 0.0) {
+                _hasTriggeredCoverPop = false;
+              }
+            }
+            return false;
+          },
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // ─── Video Ad Media ───
               if (widget.ad.mediaType == AdMediaType.video)
@@ -446,6 +475,7 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
             ],
           ),
         ),
+      ),
       ),
     );
   }

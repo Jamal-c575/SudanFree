@@ -12,6 +12,7 @@ import '../../widgets/common/premium_glass_card.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../utils/animation_utils.dart';
+import 'package:sudan_free/utils/app_haptics.dart';
 
 class MyAgreementsScreen extends StatefulWidget {
   const MyAgreementsScreen({super.key});
@@ -197,7 +198,7 @@ class _MyAgreementsScreenState extends State<MyAgreementsScreen>
             border: true,
             padding: const EdgeInsets.all(16),
             onTap: () {
-              HapticFeedback.lightImpact();
+              AppHaptics.lightImpact();
               Navigator.push(
                 context,
                 AnimationUtils.createPremiumRoute(ActiveJobTrackingScreen(jobId: job.id)),

@@ -79,6 +79,7 @@ class _DigitalIdCardScreenState extends State<DigitalIdCardScreen> {
       appBar: AppBar(
         title: Text(AppLocalizations.of(context)!.digitalIdCard),
         backgroundColor: Colors.transparent,
+        foregroundColor: Colors.white,
         elevation: 0,
         actions: [
           IconButton(
@@ -177,7 +178,7 @@ class _DigitalIdCardScreenState extends State<DigitalIdCardScreen> {
                     color: AppColors.sudanGold.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Icon(Icons.verified_user,
+                  child: Icon(Icons.handshake_rounded,
                       color: AppColors.sudanGold, size: 18),
                 ),
                 const SizedBox(width: 10),

@@ -15,7 +15,6 @@ import '../../services/smart_search_service.dart';
 import '../freelancers/browse_freelancers_screen.dart';
 import '../shops/browse_shops_screen.dart';
 import '../../widgets/common/premium_glass_card.dart';
-import '../../widgets/common/glass_container.dart';
 import '../../widgets/common/filter_bottom_sheet.dart';
 import '../../providers/theme_provider.dart';
 import 'package:sudan_free/l10n/generated/app_localizations.dart';
@@ -23,6 +22,7 @@ import '../../widgets/home/ai_recommendations_widget.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../utils/animation_utils.dart';
+import 'package:sudan_free/utils/app_haptics.dart';
 
 class SmartSearchDelegate extends SearchDelegate<UserModel?> {
   final String? initialQuery;
@@ -252,8 +252,6 @@ class SmartSearchDelegate extends SearchDelegate<UserModel?> {
   }
 
   Widget _buildFilters(BuildContext context) {
-    final locale = context.read<LocaleProvider>().locale.languageCode;
-    final isAr = locale == 'ar';
     final isGlassEnabled = context.watch<ThemeProvider>().isGlassmorphismEnabled;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -270,7 +268,7 @@ class SmartSearchDelegate extends SearchDelegate<UserModel?> {
                 color: Colors.transparent,
                 child: InkWell(
                   onTap: () {
-                    HapticFeedback.lightImpact();
+                    AppHaptics.lightImpact();
                     Navigator.push(
                       context,
                       AnimationUtils.createPremiumRoute(const BrowseFreelancersScreen())
@@ -308,7 +306,7 @@ class SmartSearchDelegate extends SearchDelegate<UserModel?> {
                 color: Colors.transparent,
                 child: InkWell(
                   onTap: () {
-                    HapticFeedback.lightImpact();
+                    AppHaptics.lightImpact();
                     Navigator.push(
                       context,
                       AnimationUtils.createPremiumRoute(const BrowseShopsScreen())
@@ -797,9 +795,15 @@ class _DelayedSuggestionsWidgetState extends State<_DelayedSuggestionsWidget> {
                   const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
           trailing: IconButton(
             icon: Icon(Icons.north_west, size: 16, color: Colors.grey[400]),
-            onPressed: () => widget.onSuggestionTap(s),
+            onPressed: () {
+              AppHaptics.lightImpact();
+              widget.onSuggestionTap(s);
+            },
           ),
-          onTap: () => widget.onSuggestionTap(s),
+          onTap: () {
+            AppHaptics.lightImpact();
+            widget.onSuggestionTap(s);
+          },
         );
       },
     );

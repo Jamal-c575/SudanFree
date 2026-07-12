@@ -12,6 +12,7 @@ import '../common/internal_link_preview.dart';
 import '../common/verification_badge.dart';
 import '../common/morph_transition.dart';
 import '../../views/profile/profile_screen.dart';
+import 'package:sudan_free/utils/app_haptics.dart';
 
 class CommentTile extends StatelessWidget {
   final CommentModel comment;
@@ -154,7 +155,7 @@ class CommentTile extends StatelessWidget {
                         if (onLike != null)
                           GestureDetector(
                             onTap: () {
-                              HapticFeedback.lightImpact();
+                              AppHaptics.lightImpact();
                               onLike!();
                             },
                             child: Row(
@@ -195,7 +196,10 @@ class CommentTile extends StatelessWidget {
                         // Reply button
                         if (!isMe)
                           GestureDetector(
-                            onTap: onReply,
+                            onTap: () {
+                              AppHaptics.lightImpact();
+                              onReply();
+                            },
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
@@ -226,7 +230,7 @@ class CommentTile extends StatelessWidget {
   }
 
   void _showCommentOptions(BuildContext context) {
-    HapticFeedback.mediumImpact();
+    AppHaptics.mediumImpact();
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(

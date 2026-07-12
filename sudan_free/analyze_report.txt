@@ -1,0 +1,87 @@
+Analyzing sudan_free...                                         
+
+   info • The parameter name 'sum' matches a visible type name • lib/models/enums/post_enums.dart:937:42 • avoid_types_as_parameter_names
+warning • Unused import: 'dart:convert' • lib/services/ai_guide_service.dart:1:8 • unused_import
+   info • Don't invoke 'print' in production code • lib/services/firestore/user_service.dart:41:11 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore/user_service.dart:102:7 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore/user_service.dart:522:9 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore/user_service.dart:568:9 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore/user_service.dart:614:9 • avoid_print
+   info • Don't invoke 'print' in production code • lib/services/firestore/user_service.dart:969:7 • avoid_print
+   info • Angle brackets will be interpreted as HTML • lib/utils/safe_parse.dart:67:43 • unintended_html_in_doc_comment
+   info • Angle brackets will be interpreted as HTML • lib/utils/safe_parse.dart:81:30 • unintended_html_in_doc_comment
+   info • Angle brackets will be interpreted as HTML • lib/utils/safe_parse.dart:98:30 • unintended_html_in_doc_comment
+   info • Angle brackets will be interpreted as HTML • lib/utils/safe_parse.dart:115:30 • unintended_html_in_doc_comment
+   info • Don't use 'BuildContext's across async gaps • lib/views/ai/ai_assistant_screen.dart:235:22 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/views/auth/identity_verification_screen.dart:202:30 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/views/chat/chat_screen.dart:735:28 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/views/chat/chat_screen.dart:751:29 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/views/chat/chat_screen.dart:754:7 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/views/chat/chat_screen.dart:1394:37 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/views/common/report_dialog.dart:89:36 • use_build_context_synchronously
+warning • Unused import: '../../services/smart_guide_service.dart' • lib/views/map/map_explorer_screen.dart:14:8 • unused_import
+warning • Unused import: '../../models/job_model.dart' • lib/views/map/map_explorer_screen.dart:17:8 • unused_import
+warning • Unused import: '../../widgets/common/glass_container.dart' • lib/views/map/map_explorer_screen.dart:23:8 • unused_import
+warning • Unused import: '../../widgets/common/premium_animations.dart' • lib/views/map/map_explorer_screen.dart:25:8 • unused_import
+warning • The value of the local variable 'hasProfession' isn't used • lib/views/map/map_explorer_screen.dart:381:11 • unused_local_variable
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/views/map/map_explorer_screen.dart:1008:58 • deprecated_member_use
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/views/notifications/notifications_screen.dart:532:19 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/views/notifications/notifications_screen.dart:547:40 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/views/notifications/notifications_screen.dart:552:21 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/views/notifications/notifications_screen.dart:564:36 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/views/notifications/notifications_screen.dart:566:42 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/views/notifications/notifications_screen.dart:567:66 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/views/notifications/notifications_screen.dart:857:7 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/views/profile/apprentices_dashboard_screen.dart:457:53 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/views/profile/apprentices_dashboard_screen.dart:458:60 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/views/profile/apprentices_dashboard_screen.dart:460:81 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/views/profile/apprentices_dashboard_screen.dart:463:60 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/views/profile/apprentices_dashboard_screen.dart:465:81 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/views/profile/favorites_screen.dart:226:15 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/views/profile/favorites_screen.dart:234:47 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/views/profile/favorites_screen.dart:238:47 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/views/profile/favorites_screen.dart:246:47 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/views/profile/favorites_screen.dart:251:37 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/views/profile/favorites_screen.dart:277:51 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/views/profile/favorites_screen.dart:283:51 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/views/profile/favorites_screen.dart:288:49 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/views/profile/freelancer_profile_screen.dart:1446:50 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/views/profile/shop_profile_screen.dart:437:62 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/views/profile/shop_profile_screen.dart:446:62 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/views/profile/shop_profile_screen.dart:455:47 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/views/profile/shop_profile_screen.dart:1040:48 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/views/profile/squad_dashboard_screen.dart:524:52 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/views/profile/squad_dashboard_screen.dart:526:73 • use_build_context_synchronously
+   info • Statements in an if should be enclosed in a block • lib/views/profile/squad_dashboard_screen.dart:629:45 • curly_braces_in_flow_control_structures
+   info • Invalid use of a private type in a public API • lib/views/profile/success_story_submission_screen.dart:11:3 • library_private_types_in_public_api
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/views/requests/request_details_screen.dart:107:56 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/views/requests/request_details_screen.dart:165:75 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/views/requests/request_details_screen.dart:183:64 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/views/requests/request_details_screen.dart:203:77 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/views/requests/request_details_screen.dart:263:11 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/views/requests/request_details_screen.dart:807:39 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/views/requests/request_offers_screen.dart:250:49 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/views/requests/request_offers_screen.dart:414:37 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/views/requests/request_offers_screen.dart:489:48 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/views/search/smart_search_delegate.dart:87:33 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/views/settings/admin_dashboard_screen.dart:1253:19 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/views/settings/settings_screen.dart:1417:66 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/views/settings/settings_screen.dart:1420:59 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/views/settings/settings_screen.dart:1436:66 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/views/settings/settings_screen.dart:1439:59 • use_build_context_synchronously
+   info • 'desiredAccuracy' is deprecated and shouldn't be used. use settings parameter with AndroidSettings, AppleSettings, WebSettings, or LocationSettings • lib/views/settings/settings_screen.dart:1451:21 • deprecated_member_use
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/views/settings/settings_screen.dart:1483:66 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/views/settings/settings_screen.dart:1487:52 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/views/settings/settings_screen.dart:1488:52 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/views/settings/settings_screen.dart:1493:66 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/views/settings/settings_screen.dart:1496:59 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/widgets/cards/freelancer_card.dart:117:23 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/widgets/cards/freelancer_card.dart:151:61 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/widgets/cards/freelancer_card.dart:254:48 • use_build_context_synchronously
+   info • Don't invoke 'print' in production code • test_regex.dart:8:3 • avoid_print
+   info • Don't invoke 'print' in production code • test_users.dart:3:3 • avoid_print
+   info • Don't invoke 'print' in production code • url_extractor.dart:14:3 • avoid_print
+   info • Don't invoke 'print' in production code • url_extractor.dart:15:3 • avoid_print
+   info • Don't invoke 'print' in production code • url_extractor.dart:16:3 • avoid_print
+
+83 issues found. (ran in 13.0s)

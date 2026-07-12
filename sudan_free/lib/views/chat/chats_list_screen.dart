@@ -9,13 +9,13 @@ import 'chat_screen.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import '../../widgets/common/empty_state_widget.dart';
 import '../../models/message_model.dart';
-import '../../widgets/common/glass_container.dart';
 import '../../widgets/common/verification_badge.dart';
 import 'package:sudan_free/l10n/generated/app_localizations.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../utils/animation_utils.dart';
 import '../../widgets/common/premium_glass_card.dart';
+import 'package:sudan_free/utils/app_haptics.dart';
 
 class ChatsListScreen extends StatefulWidget {
   const ChatsListScreen({super.key});
@@ -102,7 +102,7 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                     borderRadius: BorderRadius.circular(14),
                     border: unreadCount > 0,
                     onTap: () {
-                      HapticFeedback.lightImpact();
+                      AppHaptics.lightImpact();
                       Navigator.push(
                         context,
                         AnimationUtils.createPremiumRoute(ChatScreen(chat: chat)),

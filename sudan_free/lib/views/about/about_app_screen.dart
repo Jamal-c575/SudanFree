@@ -1,8 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
-import '../../providers/locale_provider.dart';
 import '../../widgets/common/glass_card.dart';
 import 'package:sudan_free/l10n/generated/app_localizations.dart';
 
@@ -12,8 +10,6 @@ class AboutAppScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final locale = context.watch<LocaleProvider>().locale.languageCode;
-    final isAr = locale == 'ar';
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
 

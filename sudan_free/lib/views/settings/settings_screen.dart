@@ -22,7 +22,6 @@ import 'package:geocoding/geocoding.dart';
 import '../../core/constants/sudan_locations.dart';
 import '../../services/smart_guide_service.dart';
 import '../subscription/pro_account_screen.dart';
-import '../profile/identity_verification_screen.dart' as id_verify;
 
 class SettingsScreen extends StatefulWidget {
   final bool asBottomSheet;
@@ -177,20 +176,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
         const SizedBox(height: 8),
 
-        // Identity Verification - NEW
+        // Account Verification (Merged)
         Consumer<AuthProvider>(
           builder: (context, auth, _) {
             final isVerified = auth.user?.isVerified ?? false;
             return _SettingsTile(
-              icon: Icons.handshake,
-              iconColor: isVerified ? AppColors.primary : Colors.orange,
+              icon: Icons.handshake_rounded,
+              iconColor: isVerified ? Colors.green : Colors.orange,
               title: AppLocalizations.of(context)!.accountVerification,
               subtitle: isVerified
                   ? (AppLocalizations.of(context)!.verifiedHandshakeIconShowsBesideYour)
                   : (AppLocalizations.of(context)!.comingSoonHandshakeIconBesideYour),
               trailing: isVerified
-                  ? const Icon(Icons.handshake,
-                      color: AppColors.primary, size: 22)
+                  ? const Icon(Icons.handshake_rounded, color: Colors.green, size: 22)
                   : null,
               openScreen: const IdentityVerificationScreen(),
             );
@@ -385,18 +383,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ),
 
-        const SizedBox(height: 8),
-
-        // Identity Verification
-        _SettingsTile(
-          icon: Icons.verified_user,
-          iconColor: Colors.green,
-          title: locale == 'ar' ? 'تحقق الهوية' : 'Identity Verification',
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const id_verify.IdentityVerificationScreen()),
-          ),
-        ),
 
         const SizedBox(height: 20),
 
@@ -1462,7 +1448,9 @@ class _UpdateLocationTileState extends State<_UpdateLocationTile> {
 
               try {
                 Position position = await Geolocator.getCurrentPosition(
-                    desiredAccuracy: LocationAccuracy.high);
+                    locationSettings: const LocationSettings(
+                      accuracy: LocationAccuracy.high,
+                    ));
 
                 String? state;
                 String? locality;

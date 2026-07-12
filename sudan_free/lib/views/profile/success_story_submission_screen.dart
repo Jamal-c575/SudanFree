@@ -5,7 +5,7 @@ import '../../providers/auth_provider.dart';
 import '../../widgets/common/glass_container.dart';
 
 class SuccessStorySubmissionScreen extends StatefulWidget {
-  const SuccessStorySubmissionScreen({Key? key}) : super(key: key);
+  const SuccessStorySubmissionScreen({super.key});
 
   @override
   _SuccessStorySubmissionScreenState createState() => _SuccessStorySubmissionScreenState();
@@ -116,7 +116,7 @@ class _SuccessStorySubmissionScreenState extends State<SuccessStorySubmissionScr
                         labelText: 'عنوان القصة',
                         labelStyle: TextStyle(color: Colors.grey.shade400),
                         enabledBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+                          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         focusedBorder: OutlineInputBorder(
@@ -136,7 +136,7 @@ class _SuccessStorySubmissionScreenState extends State<SuccessStorySubmissionScr
                         alignLabelWithHint: true,
                         labelStyle: TextStyle(color: Colors.grey.shade400),
                         enabledBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+                          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         focusedBorder: OutlineInputBorder(

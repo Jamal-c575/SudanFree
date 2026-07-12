@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:share_plus/share_plus.dart';
+
+import '../../utils/app_haptics.dart';
 import '../../models/post_model.dart';
 import '../../core/constants/app_colors.dart';
 import '../../providers/auth_provider.dart';
 import 'package:provider/provider.dart';
 import '../../widgets/common/full_screen_image_viewer.dart';
-import '../../widgets/common/verification_badge.dart';
 import '../../widgets/common/linkable_text.dart';
 import '../../providers/locale_provider.dart';
 import '../../widgets/common/glass_container.dart';
@@ -35,6 +37,7 @@ class ProductDetailScreen extends StatefulWidget {
 
 class _ProductDetailScreenState extends State<ProductDetailScreen> {
   int _currentIndex = 0;
+  bool _hasTriggeredCoverPop = false;
 
   @override
   void initState() {
@@ -322,8 +325,34 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   ),
                 )
               : null),
-      body: SingleChildScrollView(
-        child: Column(
+      body: NotificationListener<ScrollUpdateNotification>(
+        onNotification: (notification) {
+          if (notification.metrics.axis == Axis.vertical) {
+            if (notification.metrics.pixels < -160.0) {
+              if (!_hasTriggeredCoverPop && allMedia.isNotEmpty) {
+                _hasTriggeredCoverPop = true;
+                AppHaptics.heavyImpact();
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => FullScreenImageViewer(
+                        imageUrls: allMedia,
+                        initialIndex: _currentIndex,
+                      ),
+                    ),
+                  );
+                });
+              }
+            } else if (notification.metrics.pixels >= 0.0) {
+              _hasTriggeredCoverPop = false;
+            }
+          }
+          return false;
+        },
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+          child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // ── معرض الصور ──────────────────────────────────────────
@@ -658,6 +687,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             ),
           ],
         ),
+      ),
       ),
     );
   }

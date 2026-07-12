@@ -6,6 +6,8 @@ import 'package:sudan_free/views/profile/product_detail_screen.dart';
 import 'package:sudan_free/models/post_model.dart';
 import 'package:sudan_free/core/utils/navigation_utils.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class SmartWelcomeDialog extends StatefulWidget {
   const SmartWelcomeDialog({super.key});
@@ -44,6 +46,7 @@ class _SmartWelcomeDialogState extends State<SmartWelcomeDialog> {
         final adSnap = await FirebaseFirestore.instance
             .collection('ads')
             .where('isActive', isEqualTo: true)
+            .where('expiryDate', isGreaterThan: Timestamp.now())
             .limit(5)
             .get();
         if (adSnap.docs.isNotEmpty) {
@@ -82,47 +85,73 @@ class _SmartWelcomeDialogState extends State<SmartWelcomeDialog> {
     return Dialog(
       backgroundColor: Colors.transparent,
       elevation: 0,
-      child: GlassContainer(
-        enableBlur: true,
-        color: Colors.black, 
-        opacity: 0.85,        
-        padding: const EdgeInsets.all(16),
-        borderRadius: BorderRadius.circular(24),
-        child: Stack(
-          children: [
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (_loading)
-                  const Padding(
-                    padding: EdgeInsets.all(32.0),
-                    child: Center(child: CircularProgressIndicator(color: Colors.white)),
-                  )
-                else ...[
-                  const SizedBox(height: 16),
-                  _buildStatsBanner(),
-                  const SizedBox(height: 16),
-                  if (_newUsersCount > 0)
-                    const Divider(color: Colors.white24, height: 1),
-                  if (_newUsersCount > 0)
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          GlassContainer(
+            enableBlur: true,
+            color: Colors.black, 
+            opacity: 0.85,        
+            padding: const EdgeInsets.all(16),
+            borderRadius: BorderRadius.circular(24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 400),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (_loading)
+                    Container(
+                      height: 300,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: Colors.white12,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                    ).animate(onPlay: (controller) => controller.repeat())
+                     .shimmer(duration: const Duration(milliseconds: 1500), color: Colors.white24)
+                  else ...[
                     const SizedBox(height: 16),
-                  if (_displayType == 1 && _adData != null)
-                    _buildAd(_adData!)
-                  else if (_displayType == 2 && _productData != null)
-                    _buildProduct(_productData!),
-                ]
-              ],
+                    _buildStatsBanner(),
+                    const SizedBox(height: 16),
+                    if (_newUsersCount > 0)
+                      const Divider(color: Colors.white24, height: 1),
+                    if (_newUsersCount > 0)
+                      const SizedBox(height: 16),
+                    if (_displayType == 1 && _adData != null)
+                      _buildAd(_adData!)
+                    else if (_displayType == 2 && _productData != null)
+                      _buildProduct(_productData!),
+                  ]
+                ],
+              ),
             ),
-            Positioned(
-              top: 0,
-              right: 0,
+          ),
+          Positioned(
+            top: 12,
+            right: 12,
+            child: Container(
+              height: 40,
+              width: 40,
+              decoration: const BoxDecoration(
+                color: Colors.redAccent,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black26,
+                    blurRadius: 5,
+                    offset: Offset(0, 2),
+                  )
+                ],
+              ),
               child: IconButton(
-                icon: const Icon(Icons.close, color: Colors.white, size: 24),
+                padding: EdgeInsets.zero,
+                icon: const Icon(Icons.close, color: Colors.white, size: 20),
                 onPressed: () => Navigator.pop(context),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -130,21 +159,22 @@ class _SmartWelcomeDialogState extends State<SmartWelcomeDialog> {
   Widget _buildStatsBanner() {
     if (_newUsersCount == 0) return const SizedBox.shrink();
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       decoration: BoxDecoration(
-        color: Theme.of(context).primaryColor.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Theme.of(context).primaryColor.withValues(alpha: 0.4)),
+        color: Colors.transparent,
       ),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Theme.of(context).primaryColor.withValues(alpha: 0.3),
+            padding: const EdgeInsets.all(10),
+            decoration: const BoxDecoration(
+              color: Colors.amber,
               shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(color: Colors.amber, blurRadius: 10, spreadRadius: 1)
+              ],
             ),
-            child: Icon(Icons.group_add, color: Theme.of(context).primaryColor, size: 24),
+            child: const Icon(Icons.groups_rounded, color: Colors.black, size: 28),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -152,13 +182,22 @@ class _SmartWelcomeDialogState extends State<SmartWelcomeDialog> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'مجتمعنا ينمو!',
-                  style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                  'مجتمعنا ينمو! 🚀',
+                  style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  'انضم إلينا $_newUsersCount عضو وحرفي جديد هذا الأسبوع. اكتشف خدماتهم الآن!',
-                  style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
+                RichText(
+                  text: TextSpan(
+                    style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.4, fontFamily: 'Cairo'),
+                    children: [
+                      const TextSpan(text: 'انضم إلينا '),
+                      TextSpan(
+                        text: '$_newUsersCount',
+                        style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                      const TextSpan(text: ' عضو جديد هذا الأسبوع.'),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -189,16 +228,32 @@ class _SmartWelcomeDialogState extends State<SmartWelcomeDialog> {
         children: [
           if (imageUrl != null)
             ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Image.network(imageUrl, height: 170, width: double.infinity, fit: BoxFit.cover),
+              borderRadius: BorderRadius.circular(20),
+              child: CachedNetworkImage(
+                imageUrl: imageUrl, 
+                height: 190, 
+                width: double.infinity, 
+                fit: BoxFit.cover,
+                placeholder: (context, url) => Container(
+                  height: 190,
+                  width: double.infinity,
+                  color: Colors.white12,
+                ).animate(onPlay: (controller) => controller.repeat()).shimmer(color: Colors.white24, duration: const Duration(milliseconds: 1500)),
+                errorWidget: (context, url, error) => Container(
+                  height: 190,
+                  width: double.infinity,
+                  color: Colors.white12,
+                  child: const Icon(Icons.error, color: Colors.white38),
+                ),
+              ),
             )
           else
             Container(
-              height: 170,
+              height: 190,
               width: double.infinity,
               decoration: BoxDecoration(
                 color: Colors.white12,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(20),
               ),
               child: const Icon(Icons.campaign, size: 50, color: Colors.white38),
             ),
@@ -252,16 +307,32 @@ class _SmartWelcomeDialogState extends State<SmartWelcomeDialog> {
           const SizedBox(height: 16),
           if (images.isNotEmpty)
             ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Image.network(images.first, height: 170, width: double.infinity, fit: BoxFit.cover),
+              borderRadius: BorderRadius.circular(20),
+              child: CachedNetworkImage(
+                imageUrl: images.first, 
+                height: 190, 
+                width: double.infinity, 
+                fit: BoxFit.cover,
+                placeholder: (context, url) => Container(
+                  height: 190,
+                  width: double.infinity,
+                  color: Colors.white12,
+                ).animate(onPlay: (controller) => controller.repeat()).shimmer(color: Colors.white24, duration: const Duration(milliseconds: 1500)),
+                errorWidget: (context, url, error) => Container(
+                  height: 190,
+                  width: double.infinity,
+                  color: Colors.white12,
+                  child: const Icon(Icons.error, color: Colors.white38),
+                ),
+              ),
             )
           else
             Container(
-              height: 170,
+              height: 190,
               width: double.infinity,
               decoration: BoxDecoration(
                 color: Colors.white12,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(20),
               ),
               child: const Icon(Icons.shopping_bag, size: 50, color: Colors.white38),
             ),

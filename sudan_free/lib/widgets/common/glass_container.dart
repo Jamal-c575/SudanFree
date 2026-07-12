@@ -46,9 +46,6 @@ class GlassContainer extends StatelessWidget {
 
     // Adaptive Colors
     final Color baseColor = color ?? (isDark ? Colors.white : AppColors.primary);
-    final Color borderColor = isDark
-        ? Colors.white.withValues(alpha: 0.2)
-        : AppColors.primary.withValues(alpha: 0.2);
 
     final resolvedBorderRadius = shape == BoxShape.circle
         ? null
@@ -60,6 +57,7 @@ class GlassContainer extends StatelessWidget {
       width: width,
       height: height,
       padding: padding,
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         shape: shape,
         borderRadius: resolvedBorderRadius,

@@ -16,14 +16,13 @@ import '../../core/utils/app_error_handler.dart';
 import '../../providers/locale_provider.dart';
 import '../../widgets/common/premium_button.dart';
 import '../../widgets/inputs/custom_text_field.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter/services.dart';
-import '../../utils/animation_utils.dart';
 
 import '../settings/privacy_policy_screen.dart';
 
 import 'identity_verification_screen.dart';
 import 'package:sudan_free/l10n/generated/app_localizations.dart';
+import 'package:sudan_free/utils/app_haptics.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
   final UserModel? existingUser;
@@ -64,7 +63,6 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       if (oldRole != UserRole.client &&
           role != UserRole.client &&
           role != oldRole) {
-        final locale = context.read<LocaleProvider>().locale.languageCode;
         final scaffoldMessenger = ScaffoldMessenger.of(context);
         scaffoldMessenger.showSnackBar(
           SnackBar(
@@ -846,7 +844,6 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       }
     } else {
       // ── Operation returned false without exception → show error ──
-      final locale = context.read<LocaleProvider>().locale.languageCode;
       final errorMsg = context.read<AuthProvider>().errorMessage;
       final scaffoldMessenger = ScaffoldMessenger.of(context);
       scaffoldMessenger.showSnackBar(
@@ -868,33 +865,34 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        title: Text(isEditing
-            ? (AppLocalizations.of(context)!.editProfile)
-            : (AppLocalizations.of(context)!.completeProfile)),
-        automaticallyImplyLeading: isEditing,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        flexibleSpace: ClipRRect(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: Container(color: Colors.transparent),
-          ),
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isDark
+              ? [const Color(0xFF0F172A), const Color(0xFF1E293B)]
+              : [AppColors.primaryLight.withValues(alpha: 0.3), Colors.white],
         ),
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: isDark
-                ? [const Color(0xFF0F172A), const Color(0xFF1E293B)]
-                : [AppColors.primaryLight.withValues(alpha: 0.3), Colors.white],
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        extendBodyBehindAppBar: true,
+        appBar: AppBar(
+          title: Text(isEditing
+              ? (AppLocalizations.of(context)!.editProfile)
+              : (AppLocalizations.of(context)!.completeProfile)),
+          automaticallyImplyLeading: isEditing,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          flexibleSpace: ClipRRect(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+              child: Container(color: Colors.transparent),
+            ),
           ),
         ),
-        child: SafeArea(
+        body: SafeArea(
           child: Theme(
             data: Theme.of(context).copyWith(
               canvasColor: Colors.transparent,
@@ -1073,7 +1071,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                           label: AppLocalizations.of(context)!.previous,
                           isPrimary: false,
                           onPressed: () {
-                            HapticFeedback.lightImpact();
+                            AppHaptics.lightImpact();
                             details.onStepCancel?.call();
                           },
                         ),
@@ -1085,8 +1083,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             },
             steps: _buildSteps(locale),
           ),
+          ),
         ),
-      ),
       ),
     );
   }
@@ -1097,7 +1095,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       Step(
         title: Text(AppStrings.get(AppStrings.chooseRole, locale)),
         isActive: _currentStep >= 0,
-        state: _currentStep > 0 ? StepState.complete : StepState.indexed,
+        state: StepState.indexed,
         content: (_isLoadingRegion && widget.existingUser == null)
             ? const Center(
                 child: Padding(
@@ -1293,7 +1291,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         title:
             Text(AppLocalizations.of(context)!.basicInformation),
         isActive: _currentStep >= 1,
-        state: _currentStep > 1 ? StepState.complete : StepState.indexed,
+        state: StepState.indexed,
         content: Form(
           key: _formKey,
           child: Column(
@@ -1409,7 +1407,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       Step(
         title: Text(AppLocalizations.of(context)!.location),
         isActive: _currentStep >= 2,
-        state: _currentStep > 2 ? StepState.complete : StepState.indexed,
+        state: StepState.indexed,
         content: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1526,6 +1524,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         Step(
           title: Text(AppLocalizations.of(context)!.workFields),
           isActive: _currentStep >= 3,
+          state: StepState.indexed,
           content: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1727,6 +1726,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         Step(
           title: Text(AppLocalizations.of(context)!.shopCategory1),
           isActive: _currentStep >= 3,
+          state: StepState.indexed,
           content: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1829,7 +1829,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         Step(
           title: Text(AppLocalizations.of(context)!.yourInterests),
           isActive: _currentStep >= 3,
-          state: _currentStep > 3 ? StepState.complete : StepState.indexed,
+          state: StepState.indexed,
           content: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1965,6 +1965,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         Step(
           title: Text(AppLocalizations.of(context)!.togetherWeBuildTheFuture),
           isActive: _currentStep >= 4,
+          state: StepState.indexed,
           content: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -2018,6 +2019,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           title: Text(
               AppLocalizations.of(context)!.verificationOptional),
           isActive: _currentStep >= 4,
+          state: StepState.indexed,
           content: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -2314,7 +2316,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                     Text(
                       description,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: AppColors.textSecondary,
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? Colors.grey[400]
+                                : AppColors.textSecondary,
                           ),
                     ),
                   ],

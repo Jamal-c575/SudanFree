@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 
@@ -20,6 +21,7 @@ import '../profile/profile_screen.dart';
 import '../../core/constants/app_colors.dart';
 import '../profile/product_detail_screen.dart';
 import 'package:sudan_free/l10n/generated/app_localizations.dart';
+import 'package:sudan_free/utils/app_haptics.dart';
 
 /// شاشة تفاصيل المنشور/المنتج مع إمكانية التعليق والتفاعل
 class PostDetailsScreen extends StatefulWidget {
@@ -57,6 +59,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
   final Map<String, String> _mentionedUsers = {}; // name -> id
   int _currentPage = 0;
   final PageController _pageController = PageController();
+  bool _hasTriggeredCoverPop = false;
 
   @override
   void initState() {
@@ -201,7 +204,10 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
                   color: isFavorite ? Colors.red : null,
                 ),
                 tooltip: AppLocalizations.of(context)!.saveToFavorites,
-                onPressed: () => context.read<FavoritesProvider>().toggleFavoriteProduct(widget.post.id),
+                onPressed: () {
+                  AppHaptics.lightImpact();
+                  context.read<FavoritesProvider>().toggleFavoriteProduct(widget.post.id);
+                },
               );
             },
           ),
@@ -213,8 +219,35 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
             children: [
               // Scrollable Content
               Expanded(
-                child: SingleChildScrollView(
-                  child: Column(
+                child: NotificationListener<ScrollUpdateNotification>(
+                  onNotification: (notification) {
+                    if (notification.metrics.axis == Axis.vertical) {
+                      if (notification.metrics.pixels < -160.0) {
+                        if (!_hasTriggeredCoverPop && widget.post.allImageUrls.isNotEmpty) {
+                          _hasTriggeredCoverPop = true;
+                          AppHaptics.heavyImpact();
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => FullScreenImageViewer(
+                                  imageUrls: widget.post.allImageUrls,
+                                  initialIndex: _currentPage,
+                                  heroTagPrefix: widget.post.id,
+                                ),
+                              ),
+                            );
+                          });
+                        }
+                      } else if (notification.metrics.pixels >= 0.0) {
+                        _hasTriggeredCoverPop = false;
+                      }
+                    }
+                    return false;
+                  },
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+                    child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Image(s) Carousel
@@ -398,6 +431,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
                                     InkWell(
                                       onTap: () {
                                         if (currentUserId.isEmpty) return;
+                                        AppHaptics.lightImpact();
                                         final type =
                                             isLiked ? 'unlike' : 'like';
                                         postsProvider.reactToPost(
@@ -500,6 +534,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
                     ],
                   ),
                 ),
+              ),
               ),
             ],
           ),
