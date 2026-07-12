@@ -111,6 +111,12 @@ class StorageService {
     return url;
   }
 
+  Future<String> uploadMilestoneReceipt(String jobId, String milestoneId, File file) async {
+    final url = await uploadImage(file, folder: 'jobs/$jobId/milestones/$milestoneId/receipts');
+    if (url == null) throw Exception('فشل رفع إيصال الدفعة');
+    return url;
+  }
+
   Future<String> uploadChatAttachment(
       String chatId, File file, String type) async {
     final url = await uploadImage(file, folder: 'chats/$chatId');

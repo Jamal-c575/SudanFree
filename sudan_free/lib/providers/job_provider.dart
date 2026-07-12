@@ -344,6 +344,15 @@ class JobProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Update Freelancer Payment Details
+  Future<void> updateFreelancerPaymentDetails(String jobId, String details) async {
+    await _firestoreService.updateFreelancerPaymentDetails(jobId, details);
+    if (_selectedJob != null && _selectedJob!.id == jobId) {
+      _selectedJob = _selectedJob!.copyWith(freelancerPaymentDetails: details);
+    }
+    notifyListeners();
+  }
+
   // Submit proposal
   Future<bool> submitProposal({
     required String jobId,

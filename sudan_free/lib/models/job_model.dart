@@ -80,6 +80,8 @@ class MilestoneModel {
   final bool isCompleted;
   final bool isConfirmed; // Freelancer confirms receiving payment
   final DateTime? completedAt;
+  final String? paymentReceiptUrl;
+  final String? paymentMethod;
 
   MilestoneModel({
     required this.id,
@@ -89,6 +91,8 @@ class MilestoneModel {
     this.isCompleted = false,
     this.isConfirmed = false,
     this.completedAt,
+    this.paymentReceiptUrl,
+    this.paymentMethod,
   });
 
   MilestoneStatus get status {
@@ -106,6 +110,8 @@ class MilestoneModel {
       isCompleted: map['isCompleted'] ?? false,
       isConfirmed: map['isConfirmed'] ?? false,
       completedAt: (map['completedAt'] as Timestamp?)?.toDate(),
+      paymentReceiptUrl: map['paymentReceiptUrl'],
+      paymentMethod: map['paymentMethod'],
     );
   }
 
@@ -119,6 +125,8 @@ class MilestoneModel {
       'isConfirmed': isConfirmed,
       'completedAt':
           completedAt != null ? Timestamp.fromDate(completedAt!) : null,
+      'paymentReceiptUrl': paymentReceiptUrl,
+      'paymentMethod': paymentMethod,
     };
   }
 }
@@ -146,6 +154,7 @@ class JobModel {
   final List<String> attachments;
   final List<MilestoneModel> milestones;
   final String? contractUrl;
+  final String? freelancerPaymentDetails;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -172,6 +181,7 @@ class JobModel {
     this.attachments = const [],
     this.milestones = const [],
     this.contractUrl,
+    this.freelancerPaymentDetails,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -223,6 +233,8 @@ class JobModel {
         }
       })(),
       contractUrl: SafeParse.nullableString(data['contractUrl']),
+      freelancerPaymentDetails:
+          SafeParse.nullableString(data['freelancerPaymentDetails']),
       createdAt: SafeParse.dateTime(data['createdAt']),
       updatedAt: SafeParse.dateTime(data['updatedAt']),
     );
@@ -251,6 +263,7 @@ class JobModel {
       'attachments': attachments,
       'milestones': milestones.map((m) => m.toMap()).toList(),
       'contractUrl': contractUrl,
+      'freelancerPaymentDetails': freelancerPaymentDetails,
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
     };
@@ -278,6 +291,8 @@ class JobModel {
     List<String>? requiredSkills,
     List<String>? attachments,
     List<MilestoneModel>? milestones,
+    String? contractUrl,
+    String? freelancerPaymentDetails,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -304,7 +319,9 @@ class JobModel {
       requiredSkills: requiredSkills ?? this.requiredSkills,
       attachments: attachments ?? this.attachments,
       milestones: milestones ?? this.milestones,
-      contractUrl: contractUrl,
+      contractUrl: contractUrl ?? this.contractUrl,
+      freelancerPaymentDetails:
+          freelancerPaymentDetails ?? this.freelancerPaymentDetails,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

@@ -5,6 +5,7 @@ import '../../models/job_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/job_provider.dart';
 import '../../widgets/common/loading_widget.dart';
+import 'package:flutter/services.dart';
 import '../../core/constants/app_colors.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/notification_model.dart';
@@ -13,6 +14,9 @@ import '../../widgets/reviews/review_widgets.dart';
 import '../../models/review_model.dart';
 import '../../services/firestore_service.dart';
 import 'dart:ui';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
+import '../../services/storage_service.dart';
 import '../../widgets/common/glass_card.dart';
 
 class ActiveJobTrackingScreen extends StatefulWidget {
@@ -326,6 +330,10 @@ class _ActiveJobTrackingScreenState extends State<ActiveJobTrackingScreen> {
                           );
                         }),
 
+                  // Freelancer Payment Info Section
+                  _buildFreelancerPaymentDetailsSection(context, job, isClient, isFreelancer, isDark),
+                  const SizedBox(height: 16),
+
                   // Progress Section
                   if (job.milestones.isNotEmpty) _buildProgressSection(job),
 
@@ -611,6 +619,168 @@ class _ActiveJobTrackingScreenState extends State<ActiveJobTrackingScreen> {
     );
   }
 
+  Widget _buildFreelancerPaymentDetailsSection(
+      BuildContext context, JobModel job, bool isClient, bool isFreelancer, bool isDark) {
+    if (isFreelancer) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('بيانات حسابك البنكي',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.grey.shade900 : Colors.blue.shade50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.blue.shade200),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (job.freelancerPaymentDetails == null ||
+                    job.freelancerPaymentDetails!.isEmpty) ...[
+                  const Text('لم تقم بإضافة بيانات الدفع الخاصة بك بعد.',
+                      style: TextStyle(color: Colors.grey)),
+                  const SizedBox(height: 12),
+                  ElevatedButton.icon(
+                    onPressed: () => _showEditPaymentDetailsSheet(context, job),
+                    icon: const Icon(Icons.account_balance),
+                    label: const Text('إضافة بيانات الحساب'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue.shade600,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ] else ...[
+                  Text(job.freelancerPaymentDetails!,
+                      style: const TextStyle(fontSize: 16)),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: () => _showEditPaymentDetailsSheet(context, job),
+                    icon: const Icon(Icons.edit, size: 18),
+                    label: const Text('تعديل البيانات'),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      );
+    } else if (isClient) {
+      if (job.freelancerPaymentDetails == null ||
+          job.freelancerPaymentDetails!.isEmpty) {
+        return const SizedBox.shrink(); // Hide if not provided yet
+      }
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('بيانات حساب الحرفي',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.grey.shade900 : Colors.green.shade50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.green.shade200),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Text(
+                    job.freelancerPaymentDetails!,
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.copy, color: Colors.green),
+                  onPressed: () {
+                    Clipboard.setData(
+                        ClipboardData(text: job.freelancerPaymentDetails!));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('تم نسخ بيانات الحساب')),
+                    );
+                  },
+                )
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+    return const SizedBox.shrink();
+  }
+
+  void _showEditPaymentDetailsSheet(BuildContext context, JobModel job) {
+    final controller =
+        TextEditingController(text: job.freelancerPaymentDetails ?? '');
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(ctx).viewInsets.bottom,
+          top: 20,
+          left: 20,
+          right: 20,
+        ),
+        decoration: BoxDecoration(
+          color: Theme.of(context).brightness == Brightness.dark
+              ? AppColors.darkBackground
+              : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text('بيانات حسابك البنكي',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center),
+              const SizedBox(height: 16),
+              const Text('أدخل بياناتك مثل: بنك الخرطوم، رقم الحساب 12345، الاسم: محمد',
+                  style: TextStyle(color: Colors.grey)),
+              const SizedBox(height: 12),
+              TextField(
+                controller: controller,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  hintText: 'اكتب بيانات حسابك هنا...',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () {
+                  final text = controller.text.trim();
+                  if (text.isNotEmpty) {
+                    context
+                        .read<JobProvider>()
+                        .updateFreelancerPaymentDetails(job.id, text);
+                    Navigator.pop(ctx);
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+                child: const Text('حفظ البيانات'),
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildProgressSection(JobModel job) {
     final totalMilestones = job.milestones.length;
     final completedMilestones =
@@ -727,21 +897,53 @@ class _ActiveJobTrackingScreenState extends State<ActiveJobTrackingScreen> {
         ),
       );
     } else if (m.status == MilestoneStatus.paidByClient && isFreelancer) {
-      actionWidget = ElevatedButton.icon(
-        onPressed: () => _confirmPaymentReceived(context, job, m),
-        icon: const Icon(Icons.thumb_up, size: 14),
-        label: const Text('تأكيد الاستلام',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.green,
-          foregroundColor: Colors.white,
-          elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          minimumSize: Size.zero,
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
+      actionWidget = Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (m.paymentReceiptUrl != null) ...[
+            TextButton.icon(
+              onPressed: () => _viewReceipt(context, m.paymentReceiptUrl!),
+              icon: const Icon(Icons.receipt_long, size: 14),
+              label: const Text('الإيصال',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+            ),
+            const SizedBox(width: 8),
+          ],
+          ElevatedButton.icon(
+            onPressed: () => _confirmPaymentReceived(context, job, m),
+            icon: const Icon(Icons.thumb_up, size: 14),
+            label: const Text('تأكيد',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
+            ),
+          ),
+        ],
       );
+    } else if (m.status == MilestoneStatus.paidByClient && isClient) {
+      if (m.paymentReceiptUrl != null) {
+        actionWidget = TextButton.icon(
+          onPressed: () => _viewReceipt(context, m.paymentReceiptUrl!),
+          icon: const Icon(Icons.receipt_long, size: 14),
+          label: const Text('عرض الإيصال',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+        );
+      }
+    } else if (m.status == MilestoneStatus.confirmedByProvider) {
+      if (m.paymentReceiptUrl != null) {
+        actionWidget = IconButton(
+          onPressed: () => _viewReceipt(context, m.paymentReceiptUrl!),
+          icon: const Icon(Icons.receipt_long, color: Colors.grey, size: 20),
+          tooltip: 'عرض الإيصال',
+        );
+      }
     }
 
     // Status label (optional display if not actionable)
@@ -1015,29 +1217,56 @@ class _ActiveJobTrackingScreenState extends State<ActiveJobTrackingScreen> {
     );
   }
 
-  void _markMilestoneAsPaid(JobModel job, MilestoneModel m) {
-    final milestones = job.milestones.map((item) {
-      if (item.id == m.id) {
-        return MilestoneModel(
-          id: item.id,
-          title: item.title,
-          amount: item.amount,
-          isCompleted: item.isCompleted,
-          isPaid: true,
-          isConfirmed: false,
-          completedAt: null,
-        );
-      }
-      return item;
-    }).toList();
-    context.read<JobProvider>().updateMilestones(job.id, milestones);
+  void _markMilestoneAsPaid(BuildContext context, JobModel job, MilestoneModel m) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _PayMilestoneSheet(job: job, milestone: m),
+    );
+  }
 
     _sendNotification(
       targetUserId: job.assignedFreelancerId!,
-      title: 'تحويل دفعة',
-      message:
-          'قام العميل بتأكيد تحويل الدفعة: ${m.title}. يرجى تأكيد الاستلام.',
-      jobId: job.id,
+      title: 'دفعة جديدة 💰',
+      body: 'قام العميل بتسديد دفعة: ${m.title}. يرجى مراجعة الإيصال وتأكيد الاستلام.',
+      type: 'job',
+      targetId: job.id,
+    );
+  }
+
+  void _viewReceipt(BuildContext context, String url) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            InteractiveViewer(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.network(
+                  url,
+                  fit: BoxFit.contain,
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return const Center(child: CircularProgressIndicator());
+                  },
+                ),
+              ),
+            ),
+            Positioned(
+              top: 10,
+              right: 10,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white, size: 30),
+                onPressed: () => Navigator.pop(context),
+              ),
+            )
+          ],
+        ),
+      ),
     );
   }
 

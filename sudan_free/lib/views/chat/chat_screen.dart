@@ -1691,20 +1691,25 @@ class _MessageBubbleState extends State<MessageBubble> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      width: 280,
-      margin: const EdgeInsets.only(top: 4, bottom: 4),
+      width: MediaQuery.of(context).size.width * 0.85,
+      margin: const EdgeInsets.only(top: 8, bottom: 8),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E2736) : Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
+            color: statusColor.withValues(alpha: 0.1),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+          BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            blurRadius: 5,
+            offset: const Offset(0, 2),
           ),
         ],
         border:
-            Border.all(color: statusColor.withValues(alpha: 0.5), width: 1.5),
+            Border.all(color: statusColor.withValues(alpha: 0.3), width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1735,15 +1740,23 @@ class _MessageBubbleState extends State<MessageBubble> {
                       color: Colors.white, size: 20),
                 ),
                 const SizedBox(width: 10),
-                const Expanded(
-                  child: Text('عقد عمل ذكي',
-                      style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          color: Colors.white)),
-                ),
-                Icon(statusIcon, color: Colors.white, size: 20),
-              ],
+                  const Expanded(
+                    child: Text('وثيقة اتفاق رسمي',
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 17,
+                            color: Colors.white,
+                            letterSpacing: 0.5)),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(statusIcon, color: statusColor, size: 16),
+                  ),
+                ],
             ),
           ),
 
@@ -1772,26 +1785,36 @@ class _MessageBubbleState extends State<MessageBubble> {
                 // Price Box
                 Container(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
-                    color: AppColors.secondary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
+                    color: isDark ? Colors.black26 : Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                        color: AppColors.secondary.withValues(alpha: 0.3)),
+                        color: Colors.grey.withValues(alpha: 0.2)),
                   ),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('المبلغ المتفق عليه:',
-                          style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.secondary)),
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.attach_money, color: AppColors.primary, size: 20),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Text('إجمالي التكلفة:',
+                            style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey)),
+                      ),
                       Text('${message.contractPrice} SDG',
                           style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15,
-                              color: AppColors.secondary)),
+                              fontWeight: FontWeight.w900,
+                              fontSize: 18,
+                              color: AppColors.primary)),
                     ],
                   ),
                 ),
@@ -1834,19 +1857,20 @@ class _MessageBubbleState extends State<MessageBubble> {
                           },
                           style: OutlinedButton.styleFrom(
                             foregroundColor: Colors.red,
-                            side: const BorderSide(color: Colors.red),
+                            side: const BorderSide(color: Colors.red, width: 1.5),
                             shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8)),
-                            padding: const EdgeInsets.symmetric(vertical: 12),
+                                borderRadius: BorderRadius.circular(12)),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
                           ),
                           child: const Text('رفض',
-                              style: TextStyle(fontWeight: FontWeight.bold)),
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                         ),
                       ),
                       const SizedBox(width: 8),
                       Expanded(
                         flex: 2,
-                        child: ElevatedButton(
+                        child: ElevatedButton.icon(
+                          icon: const Icon(Icons.check_circle_outline, size: 20),
                           onPressed: () async {
                             // Show a simple loading indicator dialog
                             showDialog(

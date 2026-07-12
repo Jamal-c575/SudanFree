@@ -197,6 +197,15 @@ class JobFirestoreService {
     });
   }
 
+  // Update Freelancer Payment Details
+  Future<void> updateFreelancerPaymentDetails(String jobId, String details) async {
+    await _firestore.collection('jobs').doc(jobId).update({
+      'freelancerPaymentDetails': details,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+
   // Get Freelancer Jobs (Including supervised jobs)
   Stream<List<JobModel>> getFreelancerJobs(String freelancerId) {
     return _firestore
