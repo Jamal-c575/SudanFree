@@ -16,6 +16,7 @@ import '../../core/utils/app_error_handler.dart';
 import '../../widgets/common/premium_glass_card.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../utils/animation_utils.dart';
+import 'package:sudan_free/utils/app_haptics.dart';
 
 class IdentityVerificationScreen extends StatefulWidget {
   const IdentityVerificationScreen({super.key});
@@ -232,7 +233,7 @@ class _IdentityVerificationScreenState
             child: PremiumButton(
               label: isArabic ? 'حسناً' : 'OK',
               onPressed: () {
-                HapticFeedback.lightImpact();
+                AppHaptics.lightImpact();
                 Navigator.pop(ctx); // close dialog
                 if (context.mounted) Navigator.pop(context); // close screen
               },
@@ -380,7 +381,7 @@ class _IdentityVerificationScreenState
                                 : 'Confirm & Submit',
                             isLoading: _isSubmitting,
                             onPressed: () {
-                              HapticFeedback.lightImpact();
+                              AppHaptics.lightImpact();
                               _submitVerification();
                             },
                           ),
@@ -394,7 +395,7 @@ class _IdentityVerificationScreenState
                               width: 120,
                               label: isArabic ? 'متابعة' : 'Continue',
                               onPressed: () {
-                                HapticFeedback.lightImpact();
+                                AppHaptics.lightImpact();
                                 details.onStepContinue?.call();
                               },
                             ),
@@ -508,33 +509,35 @@ class _IdentityVerificationScreenState
                         Row(
                           children: [
                             Expanded(
-                              child: RadioListTile<bool>(
-                                title: Text(isArabic
-                                    ? 'رسالة نصية (SMS)'
-                                    : 'SMS Message'),
-                                subtitle: Text(isArabic
-                                    ? 'تلقي الرمز عبر SMS'
-                                    : 'Receive code via SMS'),
-                                value: false,
-                                // ignore: deprecated_member_use
+                              child: RadioGroup<bool>(
                                 groupValue: _useWhatsAppOTP,
-                                // ignore: deprecated_member_use
                                 onChanged: (value) => setState(
                                     () => _useWhatsAppOTP = value ?? false),
-                                dense: true,
+                                child: RadioListTile<bool>(
+                                  title: Text(isArabic
+                                      ? 'رسالة نصية (SMS)'
+                                      : 'SMS Message'),
+                                  subtitle: Text(isArabic
+                                      ? 'تلقي الرمز عبر SMS'
+                                      : 'Receive code via SMS'),
+                                  value: false,
+                                  dense: true,
+                                ),
                               ),
                             ),
                             Expanded(
-                              child: RadioListTile<bool>(
-                                title: Text(isArabic ? 'واتساب' : 'WhatsApp'),
-                                subtitle: Text(isArabic
-                                    ? 'تلقي الرمز عبر واتساب'
-                                    : 'Receive code via WhatsApp'),
-                                value: true,
+                              child: RadioGroup<bool>(
                                 groupValue: _useWhatsAppOTP,
                                 onChanged: (value) => setState(
                                     () => _useWhatsAppOTP = value ?? false),
-                                dense: true,
+                                child: RadioListTile<bool>(
+                                  title: Text(isArabic ? 'واتساب' : 'WhatsApp'),
+                                  subtitle: Text(isArabic
+                                      ? 'تلقي الرمز عبر واتساب'
+                                      : 'Receive code via WhatsApp'),
+                                  value: true,
+                                  dense: true,
+                                ),
                               ),
                             ),
                           ],
@@ -555,18 +558,42 @@ class _IdentityVerificationScreenState
                     label: isArabic ? 'إرسال الرمز' : 'Send Code',
                     isLoading: _isLoading,
                     onPressed: () {
-                      HapticFeedback.lightImpact();
+                      AppHaptics.lightImpact();
                       _sendCode();
                     },
                   ),
                 ] else ...[
-                  Text(
-                    isArabic ? 'أدخل الرمز المرسل إلى' : 'Enter code sent to',
-                    textAlign: TextAlign.center,
-                  ),
+                  if (_useWhatsAppOTP) ...[
+                    PremiumGlassCard(
+                      padding: const EdgeInsets.all(12),
+                      borderRadius: BorderRadius.circular(8),
+                      color: Colors.blue.withValues(alpha: 0.1),
+                      border: true,
+                      child: Row(
+                        children: [
+                          const Icon(Icons.info_outline, color: Colors.blue),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              isArabic
+                                  ? 'تم استلام طلبك. سيقوم فريقنا بإرسال كود التحقق قريباً عبر واتساب إلى الرقم:'
+                                  : 'Request received. Our team will send the code via WhatsApp shortly to:',
+                              style: const TextStyle(color: Colors.blue, fontSize: 13),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ] else ...[
+                    Text(
+                      isArabic ? 'أدخل الرمز المرسل إلى' : 'Enter code sent to',
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
                   Text(
                     _phoneController.text,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 16),
@@ -594,7 +621,7 @@ class _IdentityVerificationScreenState
                     label: isArabic ? 'تحقق الآن' : 'Verify Now',
                     isLoading: _isLoading,
                     onPressed: () {
-                      HapticFeedback.lightImpact();
+                      AppHaptics.lightImpact();
                       _verifyOtp();
                     },
                   ),
