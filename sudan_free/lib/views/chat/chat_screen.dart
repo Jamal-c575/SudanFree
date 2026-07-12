@@ -1950,7 +1950,7 @@ class _MessageBubbleState extends State<MessageBubble> {
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             elevation: 2,
                           ),
-                          child: const Text('موافقة وبدء العمل',
+                          label: const Text('موافقة وبدء العمل',
                               style: TextStyle(
                                   fontWeight: FontWeight.bold, fontSize: 12)),
                         ),

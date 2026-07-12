@@ -731,7 +731,7 @@ class _ActiveJobTrackingScreenState extends State<ActiveJobTrackingScreen> {
         ),
         decoration: BoxDecoration(
           color: Theme.of(context).brightness == Brightness.dark
-              ? AppColors.darkBackground
+              ? const Color(0xFF1E2736)
               : Colors.white,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         ),
@@ -882,7 +882,7 @@ class _ActiveJobTrackingScreenState extends State<ActiveJobTrackingScreen> {
 
     if (m.status == MilestoneStatus.pending && isClient) {
       actionWidget = ElevatedButton.icon(
-        onPressed: () => _markMilestoneAsPaid(job, m),
+        onPressed: () => _markMilestoneAsPaid(context, job, m),
         icon: const Icon(Icons.payment, size: 14),
         label: const Text('لقد دفعت',
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
@@ -1226,15 +1226,6 @@ class _ActiveJobTrackingScreenState extends State<ActiveJobTrackingScreen> {
     );
   }
 
-    _sendNotification(
-      targetUserId: job.assignedFreelancerId!,
-      title: 'دفعة جديدة 💰',
-      body: 'قام العميل بتسديد دفعة: ${m.title}. يرجى مراجعة الإيصال وتأكيد الاستلام.',
-      type: 'job',
-      targetId: job.id,
-    );
-  }
-
   void _viewReceipt(BuildContext context, String url) {
     showDialog(
       context: context,
@@ -1496,5 +1487,195 @@ class _ActiveJobTrackingScreenState extends State<ActiveJobTrackingScreen> {
       'createdAt': FieldValue.serverTimestamp(),
       'relatedId': jobId,
     });
+  }
+}
+
+class _PayMilestoneSheet extends StatefulWidget {
+  final JobModel job;
+  final MilestoneModel milestone;
+
+  const _PayMilestoneSheet({required this.job, required this.milestone});
+
+  @override
+  State<_PayMilestoneSheet> createState() => _PayMilestoneSheetState();
+}
+
+class _PayMilestoneSheetState extends State<_PayMilestoneSheet> {
+  String? _selectedPaymentMethod;
+  File? _receiptImage;
+  bool _isLoading = false;
+  final List<String> _paymentMethods = [
+    'بنك الخرطوم (MBOK)',
+    'بنك أمدرمان (Omdurman)',
+    'فوري (Fawry)',
+    'كاشي (Cashi)',
+    'تحويل رصيد (زين/سوداني)',
+    'أخرى'
+  ];
+
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    if (pickedFile != null) {
+      setState(() {
+        _receiptImage = File(pickedFile.path);
+      });
+    }
+  }
+
+  void _sendNotification({
+    required String targetUserId,
+    required String title,
+    required String message,
+    required String jobId,
+  }) {
+    FirebaseFirestore.instance.collection('notifications').add({
+      'userId': targetUserId,
+      'type': NotificationType.system.name,
+      'title': title,
+      'message': message,
+      'isRead': false,
+      'createdAt': FieldValue.serverTimestamp(),
+      'relatedId': jobId,
+    });
+  }
+
+  Future<void> _submitPayment() async {
+    if (_selectedPaymentMethod == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('الرجاء اختيار طريقة الدفع')),
+      );
+      return;
+    }
+    if (_receiptImage == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('الرجاء إرفاق صورة الإيصال')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    try {
+      final storageService = StorageService();
+      final receiptUrl = await storageService.uploadMilestoneReceipt(
+          widget.job.id, widget.milestone.id, _receiptImage!);
+
+      final milestones = widget.job.milestones.map<MilestoneModel>((m) {
+        if (m.id == widget.milestone.id) {
+          return m.copyWith(
+            status: MilestoneStatus.paidByClient,
+            paymentMethod: _selectedPaymentMethod,
+            paymentReceiptUrl: receiptUrl,
+          );
+        }
+        return m;
+      }).toList();
+
+      if (!mounted) return;
+      await context.read<JobProvider>().updateMilestones(widget.job.id, milestones);
+
+      _sendNotification(
+        targetUserId: widget.job.assignedFreelancerId!,
+        title: 'دفعة جديدة 💰',
+        message: 'قام العميل بتسديد دفعة: ${widget.milestone.title}. يرجى مراجعة الإيصال وتأكيد الاستلام.',
+        jobId: widget.job.id,
+      );
+
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم تأكيد الدفع وإرفاق الإيصال بنجاح')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('حدث خطأ: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+        top: 20,
+        left: 20,
+        right: 20,
+      ),
+      decoration: BoxDecoration(
+        color: Theme.of(context).brightness == Brightness.dark
+            ? const Color(0xFF1E2736)
+            : Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text('تأكيد الدفع',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center),
+            const SizedBox(height: 16),
+            const Text('طريقة الدفع المستخدمة',
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              value: _selectedPaymentMethod,
+              decoration: const InputDecoration(border: OutlineInputBorder()),
+              items: _paymentMethods
+                  .map((m) => DropdownMenuItem(value: m, child: Text(m)))
+                  .toList(),
+              onChanged: (val) => setState(() => _selectedPaymentMethod = val),
+              hint: const Text('اختر طريقة الدفع'),
+            ),
+            const SizedBox(height: 16),
+            const Text('إرفاق إيصال التحويل',
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            GestureDetector(
+              onTap: _pickImage,
+              child: Container(
+                height: 120,
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: _receiptImage != null
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.file(_receiptImage!, fit: BoxFit.cover),
+                      )
+                    : const Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.add_a_photo, size: 40, color: Colors.grey),
+                          SizedBox(height: 8),
+                          Text('اضغط لإرفاق صورة الإيصال',
+                              style: TextStyle(color: Colors.grey)),
+                        ],
+                      ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : ElevatedButton(
+                    onPressed: _submitPayment,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                    child: const Text('تأكيد و إرسال الإيصال',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
   }
 }

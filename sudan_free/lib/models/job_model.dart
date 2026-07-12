@@ -129,6 +129,30 @@ class MilestoneModel {
       'paymentMethod': paymentMethod,
     };
   }
+  MilestoneModel copyWith({
+    String? id,
+    String? title,
+    double? amount,
+    bool? isPaid,
+    bool? isCompleted,
+    bool? isConfirmed,
+    DateTime? completedAt,
+    String? paymentReceiptUrl,
+    String? paymentMethod,
+    MilestoneStatus? status, // Not used in constructor, computed from flags
+  }) {
+    return MilestoneModel(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      amount: amount ?? this.amount,
+      isPaid: isPaid ?? this.isPaid,
+      isCompleted: isCompleted ?? this.isCompleted,
+      isConfirmed: isConfirmed ?? this.isConfirmed,
+      completedAt: completedAt ?? this.completedAt,
+      paymentReceiptUrl: paymentReceiptUrl ?? this.paymentReceiptUrl,
+      paymentMethod: paymentMethod ?? this.paymentMethod,
+    );
+  }
 }
 
 class JobModel {

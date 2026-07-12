@@ -218,6 +218,8 @@ class FirestoreService {
       _jobs.updateMilestones(jobId, milestones);
   Future<bool> hasCompletedJob(String clientId, String freelancerId) =>
       _jobs.hasCompletedJob(clientId, freelancerId);
+  Future<void> updateFreelancerPaymentDetails(String jobId, String details) =>
+      _jobs.updateFreelancerPaymentDetails(jobId, details);
 
   // ==================== PROPOSALS ====================
   Stream<List<ProposalModel>> getJobProposals(String jobId) =>
