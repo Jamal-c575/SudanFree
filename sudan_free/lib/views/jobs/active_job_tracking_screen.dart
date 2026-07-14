@@ -18,6 +18,8 @@ import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import '../../services/storage_service.dart';
 import '../../widgets/common/glass_card.dart';
+import '../../models/user_model.dart';
+import '../settings/bank_accounts_screen.dart';
 
 class ActiveJobTrackingScreen extends StatefulWidget {
   final String jobId;
@@ -75,7 +77,7 @@ class _ActiveJobTrackingScreenState extends State<ActiveJobTrackingScreen> {
           .every((ms) => ms.status == MilestoneStatus.confirmedByProvider);
       if (isAllConfirmed) {
         _isAutoCompleting = true;
-        Future.microtask(() {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
           if (context.mounted) {
             context.read<JobProvider>().completeJob(
                 jobId: job.id, freelancerId: job.assignedFreelancerId!);
@@ -621,7 +623,12 @@ class _ActiveJobTrackingScreenState extends State<ActiveJobTrackingScreen> {
 
   Widget _buildFreelancerPaymentDetailsSection(
       BuildContext context, JobModel job, bool isClient, bool isFreelancer, bool isDark) {
+    if (job.assignedFreelancerId == null) return const SizedBox.shrink();
+
     if (isFreelancer) {
+      final user = context.watch<AuthProvider>().user;
+      final accounts = user?.bankAccounts ?? [];
+
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -639,29 +646,41 @@ class _ActiveJobTrackingScreenState extends State<ActiveJobTrackingScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (job.freelancerPaymentDetails == null ||
-                    job.freelancerPaymentDetails!.isEmpty) ...[
-                  const Text('لم تقم بإضافة بيانات الدفع الخاصة بك بعد.',
+                if (accounts.isEmpty) ...[
+                  const Text('لم تقم بإضافة حسابات بنكية بعد. الرجاء إضافة حساباتك من الإعدادات لاستلام أرباحك.',
                       style: TextStyle(color: Colors.grey)),
                   const SizedBox(height: 12),
-                  ElevatedButton.icon(
-                    onPressed: () => _showEditPaymentDetailsSheet(context, job),
-                    icon: const Icon(Icons.account_balance),
-                    label: const Text('إضافة بيانات الحساب'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue.shade600,
-                      foregroundColor: Colors.white,
-                    ),
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const BankAccountsScreen()),
+                      );
+                    },
+                    icon: const Icon(Icons.settings),
+                    label: const Text('الذهاب للإعدادات'),
                   ),
                 ] else ...[
-                  Text(job.freelancerPaymentDetails!,
-                      style: const TextStyle(fontSize: 16)),
-                  const SizedBox(height: 12),
-                  OutlinedButton.icon(
-                    onPressed: () => _showEditPaymentDetailsSheet(context, job),
-                    icon: const Icon(Icons.edit, size: 18),
-                    label: const Text('تعديل البيانات'),
-                  ),
+                  const Text('الحسابات التي ستظهر للعميل:', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  ...accounts.map((acc) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8.0),
+                    child: Text('• ${acc.bankName} - ${acc.accountNumber}', style: const TextStyle(fontSize: 14)),
+                  )),
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const BankAccountsScreen()),
+                        );
+                      },
+                      icon: const Icon(Icons.edit, size: 16),
+                      label: const Text('إدارة الحسابات'),
+                    ),
+                  )
                 ],
               ],
             ),
@@ -669,116 +688,75 @@ class _ActiveJobTrackingScreenState extends State<ActiveJobTrackingScreen> {
         ],
       );
     } else if (isClient) {
-      if (job.freelancerPaymentDetails == null ||
-          job.freelancerPaymentDetails!.isEmpty) {
-        return const SizedBox.shrink(); // Hide if not provided yet
-      }
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('بيانات حساب الحرفي',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 12),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: isDark ? Colors.grey.shade900 : Colors.green.shade50,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.green.shade200),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Text(
-                    job.freelancerPaymentDetails!,
-                    style: const TextStyle(fontSize: 16),
-                  ),
+      return FutureBuilder<UserModel?>(
+        future: context.read<FirestoreService>().getUser(job.assignedFreelancerId ?? ''),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Text('خطأ في تحميل بيانات الحرفي: ${snapshot.error}', style: const TextStyle(color: Colors.red));
+          }
+          if (!snapshot.hasData) return const SizedBox.shrink();
+          
+          final freelancer = snapshot.data!;
+          final accounts = freelancer.bankAccounts;
+
+          if (accounts.isEmpty) return const SizedBox.shrink();
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('خيارات الدفع للحرفي',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 12),
+              ...accounts.map((acc) => Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.grey.shade900 : Colors.green.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.green.shade200),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.copy, color: Colors.green),
-                  onPressed: () {
-                    Clipboard.setData(
-                        ClipboardData(text: job.freelancerPaymentDetails!));
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('تم نسخ بيانات الحساب')),
-                    );
-                  },
-                )
-              ],
-            ),
-          ),
-        ],
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.green.shade100,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.account_balance, color: Colors.green.shade700, size: 20),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(acc.bankName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                          const SizedBox(height: 4),
+                          Text(acc.accountNumber, style: const TextStyle(fontSize: 15, letterSpacing: 1.2)),
+                          const SizedBox(height: 4),
+                          Text(acc.accountHolderName, style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.copy, color: Colors.green),
+                      tooltip: 'نسخ رقم الحساب',
+                      onPressed: () {
+                        Clipboard.setData(ClipboardData(text: acc.accountNumber));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('تم نسخ رقم الحساب بنجاح')),
+                        );
+                      },
+                    )
+                  ],
+                ),
+              )),
+            ],
+          );
+        },
       );
     }
     return const SizedBox.shrink();
-  }
-
-  void _showEditPaymentDetailsSheet(BuildContext context, JobModel job) {
-    final controller =
-        TextEditingController(text: job.freelancerPaymentDetails ?? '');
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(ctx).viewInsets.bottom,
-          top: 20,
-          left: 20,
-          right: 20,
-        ),
-        decoration: BoxDecoration(
-          color: Theme.of(context).brightness == Brightness.dark
-              ? const Color(0xFF1E2736)
-              : Colors.white,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text('بيانات حسابك البنكي',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  textAlign: TextAlign.center),
-              const SizedBox(height: 16),
-              const Text('أدخل بياناتك مثل: بنك الخرطوم، رقم الحساب 12345، الاسم: محمد',
-                  style: TextStyle(color: Colors.grey)),
-              const SizedBox(height: 12),
-              TextField(
-                controller: controller,
-                maxLines: 3,
-                decoration: const InputDecoration(
-                  hintText: 'اكتب بيانات حسابك هنا...',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: () {
-                  final text = controller.text.trim();
-                  if (text.isNotEmpty) {
-                    context
-                        .read<JobProvider>()
-                        .updateFreelancerPaymentDetails(job.id, text);
-                    Navigator.pop(ctx);
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-                child: const Text('حفظ البيانات'),
-              ),
-              const SizedBox(height: 16),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 
   Widget _buildProgressSection(JobModel job) {
@@ -1265,11 +1243,8 @@ class _ActiveJobTrackingScreenState extends State<ActiveJobTrackingScreen> {
       BuildContext context, JobModel job, MilestoneModel m) {
     final milestones = job.milestones.map((item) {
       if (item.id == m.id) {
-        return MilestoneModel(
-          id: item.id,
-          title: item.title,
-          amount: item.amount,
-          isCompleted: true, // Mark as completed when received
+        return item.copyWith(
+          isCompleted: true,
           isPaid: true,
           isConfirmed: true,
           completedAt: DateTime.now(),
@@ -1563,7 +1538,7 @@ class _PayMilestoneSheetState extends State<_PayMilestoneSheet> {
       final milestones = widget.job.milestones.map<MilestoneModel>((m) {
         if (m.id == widget.milestone.id) {
           return m.copyWith(
-            status: MilestoneStatus.paidByClient,
+            isPaid: true,
             paymentMethod: _selectedPaymentMethod,
             paymentReceiptUrl: receiptUrl,
           );
