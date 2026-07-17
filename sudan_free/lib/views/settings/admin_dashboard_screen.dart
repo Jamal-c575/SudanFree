@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../models/user_model.dart';
 import '../../models/ad_model.dart';
 import '../../widgets/common/loading_widget.dart';
@@ -110,7 +111,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     }
 
     return DefaultTabController(
-      length: 8,
+      length: 9,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('لوحة تحكم المشرف',
@@ -129,6 +130,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               Tab(text: 'المستخدمون', icon: Icon(Icons.people)),
               Tab(text: 'التنبيهات', icon: Icon(Icons.notifications_active)),
               Tab(text: 'الإعلانات', icon: Icon(Icons.campaign)),
+              Tab(text: 'أكواد التحقق', icon: Icon(Icons.password)),
               Tab(text: 'طلبات التوثيق', icon: Icon(Icons.handshake_rounded)),
               Tab(text: 'العقود', icon: Icon(Icons.handshake)),
               Tab(text: 'طلبات الحذف', icon: Icon(Icons.delete_sweep)),
@@ -144,6 +146,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               _buildUsersManager(),
               _buildNotificationsManager(),
               _buildAdsManager(),
+              _buildOTPQueue(),
               _buildVerificationQueue(),
               _buildContractsLog(),
               _buildDeletionQueue(),
@@ -1154,6 +1157,210 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           ),
         );
       }),
+    );
+  }
+
+  // ==========================================
+  // X. أكواد التحقق (OTP Queue)
+  // ==========================================
+  Widget _buildOTPQueue() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('otp_codes')
+          .where('deliveryStatus', isEqualTo: 'pending_admin')
+          .orderBy('createdAt', descending: true)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Center(child: Text('حدث خطأ: ${snapshot.error}'));
+        }
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: LoadingIndicator());
+        }
+
+        final docs = snapshot.data?.docs ?? [];
+
+        if (docs.isEmpty) {
+          return const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.check_circle_outline, size: 80, color: Colors.green),
+                SizedBox(height: 16),
+                Text('لا توجد طلبات إرسال رموز تحقق حالياً',
+                    style: TextStyle(fontSize: 18, color: Colors.grey)),
+              ],
+            ),
+          );
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: docs.length,
+          itemBuilder: (context, index) {
+            final data = docs[index].data() as Map<String, dynamic>;
+            final id = docs[index].id;
+            final phone = data['phoneNumber'] ?? '';
+            final otp = data['otp'] ?? '';
+            final method = data['method'] ?? 'whatsapp'; // Default to whatsapp if missing
+            final createdAt = (data['createdAt'] as Timestamp?)?.toDate();
+
+            return Card(
+              margin: const EdgeInsets.only(bottom: 16),
+              elevation: 4,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.phone_android,
+                                color: AppColors.primary),
+                            const SizedBox(width: 8),
+                            Text(phone,
+                                style: const TextStyle(
+                                    fontSize: 18, fontWeight: FontWeight.bold),
+                                textDirection: TextDirection.ltr),
+                          ],
+                        ),
+                        if (createdAt != null)
+                          Text(
+                            '${createdAt.hour}:${createdAt.minute.toString().padLeft(2, '0')}',
+                            style: const TextStyle(color: Colors.grey),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('رمز التحقق:',
+                              style: TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.bold)),
+                          Text(otp,
+                              style: const TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 4,
+                                  color: AppColors.primary)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        const Icon(Icons.info_outline, size: 16, color: Colors.grey),
+                        const SizedBox(width: 4),
+                        Text(
+                          'طريقة الإرسال المطلوبة: ${method == 'sms' ? 'رسالة نصية (SMS)' : 'واتساب'}',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: method == 'sms' ? Colors.blue : Colors.green,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Column(
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: () async {
+                                  final text = 'رمز التحقق الخاص بك في تطبيق سودان فري هو: $otp';
+                                  final url = Uri.parse(
+                                      'https://wa.me/${phone.replaceAll('+', '')}?text=${Uri.encodeComponent(text)}');
+                                  if (await canLaunchUrl(url)) {
+                                    await launchUrl(url, mode: LaunchMode.externalApplication);
+                                  } else {
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(content: Text('لا يمكن فتح واتساب')),
+                                      );
+                                    }
+                                  }
+                                },
+                                icon: const Icon(Icons.send, size: 18),
+                                label: const Text('واتساب', style: TextStyle(fontSize: 12)),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.green,
+                                  foregroundColor: Colors.white,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: () async {
+                                  final text = 'رمز التحقق الخاص بك في تطبيق سودان فري هو: $otp';
+                                  // Use Uri.encodeComponent for the body to handle Arabic text correctly
+                                  final url = Uri.parse('sms:$phone?body=${Uri.encodeComponent(text)}');
+                                  if (await canLaunchUrl(url)) {
+                                    await launchUrl(url);
+                                  } else {
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(content: Text('لا يمكن فتح تطبيق الرسائل')),
+                                      );
+                                    }
+                                  }
+                                },
+                                icon: const Icon(Icons.sms, size: 18),
+                                label: const Text('رسالة SMS', style: TextStyle(fontSize: 12)),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.blue,
+                                  foregroundColor: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: () async {
+                              await FirebaseFirestore.instance
+                                  .collection('otp_codes')
+                                  .doc(id)
+                                  .update({'deliveryStatus': 'sent_manual'});
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('تم النقل للأرشيف')),
+                                );
+                              }
+                            },
+                            icon: const Icon(Icons.check),
+                            label: const Text('تحديد كمرسل ونقل للأرشيف'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.primary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
