@@ -13,6 +13,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../utils/animation_utils.dart';
 import 'package:sudan_free/utils/app_haptics.dart';
+import '../../models/user_model.dart';
+import '../settings/bank_accounts_screen.dart';
 
 class MyAgreementsScreen extends StatefulWidget {
   const MyAgreementsScreen({super.key});
@@ -83,6 +85,31 @@ class _MyAgreementsScreenState extends State<MyAgreementsScreen>
           ),
         ),
         foregroundColor: Colors.white,
+        actions: [
+          Consumer<AuthProvider>(
+            builder: (context, auth, _) {
+              final role = auth.user?.role;
+              if (role == UserRole.freelancer ||
+                  role == UserRole.techService ||
+                  role == UserRole.privateService ||
+                  role == UserRole.shop) {
+                return IconButton(
+                  icon: const Icon(Icons.account_balance),
+                  tooltip: 'معلومات التحويلات البنكية',
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const BankAccountsScreen(),
+                      ),
+                    );
+                  },
+                );
+              }
+              return const SizedBox.shrink();
+            },
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: Colors.white,

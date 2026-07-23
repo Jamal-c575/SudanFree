@@ -1,2 +1,7 @@
 sudanfree-d04fc-firebase-adminsdk-fbsvc-ef0fdc49d3.json
 key.json
+*.apk
+functions/.env
+المتجر/mapping.txt
+production_backups/functions_backup.tar.gz
+المتجر/SudanFree_Final.aab

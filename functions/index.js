@@ -21,3 +21,10 @@ const smartNotifications = require('./src/smart_notifications');
 exports.notifyUsersAboutNewProviders = smartNotifications.notifyUsersAboutNewProviders;
 exports.sendWelcomeNotification = smartNotifications.sendWelcomeNotification;
 
+// ─── AI Assistant ──────────────────────────────────────────────────────────
+const ai = require('./src/ai');
+exports.ai_chatWithHome      = ai.ai_chatWithHome;
+exports.ai_generatePageGuide = ai.ai_generatePageGuide;
+exports.ai_smartFillRequest  = ai.ai_smartFillRequest;
+exports.ai_enhanceText       = ai.ai_enhanceText;
+exports.ai_transcribeAudio   = ai.transcribeAudio;

@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import '../models/user_model.dart';
+import '../models/bank_account_model.dart';
 import '../models/notification_model.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
@@ -445,8 +446,8 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // Send WhatsApp OTP
-  Future<bool> sendWhatsAppOTP(String phoneNumber) async {
+  // Send WhatsApp/SMS OTP via Cloud Functions
+  Future<bool> sendWhatsAppOTP(String phoneNumber, {String method = 'whatsapp'}) async {
     _status = AuthStatus.loading;
     _errorMessage = null;
     notifyListeners();
@@ -454,6 +455,7 @@ class AuthProvider extends ChangeNotifier {
     try {
       final result = await _firestoreService.callFunction('sendWhatsAppOTP', {
         'phoneNumber': phoneNumber,
+        'method': method,
       });
 
       if (result['success'] == true) {
@@ -834,4 +836,19 @@ class AuthProvider extends ChangeNotifier {
     _errorMessage = message;
     notifyListeners();
   }
+
+  // Update Bank Accounts
+  Future<void> updateBankAccounts(List<BankAccountModel> accounts) async {
+    if (_user == null) throw Exception('User not logged in');
+
+    try {
+      await _firestoreService.updateBankAccounts(_user!.id, accounts);
+      _user = _user!.copyWith(bankAccounts: accounts);
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error updating bank accounts: $e');
+      rethrow;
+    }
+  }
 }
+

@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:async';
 import '../../models/user_model.dart';
+import '../../models/bank_account_model.dart';
 import '../../models/notification_model.dart';
 import '../performance_service.dart';
 
@@ -105,6 +106,13 @@ class UserFirestoreService {
     }
 
     await _firestore.collection('users').doc(userId).update(updates);
+  }
+
+  // Update Bank Accounts
+  Future<void> updateBankAccounts(String userId, List<BankAccountModel> accounts) async {
+    await _firestore.collection('users').doc(userId).update({
+      'bankAccounts': accounts.map((e) => e.toMap()).toList(),
+    });
   }
 
   /// Update lastActive timestamp for online presence tracking

@@ -93,10 +93,10 @@ class _IdentityVerificationScreenState
 
     setState(() => _isLoading = true);
 
-    final success = _useWhatsAppOTP
-        ? await authProvider.sendWhatsAppOTP(_phoneController.text.trim())
-        : await authProvider
-            .sendPhoneVerification(_phoneController.text.trim());
+    final success = await authProvider.sendWhatsAppOTP(
+      _phoneController.text.trim(),
+      method: _useWhatsAppOTP ? 'whatsapp' : 'sms',
+    );
 
     if (!mounted) return;
     setState(() => _isLoading = false);
@@ -123,10 +123,10 @@ class _IdentityVerificationScreenState
 
     setState(() => _isLoading = true);
 
-    final success = _useWhatsAppOTP
-        ? await authProvider.verifyWhatsAppOTP(
-            _phoneController.text.trim(), _otpController.text.trim())
-        : await authProvider.verifyOTPAndLink(_otpController.text.trim());
+    final success = await authProvider.verifyWhatsAppOTP(
+      _phoneController.text.trim(),
+      _otpController.text.trim(),
+    );
 
     if (success) {
       await authProvider.updateUserProfile({'isVerified': true});

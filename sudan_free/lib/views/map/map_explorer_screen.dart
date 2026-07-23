@@ -925,12 +925,23 @@ class _MapExplorerScreenState extends State<MapExplorerScreen>
             ),
             children: [
               TileLayer(
-                urlTemplate: Theme.of(context).brightness == Brightness.dark
-                    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'
-                    : 'https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',
+                urlTemplate: 'https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',
                 subdomains: const ['a', 'b', 'c', 'd'],
                 userAgentPackageName: 'com.sudan.free',
                 tileProvider: CachedTileProvider(),
+                tileBuilder: Theme.of(context).brightness == Brightness.dark
+                    ? (context, tileWidget, tile) {
+                        return ColorFiltered(
+                          colorFilter: const ColorFilter.matrix(<double>[
+                            -1,  0,  0, 0, 255,
+                             0, -1,  0, 0, 255,
+                             0,  0, -1, 0, 255,
+                             0,  0,  0, 1,   0,
+                          ]),
+                          child: tileWidget,
+                        );
+                      }
+                    : null,
               ),
               if (_currentRoute != null)
                 PolylineLayer(

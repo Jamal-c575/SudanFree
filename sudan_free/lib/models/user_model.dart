@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../utils/safe_parse.dart';
+import 'bank_account_model.dart';
 
 import 'enums/user_enums.dart';
 export 'enums/user_enums.dart';
@@ -72,6 +73,7 @@ class UserModel {
   final bool showOnMap; // إظهار أو إخفاء من الخريطة
   final double? latitude; // خط العرض
   final double? longitude; // خط الطول
+  final List<BankAccountModel> bankAccounts; // Freelancer bank accounts
 
   // Guarantor / Vouching System (نظام الضامن)
   final List<Map<String, dynamic>> vouchedBy; // [{id, name, level, timestamp}]
@@ -160,6 +162,7 @@ class UserModel {
     this.pendingApprenticeRequests = const [],
     this.pendingMasterRequests = const [],
     this.pendingLeaveRequests = const [],
+    this.bankAccounts = const [],
   });
 
   factory UserModel.fromFirestore(DocumentSnapshot doc) {
@@ -306,7 +309,27 @@ class UserModel {
       pendingApprenticeRequests:
           _safeStringList(data['pendingApprenticeRequests']),
       pendingMasterRequests: _safeStringList(data['pendingMasterRequests']),
-      pendingLeaveRequests: _safeStringList(data['pendingLeaveRequests']),
+      pendingLeaveRequests:
+          SafeParse.stringList(data['pendingLeaveRequests']),
+      bankAccounts: (() {
+        try {
+          final raw = data['bankAccounts'];
+          if (raw is! List) return <BankAccountModel>[];
+          return raw
+              .map((m) {
+                try {
+                  return BankAccountModel.fromMap(
+                      Map<String, dynamic>.from(m as Map));
+                } catch (_) {
+                  return null;
+                }
+              })
+              .whereType<BankAccountModel>()
+              .toList();
+        } catch (_) {
+          return <BankAccountModel>[];
+        }
+      })(),
     );
   }
 
@@ -425,6 +448,7 @@ class UserModel {
       'pendingApprenticeRequests': pendingApprenticeRequests,
       'pendingMasterRequests': pendingMasterRequests,
       'pendingLeaveRequests': pendingLeaveRequests,
+      'bankAccounts': bankAccounts.map((e) => e.toMap()).toList(),
       'searchKeywords': generateSearchKeywords(
         name: name,
         jobTitle: jobTitle,
@@ -530,6 +554,7 @@ class UserModel {
     List<String>? pendingApprenticeRequests,
     List<String>? pendingMasterRequests,
     List<String>? pendingLeaveRequests,
+    List<BankAccountModel>? bankAccounts,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -604,6 +629,7 @@ class UserModel {
       pendingMasterRequests:
           pendingMasterRequests ?? this.pendingMasterRequests,
       pendingLeaveRequests: pendingLeaveRequests ?? this.pendingLeaveRequests,
+      bankAccounts: bankAccounts ?? this.bankAccounts,
     );
   }
 

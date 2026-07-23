@@ -26,6 +26,7 @@ import '../models/message_model.dart';
 import '../models/offer_model.dart';
 import '../models/payment_model.dart';
 import '../models/user_model.dart';
+import '../models/bank_account_model.dart';
 import '../models/post_model.dart';
 import '../models/notification_model.dart';
 import '../models/comment_model.dart';
@@ -89,6 +90,8 @@ class FirestoreService {
   }
   Future<void> updateUserProfile(String userId, Map<String, dynamic> data) =>
       _users.updateUserProfile(userId, data);
+  Future<void> updateBankAccounts(String userId, List<BankAccountModel> accounts) =>
+      _users.updateBankAccounts(userId, accounts);
   Future<void> updateLastActive(String userId) =>
       _users.updateLastActive(userId);
   Future<void> sendPartnerRequest(

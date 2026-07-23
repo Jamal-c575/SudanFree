@@ -103,7 +103,7 @@ class PostModel {
       commentsCount: SafeParse.integer(data['commentsCount']),
       sharesCount: SafeParse.integer(data['sharesCount']),
       showInCommunity: SafeParse.boolean(data['showInCommunity'], true),
-      showInProfile: SafeParse.boolean(data['showInProfile']),
+      showInProfile: SafeParse.boolean(data['showInProfile'], true),
       isPinned: SafeParse.boolean(data['isPinned']),
       isUserVerified: SafeParse.boolean(data['isUserVerified']),
       createdAt: SafeParse.dateTime(data['createdAt']),

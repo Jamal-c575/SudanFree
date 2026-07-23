@@ -35,108 +35,40 @@ exports.sendWhatsAppOTP = onCall(async (request) => {
         // Generate 6-digit OTP
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
         
-        // Store OTP in Firestore with expiration (5 minutes)
+        // Store OTP in Firestore with expiration (24 hours)
         const otpDoc = {
             phoneNumber: normalizedPhone,
             otp: otp,
             method: method,
             createdAt: FieldValue.serverTimestamp(),
-            expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5 minutes
+            expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
             used: false,
-            deliveryAttempts: 1
+            deliveryAttempts: 1,
+            deliveryStatus: 'pending_admin'
         };
-
-        // ─── PHASE 2: Send via Twilio (Production) or Debug (Dev) ────────
-        let deliveryStatus = 'queued';
-        let deliveryMessageSid = null;
-
-        if (isProduction && twilioClient) {
-            try {
-                let message;
-                if (method === 'whatsapp') {
-                    message = await twilioClient.messages.create({
-                        body: `Your SudanFree verification code is: ${otp}\n\nValid for 5 minutes. Do not share this code.`,
-                        from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
-                        to: `whatsapp:${normalizedPhone}`
-                    });
-                } else {
-                    // SMS fallback
-                    message = await twilioClient.messages.create({
-                        body: `Your SudanFree verification code is: ${otp}. Valid for 5 minutes.`,
-                        from: process.env.TWILIO_SMS_NUMBER,
-                        to: normalizedPhone
-                    });
-                }
-                
-                deliveryStatus = 'sent';
-                deliveryMessageSid = message.sid;
-                console.log(`✓ OTP sent via ${method} to ${normalizedPhone} (SID: ${message.sid})`);
-                
-            } catch (twilioError) {
-                deliveryStatus = 'failed';
-                console.error(`✗ Twilio delivery error for ${phoneNumber}:`, twilioError.message);
-                
-                // Log but continue - store OTP for retry
-                await logAudit('OTP_TWILIO_DELIVERY_ERROR', null, {
-                    phoneNumber,
-                    method,
-                    status: 'failed',
-                    errorMessage: twilioError.message
-                });
-            }
-        } else if (!isProduction) {
-            // Development mode: no actual delivery
-            deliveryStatus = 'debug_mode';
-            console.log(`[DEV] OTP for ${phoneNumber}: ${otp}`);
-        } else {
-            deliveryStatus = 'production_no_credentials';
-            console.warn(`[WARN] Production mode but no Twilio credentials. OTP not sent to ${phoneNumber}`);
-        }
-
-        otpDoc.deliveryStatus = deliveryStatus;
-        if (deliveryMessageSid) otpDoc.deliveryMessageSid = deliveryMessageSid;
 
         // Store OTP record
         const docRef = await db.collection('otp_codes').add(otpDoc);
 
         // ─── PHASE 3: Audit Logging ───────────────────────────────────────
-        await logAudit('OTP_SENT', null, {
+        await logAudit('OTP_REQUESTED_MANUAL', null, {
             phoneNumber,
             method,
             status: 'success',
-            deliveryStatus,
+            deliveryStatus: 'pending_admin',
             metadata: {
-                otpDocId: docRef.id,
-                messageSid: deliveryMessageSid
+                otpDocId: docRef.id
             }
         });
 
         // Prepare response
         const response = {
             success: true,
-            message: isProduction 
-                ? `OTP sent via ${method.toUpperCase()}`
-                : 'OTP generated (development mode)',
-            expiresIn: 300, // 5 minutes in seconds
-            deliveryStatus,
+            message: 'OTP request received. Admin will send it via WhatsApp shortly.',
+            expiresIn: 86400, // 24 hours in seconds
+            deliveryStatus: 'pending_admin',
             method
         };
-
-        if (!isProduction) {
-            // Development mode: return debug OTP
-            await db.collection('otp_debug_codes').add({
-                phoneNumber: phoneNumber,
-                otp: otp,
-                method: method,
-                createdAt: FieldValue.serverTimestamp(),
-                expiresAt: new Date(Date.now() + 5 * 60 * 1000),
-                used: false,
-                environment: 'development',
-                docRefId: docRef.id
-            });
-            response.debugOtp = otp;
-            response.note = 'DEBUG MODE: Use debugOtp above. In production, user receives code via Twilio.';
-        }
 
         return response;
 
