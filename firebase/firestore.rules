@@ -47,10 +47,11 @@ service cloud.firestore {
         ))
         || 
         // مستخدمون آخرون يعدلون فقط حقول التفاعل بإجراءات محددة وصارمة
-        (!isOwner(userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['updatedAt', 'profileViews', 'dailyProfileViews', 'lastViewReset', 'viewers', 'pendingPartnerIds', 'partnerIds', 'followers', 'pendingApprenticeRequests', 'pendingMasterRequests', 'pendingLeaveRequests', 'apprenticesIds', 'masterId', 'vouchedBy', 'following', 'pendingSquadInvites']) &&
+        (!isOwner(userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['updatedAt', 'profileViews', 'dailyProfileViews', 'lastViewReset', 'viewers', 'pendingPartnerIds', 'partnerIds', 'followers', 'pendingApprenticeRequests', 'pendingMasterRequests', 'pendingLeaveRequests', 'apprenticesIds', 'masterId', 'vouchedBy', 'following', 'pendingSquadInvites', 'completedJobs']) &&
         // حماية الزيارات: الزيادة بمقدار 1 فقط
         (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['profileViews']) || request.resource.data.profileViews == resource.data.profileViews + 1) &&
-        (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['dailyProfileViews']) || request.resource.data.dailyProfileViews == resource.data.dailyProfileViews + 1 || request.resource.data.dailyProfileViews == 1))
+        (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['dailyProfileViews']) || request.resource.data.dailyProfileViews == resource.data.dailyProfileViews + 1 || request.resource.data.dailyProfileViews == 1) &&
+        (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['completedJobs']) || request.resource.data.completedJobs == resource.data.completedJobs + 1))
         ||
         // المشرف يعدل أي شيء
         isAdmin()
@@ -560,6 +561,28 @@ service cloud.firestore {
     match /curriculumLessons/{lessonId} {
       allow read: if true;
       allow write: if isAdmin();
+    }
+
+    // ═══════════════════ التقييمات والعقود (Ratings, Reviews & Contracts) ═══════════════════
+    match /ratings/{ratingId} {
+      allow read: if true;
+      // Authenticated users can create ratings for themselves as reviewers
+      allow create: if isAuthenticated() && request.resource.data.reviewerId == request.auth.uid;
+      // Ratings cannot be updated or deleted by users, only admins
+      allow update, delete: if isAdmin();
+    }
+
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && request.resource.data.reviewerId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    match /contract_relations/{relationId} {
+      allow read: if isAuthenticated() && relationId.matches('.*' + request.auth.uid + '.*');
+      // They can create/update it if they are one of the parties.
+      allow create, update: if isAuthenticated() && relationId.matches('.*' + request.auth.uid + '.*');
+      allow delete: if isAdmin();
     }
   }
 }
